@@ -30,12 +30,19 @@ AGENT_VERSION = '0.1-dev'
 class AgentClientHandler(TeethAgentProtocol):
     def __init__(self):
         TeethAgentProtocol.__init__(self, json.JSONEncoder())
+        self.handlers['v1'] = {
+            'prepare_image': self.prepare_image,
+        }
 
     def connectionMade(self):
         def _response(result):
             log.msg(format='Handshake successful, connection ID is %(connection_id)s', connection_id=result['id'])
 
         self.send_command('handshake', 'a:b:c:d', AGENT_VERSION).addCallback(_response)
+
+    def prepare_image(self, image_id):
+        log.msg(format='Preparing image %(image_id)s', image_id=image_id)
+        return {'image_id': image_id, 'status': 'PREPARED'}
 
 
 class AgentClientFactory(ReconnectingClientFactory):
