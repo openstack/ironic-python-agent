@@ -16,12 +16,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from setuptools import setup, find_packages
+import sys
 
-from teeth_agent import agent
+from twisted.internet import reactor
+from twisted.python import log
 
-setup(
-    name='teeth-agent',
-    version=agent.AGENT_VERSION,
-    packages=find_packages(),
-)
+from teeth_agent.agent import TeethAgent
+
+log.startLogging(sys.stdout)
+agent = TeethAgent()
+agent.start('localhost', 8081)
+reactor.run()

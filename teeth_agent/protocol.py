@@ -42,16 +42,16 @@ class TeethAgentProtocol(LineReceiver):
         elif 'result' in message:
             self.handle_response(message)
 
-    def send_command(self, command):
+    def send_command(self, method, *args, **kwargs):
         message_id = str(uuid.uuid4())
         d = defer.Deferred()
         self.pending_command_deferreds[message_id] = d
         self.sendLine(self.encoder.encode({
             'id': message_id,
             'version': DEFAULT_PROTOCOL_VERSION,
-            'method': command['method'],
-            'args': command.get('args', []),
-            'kwargs': command.get('kwargs', {}),
+            'method': method,
+            'args': args,
+            'kwargs': kwargs,
         }))
         return d
 
