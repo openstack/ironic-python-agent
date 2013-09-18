@@ -33,7 +33,7 @@ class AgentClientHandler(TeethAgentProtocol):
 
     def connectionMade(self):
         def _response(result):
-            log.msg('Handshake successful', connection_id=result['id'])
+            log.msg(format='Handshake successful, connection ID is %(connection_id)s', connection_id=result['id'])
 
         self.send_command('handshake', 'a:b:c:d', AGENT_VERSION).addCallback(_response)
 
