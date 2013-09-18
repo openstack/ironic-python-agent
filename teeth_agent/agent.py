@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import uuid
-
-import pkg_resources
 import simplejson as json
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet import reactor
@@ -49,7 +46,6 @@ class AgentClientFactory(ReconnectingClientFactory):
     protocol = AgentClientHandler
     initialDelay = 1.0
     maxDelay = 120
-
 
     def buildProtocol(self, addr):
         self.resetDelay()
