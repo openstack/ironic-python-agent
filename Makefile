@@ -24,7 +24,7 @@ lint:
 clean:
 	find . -name '*.pyc' -delete
 	find . -name '.coverage' -delete
-	find . -name '_trial_coverage' -print0 | xargs rm -rf
-	find . -name '_trial_temp' -print0 | xargs rm -rf
+	find . -name '_trial_coverage' -print0 | xargs --null rm -rf
+	find . -name '_trial_temp' -print0 | xargs --null rm -rf
 	rm -rf dist build *.egg-info
 
