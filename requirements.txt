@@ -1,8 +1,6 @@
 Twisted==13.1.0
 argparse==1.2.1
 distribute==0.6.24
-pep8==1.4.6
-pyflakes==0.7.3
 simplejson==3.3.0
 wsgiref==0.1.2
 zope.interface==4.0.5
