@@ -18,10 +18,8 @@ import simplejson as json
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet import reactor
 from twisted.python import log
-
+from teeth_agent import __version__ as AGENT_VERSION
 from teeth_agent.protocol import TeethAgentProtocol
-
-AGENT_VERSION = '0.1-dev'
 
 
 class AgentClientHandler(TeethAgentProtocol):
@@ -33,7 +31,8 @@ class AgentClientHandler(TeethAgentProtocol):
 
     def connectionMade(self):
         def _response(result):
-            log.msg(format='Handshake successful, connection ID is %(connection_id)s', connection_id=result['id'])
+            log.msg(format='Handshake successful, connection ID is %(connection_id)s',
+                    connection_id=result['id'])
 
         self.send_command('handshake', 'a:b:c:d', AGENT_VERSION).addCallback(_response)
 
