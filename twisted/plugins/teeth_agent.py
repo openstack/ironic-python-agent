@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Copyright 2013 Rackspace, Inc.
 
@@ -16,19 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import sys
-import twisted
-from twisted.internet import reactor
-import structlog
-from teeth_agent.logging import configure as configureLogging
-from teeth_agent.agent import StandbyAgent
 
-if __name__ == "__main__":
-    configureLogging()
+"""
+Teeth Agent Twisted Application Plugin.
+"""
 
-    structlog.twisted.plainJSONStdOutLogger
-    twisted.python.log.startLogging(sys.stderr)
-    agent = StandbyAgent([['localhost', 8081]])
-    agent.start()
-    reactor.run()
+from twisted.application.service import ServiceMaker
 
+TeethAgent = ServiceMaker(
+    "Teeth Agent Client Application",
+    "teeth_agent.service",
+    "Teeth Agent for decomissioning and standbye",
+    "teeth-agent"
+)

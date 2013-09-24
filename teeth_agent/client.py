@@ -16,11 +16,15 @@ limitations under the License.
 
 import time
 import simplejson as json
-from teeth_agent.protocol import TeethAgentProtocol
+
+from twisted.application.service import MultiService
+from twisted.application.internet import TCPClient
 from twisted.internet.protocol import ReconnectingClientFactory
-from twisted.python.failure import Failure
-from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
+from twisted.internet.defer import DeferredList
+from twisted.python.failure import Failure
+
+from teeth_agent.protocol import TeethAgentProtocol
 from teeth_agent.logging import get_logger
 log = get_logger()
 
@@ -59,7 +63,7 @@ class TeethClientFactory(ReconnectingClientFactory, object):
         super(TeethClientFactory, self).clientConnectionLost(connector, reason)
 
 
-class TeethClient(object):
+class TeethClient(MultiService, object):
     """
     High level Teeth Client.
     """
@@ -68,17 +72,34 @@ class TeethClient(object):
 
     def __init__(self, addrs):
         super(TeethClient, self).__init__()
+        self.setName('teeth-agent')
         self._client_encoder = self.client_encoder_cls()
         self._client_factory = self.client_factory_cls(self._client_encoder, self)
         self._start_time = time.time()
         self._clients = []
         self._outmsg = []
         self._connectaddrs = addrs
+        self._running = False
         self._handlers = {
             'v1': {
                 'status': self._handle_status,
             }
         }
+
+    def startService(self):
+        """Start the Service."""
+        super(TeethClient, self).startService()
+        self._running = True
+        self.start()
+
+    def stopService(self):
+        """Stop the Service."""
+        super(TeethClient, self).stopService()
+        self._running = False
+        dl = []
+        for client in self._clients:
+            dl.append(client.loseConnectionSoon(timeout=0.05))
+        return DeferredList(dl)
 
     def remove_endpoint(self, host, port):
         """Remove an Agent Endpoint from the active list."""
@@ -101,9 +122,15 @@ class TeethClient(object):
         self._clients.append(client)
 
     def start(self):
-        """Start the agent."""
+        """Start the agent, if running."""
+
+        if not self._running:
+            return
+
         for host, port in self._connectaddrs:
-            reactor.connectTCP(host, port, self._client_factory)
+            service = TCPClient(host, port, self._client_factory)
+            service.setName("teeth-agent[%s:%d]".format(host, port))
+            self.addService(service)
         self._connectaddrs = []
 
     def _on_command(self, topic, message):

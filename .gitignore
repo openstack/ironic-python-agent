@@ -9,3 +9,5 @@ build/*
 _trial_temp/
 subunit-output.txt
 test-report.xml
+twisted/plugins/dropin.cache
+twistd.log

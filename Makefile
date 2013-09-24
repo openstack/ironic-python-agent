@@ -26,5 +26,5 @@ clean:
 	find . -name '.coverage' -delete
 	find . -name '_trial_coverage' -print0 | xargs --null rm -rf
 	find . -name '_trial_temp' -print0 | xargs --null rm -rf
-	rm -rf dist build *.egg-info
+	rm -rf dist build *.egg-info twisted/plugins/dropin.cache
 
