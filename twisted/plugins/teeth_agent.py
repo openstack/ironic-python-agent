@@ -14,29 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import structlog
 
-CONFIGURED_LOGGING = False
+"""
+Teeth Agent Twisted Application Plugin.
+"""
 
+from twisted.application.service import ServiceMaker
 
-def configure():
-    """
-    Configure logging subsystem.
-    """
-    global CONFIGURED_LOGGING
-
-    if CONFIGURED_LOGGING:
-        return
-
-    CONFIGURED_LOGGING = True
-
-    structlog.configure(
-        context_class=dict,
-        cache_logger_on_first_use=True)
-
-
-def get_logger():
-    """
-    Get a logger instance.
-    """
-    return structlog.get_logger()
+TeethAgent = ServiceMaker(
+    "Teeth Agent Client Application",
+    "teeth_agent.service",
+    "Teeth Agent for decomissioning and standbye",
+    "teeth-agent"
+)

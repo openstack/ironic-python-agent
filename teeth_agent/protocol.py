@@ -18,6 +18,7 @@ import simplejson as json
 import uuid
 
 from twisted.internet import defer
+from twisted.internet import task
 from twisted.internet import reactor
 from twisted.protocols.basic import LineReceiver
 from twisted.python.failure import Failure
@@ -100,7 +101,7 @@ class RPCProtocol(LineReceiver, EventEmitter):
         """Attempt to disconnect from the transport as 'nicely' as possible. """
         self._log.info('Trying to disconnect.')
         self.transport.loseConnection()
-        reactor.callLater(timeout, self.transport.abortConnection)
+        return task.deferLater(reactor, timeout, self.transport.abortConnection)
 
     def connectionMade(self):
         """TCP hard. We made it. Maybe."""
