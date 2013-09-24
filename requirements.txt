@@ -4,3 +4,4 @@ distribute==0.6.24
 simplejson==3.3.0
 wsgiref==0.1.2
 zope.interface==4.0.5
+structlog==0.3.0
