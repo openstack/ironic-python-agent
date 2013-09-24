@@ -21,9 +21,9 @@ import sys
 from twisted.internet import reactor
 from twisted.python import log
 
-from teeth_agent.agent import TeethAgent
+from teeth_agent.agent import StandbyAgent
 
 log.startLogging(sys.stdout)
-agent = TeethAgent()
-agent.start('localhost', 8081)
+agent = StandbyAgent([['localhost', 8081]])
+agent.start()
 reactor.run()
