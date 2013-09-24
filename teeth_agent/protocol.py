@@ -83,6 +83,9 @@ class RPCProtocol(LineReceiver, EventEmitter):
     functions are in C{TeethAgentProtocol}
     """
 
+    delimiter = '\n'
+    MAX_LENGTH = 1024 * 512
+
     def __init__(self, encoder, address):
         super(RPCProtocol, self).__init__()
         self.encoder = encoder
@@ -92,8 +95,8 @@ class RPCProtocol(LineReceiver, EventEmitter):
 
     def loseConnectionSoon(self, timeout=10):
         """Attempt to disconnect from the transport as 'nicely' as possible. """
-        self.loseConnection()
-        reactor.callLater(timeout, self.abortConnection)
+        self.transport.loseConnection()
+        reactor.callLater(timeout, self.transport.abortConnection)
 
     def connectionMade(self):
         """TCP hard. We made it. Maybe."""
@@ -218,5 +221,6 @@ class TeethAgentProtocol(RPCProtocol):
         def _response(result):
             log.msg(format='Handshake successful, connection ID is %(connection_id)s',
                     connection_id=result['id'])
-        self.send_command('handshake',
-                          {'id': 'a:b:c:d', 'version': AGENT_VERSION}).addCallback(_response)
+
+        return self.send_command('handshake',
+            {'id': 'a:b:c:d', 'version': AGENT_VERSION}).addCallback(_response)
