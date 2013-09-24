@@ -18,13 +18,13 @@ from teeth_agent.client import TeethClient
 from twisted.python import log
 
 
-class StandbyeAgent(TeethClient):
+class StandbyAgent(TeethClient):
     """
     Agent to perform standbye operations.
     """
 
     def __init__(self, addrs):
-        super(StandbyeAgent, self).__init__(addrs)
+        super(StandbyAgent, self).__init__(addrs)
         self._addHandler('v1', 'prepare_image', self.prepare_image)
 
     def prepare_image(self, image_id):
