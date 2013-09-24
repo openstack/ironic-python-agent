@@ -156,7 +156,7 @@ class RPCProtocol(LineReceiver, EventEmitter):
 
     def fatal_error(self, message):
         """Send a fatal error message, and disconnect."""
-        self._log.error('got a fatal error', message=message)
+        self._log.error('sending a fatal error', message=message)
         if not self._fatal_error:
             self._fatal_error = True
             self.sendLine(self.encoder.encode({
