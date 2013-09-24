@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import sys
 import structlog
+import twisted
 
 CONFIGURED_LOGGING = False
 
@@ -30,6 +32,7 @@ def configure():
 
     CONFIGURED_LOGGING = True
 
+    twisted.python.log.startLogging(sys.stderr)
     structlog.configure(
         context_class=dict,
         cache_logger_on_first_use=True)
