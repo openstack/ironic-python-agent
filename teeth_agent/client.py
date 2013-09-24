@@ -19,9 +19,10 @@ import simplejson as json
 from teeth_agent.protocol import TeethAgentProtocol
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.python.failure import Failure
-from twisted.python import log
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
+from teeth_agent.logging import get_logger
+log = get_logger()
 
 
 __all__ = ["TeethClientFactory", "TeethClient"]

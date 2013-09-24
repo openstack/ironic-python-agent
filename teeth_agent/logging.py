@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 Copyright 2013 Rackspace, Inc.
 
@@ -16,19 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import sys
-import twisted
-from twisted.internet import reactor
 import structlog
-from teeth_agent.logging import configure as configureLogging
-from teeth_agent.agent import StandbyAgent
 
-if __name__ == "__main__":
-    configureLogging()
+CONFIGURED_LOGGING = False
 
-    structlog.twisted.plainJSONStdOutLogger
-    twisted.python.log.startLogging(sys.stderr)
-    agent = StandbyAgent([['localhost', 8081]])
-    agent.start()
-    reactor.run()
 
+def configure():
+    """
+    Configure logging subsystem.
+    """
+    global CONFIGURED_LOGGING
+
+    if CONFIGURED_LOGGING:
+        return
+
+    CONFIGURED_LOGGING = True
+
+    structlog.configure(
+        context_class=dict,
+        cache_logger_on_first_use=True)
+
+
+def get_logger():
+    """
+    Get a logger instance.
+    """
+    return structlog.get_logger()

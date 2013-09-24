@@ -15,7 +15,8 @@ limitations under the License.
 """
 
 from teeth_agent.client import TeethClient
-from twisted.python import log
+from teeth_agent.logging import get_logger
+log = get_logger()
 
 
 class StandbyAgent(TeethClient):
@@ -26,6 +27,7 @@ class StandbyAgent(TeethClient):
     def __init__(self, addrs):
         super(StandbyAgent, self).__init__(addrs)
         self._addHandler('v1', 'prepare_image', self.prepare_image)
+        log.info('Starting agent', addrs=addrs)
 
     def prepare_image(self, image_id):
         """Prepare an Image."""

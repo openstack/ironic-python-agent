@@ -21,9 +21,11 @@ from twisted.internet import defer
 from twisted.internet import reactor
 from twisted.protocols.basic import LineReceiver
 from twisted.python.failure import Failure
-from twisted.python import log
 from teeth_agent import __version__ as AGENT_VERSION
 from teeth_agent.events import EventEmitter
+from teeth_agent.logging import get_logger
+log = get_logger()
+
 
 DEFAULT_PROTOCOL_VERSION = 'v1'
 
@@ -92,15 +94,18 @@ class RPCProtocol(LineReceiver, EventEmitter):
         self.address = address
         self._pending_command_deferreds = {}
         self._fatal_error = False
+        self._log = log.bind(host=address.host, port=address.port)
 
     def loseConnectionSoon(self, timeout=10):
         """Attempt to disconnect from the transport as 'nicely' as possible. """
+        self._log.info('Trying to disconnect.')
         self.transport.loseConnection()
         reactor.callLater(timeout, self.transport.abortConnection)
 
     def connectionMade(self):
         """TCP hard. We made it. Maybe."""
         super(RPCProtocol, self).connectionMade()
+        self._log.info('Connection established.')
         self.transport.setTcpKeepAlive(True)
         self.transport.setTcpNoDelay(True)
         self.emit('connect')
@@ -111,6 +116,8 @@ class RPCProtocol(LineReceiver, EventEmitter):
 
         if not line:
             return
+
+        self._log.debug('Got Line', line=line)
 
         try:
             message = json.loads(line)
@@ -148,6 +155,7 @@ class RPCProtocol(LineReceiver, EventEmitter):
 
     def fatal_error(self, message):
         """Send a fatal error message, and disconnect."""
+        self._log.error('got a fatal error', message=message)
         if not self._fatal_error:
             self._fatal_error = True
             self.sendLine(self.encoder.encode({
@@ -219,8 +227,7 @@ class TeethAgentProtocol(RPCProtocol):
 
     def _on_connect(self, event):
         def _response(result):
-            log.msg(format='Handshake successful, connection ID is %(connection_id)s',
-                    connection_id=result['id'])
+            self._log.msg('Handshake successful', connection_id=result['id'])
 
         return self.send_command('handshake',
-            {'id': 'a:b:c:d', 'version': AGENT_VERSION}).addCallback(_response)
+                                 {'id': 'a:b:c:d', 'version': AGENT_VERSION}).addCallback(_response)
