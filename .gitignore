@@ -6,3 +6,6 @@ local/*
 src/*
 build/*
 .ve
+_trial_temp/
+subunit-output.txt
+test-report.xml
