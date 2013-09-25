@@ -32,6 +32,8 @@ def configure():
 
     structlog.configure(
         context_class=dict,
+        logger_factory=structlog.twisted.LoggerFactory(),
+        wrapper_class=structlog.twisted.BoundLogger,
         cache_logger_on_first_use=True)
 
 
@@ -39,4 +41,6 @@ def get_logger():
     """
     Get a logger instance.
     """
+    configure()
+
     return structlog.get_logger()

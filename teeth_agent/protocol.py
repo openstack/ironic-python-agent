@@ -18,10 +18,8 @@ import simplejson as json
 import uuid
 
 from twisted.internet import defer
-from twisted.internet import task
-from twisted.internet import reactor
+from twisted.protocols import policies
 from twisted.protocols.basic import LineReceiver
-from twisted.python.failure import Failure
 from teeth_agent import __version__ as AGENT_VERSION
 from teeth_agent.events import EventEmitter
 from teeth_agent.logging import get_logger
@@ -73,7 +71,9 @@ class RPCError(RPCMessage, RuntimeError):
         self._raw_message = message
 
 
-class RPCProtocol(LineReceiver, EventEmitter):
+class RPCProtocol(LineReceiver,
+                  EventEmitter,
+                  policies.TimeoutMixin):
     """
     Twisted Protocol handler for the RPC Protocol of the Teeth
     Agent <-> Endpoint communication.
@@ -96,29 +96,34 @@ class RPCProtocol(LineReceiver, EventEmitter):
         self._pending_command_deferreds = {}
         self._fatal_error = False
         self._log = log.bind(host=address.host, port=address.port)
+        self._timeOut = 60
 
-    def loseConnectionSoon(self, timeout=10):
-        """Attempt to disconnect from the transport as 'nicely' as possible. """
-        self._log.info('Trying to disconnect.')
-        self.transport.loseConnection()
-        return task.deferLater(reactor, timeout, self.transport.abortConnection)
+    def timeoutConnection(self):
+        """Action called when the connection has hit a timeout."""
+        self.transport.abortConnection()
 
     def connectionMade(self):
         """TCP hard. We made it. Maybe."""
         super(RPCProtocol, self).connectionMade()
-        self._log.info('Connection established.')
+        self._log.msg('Connection established.')
         self.transport.setTcpKeepAlive(True)
         self.transport.setTcpNoDelay(True)
         self.emit('connect')
 
+    def sendLine(self, line):
+        """Send a line of content to our peer."""
+        self.resetTimeout()
+        super(RPCProtocol, self).sendLine(line)
+
     def lineReceived(self, line):
         """Process a line of data."""
+        self.resetTimeout()
         line = line.strip()
 
         if not line:
             return
 
-        self._log.debug('Got Line', line=line)
+        self._log.msg('Got Line', line=line)
 
         try:
             message = json.loads(line)
@@ -127,16 +132,16 @@ class RPCProtocol(LineReceiver, EventEmitter):
 
         if 'fatal_error' in message:
             # TODO: Log what happened?
-            self.loseConnectionSoon()
+            self.transport.abortConnection()
             return
-
-        if not message.get('id', None):
-            return self.fatal_error("protocol violation: missing message id.")
 
         if not message.get('version', None):
             return self.fatal_error("protocol violation: missing message version.")
 
-        elif 'method' in message:
+        if not message.get('id', None):
+            return self.fatal_error("protocol violation: missing message id.")
+
+        if 'method' in message:
             if not message.get('params', None):
                 return self.fatal_error("protocol violation: missing message params.")
 
@@ -145,24 +150,24 @@ class RPCProtocol(LineReceiver, EventEmitter):
 
         elif 'error' in message:
             msg = RPCError(self, message)
-            self._handle_response(message)
+            self._handle_response(msg)
 
         elif 'result' in message:
 
             msg = RPCResponse(self, message)
-            self._handle_response(message)
+            self._handle_response(msg)
         else:
             return self.fatal_error('protocol error: malformed message.')
 
     def fatal_error(self, message):
         """Send a fatal error message, and disconnect."""
-        self._log.error('sending a fatal error', message=message)
+        self._log.msg('sending a fatal error', message=message)
         if not self._fatal_error:
             self._fatal_error = True
             self.sendLine(self.encoder.encode({
                 'fatal_error': message
             }))
-            self.loseConnectionSoon()
+            self.transport.abortConnection()
 
     def send_command(self, method, params, timeout=60):
         """Send a new command."""
@@ -196,11 +201,13 @@ class RPCProtocol(LineReceiver, EventEmitter):
         }))
 
     def _handle_response(self, message):
-        d = self.pending_command_deferreds.pop(message['id'])
+        d = self._pending_command_deferreds.pop(message.id, None)
+
+        if not d:
+            return self.fatal_error("protocol violation: unknown message id referenced.")
 
         if isinstance(message, RPCError):
-            f = Failure(message)
-            d.errback(f)
+            d.errback(message)
         else:
             d.callback(message)
 
@@ -208,7 +215,7 @@ class RPCProtocol(LineReceiver, EventEmitter):
         d = self.emit('command', message)
 
         if len(d) == 0:
-            return self.fatal_error("protocol violation: unsupported command")
+            return self.fatal_error("protocol violation: unsupported command.")
 
         # TODO: do we need to wait on anything here?
         pass
@@ -224,9 +231,10 @@ class TeethAgentProtocol(RPCProtocol):
         self.encoder = encoder
         self.address = address
         self.parent = parent
-        self.on('connect', self._on_connect)
+        self.once('connect', self._once_connect)
 
-    def _on_connect(self, event):
+    def _once_connect(self, event):
+
         def _response(result):
             self._log.msg('Handshake successful', connection_id=result['id'])
 

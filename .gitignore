@@ -11,3 +11,5 @@ subunit-output.txt
 test-report.xml
 twisted/plugins/dropin.cache
 twistd.log
+.coverage
+_trial_coverage/

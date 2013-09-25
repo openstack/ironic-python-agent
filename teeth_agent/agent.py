@@ -27,7 +27,7 @@ class StandbyAgent(TeethClient):
     def __init__(self, addrs):
         super(StandbyAgent, self).__init__(addrs)
         self._addHandler('v1', 'prepare_image', self.prepare_image)
-        log.info('Starting agent', addrs=addrs)
+        log.msg('Starting agent', addrs=addrs)
 
     def prepare_image(self, image_id):
         """Prepare an Image."""

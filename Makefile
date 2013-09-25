@@ -15,6 +15,9 @@ else
 	trial --random 0 ${UNITTESTS}
 endif
 
+coverage:
+	coverage run --source=${CODEDIR} --branch `which trial` ${UNITTESTS} && coverage html -d _trial_coverage --omit="*/tests/*"
+
 env:
 	./scripts/bootstrap-virtualenv.sh
 
