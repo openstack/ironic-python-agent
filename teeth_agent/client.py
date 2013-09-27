@@ -98,7 +98,7 @@ class TeethClient(MultiService, object):
         self._running = False
         dl = []
         for client in self._clients:
-            dl.append(client.loseConnectionSoon(timeout=0.05))
+            dl.append(client.abortConnection())
         return DeferredList(dl)
 
     def remove_endpoint(self, host, port):
