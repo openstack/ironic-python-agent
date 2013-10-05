@@ -21,7 +21,6 @@ from twisted.application.service import MultiService
 from twisted.application.internet import TCPClient
 from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.defer import maybeDeferred
-from twisted.internet.defer import DeferredList
 from twisted.python.failure import Failure
 
 from teeth_agent.protocol import TeethAgentProtocol
