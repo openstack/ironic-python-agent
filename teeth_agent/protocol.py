@@ -236,7 +236,7 @@ class TeethAgentProtocol(RPCProtocol):
     def _once_connect(self, event):
 
         def _response(result):
-            self._log.msg('Handshake successful', connection_id=result['id'])
+            self._log.msg('Handshake successful', connection_id=result.id)
 
         return self.send_command('handshake',
                                  {'id': 'a:b:c:d', 'version': AGENT_VERSION}).addCallback(_response)
