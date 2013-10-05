@@ -76,10 +76,9 @@ class TeethClient(MultiService, object):
         self._client_encoder = self.client_encoder_cls()
         self._client_factory = self.client_factory_cls(self._client_encoder, self)
         self._start_time = time.time()
-        self._clients = []
+        self._protocols = []
         self._outmsg = []
         self._connectaddrs = addrs
-        self._running = False
         self._handlers = {
             'v1': {
                 'status': self._handle_status,
@@ -89,49 +88,32 @@ class TeethClient(MultiService, object):
     def startService(self):
         """Start the Service."""
         super(TeethClient, self).startService()
-        self._running = True
-        self.start()
-
-    def stopService(self):
-        """Stop the Service."""
-        super(TeethClient, self).stopService()
-        self._running = False
-        dl = []
-        for client in self._clients:
-            dl.append(client.abortConnection())
-        return DeferredList(dl)
-
-    def remove_endpoint(self, host, port):
-        """Remove an Agent Endpoint from the active list."""
-
-        def op(client):
-            if client.address.host == host and client.address.port == port:
-                client.loseConnectionSoon()
-                return True
-            return False
-        self._clients[:] = [client for client in self._clients if not op(client)]
-
-    def add_endpoint(self, host, port):
-        """Add an agent endpoint to the """
-        self._connectaddrs.append([host, port])
-        self.start()
-
-    def add_protocol_instance(self, client):
-        """Add a running protocol to the parent."""
-        client.on('command', self._on_command)
-        self._clients.append(client)
-
-    def start(self):
-        """Start the agent, if running."""
-
-        if not self._running:
-            return
 
         for host, port in self._connectaddrs:
             service = TCPClient(host, port, self._client_factory)
             service.setName("teeth-agent[%s:%d]".format(host, port))
             self.addService(service)
         self._connectaddrs = []
+
+    def remove_endpoint(self, host, port):
+        """Remove an Agent Endpoint from the active list."""
+
+        def op(protocol):
+            if protocol.address.host == host and protocol.address.port == port:
+                protocol.loseConnectionSoon()
+                return True
+            return False
+        self._protocols[:] = [protocol for protocol in self._protocols if not op(protocol)]
+
+    def add_endpoint(self, host, port):
+        """Add an agent endpoint to the """
+        self._connectaddrs.append([host, port])
+        self.start()
+
+    def add_protocol_instance(self, protocol):
+        """Add a running protocol to the parent."""
+        protocol.on('command', self._on_command)
+        self._protocols.append(protocol)
 
     def _on_command(self, topic, message):
         if message.version not in self._handlers:
