@@ -5,6 +5,8 @@ UNITTESTS ?= ${CODEDIR}
 PYTHONLINT=${SCRIPTSDIR}/python-lint.py
 PYDIRS=${CODEDIR} ${SCRIPTSDIR}
 
+default: lint test
+
 test: unit
 
 unit:
