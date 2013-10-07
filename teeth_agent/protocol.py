@@ -16,8 +16,9 @@ limitations under the License.
 
 import simplejson as json
 import uuid
+import time
 
-from twisted.internet import defer
+from twisted.internet import defer, task
 from twisted.protocols import policies
 from twisted.protocols.basic import LineReceiver
 from teeth_agent import __version__ as AGENT_VERSION
@@ -86,6 +87,7 @@ class RPCProtocol(LineReceiver,
     functions are in C{TeethAgentProtocol}
     """
 
+    timeOut = 60
     delimiter = '\n'
     MAX_LENGTH = 1024 * 512
 
@@ -96,11 +98,20 @@ class RPCProtocol(LineReceiver,
         self._pending_command_deferreds = {}
         self._fatal_error = False
         self._log = log.bind(host=address.host, port=address.port)
-        self._timeOut = 60
+        self.setTimeout(self.timeOut)
 
     def timeoutConnection(self):
         """Action called when the connection has hit a timeout."""
+        self._log.msg('connection timed out', timeout=self.timeOut)
         self.transport.abortConnection()
+
+    def connectionLost(self, *args, **kwargs):
+        """
+        Handle connection loss. Don't try to re-connect, that is handled
+        at the factory level.
+        """
+        super(RPCProtocol, self).connectionLost(*args, **kwargs)
+        self.setTimeout(None)
 
     def connectionMade(self):
         """TCP hard. We made it. Maybe."""
@@ -112,7 +123,6 @@ class RPCProtocol(LineReceiver,
 
     def sendLine(self, line):
         """Send a line of content to our peer."""
-        self.resetTimeout()
         super(RPCProtocol, self).sendLine(line)
 
     def lineReceived(self, line):
@@ -142,8 +152,10 @@ class RPCProtocol(LineReceiver,
             return self.fatal_error("protocol violation: missing message id.")
 
         if 'method' in message:
-            if not message.get('params', None):
+            if 'params' not in message:
                 return self.fatal_error("protocol violation: missing message params.")
+            if not isinstance(message['params'], dict):
+                return self.fatal_error("protocol violation: message params must be an object.")
 
             msg = RPCCommand(self, message)
             self._handle_command(msg)
@@ -169,12 +181,10 @@ class RPCProtocol(LineReceiver,
             }))
             self.transport.abortConnection()
 
-    def send_command(self, method, params, timeout=60):
+    def send_command(self, method, params):
         """Send a new command."""
         message_id = str(uuid.uuid4())
         d = defer.Deferred()
-        # d.setTimeout(timeout)
-        # TODO: cleanup _pending_command_deferreds on timeout.
         self._pending_command_deferreds[message_id] = d
         self.sendLine(self.encoder.encode({
             'id': message_id,
@@ -231,12 +241,29 @@ class TeethAgentProtocol(RPCProtocol):
         self.encoder = encoder
         self.address = address
         self.parent = parent
+        self.ping_interval = self.timeOut / 3
+        self.pinger = task.LoopingCall(self.ping_endpoint)
         self.once('connect', self._once_connect)
 
     def _once_connect(self, event):
 
         def _response(result):
             self._log.msg('Handshake successful', connection_id=result.id)
+            self._log.msg('beginning pinging endpoint', ping_interval=self.ping_interval)
+            self.pinger.start(self.ping_interval)
 
         return self.send_command('handshake',
                                  {'id': 'a:b:c:d', 'version': AGENT_VERSION}).addCallback(_response)
+
+    def ping_endpoint(self):
+        """
+        Send a ping command to the agent endpoint.
+        """
+        sent_at = time.time()
+
+        def _log_ping_response(self, response):
+            seconds = (time.time() - sent_at).total_seconds()
+            self._log.msg('received ping response', response_time=seconds)
+
+        self._log.msg('pinging agent endpoint')
+        self.send_command('ping', {}).addCallback(_log_ping_response)
