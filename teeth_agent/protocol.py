@@ -261,8 +261,8 @@ class TeethAgentProtocol(RPCProtocol):
         """
         sent_at = time.time()
 
-        def _log_ping_response(self, response):
-            seconds = (time.time() - sent_at).total_seconds()
+        def _log_ping_response(response):
+            seconds = time.time() - sent_at
             self._log.msg('received ping response', response_time=seconds)
 
         self._log.msg('pinging agent endpoint')
