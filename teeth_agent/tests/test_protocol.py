@@ -55,6 +55,9 @@ class RPCProtocolTest(unittest.TestCase):
         self.proto.makeConnection(self.tr)
         self.tr.protocol = self.proto
 
+    def tearDown(self):
+        self.tr.abortConnection()
+
     def test_timeout(self):
         d = defer.Deferred()
         called = []
@@ -180,6 +183,9 @@ class TeethAgentProtocolTest(unittest.TestCase):
         self.proto = TeethAgentProtocol(json.JSONEncoder(), IPv4Address('TCP', '127.0.0.1', 0), None)
         self.proto.makeConnection(self.tr)
         self.tr.protocol = self.proto
+
+    def tearDown(self):
+        self.tr.abortConnection()
 
     def test_on_connect(self):
         obj = json.loads(self.tr.io.getvalue().strip())
