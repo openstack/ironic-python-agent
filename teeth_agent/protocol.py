@@ -245,7 +245,7 @@ class TeethAgentProtocol(RPCProtocol):
         self.ping_interval = self.timeOut / 3
         self.pinger = task.LoopingCall(self.ping_endpoint)
         self.once('connect', self._once_connect)
-        self.once('end', lambda _: self.pinger.stop())
+        self.once('end', self._once_disconnect)
 
     def _once_connect(self, event):
 
@@ -256,6 +256,10 @@ class TeethAgentProtocol(RPCProtocol):
 
         return self.send_command('handshake',
                                  {'id': 'a:b:c:d', 'version': AGENT_VERSION}).addCallback(_response)
+
+    def _once_disconnect(self, event):
+        if self.pinger.running:
+            self.pinger.stop()
 
     def ping_endpoint(self):
         """
