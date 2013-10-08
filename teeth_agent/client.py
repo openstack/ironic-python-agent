@@ -74,6 +74,7 @@ class TeethClient(MultiService, object):
         self.setName('teeth-agent')
         self._client_encoder = self.client_encoder_cls()
         self._client_factory = self.client_factory_cls(self._client_encoder, self)
+        self._log = get_logger()
         self._start_time = time.time()
         self._protocols = []
         self._outmsg = []
@@ -125,13 +126,13 @@ class TeethClient(MultiService, object):
 
         handler = self._handlers[message.version][message.method]
         d = maybeDeferred(handler, message=message)
-        d.addBoth(self._send_response, message)
+        d.addBoth(self.send_response, message)
 
     def send_response(self, result, message):
         """Send a response to a message."""
         if isinstance(result, Failure):
-            # TODO: log, cleanup
-            message.protocol.send_error_response('error running command', message)
+            self._log.err(result)
+            message.protocol.send_error_response(result.value.message, message)
         else:
             message.protocol.send_response(result, message)
 
