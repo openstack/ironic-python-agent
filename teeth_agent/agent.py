@@ -29,7 +29,13 @@ class StandbyAgent(TeethClient):
         self._addHandler('v1', 'prepare_image', self.prepare_image)
         log.msg('Starting agent', addrs=addrs)
 
-    def prepare_image(self, image_id):
+    def prepare_image(self, message):
         """Prepare an Image."""
-        log.msg(format='Preparing image %(image_id)s', image_id=image_id)
+
+        if 'image_id' not in message.params:
+            raise Exception('missing required parameter "image_id" in call to prepare_image')
+
+        image_id = message.params['image_id']
+
+        log.msg('Preparing image', image_id=image_id)
         return {'image_id': image_id, 'status': 'PREPARED'}
