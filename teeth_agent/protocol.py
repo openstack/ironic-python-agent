@@ -112,6 +112,7 @@ class RPCProtocol(LineReceiver,
         """
         super(RPCProtocol, self).connectionLost(*args, **kwargs)
         self.setTimeout(None)
+        self.emit('end')
 
     def connectionMade(self):
         """TCP hard. We made it. Maybe."""
@@ -244,6 +245,7 @@ class TeethAgentProtocol(RPCProtocol):
         self.ping_interval = self.timeOut / 3
         self.pinger = task.LoopingCall(self.ping_endpoint)
         self.once('connect', self._once_connect)
+        self.once('end', lambda _: self.pinger.stop())
 
     def _once_connect(self, event):
 
