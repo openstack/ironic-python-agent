@@ -16,6 +16,7 @@ limitations under the License.
 
 import time
 import simplejson as json
+import random
 
 from twisted.application.service import MultiService
 from twisted.application.internet import TCPClient
@@ -142,3 +143,17 @@ class TeethClient(MultiService, object):
 
     def _addHandler(self, version, command, func):
         self._handlers[version][command] = func
+
+    def _send_command(self, method, params):
+        protocol = random.choice(self._protocols)
+        return protocol.send_command(method, params)
+
+    def send_log(self, message, **kwargs):
+        """
+        Send a log message to the endpoint.
+        """
+        event = {}
+        event.update(kwargs)
+        event['message'] = message
+        event['time'] = time.time()
+        return self._send_command('log', event)
