@@ -24,6 +24,8 @@ class StandbyAgent(TeethClient):
     Agent to perform standbye operations.
     """
 
+    AGENT_MODE = 'STANDBY'
+
     def __init__(self, addrs):
         super(StandbyAgent, self).__init__(addrs)
         self._addHandler('v1', 'prepare_image', self.prepare_image)

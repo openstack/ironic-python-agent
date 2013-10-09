@@ -24,6 +24,7 @@ from twisted.internet.protocol import ReconnectingClientFactory
 from twisted.internet.defer import maybeDeferred
 from twisted.python.failure import Failure
 
+from teeth_agent import __version__ as AGENT_VERSION
 from teeth_agent.protocol import TeethAgentProtocol
 from teeth_agent.logging import get_logger
 log = get_logger()
@@ -138,8 +139,11 @@ class TeethClient(MultiService, object):
             message.protocol.send_response(result, message)
 
     def _handle_status(self, message):
-        running = time.time() - self._start_time
-        return {'running': running}
+        return {
+            'mode': self.AGENT_MODE,
+            'uptime': time.time() - self._start_time,
+            'version': AGENT_VERSION,
+        }
 
     def _addHandler(self, version, command, func):
         self._handlers[version][command] = func
