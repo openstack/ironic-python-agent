@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from functools import wraps
 import simplejson as json
 import uuid
 import time
@@ -70,6 +71,47 @@ class RPCError(RPCMessage, RuntimeError):
         super(RPCError, self).__init__(protocol, message)
         self.error = message.get('error', 'unknown error')
         self._raw_message = message
+
+
+class CommandValidationError(RuntimeError):
+    """
+    Exception class which can be used to return an error when the
+    opposite party attempts a command with invalid parameters.
+    """
+    def __init__(self, message, fatal=False):
+        super(CommandValidationError, self).__init__(message)
+        self.fatal = fatal
+
+
+def require_parameters(*parameters, **kwargs):
+    """
+    Return a decorator which wraps a function, `fn`, and verifies that
+    when `fn` is called, each of the parameters passed to
+    `require_parameters` has been passed to `fn` as a keyword argument.
+
+    For example::
+
+        @require_parameters('foo')
+        def my_handler(**kwargs):
+            return kwargs['foo']
+
+    If a parameter is missing,
+    """
+    fatal = kwargs.get('fatal', False)
+
+    def deco(fn):
+        @wraps(fn)
+        def decorated(instance, **kwargs):
+            for parameter in parameters:
+                if parameter not in kwargs:
+                    message = 'missing parameter "{}"'.format(parameter)
+                    raise CommandValidationError(message, fatal=fatal)
+
+            return fn(instance, **kwargs)
+
+        return decorated
+
+    return deco
 
 
 class RPCProtocol(LineReceiver,
