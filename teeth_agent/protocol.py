@@ -222,7 +222,7 @@ class RPCProtocol(LineReceiver,
             self.sendLine(self.encoder.encode({
                 'fatal_error': message
             }))
-            self.transport.abortConnection()
+            self.transport.loseConnection()
 
     def send_command(self, method, params):
         """Send a new command."""
