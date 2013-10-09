@@ -126,9 +126,9 @@ class TeethClient(MultiService, object):
 
         handler = self._handlers[message.version][message.method]
         d = maybeDeferred(handler, message=message)
-        d.addBoth(self.send_response, message)
+        d.addBoth(self._send_response, message)
 
-    def send_response(self, result, message):
+    def _send_response(self, result, message):
         """Send a response to a message."""
         if isinstance(result, Failure):
             self._log.err(result)
