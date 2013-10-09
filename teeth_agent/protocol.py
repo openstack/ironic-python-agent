@@ -184,7 +184,7 @@ class RPCProtocol(LineReceiver,
             return self.fatal_error('protocol error: unable to decode message.')
 
         if 'fatal_error' in message:
-            # TODO: Log what happened?
+            self._log.err('fatal transport error occurred', error_msg=message['fatal_error'])
             self.transport.abortConnection()
             return
 
@@ -208,9 +208,9 @@ class RPCProtocol(LineReceiver,
             self._handle_response(msg)
 
         elif 'result' in message:
-
             msg = RPCResponse(self, message)
             self._handle_response(msg)
+
         else:
             return self.fatal_error('protocol error: malformed message.')
 
