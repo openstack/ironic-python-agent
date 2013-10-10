@@ -145,7 +145,7 @@ class TeethClient(MultiService, object):
             'version': AGENT_VERSION,
         }
 
-    def _addHandler(self, version, command, func):
+    def _add_handler(self, version, command, func):
         self._handlers[version][command] = func
 
     def _send_command(self, method, params):
