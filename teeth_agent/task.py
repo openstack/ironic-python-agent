@@ -17,7 +17,6 @@ limitations under the License.
 from twisted.application.service import MultiService
 from twisted.application.internet import TimerService
 from teeth_agent.logging import get_logger
-log = get_logger()
 
 
 __all__ = ['Task', 'PrepareImageTask']
@@ -41,12 +40,17 @@ class Task(MultiService, object):
         self._timer = TimerService(self._reporting_interval, self._tick)
         self._timer.setServiceParent(self)
         self._error_msg = None
+        self.log = get_logger().bind(task_id=task_id, task_name=task_name)
+
+    def _run(self):
+        """Do the actual work here."""
 
     def run(self):
         """Run the Task."""
         # setServiceParent actually starts the task if it is already running
         # so we run it in start.
         self.setServiceParent(self._client)
+        self._run()
 
     def _tick(self):
         if not self.running:
@@ -78,7 +82,7 @@ class Task(MultiService, object):
             return
 
         if self._state not in ['error', 'complete']:
-            log.err("told to shutdown before task could complete, marking as error.")
+            self.log.err("told to shutdown before task could complete, marking as error.")
             self._error_msg = 'service being shutdown'
             self._state = 'error'
 
@@ -95,6 +99,7 @@ class PrepareImageTask(Task):
         super(PrepareImageTask, self).__init__(client, task_id)
         self._image_info = image_info
 
-    def run():
+    def _run(self):
         """Run the Prepare Image task."""
+        self.log.msg('running prepare_image', image_info=self._image_info)
         pass
