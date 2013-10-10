@@ -37,10 +37,10 @@ def configure():
         cache_logger_on_first_use=True)
 
 
-def get_logger():
+def get_logger(*args, **kwargs):
     """
     Get a logger instance.
     """
     configure()
 
-    return structlog.get_logger()
+    return structlog.get_logger(*args, **kwargs)

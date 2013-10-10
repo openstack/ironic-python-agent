@@ -40,7 +40,7 @@ class Task(MultiService, object):
         self._timer = TimerService(self._reporting_interval, self._tick)
         self._timer.setServiceParent(self)
         self._error_msg = None
-        self.log = get_logger().bind(task_id=task_id, task_name=task_name)
+        self.log = get_logger(task_id=task_id, task_name=task_name)
 
     def _run(self):
         """Do the actual work here."""
