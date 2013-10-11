@@ -92,10 +92,12 @@ def require_parameters(*parameters, **kwargs):
     For example::
 
         @require_parameters('foo')
-        def my_handler(**kwargs):
-            return kwargs['foo']
+        def my_handler(self, command):
+            return command.params['foo']
 
-    If a parameter is missing,
+    If a parameter is missing, an error will be returned to the opposite
+    party. If `fatal=True`, a fatal error will be returned and the
+    connection terminated.
     """
     fatal = kwargs.get('fatal', False)
 
@@ -107,7 +109,7 @@ def require_parameters(*parameters, **kwargs):
                     message = 'missing parameter "{}" in "{}" command'.format(parameter, command.method)
                     raise CommandValidationError(message, fatal=fatal)
 
-            return fn(instance, **kwargs)
+            return fn(instance, command)
 
         return decorated
 
