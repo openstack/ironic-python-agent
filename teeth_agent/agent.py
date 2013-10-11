@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from teeth_agent.protocol import require_parameters
 from teeth_agent.client import TeethClient
 from teeth_agent.logging import get_logger
 log = get_logger()
@@ -31,12 +32,9 @@ class StandbyAgent(TeethClient):
         self._add_handler('v1', 'prepare_image', self.prepare_image)
         log.msg('Starting agent', addrs=addrs)
 
+    @require_parameters('image_id')
     def prepare_image(self, message):
         """Prepare an Image."""
-
-        if 'image_id' not in message.params:
-            raise Exception('missing required parameter "image_id" in call to prepare_image')
-
         image_id = message.params['image_id']
 
         log.msg('Preparing image', image_id=image_id)

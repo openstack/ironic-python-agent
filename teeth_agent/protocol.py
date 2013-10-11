@@ -101,10 +101,10 @@ def require_parameters(*parameters, **kwargs):
 
     def deco(fn):
         @wraps(fn)
-        def decorated(instance, **kwargs):
+        def decorated(instance, command):
             for parameter in parameters:
-                if parameter not in kwargs:
-                    message = 'missing parameter "{}"'.format(parameter)
+                if parameter not in command.params:
+                    message = 'missing parameter "{}" in "{}" command'.format(parameter, command.method)
                     raise CommandValidationError(message, fatal=fatal)
 
             return fn(instance, **kwargs)
