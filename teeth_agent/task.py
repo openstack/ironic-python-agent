@@ -29,7 +29,7 @@ class Task(MultiService, object):
 
     task_name = 'task_undefined'
 
-    def __init__(self, client, task_id, task_name, reporting_interval=10):
+    def __init__(self, client, task_id, reporting_interval=10):
         super(Task, self).__init__()
         self.setName(self.task_name)
         self._client = client
@@ -40,7 +40,7 @@ class Task(MultiService, object):
         self._timer = TimerService(self._reporting_interval, self._tick)
         self._timer.setServiceParent(self)
         self._error_msg = None
-        self.log = get_logger(task_id=task_id, task_name=task_name)
+        self.log = get_logger(task_id=task_id, task_name=self.task_name)
 
     def _run(self):
         """Do the actual work here."""
