@@ -127,7 +127,7 @@ class TeethClient(MultiService, object):
             return
 
         handler = self._handlers[message.version][message.method]
-        d = maybeDeferred(handler, message=message)
+        d = maybeDeferred(handler, message)
         d.addBoth(self._send_response, message)
 
     def _send_response(self, result, message):
@@ -138,7 +138,7 @@ class TeethClient(MultiService, object):
         else:
             message.protocol.send_response(result, message)
 
-    def _handle_status(self, message):
+    def _handle_status(self, command):
         return {
             'mode': self.AGENT_MODE,
             'uptime': time.time() - self._start_time,
