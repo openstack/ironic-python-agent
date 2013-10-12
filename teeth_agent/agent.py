@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from teeth_agent.protocol import require_parameters
 from teeth_agent.client import TeethClient
 from teeth_agent.logging import get_logger
+from teeth_agent.protocol import require_parameters
+from teeth_agent.task import PrepareImageTask
 log = get_logger()
 
 
@@ -32,10 +33,15 @@ class StandbyAgent(TeethClient):
         self._add_handler('v1', 'prepare_image', self.prepare_image)
         log.msg('Starting agent', addrs=addrs)
 
-    @require_parameters('image_id')
-    def prepare_image(self, message):
+    @require_parameters('task_id', 'image_id')
+    def prepare_image(self, command):
         """Prepare an Image."""
-        image_id = message.params['image_id']
+        task_id = command.params['task_id']
+        image_id = command.params['image_id']
 
-        log.msg('Preparing image', image_id=image_id)
-        return {'image_id': image_id, 'status': 'PREPARED'}
+        t = PrepareImageTask(self, task_id, image_id)
+        t.run()
+
+    def update_task_status(self, task):
+        """Send an updated task status to the agent endpoint."""
+        pass
