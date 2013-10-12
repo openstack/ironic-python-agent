@@ -28,13 +28,17 @@ class FakeClient(object):
     finish_task = Mock(return_value=None)
 
 
+class TestTask(Task):
+    task_name = 'test_task'
+
+
 class TaskTest(unittest.TestCase):
     """Event Emitter tests."""
 
     def setUp(self):
         self.task_id = str(uuid.uuid4())
         self.client = FakeClient()
-        self.task = Task(self.client, self.task_id, 'test_task')
+        self.task = TestTask(self.client, self.task_id)
 
     def tearDown(self):
         del self.task_id
