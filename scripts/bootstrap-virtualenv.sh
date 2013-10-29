@@ -19,5 +19,5 @@ fi
 
 source ${VE_DIR}/bin/activate
 
-pip install -r requirements.txt -r dev-requirements.txt
+pip install --upgrade -r requirements.txt -r dev-requirements.txt
 
