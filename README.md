@@ -1,5 +1,7 @@
 # teeth-agent
 
+An agent for rebuilding and controlling teeth chassis.
+
 ## Protocol
 
 JSON. Line Delimitated. Bi-directional. Most messages contain:
