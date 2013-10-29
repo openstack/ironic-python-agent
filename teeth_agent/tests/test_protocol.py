@@ -24,7 +24,8 @@ from twisted.trial import unittest
 import simplejson as json
 from mock import Mock
 
-from teeth_agent.protocol import RPCError, RPCProtocol, TeethAgentProtocol
+from teeth_agent.protocol import RPCCommand, RPCProtocol, RPCError, \
+    CommandValidationError, TeethAgentProtocol, require_parameters
 from teeth_agent import __version__ as AGENT_VERSION
 
 
@@ -194,3 +195,22 @@ class TeethAgentProtocolTest(unittest.TestCase):
         self.assertEqual(obj['method'], 'handshake')
         self.assertEqual(obj['params']['id'], 'a:b:c:d')
         self.assertEqual(obj['params']['version'], AGENT_VERSION)
+
+
+class RequiresParamsTest(unittest.TestCase):
+
+    @require_parameters('foo')
+    def _test_for_foo(self, command):
+        self._called = True
+
+    def test_require_parameters_there(self):
+        self._called = False
+        m = RPCCommand(self, {'version': 1, 'id': 'a', 'method': 'test', 'params': {'foo': 1}})
+        self._test_for_foo(m)
+        self.assertEqual(self._called, True)
+
+    def test_require_parameters_not_there(self):
+        self._called = False
+        m = RPCCommand(self, {'version': 1, 'id': 'a', 'method': 'test', 'params': {}})
+        self.assertRaises(CommandValidationError, self._test_for_foo, m)
+        self.assertEqual(self._called, False)
