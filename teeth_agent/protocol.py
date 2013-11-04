@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 from functools import wraps
-import simplejson as json
+import json
 import uuid
 import time
 

@@ -15,7 +15,7 @@ limitations under the License.
 """
 
 import time
-import simplejson as json
+import json
 import random
 
 from twisted.application.service import MultiService

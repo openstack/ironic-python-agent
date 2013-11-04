@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import json
 
 from twisted.internet import defer
 from twisted.internet import main
@@ -21,7 +22,6 @@ from twisted.internet.address import IPv4Address
 from twisted.python import failure
 from twisted.test.proto_helpers import StringTransportWithDisconnection
 from twisted.trial import unittest
-import simplejson as json
 from mock import Mock
 
 from teeth_agent.protocol import RPCCommand, RPCProtocol, RPCError, \

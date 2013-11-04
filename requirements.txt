@@ -1,7 +1,6 @@
 setuptools==1.1.6
 Twisted==13.1.0
 argparse==1.2.1
-simplejson==3.3.0
 wsgiref==0.1.2
 zope.interface==4.0.5
 structlog==0.3.0
