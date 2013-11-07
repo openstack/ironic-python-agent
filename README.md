@@ -29,6 +29,11 @@ Fatal Error:
 * `fatal_error` - String - Fatal error message;  Connection should be closed.
 
 
+## Builders
+
+Teeth Agent master builder: https://jenkins.t.k1k.me/job/teeth-agent-master/
+Teeth Agent PR builder: https://jenkins.t.k1k.me/job/teeth-agent-pr/
+
 ### Commands
 
 #### All Protocol Implementations.
