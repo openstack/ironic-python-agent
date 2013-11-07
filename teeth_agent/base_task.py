@@ -32,7 +32,7 @@ class BaseTask(MultiService, object):
     def __init__(self, client, task_id, reporting_interval=10):
         super(BaseTask, self).__init__()
         self.log = get_logger(task_id=task_id, task_name=self.task_name)
-        self.setName(self.task_name)
+        self.setName(self.task_name + '.' + task_id)
         self._client = client
         self._id = task_id
         self._percent = 0
