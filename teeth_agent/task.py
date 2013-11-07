@@ -33,7 +33,7 @@ class CacheImagesTask(MultiTask):
         super(CacheImagesTask, self).__init__(client, task_id, reporting_interval=reporting_interval)
         self._images = images
         for image in self._images:
-            image_path = os.path.join(client.get_cache_path(), image.id + '.img')
+            image_path = os.path.join(client.conf_image_cache_path, image.id + '.img')
             t = ImageDownloaderTask(client,
                                     task_id, image,
                                     image_path,

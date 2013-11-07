@@ -39,10 +39,10 @@ class ImageDownloaderTask(BaseTask):
     def _tick(self):
         # TODO: get file download percentages.
         self.percent = 0
-        super(BaseTask, self)._tick()
+        super(ImageDownloaderTask, self)._tick()
 
     def _download_image_to_file(self, url):
-        destination = file(self._destination_filename, 'w')
+        destination = open(self._destination_filename, 'wb')
 
         def push(data):
             if self.running:

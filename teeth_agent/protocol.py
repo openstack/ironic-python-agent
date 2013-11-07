@@ -73,6 +73,17 @@ class RPCError(RPCMessage, RuntimeError):
         self._raw_message = message
 
 
+class ImageInfo(object):
+    """
+    Metadata about a machine image.
+    """
+    def __init__(self, image_id, image_urls, image_hashes):
+        super(ImageInfo, self).__init__()
+        self.id = image_id
+        self.urls = image_urls
+        self.hashes = image_hashes
+
+
 class CommandValidationError(RuntimeError):
     """
     Exception class which can be used to return an error when the
