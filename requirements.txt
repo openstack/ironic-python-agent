@@ -4,3 +4,4 @@ argparse==1.2.1
 wsgiref==0.1.2
 zope.interface==4.0.5
 structlog==0.3.0
+treq==0.2.0

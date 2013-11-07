@@ -14,82 +14,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from twisted.application.service import MultiService
-from twisted.application.internet import TimerService
-from teeth_agent.logging import get_logger
+import os
+
+from teeth_agent.base_task import MultiTask, BaseTask
+from teeth_agent.cache_image import ImageDownloaderTask
 
 
-__all__ = ['Task', 'PrepareImageTask']
+__all__ = ['CacheImagesTask', 'PrepareImageTask']
 
 
-class Task(MultiService, object):
-    """
-    Task to execute, reporting status periodically to TeethClient instance.
-    """
+class CacheImagesTask(MultiTask):
 
-    task_name = 'task_undefined'
+    """Cache an array of images on a machine."""
 
-    def __init__(self, client, task_id, reporting_interval=10):
-        super(Task, self).__init__()
-        self.setName(self.task_name)
-        self._client = client
-        self._id = task_id
-        self._percent = 0
-        self._reporting_interval = reporting_interval
-        self._state = 'starting'
-        self._timer = TimerService(self._reporting_interval, self._tick)
-        self._timer.setServiceParent(self)
-        self._error_msg = None
-        self.log = get_logger(task_id=task_id, task_name=self.task_name)
+    task_name = 'cache_images'
 
-    def _run(self):
-        """Do the actual work here."""
-
-    def run(self):
-        """Run the Task."""
-        # setServiceParent actually starts the task if it is already running
-        # so we run it in start.
-        self.setServiceParent(self._client)
-        self._run()
-
-    def _tick(self):
-        if not self.running:
-            # log.debug("_tick called while not running :()")
-            return
-        return self._client.update_task_status(self)
-
-    def error(self, message):
-        """Error out running of the task."""
-        self._error_msg = message
-        self._state = 'error'
-        self.stopService()
-
-    def complete(self):
-        """Complete running of the task."""
-        self._state = 'complete'
-        self.stopService()
-
-    def startService(self):
-        """Start the Service."""
-        super(Task, self).startService()
-        self._state = 'running'
-
-    def stopService(self):
-        """Stop the Service."""
-        super(Task, self).stopService()
-
-        if not self._client.running:
-            return
-
-        if self._state not in ['error', 'complete']:
-            self.log.err("told to shutdown before task could complete, marking as error.")
-            self._error_msg = 'service being shutdown'
-            self._state = 'error'
-
-        self._client.finish_task(self)
+    def __init__(self, client, task_id, images, reporting_interval=10):
+        super(CacheImagesTask, self).__init__(client, task_id, reporting_interval=reporting_interval)
+        self._images = images
+        for image in self._images:
+            image_path = os.path.join(client.conf_image_cache_path, image.id + '.img')
+            t = ImageDownloaderTask(client,
+                                    task_id, image,
+                                    image_path,
+                                    reporting_interval=reporting_interval)
+            self.add_task(t)
 
 
-class PrepareImageTask(Task):
+class PrepareImageTask(BaseTask):
 
     """Prepare an image to be ran on the machine."""
 

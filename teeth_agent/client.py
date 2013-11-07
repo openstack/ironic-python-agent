@@ -17,6 +17,7 @@ limitations under the License.
 import time
 import json
 import random
+import tempfile
 
 from twisted.application.service import MultiService
 from twisted.application.internet import TCPClient
@@ -86,6 +87,12 @@ class TeethClient(MultiService, object):
                 'status': self._handle_status,
             }
         }
+
+    @property
+    def conf_image_cache_path(self):
+        """Path to iamge cache."""
+        # TODO: improve:
+        return tempfile.gettempdir()
 
     def startService(self):
         """Start the Service."""
