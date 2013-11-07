@@ -34,6 +34,8 @@ Fatal Error:
 Teeth Agent master builder: https://jenkins.t.k1k.me/job/teeth-agent-master/
 Teeth Agent PR builder: https://jenkins.t.k1k.me/job/teeth-agent-pr/
 
+Builds are automatically triggered on pushes to master, or upon opening a PR.
+
 ### Commands
 
 #### All Protocol Implementations.
