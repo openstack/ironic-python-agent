@@ -16,28 +16,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from setuptools import setup, find_packages
-import codecs
-import os
-import re
-
-here = os.path.abspath(os.path.dirname(__file__))
-
-
-def read(*parts):
-    return codecs.open(os.path.join(here, *parts), 'r').read()
-
-
-def find_version(*file_paths):
-    version_file = read(*file_paths)
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
-                              version_file, re.M)
-    if version_match:
-        return version_match.group(1)
-    raise RuntimeError("Unable to find version string.")
+from setuptools import setup
 
 setup(
-    name='teeth-agent',
-    version=find_version('teeth_agent', '__init__.py'),
-    packages=find_packages(),
+    setup_requires=['pbr'],
+    pbr=True,
 )

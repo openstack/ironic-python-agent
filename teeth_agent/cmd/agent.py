@@ -14,33 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import structlog
 
-CONFIGURED_LOGGING = False
-
-
-def configure():
-    """
-    Configure logging subsystem.
-    """
-    global CONFIGURED_LOGGING
-
-    if CONFIGURED_LOGGING:
-        return
-
-    CONFIGURED_LOGGING = True
-
-    structlog.configure(
-        context_class=dict,
-        logger_factory=structlog.twisted.LoggerFactory(),
-        wrapper_class=structlog.twisted.BoundLogger,
-        cache_logger_on_first_use=True)
-
-
-def get_logger(*args, **kwargs):
-    """
-    Get a logger instance.
-    """
-    configure()
-
-    return structlog.get_logger(*args, **kwargs)
+def run():
+    pass

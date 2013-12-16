@@ -1,0 +1,10 @@
+pep257
+plumbum
+pep8
+pyflakes
+junitxml
+python-subunit
+mock
+coverage
+nose
+flake8
