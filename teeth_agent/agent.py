@@ -17,11 +17,11 @@ limitations under the License.
 from collections import OrderedDict
 import time
 
-from pkg_resources import get_distribution
-from teeth_rest.encoding import Serializable
-from werkzeug.serving import run_simple
+import pkg_resources
+from teeth_rest import encoding
+from werkzeug import serving
 
-from teeth_agent.api import TeethAgentAPIServer
+from teeth_agent import api
 
 
 class TeethAgentOperationModes(object):
@@ -34,7 +34,7 @@ class TeethAgentOperationModes(object):
             raise RuntimeError('Invalid mode: {}'.format(mode))
 
 
-class TeethAgentStatus(Serializable):
+class TeethAgentStatus(encoding.Serializable):
     def __init__(self, mode, started_at, version):
         self.mode = mode
         self.started_at = started_at
@@ -58,7 +58,7 @@ class TeethAgent(object):
         self.listen_port = listen_port
         self.started_at = None
         self.mode = mode
-        self.api = TeethAgentAPIServer(self)
+        self.api = api.TeethAgentAPIServer(self)
 
     def get_status(self):
         """
@@ -67,8 +67,14 @@ class TeethAgent(object):
         return TeethAgentStatus(
             mode=self.mode,
             started_at=self.started_at,
-            version=get_distribution('teeth-agent').version
+            version=pkg_resources.get_distribution('teeth-agent').version
         )
+
+    def execute_command(self, command):
+        """
+        Execute an agent command.
+        """
+        pass
 
     def run(self):
         """
@@ -78,4 +84,4 @@ class TeethAgent(object):
             raise RuntimeError('Agent was already started')
 
         self.started_at = time.time()
-        run_simple(self.listen_host, self.listen_port, self.api)
+        serving.run_simple(self.listen_host, self.listen_port, self.api)

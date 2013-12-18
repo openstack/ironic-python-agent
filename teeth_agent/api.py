@@ -14,13 +14,36 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from teeth_rest.component import APIComponent, APIServer
-from teeth_rest.responses import (
-    ItemResponse
-)
+from collections import OrderedDict
+
+from teeth_rest import component, encoding, errors, responses
 
 
-class TeethAgentAPI(APIComponent):
+class AgentCommand(encoding.Serializable):
+    def __init__(self, name, params):
+        self.name = name
+        self.params = params
+
+    @classmethod
+    def deserialize(cls, obj):
+        if 'name' not in obj:
+            raise errors.InvalidContentError('Missing command \'name\' field.')
+        if 'params' not in obj:
+            raise errors.InvalidContentError('Missing command \'params\' field.')
+
+        return cls(obj['name'], obj['params'])
+
+    def serialize(self, view):
+        """
+        Turn a command into a dictionary.
+        """
+        return OrderedDict([
+            ('name', self.name),
+            ('params', self.params),
+        ])
+
+
+class TeethAgentAPI(component.APIComponent):
     """
     The primary Teeth Agent API.
     """
@@ -34,15 +57,25 @@ class TeethAgentAPI(APIComponent):
         Called during initialization. Override to map relative routes to methods.
         """
         self.route('GET', '/status', self.get_agent_status)
+        self.route('POST', '/command', self.execute_agent_command)
 
     def get_agent_status(self, request):
         """
         Get the status of the agent.
         """
-        return ItemResponse(self.agent.get_status())
+        return responses.ItemResponse(self.agent.get_status())
+
+    def execute_agent_command(self, request):
+        """
+        Execute a command on the agent.
+        """
+        command = AgentCommand.deserialize(self.parse_content(request))
+        self.agent.execute_command(command)
+        # TODO(russellhaering): implement actual responses
+        return responses.ItemResponse({'result': 'success'})
 
 
-class TeethAgentAPIServer(APIServer):
+class TeethAgentAPIServer(component.APIServer):
     """
     Server for the teeth agent API.
     """
