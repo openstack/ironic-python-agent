@@ -66,13 +66,3 @@ class BaseTeethAgent(object):
 
         self.started_at = time.time()
         serving.run_simple(self.listen_host, self.listen_port, self.api)
-
-
-class StandbyAgent(BaseTeethAgent):
-    def __init__(self, listen_host, listen_port):
-        super(StandbyAgent, self).__init__(listen_host, listen_port, 'STANDBY')
-
-
-class DecomAgent(BaseTeethAgent):
-    def __init__(self, listen_host, listen_port):
-        super(StandbyAgent, self).__init__(listen_host, listen_port, 'DECOM')
