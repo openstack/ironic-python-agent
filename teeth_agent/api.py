@@ -34,6 +34,10 @@ class AgentCommand(encoding.Serializable):
                 msg = 'Missing command \'{}\' field.'.format(field)
                 raise errors.InvalidContentError(msg)
 
+        if type(obj['params']) != dict:
+            raise errors.InvalidContentError(
+                'Command params must be a dictionary')
+
         return cls(obj['name'], obj['params'])
 
     def serialize(self, view):
