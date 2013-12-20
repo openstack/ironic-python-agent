@@ -24,16 +24,6 @@ from werkzeug import serving
 from teeth_agent import api
 
 
-class TeethAgentOperationModes(object):
-    DECOM = 'DECOM'
-    STANDBY = 'STANDBY'
-
-    @classmethod
-    def validate_mode(cls, mode):
-        if not hasattr(cls, mode) or getattr(cls, mode) != mode:
-            raise RuntimeError('Invalid mode: {}'.format(mode))
-
-
 class TeethAgentStatus(encoding.Serializable):
     def __init__(self, mode, started_at, version):
         self.mode = mode
@@ -49,9 +39,8 @@ class TeethAgentStatus(encoding.Serializable):
         ])
 
 
-class TeethAgent(object):
+class BaseTeethAgent(object):
     def __init__(self, listen_host, listen_port, mode):
-        TeethAgentOperationModes.validate_mode(mode)
         self.listen_host = listen_host
         self.listen_port = listen_port
         self.started_at = None
@@ -77,3 +66,13 @@ class TeethAgent(object):
 
         self.started_at = time.time()
         serving.run_simple(self.listen_host, self.listen_port, self.api)
+
+
+class StandbyAgent(BaseTeethAgent):
+    def __init__(self, listen_host, listen_port):
+        super(StandbyAgent, self).__init__(listen_host, listen_port, 'STANDBY')
+
+
+class DecomAgent(BaseTeethAgent):
+    def __init__(self, listen_host, listen_port):
+        super(StandbyAgent, self).__init__(listen_host, listen_port, 'DECOM')

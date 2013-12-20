@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from teeth_agent import agent
+from teeth_agent import decom
 
 
 def run():
-    agent.TeethAgent('0.0.0.0', 9999, 'STANDBY').run()
+    decom.DecomAgent('0.0.0.0', 9999).run()
