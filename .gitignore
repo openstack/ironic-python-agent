@@ -7,3 +7,4 @@ ChangeLog
 *.egg
 .tox/*
 devenv/*
+.coverage
