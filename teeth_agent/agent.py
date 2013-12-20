@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from collections import OrderedDict
+import collections
 import time
 
 import pkg_resources
@@ -41,10 +41,8 @@ class TeethAgentStatus(encoding.Serializable):
         self.version = version
 
     def serialize(self, view):
-        """
-        Turn the status into a dict.
-        """
-        return OrderedDict([
+        """Turn the status into a dict."""
+        return collections.OrderedDict([
             ('mode', self.mode),
             ('started_at', self.started_at),
             ('version', self.version),
@@ -61,9 +59,7 @@ class TeethAgent(object):
         self.api = api.TeethAgentAPIServer(self)
 
     def get_status(self):
-        """
-        Retrieve a serializable status.
-        """
+        """Retrieve a serializable status."""
         return TeethAgentStatus(
             mode=self.mode,
             started_at=self.started_at,
@@ -71,15 +67,11 @@ class TeethAgent(object):
         )
 
     def execute_command(self, command):
-        """
-        Execute an agent command.
-        """
+        """Execute an agent command."""
         pass
 
     def run(self):
-        """
-        Run the Teeth Agent.
-        """
+        """Run the Teeth Agent."""
         if self.started_at:
             raise RuntimeError('Agent was already started')
 

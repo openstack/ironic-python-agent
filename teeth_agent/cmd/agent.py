@@ -14,9 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from teeth_agent.agent import TeethAgent
+from teeth_agent import agent
 
 
 def run():
-    agent = TeethAgent('0.0.0.0', 9999, 'STANDBY')
-    agent.run()
+    agent.TeethAgent('0.0.0.0', 9999, 'STANDBY').run()
