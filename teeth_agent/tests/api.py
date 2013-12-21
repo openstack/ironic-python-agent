@@ -90,3 +90,17 @@ class TestTeethAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
         self.assertEqual(data['details'], 'Missing command \'name\' field.')
+
+    def test_execute_agent_command_params_validation(self):
+        mock_agent = mock.MagicMock()
+        api_server = api.TeethAgentAPIServer(mock_agent)
+
+        invalid_command = {'name': 'do_things', 'params': []}
+        response = self._make_request(api_server,
+                                      'POST',
+                                      '/v1.0/command',
+                                      data=invalid_command)
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data)
+        self.assertEqual(data['details'],
+                         'Command params must be a dictionary.')
