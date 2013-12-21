@@ -36,7 +36,7 @@ class AgentCommand(encoding.Serializable):
 
         if type(obj['params']) != dict:
             raise errors.InvalidContentError(
-                'Command params must be a dictionary')
+                'Command params must be a dictionary.')
 
         return cls(obj['name'], obj['params'])
 
