@@ -56,7 +56,7 @@ class TestTeethAPI(unittest.TestCase):
         self.assertEqual(data['started_at'], status.started_at)
         self.assertEqual(data['version'], status.version)
 
-    def test_execute_agent_command(self):
+    def test_execute_agent_command_success(self):
         mock_agent = mock.MagicMock()
         api_server = api.TeethAgentAPIServer(mock_agent)
 
@@ -77,6 +77,10 @@ class TestTeethAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data, {'result': 'success'})
+
+    def test_execute_agent_command_validation(self):
+        mock_agent = mock.MagicMock()
+        api_server = api.TeethAgentAPIServer(mock_agent)
 
         invalid_command = {}
         response = self._make_request(api_server,
