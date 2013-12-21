@@ -8,3 +8,4 @@ ChangeLog
 .tox/*
 devenv/*
 .coverage
+coverage.xml
