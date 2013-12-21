@@ -72,11 +72,8 @@ class TestTeethAPI(unittest.TestCase):
 
         self.assertEqual(mock_agent.execute_command.call_count, 1)
         args, kwargs = mock_agent.execute_command.call_args
-        self.assertEqual(len(args), 1)
-        self.assertEqual(len(kwargs), 0)
-        self.assertIsInstance(args[0], api.AgentCommand)
-        self.assertEqual(args[0].name, valid_command['name'])
-        self.assertEqual(args[0].params, valid_command['params'])
+        self.assertEqual(args, ('do_things',))
+        self.assertEqual(kwargs, {'key': 'value'})
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data, {'result': 'success'})

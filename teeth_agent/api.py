@@ -69,7 +69,7 @@ class TeethAgentAPI(component.APIComponent):
     def execute_agent_command(self, request):
         """Execute a command on the agent."""
         command = AgentCommand.deserialize(self.parse_content(request))
-        self.agent.execute_command(command)
+        self.agent.execute_command(command.name, **command.params)
         # TODO(russellhaering): implement actual responses
         return responses.ItemResponse({'result': 'success'})
 

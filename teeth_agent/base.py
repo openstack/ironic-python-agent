@@ -55,7 +55,7 @@ class BaseTeethAgent(object):
             version=pkg_resources.get_distribution('teeth-agent').version
         )
 
-    def execute_command(self, command):
+    def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
         pass
 
