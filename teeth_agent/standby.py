@@ -15,8 +15,37 @@ limitations under the License.
 """
 
 from teeth_agent import base
+from teeth_agent import errors
 
 
 class StandbyAgent(base.BaseTeethAgent):
     def __init__(self, listen_host, listen_port):
         super(StandbyAgent, self).__init__(listen_host, listen_port, 'STANDBY')
+
+        self.command_map = {
+            'standby.cache_images': self.cache_images,
+        }
+
+    def _validate_image_info(self, image_info):
+        for field in ['id', 'urls', 'hashes']:
+            if field not in image_info:
+                msg = 'Image is missing \'{}\' field.'.format(field)
+                raise errors.InvalidCommandParamsError(msg)
+
+        if type(image_info['urls']) != list:
+            raise errors.InvalidCommandParamsError(
+                'Image \'urls\' must be a list.')
+
+        if type(image_info['hashes']) != dict:
+            raise errors.InvalidCommandParamsError(
+                'Image \'hashes\' must be a dictionary.')
+
+    def cache_images(self, image_infos):
+        if type(image_infos) != list:
+            raise errors.InvalidCommandParamsError(
+                '\'image_infos\' parameter must be a list.')
+
+        for image_info in image_infos:
+            self._validate_image_info(image_info)
+
+        # TODO(russellhaering): Actually cache images

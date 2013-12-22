@@ -22,6 +22,7 @@ from teeth_rest import encoding
 from werkzeug import serving
 
 from teeth_agent import api
+from teeth_agent import errors
 
 
 class TeethAgentStatus(encoding.Serializable):
@@ -46,6 +47,7 @@ class BaseTeethAgent(object):
         self.started_at = None
         self.mode = mode
         self.api = api.TeethAgentAPIServer(self)
+        self.command_map = {}
 
     def get_status(self):
         """Retrieve a serializable status."""
@@ -57,7 +59,10 @@ class BaseTeethAgent(object):
 
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
-        pass
+        if command_name not in self.command_map:
+            raise errors.InvalidCommandError(command_name)
+
+        self.comand_map[command_name](**kwargs)
 
     def run(self):
         """Run the Teeth Agent."""
