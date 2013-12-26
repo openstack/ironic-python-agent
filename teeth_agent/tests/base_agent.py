@@ -39,8 +39,13 @@ class TestBaseTeethAgent(unittest.TestCase):
                          pkg_resources.get_distribution('teeth-agent').version)
 
     def test_execute_command(self):
-        # TODO(russellhaering): this isn't actually implemented yet
+        do_something_impl = mock.Mock()
+        self.agent.command_map = {
+            'do_something': do_something_impl,
+        }
+
         self.agent.execute_command('do_something', foo='bar')
+        do_something_impl.assertCalledOnceWith(foo='bar')
 
     @mock.patch('werkzeug.serving.run_simple')
     def test_run(self, mocked_run_simple):
