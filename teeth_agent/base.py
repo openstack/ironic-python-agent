@@ -62,7 +62,7 @@ class BaseTeethAgent(object):
         if command_name not in self.command_map:
             raise errors.InvalidCommandError(command_name)
 
-        self.comand_map[command_name](**kwargs)
+        self.command_map[command_name](**kwargs)
 
     def run(self):
         """Run the Teeth Agent."""
