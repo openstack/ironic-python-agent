@@ -16,6 +16,7 @@ limitations under the License.
 
 import unittest
 
+from teeth_agent import errors
 from teeth_agent import standby
 
 
@@ -25,3 +26,50 @@ class TestBaseTeethAgent(unittest.TestCase):
 
     def test_standby_mode(self):
         self.assertEqual(self.agent.mode, 'STANDBY')
+
+    def _build_fake_image_info(self):
+        return {
+            'id': 'fake_id',
+            'urls': [
+                'http://example.org',
+            ],
+            'hashes': {
+                'md5': 'abc123',
+            },
+        }
+
+    def test_validate_image_info_success(self):
+        self.agent._validate_image_info(self._build_fake_image_info())
+
+    def test_validate_image_info_missing_field(self):
+        for field in ['id', 'urls', 'hashes']:
+            invalid_info = self._build_fake_image_info()
+            del invalid_info[field]
+
+            self.assertRaises(errors.InvalidCommandParamsError,
+                              self.agent._validate_image_info,
+                              invalid_info)
+
+    def test_validate_image_info_invalid_urls(self):
+        invalid_info = self._build_fake_image_info()
+        invalid_info['urls'] = 'this_is_not_a_list'
+
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.agent._validate_image_info,
+                          invalid_info)
+
+    def test_validate_image_info_invalid_hashes(self):
+        invalid_info = self._build_fake_image_info()
+        invalid_info['hashes'] = 'this_is_not_a_dict'
+
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.agent._validate_image_info,
+                          invalid_info)
+
+    def test_cache_images_success(self):
+        self.agent.cache_images([self._build_fake_image_info()])
+
+    def test_cache_images_invalid_image_list(self):
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.agent.cache_images,
+                          {'foo': 'bar'})
