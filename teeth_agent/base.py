@@ -62,10 +62,12 @@ class BaseTeethAgent(object):
         if command_name not in self.command_map:
             raise errors.InvalidCommandError(command_name)
 
-        self.command_map[command_name](**kwargs)
+        result = self.command_map[command_name](**kwargs)
 
         # TODO(russellhaering): allow long-running commands to return a
         # "promise" which can be converted into a watch URL.
+
+        return result
 
     def run(self):
         """Run the Teeth Agent."""
