@@ -48,6 +48,18 @@ class AgentCommand(encoding.Serializable):
         ])
 
 
+class TeethAgentCommandResult(encoding.Serializable):
+    def __init__(self, command, result):
+        self.command = command
+        self.result = result
+
+    def serialize(self, view):
+        return collections.OrderedDict([
+            ('command', self.command),
+            ('result', self.result),
+        ])
+
+
 class TeethAgentAPI(component.APIComponent):
     """The primary Teeth Agent API."""
 
@@ -69,9 +81,9 @@ class TeethAgentAPI(component.APIComponent):
     def execute_agent_command(self, request):
         """Execute a command on the agent."""
         command = AgentCommand.deserialize(self.parse_content(request))
-        self.agent.execute_command(command.name, **command.params)
-        # TODO(russellhaering): implement actual responses
-        return responses.ItemResponse({'result': 'success'})
+        result = self.agent.execute_command(command.name, **command.params)
+        wrapped_result = TeethAgentCommandResult(command, result)
+        return responses.ItemResponse(wrapped_result)
 
 
 class TeethAgentAPIServer(component.APIServer):
