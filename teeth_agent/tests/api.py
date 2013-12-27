@@ -57,10 +57,12 @@ class TestTeethAPI(unittest.TestCase):
         self.assertEqual(data['version'], status.version)
 
     def test_execute_agent_command_success(self):
+        result = {'test': 'result'}
         mock_agent = mock.MagicMock()
+        mock_agent.execute_command.return_value = result
         api_server = api.TeethAgentAPIServer(mock_agent)
 
-        valid_command = {
+        command = {
             'name': 'do_things',
             'params': {'key': 'value'},
         }
@@ -68,7 +70,7 @@ class TestTeethAPI(unittest.TestCase):
         response = self._make_request(api_server,
                                       'POST',
                                       '/v1.0/command',
-                                      data=valid_command)
+                                      data=command)
 
         self.assertEqual(mock_agent.execute_command.call_count, 1)
         args, kwargs = mock_agent.execute_command.call_args
@@ -76,7 +78,7 @@ class TestTeethAPI(unittest.TestCase):
         self.assertEqual(kwargs, {'key': 'value'})
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
-        self.assertEqual(data, {'result': 'success'})
+        self.assertEqual(data, {'command': command, 'result': result})
 
     def test_execute_agent_command_validation(self):
         mock_agent = mock.MagicMock()
