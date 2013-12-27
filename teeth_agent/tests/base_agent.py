@@ -21,6 +21,7 @@ import mock
 import pkg_resources
 
 from teeth_agent import base
+from teeth_agent import errors
 
 
 class TestBaseTeethAgent(unittest.TestCase):
@@ -46,6 +47,12 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.agent.execute_command('do_something', foo='bar')
         do_something_impl.assertCalledOnceWith(foo='bar')
+
+    def test_execute_invalid_command(self):
+        self.assertRaises(errors.InvalidCommandError,
+                          self.agent.execute_command,
+                          'do_something',
+                          foo='bar')
 
     @mock.patch('werkzeug.serving.run_simple')
     def test_run(self, mocked_run_simple):
