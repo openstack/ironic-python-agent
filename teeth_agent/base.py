@@ -64,6 +64,9 @@ class BaseTeethAgent(object):
 
         self.command_map[command_name](**kwargs)
 
+        # TODO(russellhaering): allow long-running commands to return a
+        # "promise" which can be converted into a watch URL.
+
     def run(self):
         """Run the Teeth Agent."""
         if self.started_at:
