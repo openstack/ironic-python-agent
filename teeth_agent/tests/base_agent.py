@@ -46,7 +46,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         }
 
         self.agent.execute_command('do_something', foo='bar')
-        do_something_impl.assertCalledOnceWith(foo='bar')
+        do_something_impl.assert_called_once_with('do_something', foo='bar')
 
     def test_execute_invalid_command(self):
         self.assertRaises(errors.InvalidCommandError,
