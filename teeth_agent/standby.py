@@ -40,7 +40,7 @@ class StandbyAgent(base.BaseTeethAgent):
             raise errors.InvalidCommandParamsError(
                 'Image \'hashes\' must be a dictionary.')
 
-    def cache_images(self, image_infos):
+    def cache_images(self, command_name, image_infos):
         if type(image_infos) != list:
             raise errors.InvalidCommandParamsError(
                 '\'image_infos\' parameter must be a list.')
