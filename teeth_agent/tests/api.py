@@ -22,6 +22,8 @@ import unittest
 from werkzeug import test
 from werkzeug import wrappers
 
+from teeth_rest import encoding
+
 from teeth_agent import api
 from teeth_agent import base
 
@@ -57,15 +59,19 @@ class TestTeethAPI(unittest.TestCase):
         self.assertEqual(data['version'], status.version)
 
     def test_execute_agent_command_success(self):
-        result = {'test': 'result'}
-        mock_agent = mock.MagicMock()
-        mock_agent.execute_command.return_value = result
-        api_server = api.TeethAgentAPIServer(mock_agent)
-
         command = {
             'name': 'do_things',
             'params': {'key': 'value'},
         }
+
+        result = base.SyncCommandResult(command['name'],
+                                        command['params'],
+                                        True,
+                                        {'test': 'result'})
+
+        mock_agent = mock.MagicMock()
+        mock_agent.execute_command.return_value = result
+        api_server = api.TeethAgentAPIServer(mock_agent)
 
         response = self._make_request(api_server,
                                       'POST',
@@ -78,7 +84,8 @@ class TestTeethAPI(unittest.TestCase):
         self.assertEqual(kwargs, {'key': 'value'})
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
-        self.assertEqual(data, {'command': command, 'result': result})
+        expected_result = result.serialize(encoding.SerializationViews.PUBLIC)
+        self.assertEqual(data, expected_result)
 
     def test_execute_agent_command_validation(self):
         mock_agent = mock.MagicMock()
