@@ -16,9 +16,11 @@ limitations under the License.
 
 import collections
 import time
+import uuid
 
 import pkg_resources
 from teeth_rest import encoding
+from teeth_rest import errors as rest_errors
 from werkzeug import serving
 
 from teeth_agent import api
@@ -40,6 +42,44 @@ class TeethAgentStatus(encoding.Serializable):
         ])
 
 
+class AgentCommandStatus(object):
+    RUNNING = 'RUNNING'
+    SUCCEEDED = 'SUCCEEDED'
+    FAILED = 'FAILED'
+
+
+class BaseCommandResult(encoding.Serializable):
+    def __init__(self, command_name, command_params):
+        self.id = str(uuid.uuid4())
+        self.command_name = command_name
+        self.command_params = command_params
+        self.command_status = AgentCommandStatus.RUNNING
+        self.command_error = None
+        self.command_result = None
+
+    def serialize(self, view):
+        return collections.OrderedDict([
+            ('id', self.id),
+            ('command_name', self.command_name),
+            ('command_params', self.command_params),
+            ('command_status', self.command_status),
+            ('command_error', self.command_error),
+            ('command_result', self.command_result),
+        ])
+
+
+class SyncCommandResult(BaseCommandResult):
+    def __init__(self, command_name, command_params, success, result_or_error):
+        super(SyncCommandResult, self).__init__(command_name,
+                                                command_params)
+        if success:
+            self.command_status = AgentCommandStatus.SUCCEEDED
+            self.command_result = result_or_error
+        else:
+            self.command_status = AgentCommandStatus.FAILED
+            self.command_error = result_or_error
+
+
 class BaseTeethAgent(object):
     def __init__(self, listen_host, listen_port, mode):
         self.listen_host = listen_host
@@ -47,6 +87,7 @@ class BaseTeethAgent(object):
         self.started_at = None
         self.mode = mode
         self.api = api.TeethAgentAPIServer(self)
+        self.command_results = {}
         self.command_map = {}
 
     def get_status(self):
@@ -62,11 +103,20 @@ class BaseTeethAgent(object):
         if command_name not in self.command_map:
             raise errors.InvalidCommandError(command_name)
 
-        result = self.command_map[command_name](command_name, **kwargs)
+        try:
+            result = self.command_map[command_name](command_name, **kwargs)
+            if not isinstance(result, BaseCommandResult):
+                result = SyncCommandResult(command_name, kwargs, True, result)
+        except rest_errors.ValidationError as e:
+            # Any command may raise a ValidationError which will be returned
+            # to the caller directly.
+            raise e
+        except Exception as e:
+            # Other errors are considered command execution errors, and are
+            # recorded as an
+            result = SyncCommandResult(command_name, kwargs, False, e)
 
-        # TODO(russellhaering): allow long-running commands to return a
-        # "promise" which can be converted into a watch URL.
-
+        self.command_results[result.id] = result
         return result
 
     def run(self):
