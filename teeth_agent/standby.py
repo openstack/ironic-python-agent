@@ -19,8 +19,11 @@ from teeth_agent import errors
 
 
 class StandbyAgent(base.BaseTeethAgent):
-    def __init__(self, listen_host, listen_port):
-        super(StandbyAgent, self).__init__(listen_host, listen_port, 'STANDBY')
+    def __init__(self, listen_host, listen_port, api_url):
+        super(StandbyAgent, self).__init__(listen_host,
+                                           listen_port,
+                                           api_url,
+                                           'STANDBY')
 
         self.command_map = {
             'standby.cache_images': self.cache_images,

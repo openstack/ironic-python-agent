@@ -18,5 +18,8 @@ from teeth_agent import base
 
 
 class DecomAgent(base.BaseTeethAgent):
-    def __init__(self, listen_host, listen_port):
-        super(DecomAgent, self).__init__(listen_host, listen_port, 'DECOM')
+    def __init__(self, listen_host, listen_port, api_url):
+        super(DecomAgent, self).__init__(listen_host,
+                                         listen_port,
+                                         api_url,
+                                         'DECOM')

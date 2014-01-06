@@ -125,9 +125,10 @@ class AsyncCommandResult(BaseCommandResult):
 
 
 class BaseTeethAgent(object):
-    def __init__(self, listen_host, listen_port, mode):
+    def __init__(self, listen_host, listen_port, api_url, mode):
         self.listen_host = listen_host
         self.listen_port = listen_port
+        self.api_url = api_url
         self.started_at = None
         self.mode = mode
         self.api = api.TeethAgentAPIServer(self)
