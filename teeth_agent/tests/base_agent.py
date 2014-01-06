@@ -43,7 +43,10 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.encoder = encoding.RESTJSONEncoder(
             encoding.SerializationViews.PUBLIC,
             indent=4)
-        self.agent = base.BaseTeethAgent('fake_host', 'fake_port', 'TEST_MODE')
+        self.agent = base.BaseTeethAgent('fake_host',
+                                         'fake_port',
+                                         'fake_api',
+                                         'TEST_MODE')
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
