@@ -17,6 +17,16 @@ limitations under the License.
 from teeth_rest import errors
 
 
+class CommandExecutionError(errors.RESTError):
+    """Error raised when a command fails to execute."""
+
+    message = 'Command execution failed'
+
+    def __init__(self, details):
+        super(CommandExecutionError, self).__init__()
+        self.details = details
+
+
 class InvalidCommandError(errors.InvalidContentError):
     """Error which is raised when an unknown command is issued."""
 
