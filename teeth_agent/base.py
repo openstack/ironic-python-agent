@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import abc
 import collections
+import threading
 import time
 import uuid
 
@@ -78,6 +80,48 @@ class SyncCommandResult(BaseCommandResult):
         else:
             self.command_status = AgentCommandStatus.FAILED
             self.command_error = result_or_error
+
+
+class AsyncCommandResult(BaseCommandResult):
+    """A command that executes asynchronously in the background. Subclasses
+    should override `execute` to implement actual command execution.
+    """
+    def __init__(self, command_name, command_params):
+        super(AsyncCommandResult, self).__init__(command_name, command_params)
+        self.command_state_lock = threading.Lock()
+
+        thread_name = 'agent-command-{}'.format(self.id)
+        self.execution_thread = threading.Thread(target=self.run,
+                                                 name=thread_name)
+
+    def serialize(self, view):
+        with self.command_state_lock:
+            return super(AsyncCommandResult, self).serialize(view)
+
+    def start(self):
+        return self.execution_thread.start()
+
+    def join(self):
+        return self.execution_thread.join()
+
+    def run(self):
+        try:
+            result = self.execute()
+            with self.command_state_lock:
+                self.command_result = result
+                self.command_status = AgentCommandStatus.SUCCEEDED
+
+        except Exception as e:
+            if not isinstance(e, rest_errors.RESTError):
+                e = errors.CommandExecutionError(str(e))
+
+            with self.command_state_lock:
+                self.command_error = e
+                self.command_status = AgentCommandStatus.FAILED
+
+    @abc.abstractmethod
+    def execute(self):
+        pass
 
 
 class BaseTeethAgent(object):
