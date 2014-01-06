@@ -14,19 +14,44 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import json
 import time
 import unittest
 
 import mock
 import pkg_resources
 
+from teeth_rest import encoding
+
 from teeth_agent import base
 from teeth_agent import errors
 
 
+EXPECTED_ERROR = RuntimeError('command execution failed')
+
+
+class FooTeethAgentCommandResult(base.AsyncCommandResult):
+    def execute(self):
+        if self.command_params['fail']:
+            raise EXPECTED_ERROR
+        else:
+            return 'command execution succeeded'
+
+
 class TestBaseTeethAgent(unittest.TestCase):
     def setUp(self):
+        self.encoder = encoding.RESTJSONEncoder(
+            encoding.SerializationViews.PUBLIC,
+            indent=4)
         self.agent = base.BaseTeethAgent('fake_host', 'fake_port', 'TEST_MODE')
+
+    def assertEqualEncoded(self, a, b):
+        # Evidently JSONEncoder.default() can't handle None (??) so we have to
+        # use encode() to generate JSON, then json.loads() to get back a python
+        # object.
+        a_encoded = self.encoder.encode(a)
+        b_encoded = self.encoder.encode(b)
+        self.assertEqual(json.loads(a_encoded), json.loads(b_encoded))
 
     def test_get_status(self):
         started_at = time.time()
@@ -62,3 +87,48 @@ class TestBaseTeethAgent(unittest.TestCase):
                                                   self.agent.api)
 
         self.assertRaises(RuntimeError, self.agent.run)
+
+    def test_async_command_success(self):
+        result = FooTeethAgentCommandResult('foo_command', {'fail': False})
+        expected_result = {
+            'id': result.id,
+            'command_name': 'foo_command',
+            'command_params': {
+                'fail': False,
+            },
+            'command_status': 'RUNNING',
+            'command_result': None,
+            'command_error': None,
+        }
+        self.assertEqualEncoded(result, expected_result)
+
+        result.start()
+        result.join()
+
+        expected_result['command_status'] = 'SUCCEEDED'
+        expected_result['command_result'] = 'command execution succeeded'
+
+        self.assertEqualEncoded(result, expected_result)
+
+    def test_async_command_failure(self):
+        result = FooTeethAgentCommandResult('foo_command', {'fail': True})
+        expected_result = {
+            'id': result.id,
+            'command_name': 'foo_command',
+            'command_params': {
+                'fail': True,
+            },
+            'command_status': 'RUNNING',
+            'command_result': None,
+            'command_error': None,
+        }
+        self.assertEqualEncoded(result, expected_result)
+
+        result.start()
+        result.join()
+
+        expected_result['command_status'] = 'FAILED'
+        expected_result['command_error'] = errors.CommandExecutionError(
+            str(EXPECTED_ERROR))
+
+        self.assertEqualEncoded(result, expected_result)
