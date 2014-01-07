@@ -44,3 +44,13 @@ class InvalidCommandParamsError(errors.InvalidContentError):
 
     def __init__(self, details):
         super(InvalidCommandParamsError, self).__init__(details)
+
+
+class HeartbeatError(errors.RESTError):
+    """Error raised when a heartbeat to the agent API fails."""
+
+    message = 'Error heartbeating to agent API.'
+
+    def __init__(self, details):
+        super(HeartbeatError, self).__init__()
+        self.details = details
