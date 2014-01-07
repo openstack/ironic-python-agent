@@ -131,6 +131,7 @@ class BaseTeethAgent(object):
         self.api_url = api_url
         self.started_at = None
         self.mode = mode
+        self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = api.TeethAgentAPIServer(self)
         self.command_results = {}
         self.command_map = {}
@@ -140,7 +141,7 @@ class BaseTeethAgent(object):
         return TeethAgentStatus(
             mode=self.mode,
             started_at=self.started_at,
-            version=pkg_resources.get_distribution('teeth-agent').version
+            version=self.version
         )
 
     def execute_command(self, command_name, **kwargs):
