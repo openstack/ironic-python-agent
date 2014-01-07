@@ -144,6 +144,15 @@ class BaseTeethAgent(object):
             version=self.version
         )
 
+    def get_agent_url(self):
+        # TODO(russellhaering): This sucks
+        return 'http://{api_host}:{api_port}/'.format(host=self.listen_host,
+                                                      port=self.listen_port)
+
+    def get_agent_mac_addr(self):
+        # TODO(russellhaering): Actually implement this
+        return 'a:b:c:d'
+
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
         if command_name not in self.command_map:
