@@ -28,6 +28,7 @@ from werkzeug import serving
 
 from teeth_agent import api
 from teeth_agent import errors
+from teeth_agent import hardware
 from teeth_agent import overlord_agent_api
 
 
@@ -172,6 +173,7 @@ class BaseTeethAgent(object):
         self.command_results = {}
         self.command_map = {}
         self.heartbeater = TeethAgentHeartbeater(self)
+        self.hardware = hardware.HardwareInspector()
 
     def get_status(self):
         """Retrieve a serializable status."""
@@ -182,13 +184,13 @@ class BaseTeethAgent(object):
         )
 
     def get_agent_url(self):
-        # TODO(russellhaering): This sucks
+        # If we put this behind any sort of proxy (ie, stunnel) we're going to
+        # need to (re)think this.
         return 'http://{api_host}:{api_port}/'.format(host=self.listen_host,
                                                       port=self.listen_port)
 
     def get_agent_mac_addr(self):
-        # TODO(russellhaering): Actually implement this
-        return 'a:b:c:d'
+        return self.hardware.get_primary_mac_address()
 
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
