@@ -16,6 +16,7 @@ limitations under the License.
 
 import abc
 import collections
+import random
 import threading
 import time
 import uuid
@@ -27,6 +28,7 @@ from werkzeug import serving
 
 from teeth_agent import api
 from teeth_agent import errors
+from teeth_agent import overlord_agent_api
 
 
 class TeethAgentStatus(encoding.Serializable):
@@ -124,6 +126,40 @@ class AsyncCommandResult(BaseCommandResult):
         pass
 
 
+class TeethAgentHeartbeater(threading.Thread):
+    min_jitter_multiplier = 0.3
+    max_jitter_multiplier = 0.6
+
+    def __init__(self, agent):
+        self.agent = agent
+        self.api = overlord_agent_api.APIClient(agent.api_url)
+        self.stop_event = threading.Event()
+
+    def run(self):
+        # The first heartbeat happens now
+        interval = 0
+
+        while not self.stop_event.wait(interval):
+            # TODO(russellhaering): Figure out the eth0 MAC address
+            next_heartbeat_by = self.do_heartbeat()
+            interval_multiplier = random.uniform(self.min_jitter_multiplier,
+                                                 self.max_jitter_multiplier)
+            interval = (next_heartbeat_by - time.time()) * interval_multiplier
+
+    def do_heartbeat(self):
+        try:
+            deadline = self.api.do_heartbeat(
+                self.agent.get_agent_url(),
+                mac_addr=self.agent.get_agent_mac_addr(),
+                version=self.agent.version)
+        except Exception:
+            # TODO(russellhaering): error logging, real back-off
+            deadline = time.time() + 60
+            pass
+
+        return deadline
+
+
 class BaseTeethAgent(object):
     def __init__(self, listen_host, listen_port, api_url, mode):
         self.listen_host = listen_host
@@ -135,6 +171,7 @@ class BaseTeethAgent(object):
         self.api = api.TeethAgentAPIServer(self)
         self.command_results = {}
         self.command_map = {}
+        self.heartbeater = TeethAgentHeartbeater(self)
 
     def get_status(self):
         """Retrieve a serializable status."""
