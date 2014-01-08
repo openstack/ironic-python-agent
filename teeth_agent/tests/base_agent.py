@@ -38,6 +38,76 @@ class FooTeethAgentCommandResult(base.AsyncCommandResult):
             return 'command execution succeeded'
 
 
+class TestHeartbeater(unittest.TestCase):
+    def setUp(self):
+        self.mock_agent = mock.Mock()
+        self.heartbeater = base.TeethAgentHeartbeater(self.mock_agent)
+        self.heartbeater.api = mock.Mock()
+        self.heartbeater.stop_event = mock.Mock()
+
+    @mock.patch('time.time')
+    @mock.patch('random.uniform')
+    def test_heartbeat(self, mocked_uniform, mocked_time):
+        time_responses = []
+        uniform_responses = []
+        heartbeat_responses = []
+        wait_responses = []
+        expected_stop_event_calls = []
+
+        # FIRST RUN:
+        # initial delay is 0
+        expected_stop_event_calls.append(mock.call(0))
+        wait_responses.append(False)
+        # next heartbeat due at t=100
+        heartbeat_responses.append(100)
+        # random interval multiplier is 0.5
+        uniform_responses.append(0.5)
+        # time is now 50
+        time_responses.append(50)
+
+        # SECOND RUN:
+        # (100 - 50) * .5 = 25 (t becomes ~75)
+        expected_stop_event_calls.append(mock.call(25.0))
+        wait_responses.append(False)
+        # next heartbeat due at t=100
+        heartbeat_responses.append(180)
+        # random interval multiplier is 0.4
+        uniform_responses.append(0.4)
+        # time is now 80
+        time_responses.append(80)
+
+        # THIRD RUN:
+        # (180 - 80) * .4 = 40 (t becomes ~120)
+        expected_stop_event_calls.append(mock.call(40.0))
+        wait_responses.append(False)
+        # this heartbeat attempt fails
+        heartbeat_responses.append(Exception('uh oh!'))
+        # we check the time to generate a fake deadline, now t=125
+        time_responses.append(125)
+        # random interval multiplier is 0.5
+        uniform_responses.append(0.5)
+        # time is now 125.5
+        time_responses.append(125.5)
+
+        # FOURTH RUN:
+        # (125.5 - 125.0) * .5 = 0.25
+        expected_stop_event_calls.append(mock.call(0.25))
+        # Stop now
+        wait_responses.append(True)
+
+        # Hook it up and run it
+        mocked_time.side_effect = time_responses
+        mocked_uniform.side_effect = uniform_responses
+        self.heartbeater.api.heartbeat.side_effect = heartbeat_responses
+        self.heartbeater.stop_event.wait.side_effect = wait_responses
+        self.heartbeater.run()
+
+        # Validate expectations
+        self.assertEqual(self.heartbeater.stop_event.wait.call_args_list,
+                         expected_stop_event_calls)
+        self.assertEqual(self.heartbeater.error_delay, 2.7)
+
+
 class TestBaseTeethAgent(unittest.TestCase):
     def setUp(self):
         self.encoder = encoding.RESTJSONEncoder(
