@@ -161,9 +161,10 @@ class TeethAgentHeartbeater(threading.Thread):
     def do_heartbeat(self):
         try:
             deadline = self.api.heartbeat(
-                self.agent.get_agent_url(),
                 mac_addr=self.agent.get_agent_mac_addr(),
-                version=self.agent.version)
+                url=self.agent.get_agent_url(),
+                version=self.agent.version,
+                mode=self.agent.mode)
             self.error_delay = self.initial_delay
         except Exception:
             deadline = time.time() + self.error_delay
@@ -203,8 +204,8 @@ class BaseTeethAgent(object):
     def get_agent_url(self):
         # If we put this behind any sort of proxy (ie, stunnel) we're going to
         # need to (re)think this.
-        return 'http://{api_host}:{api_port}/'.format(host=self.listen_host,
-                                                      port=self.listen_port)
+        return 'http://{host}:{port}/'.format(host=self.listen_host,
+                                              port=self.listen_port)
 
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
