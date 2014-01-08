@@ -149,7 +149,7 @@ class TeethAgentHeartbeater(threading.Thread):
 
     def do_heartbeat(self):
         try:
-            deadline = self.api.do_heartbeat(
+            deadline = self.api.heartbeat(
                 self.agent.get_agent_url(),
                 mac_addr=self.agent.get_agent_mac_addr(),
                 version=self.agent.version)
