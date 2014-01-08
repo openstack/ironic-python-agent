@@ -67,7 +67,7 @@ class APIClient(object):
             raise errors.HeartbeatError(msg)
 
         try:
-            return float(response.headers.get('Heartbeat-Before'))
+            return float(response.headers['Heartbeat-Before'])
         except KeyError:
             raise errors.HeartbeatError('Missing Heartbeat-Before header')
         except Exception:
