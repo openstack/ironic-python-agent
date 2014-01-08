@@ -1,0 +1,56 @@
+"""
+Copyright 2013 Rackspace, Inc.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+"""
+
+import httmock
+import json
+import mock
+import time
+import unittest
+
+from teeth_agent import overlord_agent_api
+
+API_URL = 'http://agent-api.overlord.example.org/'
+
+
+class TestBaseTeethAgent(unittest.TestCase):
+    def setUp(self):
+        self.api_client = overlord_agent_api.APIClient(API_URL)
+
+    def test_successful_heartbeat(self):
+        expected_heartbeat_before = time.time() + 120
+        response = httmock.response(status_code=204, headers={
+            'Heartbeat-Before': expected_heartbeat_before,
+        })
+
+        self.api_client.session.send = mock.Mock()
+        self.api_client.session.send.return_value = response
+
+        heartbeat_before = self.api_client.heartbeat(
+            url='http://1.2.3.4:9999/',
+            mac_addr='a:b:c:d',
+            version='15',
+            mode='STANDBY')
+
+        self.assertEqual(heartbeat_before, expected_heartbeat_before)
+
+        send_args = self.api_client.session.send.call_args[0]
+        self.assertEqual(send_args[0], 'PUT')
+        self.assertEqual(send_args[1], API_URL + 'v1/agents/a:b:c:d')
+
+        content = json.loads(self.api_client.session.send.call_args[1]['data'])
+        self.assertEqual(content['url'], 'http://1.2.3.4:9999/')
+        self.assertEqual(content['mode'], 'STANDBY')
+        self.assertEqual(content['version'], '15')
