@@ -219,4 +219,5 @@ class BaseTeethAgent(object):
             raise RuntimeError('Agent was already started')
 
         self.started_at = time.time()
+        self.heartbeater.start()
         serving.run_simple(self.listen_host, self.listen_port, self.api)
