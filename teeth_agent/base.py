@@ -142,6 +142,7 @@ class TeethAgentHeartbeater(threading.Thread):
     backoff_factor = 2.7
 
     def __init__(self, agent):
+        super(TeethAgentHeartbeater, self).__init__()
         self.agent = agent
         self.api = overlord_agent_api.APIClient(agent.api_url)
         self.stop_event = threading.Event()
@@ -171,6 +172,10 @@ class TeethAgentHeartbeater(threading.Thread):
             pass
 
         return deadline
+
+    def stop(self):
+        self.stop_event.set()
+        return self.join()
 
 
 class BaseTeethAgent(object):
@@ -233,3 +238,4 @@ class BaseTeethAgent(object):
         self.started_at = time.time()
         self.heartbeater.start()
         serving.run_simple(self.listen_host, self.listen_port, self.api)
+        self.heartbeater.stop()
