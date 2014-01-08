@@ -128,20 +128,30 @@ class AsyncCommandResult(BaseCommandResult):
 
 
 class TeethAgentHeartbeater(threading.Thread):
+    # If we could wait at most N seconds between heartbeats (or in case of an
+    # error) we will instead wait r x N seconds, where r is a random value
+    # between these multipliers.
     min_jitter_multiplier = 0.3
     max_jitter_multiplier = 0.6
+
+    # Exponential backoff values used in case of an error. In reality we will
+    # only wait a portion of either of these delays based on the jitter
+    # multipliers.
+    initial_delay = 1.0
+    max_delay = 300.0
+    backoff_factor = 2.7
 
     def __init__(self, agent):
         self.agent = agent
         self.api = overlord_agent_api.APIClient(agent.api_url)
         self.stop_event = threading.Event()
+        self.error_delay = self.initial_delay
 
     def run(self):
         # The first heartbeat happens now
         interval = 0
 
         while not self.stop_event.wait(interval):
-            # TODO(russellhaering): Figure out the eth0 MAC address
             next_heartbeat_by = self.do_heartbeat()
             interval_multiplier = random.uniform(self.min_jitter_multiplier,
                                                  self.max_jitter_multiplier)
@@ -153,9 +163,11 @@ class TeethAgentHeartbeater(threading.Thread):
                 self.agent.get_agent_url(),
                 mac_addr=self.agent.get_agent_mac_addr(),
                 version=self.agent.version)
+            self.error_delay = self.initial_delay
         except Exception:
-            # TODO(russellhaering): error logging, real back-off
-            deadline = time.time() + 60
+            deadline = time.time() + self.error_delay
+            self.error_delay = min(self.error_delay * self.backoff_factor,
+                                   self.max_delay)
             pass
 
         return deadline
