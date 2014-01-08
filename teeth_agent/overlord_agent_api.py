@@ -41,9 +41,10 @@ class APIClient(object):
             'Accept': 'application/json',
         }
 
-        return self.session.put(request_url,
-                                headers=request_headers,
-                                data=data)
+        return self.session.send(method,
+                                 request_url,
+                                 headers=request_headers,
+                                 data=data)
 
     def heartbeat(self, mac_addr, url, mode, version):
         path = '/{api_version}/agents/{mac_addr}'.format(
