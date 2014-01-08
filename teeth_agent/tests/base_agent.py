@@ -69,7 +69,7 @@ class TestHeartbeater(unittest.TestCase):
         # (100 - 50) * .5 = 25 (t becomes ~75)
         expected_stop_event_calls.append(mock.call(25.0))
         wait_responses.append(False)
-        # next heartbeat due at t=100
+        # next heartbeat due at t=180
         heartbeat_responses.append(180)
         # random interval multiplier is 0.4
         uniform_responses.append(0.4)
