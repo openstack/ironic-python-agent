@@ -84,10 +84,12 @@ class TestBaseTeethAgent(unittest.TestCase):
 
     @mock.patch('werkzeug.serving.run_simple')
     def test_run(self, mocked_run_simple):
+        self.agent.heartbeater = mock.Mock()
         self.agent.run()
         mocked_run_simple.assert_called_once_with('fake_host',
                                                   'fake_port',
                                                   self.agent.api)
+        self.agent.heartbeater.start.assert_called_once_with()
 
         self.assertRaises(RuntimeError, self.agent.run)
 
