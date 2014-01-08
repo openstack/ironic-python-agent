@@ -16,6 +16,7 @@ limitations under the License.
 
 import abc
 import collections
+import random
 import threading
 import time
 import uuid
@@ -27,6 +28,8 @@ from werkzeug import serving
 
 from teeth_agent import api
 from teeth_agent import errors
+from teeth_agent import hardware
+from teeth_agent import overlord_agent_api
 
 
 class TeethAgentStatus(encoding.Serializable):
@@ -124,23 +127,88 @@ class AsyncCommandResult(BaseCommandResult):
         pass
 
 
+class TeethAgentHeartbeater(threading.Thread):
+    # If we could wait at most N seconds between heartbeats (or in case of an
+    # error) we will instead wait r x N seconds, where r is a random value
+    # between these multipliers.
+    min_jitter_multiplier = 0.3
+    max_jitter_multiplier = 0.6
+
+    # Exponential backoff values used in case of an error. In reality we will
+    # only wait a portion of either of these delays based on the jitter
+    # multipliers.
+    initial_delay = 1.0
+    max_delay = 300.0
+    backoff_factor = 2.7
+
+    def __init__(self, agent):
+        super(TeethAgentHeartbeater, self).__init__()
+        self.agent = agent
+        self.api = overlord_agent_api.APIClient(agent.api_url)
+        self.stop_event = threading.Event()
+        self.error_delay = self.initial_delay
+
+    def run(self):
+        # The first heartbeat happens now
+        interval = 0
+
+        while not self.stop_event.wait(interval):
+            next_heartbeat_by = self.do_heartbeat()
+            interval_multiplier = random.uniform(self.min_jitter_multiplier,
+                                                 self.max_jitter_multiplier)
+            interval = (next_heartbeat_by - time.time()) * interval_multiplier
+
+    def do_heartbeat(self):
+        try:
+            deadline = self.api.heartbeat(
+                mac_addr=self.agent.get_agent_mac_addr(),
+                url=self.agent.get_agent_url(),
+                version=self.agent.version,
+                mode=self.agent.mode)
+            self.error_delay = self.initial_delay
+        except Exception:
+            deadline = time.time() + self.error_delay
+            self.error_delay = min(self.error_delay * self.backoff_factor,
+                                   self.max_delay)
+            pass
+
+        return deadline
+
+    def stop(self):
+        self.stop_event.set()
+        return self.join()
+
+
 class BaseTeethAgent(object):
-    def __init__(self, listen_host, listen_port, mode):
+    def __init__(self, listen_host, listen_port, api_url, mode):
         self.listen_host = listen_host
         self.listen_port = listen_port
+        self.api_url = api_url
         self.started_at = None
         self.mode = mode
+        self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = api.TeethAgentAPIServer(self)
         self.command_results = {}
         self.command_map = {}
+        self.heartbeater = TeethAgentHeartbeater(self)
+        self.hardware = hardware.HardwareInspector()
 
     def get_status(self):
         """Retrieve a serializable status."""
         return TeethAgentStatus(
             mode=self.mode,
             started_at=self.started_at,
-            version=pkg_resources.get_distribution('teeth-agent').version
+            version=self.version
         )
+
+    def get_agent_url(self):
+        # If we put this behind any sort of proxy (ie, stunnel) we're going to
+        # need to (re)think this.
+        return 'http://{host}:{port}/'.format(host=self.listen_host,
+                                              port=self.listen_port)
+
+    def get_agent_mac_addr(self):
+        return self.hardware.get_primary_mac_address()
 
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
@@ -169,4 +237,6 @@ class BaseTeethAgent(object):
             raise RuntimeError('Agent was already started')
 
         self.started_at = time.time()
+        self.heartbeater.start()
         serving.run_simple(self.listen_host, self.listen_port, self.api)
+        self.heartbeater.stop()

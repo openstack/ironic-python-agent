@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from teeth_agent import base
 
-
-class DecomAgent(base.BaseTeethAgent):
-    def __init__(self, listen_host, listen_port, api_url):
-        super(DecomAgent, self).__init__(listen_host,
-                                         listen_port,
-                                         api_url,
-                                         'DECOM')
+class HardwareInspector(object):
+    def get_primary_mac_address(self):
+        return open('/sys/class/net/eth0/address', 'r').read().strip('\n')

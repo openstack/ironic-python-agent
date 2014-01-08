@@ -14,8 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import argparse
+
 from teeth_agent import decom
 
 
 def run():
-    decom.DecomAgent('0.0.0.0', 9999).run()
+    parser = argparse.ArgumentParser(
+        description='Run the teeth-agent in decom mode')
+
+    parser.add_argument('--api-url',
+                        required=True,
+                        help='URL of the Teeth agent API')
+
+    args = parser.parse_args()
+
+    decom.DecomAgent('0.0.0.0', 9999, args.api_url).run()

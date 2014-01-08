@@ -1,4 +1,5 @@
 mock
+httmock
 coverage
 nose
 hacking
