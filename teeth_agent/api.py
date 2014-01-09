@@ -14,15 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import collections
-
 from teeth_rest import component
-from teeth_rest import encoding
 from teeth_rest import errors
 from teeth_rest import responses
 
 
-class AgentCommand(encoding.Serializable):
+class AgentCommand(object):
     def __init__(self, name, params):
         self.name = name
         self.params = params
@@ -39,13 +36,6 @@ class AgentCommand(encoding.Serializable):
                 'Command params must be a dictionary.')
 
         return cls(obj['name'], obj['params'])
-
-    def serialize(self, view):
-        """Turn a command into a dictionary."""
-        return collections.OrderedDict([
-            ('name', self.name),
-            ('params', self.params),
-        ])
 
 
 class TeethAgentAPI(component.APIComponent):
