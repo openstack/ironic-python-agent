@@ -75,6 +75,9 @@ class BaseCommandResult(encoding.Serializable):
     def is_done(self):
         return self.command_status != AgentCommandStatus.RUNNING
 
+    def join(self):
+        return self
+
 
 class SyncCommandResult(BaseCommandResult):
     def __init__(self, command_name, command_params, success, result_or_error):
