@@ -18,6 +18,12 @@ from teeth_agent import base
 from teeth_agent import errors
 
 
+class CacheImagesCommand(base.AsyncCommandResult):
+    def execute(self):
+        # TODO(russellhaering): Actually cache images
+        pass
+
+
 class StandbyAgent(base.BaseTeethAgent):
     def __init__(self, listen_host, listen_port, api_url):
         super(StandbyAgent, self).__init__(listen_host,
@@ -51,4 +57,4 @@ class StandbyAgent(base.BaseTeethAgent):
         for image_info in image_infos:
             self._validate_image_info(image_info)
 
-        # TODO(russellhaering): Actually cache images
+        return CacheImagesCommand(command_name, image_infos).start()

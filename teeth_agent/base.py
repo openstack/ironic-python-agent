@@ -102,10 +102,12 @@ class AsyncCommandResult(BaseCommandResult):
             return super(AsyncCommandResult, self).serialize(view)
 
     def start(self):
-        return self.execution_thread.start()
+        self.execution_thread.start()
+        return self
 
     def join(self):
-        return self.execution_thread.join()
+        self.execution_thread.join()
+        return self
 
     def run(self):
         try:
