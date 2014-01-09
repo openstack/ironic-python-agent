@@ -72,6 +72,9 @@ class BaseCommandResult(encoding.Serializable):
             ('command_result', self.command_result),
         ])
 
+    def is_done(self):
+        return self.command_status != AgentCommandStatus.RUNNING
+
 
 class SyncCommandResult(BaseCommandResult):
     def __init__(self, command_name, command_params, success, result_or_error):
@@ -108,6 +111,10 @@ class AsyncCommandResult(BaseCommandResult):
     def join(self):
         self.execution_thread.join()
         return self
+
+    def is_done(self):
+        with self.command_state_lock:
+            return super(AsyncCommandResult, self).is_done()
 
     def run(self):
         try:
@@ -224,6 +231,11 @@ class BaseTeethAgent(object):
 
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
+        if len(self.command_results) > 0:
+            last_command = self.command_results.values()[-1]
+            if not last_command.is_done():
+                raise errors.CommandExecutionError('agent is busy')
+
         if command_name not in self.command_map:
             raise errors.InvalidCommandError(command_name)
 
