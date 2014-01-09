@@ -75,7 +75,7 @@ class TestTeethAPI(unittest.TestCase):
 
         response = self._make_request(api_server,
                                       'POST',
-                                      '/v1.0/command',
+                                      '/v1.0/commands',
                                       data=command)
 
         self.assertEqual(mock_agent.execute_command.call_count, 1)
@@ -94,7 +94,7 @@ class TestTeethAPI(unittest.TestCase):
         invalid_command = {}
         response = self._make_request(api_server,
                                       'POST',
-                                      '/v1.0/command',
+                                      '/v1.0/commands',
                                       data=invalid_command)
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
@@ -107,7 +107,7 @@ class TestTeethAPI(unittest.TestCase):
         invalid_command = {'name': 'do_things', 'params': []}
         response = self._make_request(api_server,
                                       'POST',
-                                      '/v1.0/command',
+                                      '/v1.0/commands',
                                       data=invalid_command)
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
