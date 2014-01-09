@@ -201,6 +201,7 @@ class BaseTeethAgent(object):
         self.command_map = {}
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.HardwareInspector()
+        self.command_lock = threading.Lock()
 
     def get_status(self):
         """Retrieve a serializable status."""
@@ -231,29 +232,33 @@ class BaseTeethAgent(object):
 
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
-        if len(self.command_results) > 0:
-            last_command = self.command_results.values()[-1]
-            if not last_command.is_done():
-                raise errors.CommandExecutionError('agent is busy')
+        with self.command_lock:
+            if len(self.command_results) > 0:
+                last_command = self.command_results.values()[-1]
+                if not last_command.is_done():
+                    raise errors.CommandExecutionError('agent is busy')
 
-        if command_name not in self.command_map:
-            raise errors.InvalidCommandError(command_name)
+            if command_name not in self.command_map:
+                raise errors.InvalidCommandError(command_name)
 
-        try:
-            result = self.command_map[command_name](command_name, **kwargs)
-            if not isinstance(result, BaseCommandResult):
-                result = SyncCommandResult(command_name, kwargs, True, result)
-        except rest_errors.InvalidContentError as e:
-            # Any command may raise a InvalidContentError which will be
-            # returned to the caller directly.
-            raise e
-        except Exception as e:
-            # Other errors are considered command execution errors, and are
-            # recorded as an
-            result = SyncCommandResult(command_name, kwargs, False, e)
+            try:
+                result = self.command_map[command_name](command_name, **kwargs)
+                if not isinstance(result, BaseCommandResult):
+                    result = SyncCommandResult(command_name,
+                                               kwargs,
+                                               True,
+                                               result)
+            except rest_errors.InvalidContentError as e:
+                # Any command may raise a InvalidContentError which will be
+                # returned to the caller directly.
+                raise e
+            except Exception as e:
+                # Other errors are considered command execution errors, and are
+                # recorded as an
+                result = SyncCommandResult(command_name, kwargs, False, e)
 
-        self.command_results[result.id] = result
-        return result
+            self.command_results[result.id] = result
+            return result
 
     def run(self):
         """Run the Teeth Agent."""
