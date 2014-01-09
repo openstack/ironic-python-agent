@@ -188,7 +188,7 @@ class BaseTeethAgent(object):
         self.mode = mode
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = api.TeethAgentAPIServer(self)
-        self.command_results = {}
+        self.command_results = collections.OrderedDict()
         self.command_map = {}
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.HardwareInspector()
@@ -209,6 +209,16 @@ class BaseTeethAgent(object):
 
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
+
+    def list_command_results(self):
+        return self.command_results.values()
+
+    def get_command_result(self, result_id):
+        try:
+            return self.command_results[result_id]
+        except KeyError:
+            raise errors.RequestedObjectNotFoundError('Command Result',
+                                                      result_id)
 
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""

@@ -46,6 +46,13 @@ class InvalidCommandParamsError(errors.InvalidContentError):
         super(InvalidCommandParamsError, self).__init__(details)
 
 
+class RequestedObjectNotFoundError(errors.NotFound):
+    def __init__(self, type_descr, obj_id):
+        details = '{} with id {} not found.'.format(type_descr, obj_id)
+        super(RequestedObjectNotFoundError, self).__init__(details)
+        self.details = details
+
+
 class HeartbeatError(errors.RESTError):
     """Error raised when a heartbeat to the agent API fails."""
 
