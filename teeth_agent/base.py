@@ -219,9 +219,9 @@ class BaseTeethAgent(object):
             result = self.command_map[command_name](command_name, **kwargs)
             if not isinstance(result, BaseCommandResult):
                 result = SyncCommandResult(command_name, kwargs, True, result)
-        except rest_errors.ValidationError as e:
-            # Any command may raise a ValidationError which will be returned
-            # to the caller directly.
+        except rest_errors.InvalidContentError as e:
+            # Any command may raise a InvalidContentError which will be
+            # returned to the caller directly.
             raise e
         except Exception as e:
             # Other errors are considered command execution errors, and are
