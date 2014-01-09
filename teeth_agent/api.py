@@ -60,13 +60,13 @@ class TeethAgentAPI(component.APIComponent):
         methods.
         """
         self.route('GET', '/status', self.get_agent_status)
-        self.route('POST', '/command', self.execute_agent_command)
+        self.route('POST', '/commands', self.execute_command)
 
     def get_agent_status(self, request):
         """Get the status of the agent."""
         return responses.ItemResponse(self.agent.get_status())
 
-    def execute_agent_command(self, request):
+    def execute_command(self, request):
         """Execute a command on the agent."""
         command = AgentCommand.deserialize(self.parse_content(request))
         result = self.agent.execute_command(command.name, **command.params)
