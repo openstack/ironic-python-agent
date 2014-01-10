@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import mock
 import unittest
 
 from teeth_agent import errors
@@ -76,3 +77,63 @@ class TestBaseTeethAgent(unittest.TestCase):
                           self.agent.cache_images,
                           'cache_images',
                           {'foo': 'bar'})
+
+    def test_image_location(self):
+        image_info = self._build_fake_image_info()
+        location = standby._image_location(image_info)
+        self.assertEqual(location, '/tmp/fake_id')
+
+    @mock.patch('subprocess.call', autospec=True)
+    def test_write_image(self, call_mock):
+        image_info = self._build_fake_image_info()
+        configdrive = 'configdrive'
+        device = '/dev/sda'
+        location = standby._image_location(image_info)
+        command = ['sh', 'write_image.sh', configdrive, location, device]
+
+        standby._write_image(image_info,
+                             configdrive=configdrive,
+                             device=device)
+        call_mock.assert_called_once_with(command)
+
+    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_download_image(self, requests_mock, open_mock):
+        image_info = self._build_fake_image_info()
+        response = requests_mock.return_value
+        response.status_code = 200
+        response.iter_content.return_value = ['some', 'content']
+        open_mock.return_value.__enter__ = lambda s: s
+        open_mock.return_value.__exit__ = mock.Mock()
+
+        standby._download_image(image_info)
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              stream=True)
+        write = open_mock.return_value.write
+        write.assert_any_call('some')
+        write.assert_any_call('content')
+        self.assertEqual(write.call_count, 2)
+
+    @mock.patch('requests.get', autospec=True)
+    def test_download_image_bad_status(self, requests_mock):
+        image_info = self._build_fake_image_info()
+        response = requests_mock.return_value
+        response.status_code = 404
+        self.assertRaises(Exception, standby._download_image, image_info)
+
+    @mock.patch('teeth_agent.standby._verify_image', autospec=True)
+    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_download_image_verify_fails(self, requests_mock, open_mock,
+                                         verify_mock):
+        image_info = self._build_fake_image_info()
+        response = requests_mock.return_value
+        response.status_code = 200
+        verify_mock.return_value = False
+        self.assertRaises(Exception, standby._download_image, image_info)
+
+    def test_verify_image_success(self):
+        pass
+
+    def test_verify_image_failure(self):
+        pass

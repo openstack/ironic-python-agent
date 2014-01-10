@@ -26,17 +26,15 @@ def _image_location(image_info):
     return '/tmp/{}'.format(image_info['id'])
 
 
-def _write_image(image_info):
-    # TODO(jimrollenhagen) don't hardcode these
-    configdrive_dir = 'configdrive'
-    device = '/dev/sda'
+def _write_image(image_info, configdrive='configdrive', device='/dev/sda'):
+    # TODO(jimrollenhagen) don't hardcode these kwargs
     image = _image_location(image_info)
-    command = ['sh', 'write_image.sh', configdrive_dir, image, device]
+    command = ['sh', 'write_image.sh', configdrive, image, device]
     return subprocess.call(command)
 
 
 def _download_image(image_info):
-    resp = requests.get(image_info['url'][0], stream=True)
+    resp = requests.get(image_info['urls'][0], stream=True)
     if resp.status_code != 200:
         # TODO(jimrollenhagen) define a better exception
         raise Exception
@@ -84,7 +82,9 @@ class StandbyAgent(base.BaseTeethAgent):
                                            'STANDBY')
 
         self.command_map = {
-            'standby.cache_images': self.cache_images,
+            'cache_images': self.cache_images,
+            'prepare_image': self.prepare_image,
+            'run_image': self.run_image,
         }
 
     def _validate_image_info(self, image_info):
@@ -111,12 +111,12 @@ class StandbyAgent(base.BaseTeethAgent):
 
         return CacheImagesCommand(command_name, image_infos).start()
 
-    def prepare_image(self, image_info):
+    def prepare_image(self, command_name, image_info):
         self._validate_image_info(image_info)
 
         return PrepareImageCommand(command_name, image_info).start()
 
-    def run_image(self, image_info):
+    def run_image(self, command_name, image_info):
         self._validate_image_info(image_info)
 
         return RunImageCommand(command_name, image_info).start()
