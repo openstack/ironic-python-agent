@@ -14,13 +14,65 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import subprocess
+
+import requests
+
 from teeth_agent import base
 from teeth_agent import errors
+
+
+def _image_location(image_info):
+    return '/tmp/{}'.format(image_info['id'])
+
+
+def _write_image(image_info):
+    # TODO(jimrollenhagen) don't hardcode these
+    configdrive_dir = 'configdrive'
+    device = '/dev/sda'
+    image = _image_location(image_info)
+    command = ['sh', 'write_image.sh', configdrive_dir, image, device]
+    return subprocess.call(command)
+
+
+def _download_image(image_info):
+    resp = requests.get(image_info['url'][0], stream=True)
+    if resp.status_code != 200:
+        # TODO(jimrollenhagen) define a better exception
+        raise Exception
+    image_location = _image_location(image_info)
+    with open(image_location, 'wb') as f:
+        for chunk in resp.iter_content():
+            f.write(chunk)
+
+    if not _verify_image(image_info, image_location):
+        # TODO(jimrollenhagen) better exception
+        # TODO(jimrollenhagen) retry?
+        raise Exception
+
+
+def _verify_image(image_info, image_location):
+    # TODO(jimrollenhagen) verify the image checksum
+    return True
 
 
 class CacheImagesCommand(base.AsyncCommandResult):
     def execute(self):
         # TODO(russellhaering): Actually cache images
+        pass
+
+
+class PrepareImageCommand(base.AsyncCommandResult):
+    """Downloads and writes an image and configdrive to a device."""
+    def execute(self):
+        image_info = self.command_params
+        _download_image(image_info)
+        _write_image(image_info)
+
+
+class RunImageCommand(base.AsyncCommandResult):
+    def execute(self):
+        # TODO(jimrollenhagen): Actually run image, reboot/kexec/whatever
         pass
 
 
@@ -58,3 +110,13 @@ class StandbyAgent(base.BaseTeethAgent):
             self._validate_image_info(image_info)
 
         return CacheImagesCommand(command_name, image_infos).start()
+
+    def prepare_image(self, image_info):
+        self._validate_image_info(image_info)
+
+        return PrepareImageCommand(command_name, image_info).start()
+
+    def run_image(self, image_info):
+        self._validate_image_info(image_info)
+
+        return RunImageCommand(command_name, image_info).start()
