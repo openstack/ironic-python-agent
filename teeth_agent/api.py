@@ -14,15 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import collections
-
 from teeth_rest import component
-from teeth_rest import encoding
 from teeth_rest import errors
 from teeth_rest import responses
 
 
-class AgentCommand(encoding.Serializable):
+class AgentCommand(object):
     def __init__(self, name, params):
         self.name = name
         self.params = params
@@ -40,13 +37,6 @@ class AgentCommand(encoding.Serializable):
 
         return cls(obj['name'], obj['params'])
 
-    def serialize(self, view):
-        """Turn a command into a dictionary."""
-        return collections.OrderedDict([
-            ('name', self.name),
-            ('params', self.params),
-        ])
-
 
 class TeethAgentAPI(component.APIComponent):
     """The primary Teeth Agent API."""
@@ -60,16 +50,39 @@ class TeethAgentAPI(component.APIComponent):
         methods.
         """
         self.route('GET', '/status', self.get_agent_status)
-        self.route('POST', '/command', self.execute_agent_command)
+        self.route('GET', '/commands', self.list_command_results)
+        self.route('POST', '/commands', self.execute_command)
+        self.route('GET',
+                   '/commands/<string:result_id>',
+                   self.get_command_result)
 
     def get_agent_status(self, request):
         """Get the status of the agent."""
         return responses.ItemResponse(self.agent.get_status())
 
-    def execute_agent_command(self, request):
+    def list_command_results(self, request):
+        # TODO(russellhaering): pagination
+        command_results = self.agent.list_command_results()
+        return responses.PaginatedResponse(request,
+                                           command_results,
+                                           self.list_command_results,
+                                           None,
+                                           None)
+
+    def execute_command(self, request):
         """Execute a command on the agent."""
         command = AgentCommand.deserialize(self.parse_content(request))
         result = self.agent.execute_command(command.name, **command.params)
+        return responses.ItemResponse(result)
+
+    def get_command_result(self, request, result_id):
+        """Retrieve the result of a command."""
+        result = self.agent.get_command_result(result_id)
+
+        wait = request.args.get('wait')
+        if wait and wait.lower() == 'true':
+            result.join()
+
         return responses.ItemResponse(result)
 
 

@@ -72,6 +72,12 @@ class BaseCommandResult(encoding.Serializable):
             ('command_result', self.command_result),
         ])
 
+    def is_done(self):
+        return self.command_status != AgentCommandStatus.RUNNING
+
+    def join(self):
+        return self
+
 
 class SyncCommandResult(BaseCommandResult):
     def __init__(self, command_name, command_params, success, result_or_error):
@@ -102,10 +108,16 @@ class AsyncCommandResult(BaseCommandResult):
             return super(AsyncCommandResult, self).serialize(view)
 
     def start(self):
-        return self.execution_thread.start()
+        self.execution_thread.start()
+        return self
 
     def join(self):
-        return self.execution_thread.join()
+        self.execution_thread.join()
+        return self
+
+    def is_done(self):
+        with self.command_state_lock:
+            return super(AsyncCommandResult, self).is_done()
 
     def run(self):
         try:
@@ -188,10 +200,11 @@ class BaseTeethAgent(object):
         self.mode = mode
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = api.TeethAgentAPIServer(self)
-        self.command_results = {}
+        self.command_results = collections.OrderedDict()
         self.command_map = {}
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.HardwareInspector()
+        self.command_lock = threading.Lock()
 
     def get_status(self):
         """Retrieve a serializable status."""
@@ -210,26 +223,45 @@ class BaseTeethAgent(object):
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
 
+    def list_command_results(self):
+        return self.command_results.values()
+
+    def get_command_result(self, result_id):
+        try:
+            return self.command_results[result_id]
+        except KeyError:
+            raise errors.RequestedObjectNotFoundError('Command Result',
+                                                      result_id)
+
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
-        if command_name not in self.command_map:
-            raise errors.InvalidCommandError(command_name)
+        with self.command_lock:
+            if len(self.command_results) > 0:
+                last_command = self.command_results.values()[-1]
+                if not last_command.is_done():
+                    raise errors.CommandExecutionError('agent is busy')
 
-        try:
-            result = self.command_map[command_name](command_name, **kwargs)
-            if not isinstance(result, BaseCommandResult):
-                result = SyncCommandResult(command_name, kwargs, True, result)
-        except rest_errors.ValidationError as e:
-            # Any command may raise a ValidationError which will be returned
-            # to the caller directly.
-            raise e
-        except Exception as e:
-            # Other errors are considered command execution errors, and are
-            # recorded as an
-            result = SyncCommandResult(command_name, kwargs, False, e)
+            if command_name not in self.command_map:
+                raise errors.InvalidCommandError(command_name)
 
-        self.command_results[result.id] = result
-        return result
+            try:
+                result = self.command_map[command_name](command_name, **kwargs)
+                if not isinstance(result, BaseCommandResult):
+                    result = SyncCommandResult(command_name,
+                                               kwargs,
+                                               True,
+                                               result)
+            except rest_errors.InvalidContentError as e:
+                # Any command may raise a InvalidContentError which will be
+                # returned to the caller directly.
+                raise e
+            except Exception as e:
+                # Other errors are considered command execution errors, and are
+                # recorded as an
+                result = SyncCommandResult(command_name, kwargs, False, e)
+
+            self.command_results[result.id] = result
+            return result
 
     def run(self):
         """Run the Teeth Agent."""

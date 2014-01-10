@@ -67,8 +67,9 @@ class TestBaseTeethAgent(unittest.TestCase):
                           invalid_info)
 
     def test_cache_images_success(self):
-        self.agent.cache_images('cache_images',
-                                [self._build_fake_image_info()])
+        result = self.agent.cache_images('cache_images',
+                                         [self._build_fake_image_info()])
+        result.join()
 
     def test_cache_images_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
