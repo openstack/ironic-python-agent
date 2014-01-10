@@ -21,10 +21,10 @@ import threading
 import time
 import uuid
 
+from cherrypy import wsgiserver
 import pkg_resources
 from teeth_rest import encoding
 from teeth_rest import errors as rest_errors
-from werkzeug import serving
 
 from teeth_agent import api
 from teeth_agent import errors
@@ -270,5 +270,13 @@ class BaseTeethAgent(object):
 
         self.started_at = time.time()
         self.heartbeater.start()
-        serving.run_simple(self.listen_host, self.listen_port, self.api)
+
+        listen_address = (self.listen_host, self.listen_port)
+        server = wsgiserver.CherryPyWSGIServer(listen_address, self.api)
+
+        try:
+            server.start()
+        except BaseException:
+            server.stop()
+
         self.heartbeater.stop()

@@ -152,13 +152,19 @@ class TestBaseTeethAgent(unittest.TestCase):
                           'do_something',
                           foo='bar')
 
-    @mock.patch('werkzeug.serving.run_simple')
-    def test_run(self, mocked_run_simple):
+    @mock.patch('cherrypy.wsgiserver.CherryPyWSGIServer', autospec=True)
+    def test_run(self, wsgi_server_cls):
+        wsgi_server = wsgi_server_cls.return_value
+        wsgi_server.start.side_effect = KeyboardInterrupt()
+
         self.agent.heartbeater = mock.Mock()
         self.agent.run()
-        mocked_run_simple.assert_called_once_with('fake_host',
-                                                  'fake_port',
-                                                  self.agent.api)
+
+        listen_addr = (self.agent.listen_host, self.agent.listen_port)
+        wsgi_server_cls.assert_called_once_with(listen_addr, self.agent.api)
+        wsgi_server.start.assert_called_once_with()
+        wsgi_server.stop.assert_called_once_with()
+
         self.agent.heartbeater.start.assert_called_once_with()
 
         self.assertRaises(RuntimeError, self.agent.run)
