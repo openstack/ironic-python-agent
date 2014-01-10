@@ -113,3 +113,44 @@ class TestTeethAPI(unittest.TestCase):
         data = json.loads(response.data)
         self.assertEqual(data['details'],
                          'Command params must be a dictionary.')
+
+    def test_list_command_results(self):
+        cmd_result = base.SyncCommandResult('do_things',
+                                            {'key': 'value'},
+                                            True,
+                                            {'test': 'result'})
+
+        mock_agent = mock.create_autospec(base.BaseTeethAgent)
+        mock_agent.list_command_results.return_value = [
+            cmd_result,
+        ]
+
+        api_server = api.TeethAgentAPIServer(mock_agent)
+        response = self._make_request(api_server, 'GET', '/v1.0/commands')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.data), {
+            'items': [
+                cmd_result.serialize(encoding.SerializationViews.PUBLIC),
+            ],
+            'links': [],
+        })
+
+    def test_get_command_result(self):
+        cmd_result = base.SyncCommandResult('do_things',
+                                            {'key': 'value'},
+                                            True,
+                                            {'test': 'result'})
+
+        serialized_cmd_result = cmd_result.serialize(
+            encoding.SerializationViews.PUBLIC)
+
+        mock_agent = mock.create_autospec(base.BaseTeethAgent)
+        mock_agent.get_command_result.return_value = cmd_result
+
+        api_server = api.TeethAgentAPIServer(mock_agent)
+        response = self._make_request(api_server,
+                                      'GET',
+                                      '/v1.0/commands/abc123')
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data, serialized_cmd_result)
