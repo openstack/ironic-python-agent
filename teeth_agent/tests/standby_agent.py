@@ -83,13 +83,14 @@ class TestBaseTeethAgent(unittest.TestCase):
         location = standby._image_location(image_info)
         self.assertEqual(location, '/tmp/fake_id')
 
+    @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('subprocess.call', autospec=True)
-    def test_write_image(self, call_mock):
+    def test_write_image(self, call_mock, open_mock):
         image_info = self._build_fake_image_info()
         configdrive = 'configdrive'
         device = '/dev/sda'
         location = standby._image_location(image_info)
-        command = ['sh', 'write_image.sh', configdrive, location, device]
+        command = ['sh', 'shell/makefs.sh', configdrive, location, device]
 
         standby._write_image(image_info,
                              configdrive=configdrive,

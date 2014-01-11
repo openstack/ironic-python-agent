@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import json
 import subprocess
+import uuid
 
 import requests
 
@@ -29,7 +31,21 @@ def _image_location(image_info):
 def _write_image(image_info, configdrive='configdrive', device='/dev/sda'):
     # TODO(jimrollenhagen) don't hardcode these kwargs
     image = _image_location(image_info)
-    command = ['sh', 'write_image.sh', configdrive, image, device]
+    filename = '{}/meta_data.json'.format(configdrive)
+    with open(filename, 'w') as f:
+        data = {
+            'uuid': str(uuid.uuid4()),
+            'admin_pass': 'password',
+            'name': 'teeth',
+            'random_seed': str(uuid.uuid4()).encode('base64'),
+            'hostname': 'teeth-test',
+            'availability_zone': 'teeth',
+            'launch_index': 0,
+        }
+        data = json.dumps(data)
+        f.write(data)
+
+    command = ['sh', 'shell/makefs.sh', configdrive, image, device]
     return subprocess.call(command)
 
 
