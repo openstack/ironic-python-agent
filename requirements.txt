@@ -1,4 +1,4 @@
 Werkzeug==0.9.4
 requests==2.0.0
 cherrypy==3.2.4
--e git+git@github.com:racker/teeth-rest.git@c62ac56cd4273e54592768ad94bb72c7c5e92508#egg=teeth_rest-master
+-e git+git@github.com:racker/teeth-rest.git@c62ac56cd4273e54592768ad94bb72c7c5e92508#egg=teeth_rest
