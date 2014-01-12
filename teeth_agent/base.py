@@ -23,6 +23,7 @@ import uuid
 
 from cherrypy import wsgiserver
 import pkg_resources
+import structlog
 from teeth_rest import encoding
 from teeth_rest import errors as rest_errors
 
@@ -157,11 +158,13 @@ class TeethAgentHeartbeater(threading.Thread):
         super(TeethAgentHeartbeater, self).__init__()
         self.agent = agent
         self.api = overlord_agent_api.APIClient(agent.api_url)
+        self.log = structlog.get_logger(api_url=agent.api_url)
         self.stop_event = threading.Event()
         self.error_delay = self.initial_delay
 
     def run(self):
         # The first heartbeat happens now
+        self.log.info('starting heartbeater')
         interval = 0
 
         while not self.stop_event.wait(interval):
@@ -169,6 +172,7 @@ class TeethAgentHeartbeater(threading.Thread):
             interval_multiplier = random.uniform(self.min_jitter_multiplier,
                                                  self.max_jitter_multiplier)
             interval = (next_heartbeat_by - time.time()) * interval_multiplier
+            self.log.info('sleeping before next heatbeat', interval=interval)
 
     def do_heartbeat(self):
         try:
@@ -178,7 +182,9 @@ class TeethAgentHeartbeater(threading.Thread):
                 version=self.agent.version,
                 mode=self.agent.mode)
             self.error_delay = self.initial_delay
-        except Exception:
+            self.log.info('heartbeat successful')
+        except Exception as e:
+            self.log.error('error sending heartbeat', exception=e)
             deadline = time.time() + self.error_delay
             self.error_delay = min(self.error_delay * self.backoff_factor,
                                    self.max_delay)
@@ -187,6 +193,7 @@ class TeethAgentHeartbeater(threading.Thread):
         return deadline
 
     def stop(self):
+        self.log.info('stopping heartbeater')
         self.stop_event.set()
         return self.join()
 
