@@ -172,7 +172,7 @@ class TeethAgentHeartbeater(threading.Thread):
             interval_multiplier = random.uniform(self.min_jitter_multiplier,
                                                  self.max_jitter_multiplier)
             interval = (next_heartbeat_by - time.time()) * interval_multiplier
-            self.log.info('sleeping before next heatbeat', interval=interval)
+            self.log.info('sleeping before next heartbeat', interval=interval)
 
     def do_heartbeat(self):
         try:
