@@ -16,6 +16,7 @@ limitations under the License.
 
 import argparse
 
+from teeth_agent import logging
 from teeth_agent import standby
 
 
@@ -28,5 +29,5 @@ def run():
                         help='URL of the Teeth agent API')
 
     args = parser.parse_args()
-
+    logging.configure()
     standby.StandbyAgent('0.0.0.0', 9999, args.api_url).run()
