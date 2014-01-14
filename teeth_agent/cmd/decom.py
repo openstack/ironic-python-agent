@@ -34,7 +34,7 @@ def run():
                               ' to auto-detect. A common use-case would be to'
                               ' override this with \'localhost\', in order to'
                               ' run behind a proxy, while leaving'
-                              ' advertise-host unspecified.')
+                              ' advertise-host unspecified.'))
 
     parser.add_argument('--listen-port',
                         default=9999,
