@@ -28,11 +28,6 @@ def run():
                         required=True,
                         help='URL of the Teeth agent API')
 
-    parser.add_argument('--listen-port',
-                        default=9999,
-                        type=int,
-                        help='The port to listen on')
-
     parser.add_argument('--listen-host',
                         type=str,
                         help=('The IP address to listen on. Leave this blank'
@@ -40,6 +35,11 @@ def run():
                               ' a public-facing address to advertise will be'
                               ' auto-detected by establishing a connection to'
                               ' the agent API.'))
+
+    parser.add_argument('--listen-port',
+                        default=9999,
+                        type=int,
+                        help='The port to listen on')
 
     parser.add_argument('--advertise-port',
                         type=int,
