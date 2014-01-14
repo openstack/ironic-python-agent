@@ -201,9 +201,15 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class BaseTeethAgent(object):
-    def __init__(self, listen_port, advertise_port, api_url, mode):
-        self.listen_host = None
+    def __init__(self,
+                 listen_host,
+                 listen_port,
+                 advertise_port,
+                 api_url,
+                 mode):
+        self.listen_host = listen_host
         self.listen_port = listen_port
+        self.advertise_host = None
         self.advertise_port = advertise_port
         self.api_url = api_url
         self.started_at = None
@@ -228,7 +234,7 @@ class BaseTeethAgent(object):
     def get_agent_url(self):
         # If we put this behind any sort of proxy (ie, stunnel) we're going to
         # need to (re)think this.
-        return 'http://{host}:{port}/'.format(host=self.listen_host,
+        return 'http://{host}:{port}/'.format(host=self.advertise_host,
                                               port=self.advertise_port)
 
     def get_api_facing_ip_address(self):
@@ -303,7 +309,11 @@ class BaseTeethAgent(object):
     def run(self):
         """Run the Teeth Agent."""
         self.started_at = time.time()
-        self.listen_host = self.get_api_facing_ip_address()
+        self.advertise_host = self.get_api_facing_ip_address()
+
+        if not self.listen_host:
+            self.listen_host = self.advertise_host
+
         self.heartbeater.start()
 
         listen_address = (self.listen_host, self.listen_port)

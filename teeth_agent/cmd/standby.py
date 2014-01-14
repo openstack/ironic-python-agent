@@ -33,6 +33,14 @@ def run():
                         type=int,
                         help='The port to listen on')
 
+    parser.add_argument('--listen-host',
+                        type=str,
+                        help=('The IP address to listen on. Leave this blank'
+                              ' to auto-detect. Even when this is specified,'
+                              ' a public-facing address to advertise will be'
+                              ' auto-detected by establishing a connection to'
+                              ' the agent API.'))
+
     parser.add_argument('--advertise-port',
                         type=int,
                         help=('The port to advertise. Defaults to listen-port.'
@@ -41,4 +49,7 @@ def run():
     args = parser.parse_args()
     logging.configure()
     advertise_port = args.advertise_port or args.listen_port
-    standby.StandbyAgent(args.listen_port, advertise_port, args.api_url).run()
+    standby.StandbyAgent(args.listen_host,
+                         args.listen_port,
+                         advertise_port,
+                         args.api_url).run()
