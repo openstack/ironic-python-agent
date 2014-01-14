@@ -204,12 +204,13 @@ class BaseTeethAgent(object):
     def __init__(self,
                  listen_host,
                  listen_port,
+                 advertise_host,
                  advertise_port,
                  api_url,
                  mode):
         self.listen_host = listen_host
         self.listen_port = listen_port
-        self.advertise_host = None
+        self.advertise_host = advertise_host
         self.advertise_port = advertise_port
         self.api_url = api_url
         self.started_at = None
@@ -309,7 +310,9 @@ class BaseTeethAgent(object):
     def run(self):
         """Run the Teeth Agent."""
         self.started_at = time.time()
-        self.advertise_host = self.get_api_facing_ip_address()
+
+        if not self.advertise_host:
+            self.advertise_host = self.get_api_facing_ip_address()
 
         if not self.listen_host:
             self.listen_host = self.advertise_host
