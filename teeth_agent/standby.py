@@ -15,8 +15,8 @@ limitations under the License.
 """
 
 import json
+import os
 import subprocess
-import uuid
 
 import requests
 
@@ -28,22 +28,20 @@ def _image_location(image_info):
     return '/tmp/{}'.format(image_info['id'])
 
 
+def _write_local_config_drive(location, data):
+    """Writes a config_drive directory at `location`."""
+    if not os.path.exists(location):
+        os.makedirs(location)
+
+    filename = '{}/meta_data.json'.format(location)
+    with open(filename, 'w') as f:
+        json_data = json.dumps(data)
+        f.write(json_data)
+
+
 def _write_image(image_info, configdrive='configdrive', device='/dev/sda'):
     # TODO(jimrollenhagen) don't hardcode these kwargs
     image = _image_location(image_info)
-    filename = '{}/meta_data.json'.format(configdrive)
-    with open(filename, 'w') as f:
-        data = {
-            'uuid': str(uuid.uuid4()),
-            'admin_pass': 'password',
-            'name': 'teeth',
-            'random_seed': str(uuid.uuid4()).encode('base64'),
-            'hostname': 'teeth-test',
-            'availability_zone': 'teeth',
-            'launch_index': 0,
-        }
-        data = json.dumps(data)
-        f.write(data)
 
     command = ['sh', 'shell/makefs.sh', configdrive, image, device]
     return subprocess.call(command)
@@ -79,9 +77,14 @@ class CacheImagesCommand(base.AsyncCommandResult):
 class PrepareImageCommand(base.AsyncCommandResult):
     """Downloads and writes an image and configdrive to a device."""
     def execute(self):
-        image_info = self.command_params
+        image_info = self.command_params['image_info']
+        location = self.command_params['configdrive']['location']
+        data = self.command_params['configdrive']['data']
+        device = self.command_params['device']
+
         _download_image(image_info)
-        _write_image(image_info)
+        _write_local_config_drive(location, data)
+        _write_image(image_info, location, device)
 
 
 class RunImageCommand(base.AsyncCommandResult):
@@ -127,10 +130,10 @@ class StandbyAgent(base.BaseTeethAgent):
 
         return CacheImagesCommand(command_name, image_infos).start()
 
-    def prepare_image(self, command_name, image_info):
-        self._validate_image_info(image_info)
+    def prepare_image(self, command_name, **command_params):
+        self._validate_image_info(command_params['image_info'])
 
-        return PrepareImageCommand(command_name, image_info).start()
+        return PrepareImageCommand(command_name, command_params).start()
 
     def run_image(self, command_name, image_info):
         self._validate_image_info(image_info)
