@@ -17,8 +17,10 @@ limitations under the License.
 import abc
 import collections
 import random
+import socket
 import threading
 import time
+import urlparse
 import uuid
 
 from cherrypy import wsgiserver
@@ -199,8 +201,8 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class BaseTeethAgent(object):
-    def __init__(self, listen_host, listen_port, api_url, mode):
-        self.listen_host = listen_host
+    def __init__(self, listen_port, api_url, mode):
+        self.listen_host = None
         self.listen_port = listen_port
         self.api_url = api_url
         self.started_at = None
@@ -212,6 +214,7 @@ class BaseTeethAgent(object):
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.HardwareInspector()
         self.command_lock = threading.Lock()
+        self.log = structlog.get_logger()
 
     def get_status(self):
         """Retrieve a serializable status."""
@@ -226,6 +229,32 @@ class BaseTeethAgent(object):
         # need to (re)think this.
         return 'http://{host}:{port}/'.format(host=self.listen_host,
                                               port=self.listen_port)
+
+    def get_api_facing_ip_address(self):
+        """Note: this will raise an exception if anything goes wrong. That is
+        expected to be fine, if we can't get to the agent API there isn't much
+        point in starting up. Just crash and rely on the process manager to
+        restart us in a sane fashion.
+        """
+        api_addr = urlparse.urlparse(self.api_url)
+
+        if api_addr.scheme not in ('http', 'https'):
+            raise RuntimeError('API URL scheme must be one of \'http\' or '
+                               '\'https\'.')
+
+        api_port = api_addr.port or {'http': 80, 'https': 443}[api_addr.scheme]
+        api_host = api_addr.hostname
+
+        self.log.info('attempting to resolve listen IP',
+                      api_host=api_host,
+                      api_port=api_port)
+
+        conn = socket.create_connection((api_host, api_port))
+        listen_ip = conn.getsockname()[0]
+        conn.close()
+        self.log.info('resolved listen IP', listen_ip=listen_ip)
+
+        return listen_ip
 
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
@@ -272,10 +301,8 @@ class BaseTeethAgent(object):
 
     def run(self):
         """Run the Teeth Agent."""
-        if self.started_at:
-            raise RuntimeError('Agent was already started')
-
         self.started_at = time.time()
+        self.listen_host = self.get_api_facing_ip_address()
         self.heartbeater.start()
 
         listen_address = (self.listen_host, self.listen_port)
