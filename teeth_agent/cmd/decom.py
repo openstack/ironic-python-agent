@@ -31,15 +31,21 @@ def run():
     parser.add_argument('--listen-host',
                         type=str,
                         help=('The IP address to listen on. Leave this blank'
-                              ' to auto-detect. Even when this is specified,'
-                              ' a public-facing address to advertise will be'
-                              ' auto-detected by establishing a connection to'
-                              ' the agent API.'))
+                              ' to auto-detect. A common use-case would be to'
+                              ' override this with \'localhost\', in order to'
+                              ' run behind a proxy, while leaving'
+                              ' advertise-host unspecified.')
 
     parser.add_argument('--listen-port',
                         default=9999,
                         type=int,
                         help='The port to listen on')
+
+    parser.add_argument('--advertise-host',
+                        type=str,
+                        help=('The IP address to advertise. Leave this blank'
+                              ' to auto-detect by calling \'getsockname()\' on'
+                              ' a connection to the agent API.'))
 
     parser.add_argument('--advertise-port',
                         type=int,
@@ -49,4 +55,8 @@ def run():
     args = parser.parse_args()
     logging.configure()
     advertise_port = args.advertise_port or args.listen_port
-    decom.DecomAgent(args.listen_port, advertise_port, args.api_url).run()
+    decom.DecomAgent(args.listen_host,
+                     args.listen_port,
+                     args.advertise_host,
+                     advertise_port,
+                     args.api_url).run()
