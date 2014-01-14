@@ -54,7 +54,7 @@ def _download_image(image_info):
         raise Exception
     image_location = _image_location(image_info)
     with open(image_location, 'wb') as f:
-        for chunk in resp.iter_content():
+        for chunk in resp.iter_content(1024 * 1024):
             f.write(chunk)
 
     if not _verify_image(image_info, image_location):
