@@ -201,9 +201,10 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class BaseTeethAgent(object):
-    def __init__(self, listen_port, api_url, mode):
+    def __init__(self, listen_port, advertise_port, api_url, mode):
         self.listen_host = None
         self.listen_port = listen_port
+        self.advertise_port = advertise_port
         self.api_url = api_url
         self.started_at = None
         self.mode = mode
@@ -228,7 +229,7 @@ class BaseTeethAgent(object):
         # If we put this behind any sort of proxy (ie, stunnel) we're going to
         # need to (re)think this.
         return 'http://{host}:{port}/'.format(host=self.listen_host,
-                                              port=self.listen_port)
+                                              port=self.advertise_port)
 
     def get_api_facing_ip_address(self):
         """Note: this will raise an exception if anything goes wrong. That is

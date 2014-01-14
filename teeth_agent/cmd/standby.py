@@ -28,6 +28,17 @@ def run():
                         required=True,
                         help='URL of the Teeth agent API')
 
+    parser.add_argument('--listen-port',
+                        default=9999,
+                        type=int,
+                        help='The port to listen on')
+
+    parser.add_argument('--advertise-port',
+                        type=int,
+                        help=('The port to advertise. Defaults to listen-port.'
+                              ' Useful when running behind a proxy.'))
+
     args = parser.parse_args()
     logging.configure()
-    standby.StandbyAgent(9999, args.api_url).run()
+    advertise_port = args.advertise_port or args.listen_port
+    standby.StandbyAgent(args.listen_port, advertise_port, args.api_url).run()
