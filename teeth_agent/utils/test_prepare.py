@@ -40,7 +40,7 @@ def main():
                 }
             },
             'configdrive': {
-                'location': 'configdrive2',
+                'location': '/tmp/configdrive',
                 'data': {
                     'uuid': str(uuid.uuid4()),
                     'admin_pass': 'password',
