@@ -22,7 +22,7 @@ from teeth_agent import standby
 
 class TestBaseTeethAgent(unittest.TestCase):
     def setUp(self):
-        self.agent = standby.StandbyAgent('fake_host', 'fake_port', 'fake_api')
+        self.agent = standby.StandbyAgent(9999, 9999, 'fake_api')
 
     def test_standby_mode(self):
         self.assertEqual(self.agent.mode, 'STANDBY')

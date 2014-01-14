@@ -113,9 +113,9 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.encoder = encoding.RESTJSONEncoder(
             encoding.SerializationViews.PUBLIC,
             indent=4)
-        self.agent = base.BaseTeethAgent('fake_host',
-                                         'fake_port',
-                                         'fake_api',
+        self.agent = base.BaseTeethAgent(9999,
+                                         9999,
+                                         'https://fake_api.example.org:8081/',
                                          'TEST_MODE')
 
     def assertEqualEncoded(self, a, b):
@@ -157,17 +157,17 @@ class TestBaseTeethAgent(unittest.TestCase):
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
 
+        self.agent.get_api_facing_ip_address = mock.Mock()
+        self.agent.get_api_facing_ip_address.return_value = '1.2.3.4'
         self.agent.heartbeater = mock.Mock()
         self.agent.run()
 
-        listen_addr = (self.agent.listen_host, self.agent.listen_port)
+        listen_addr = ('1.2.3.4', 9999)
         wsgi_server_cls.assert_called_once_with(listen_addr, self.agent.api)
         wsgi_server.start.assert_called_once_with()
         wsgi_server.stop.assert_called_once_with()
 
         self.agent.heartbeater.start.assert_called_once_with()
-
-        self.assertRaises(RuntimeError, self.agent.run)
 
     def test_async_command_success(self):
         result = FooTeethAgentCommandResult('foo_command', {'fail': False})
