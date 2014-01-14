@@ -120,7 +120,9 @@ class TestBaseTeethAgent(unittest.TestCase):
         image_info = self._build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 404
-        self.assertRaises(Exception, standby._download_image, image_info)
+        self.assertRaises(errors.ImageDownloadError,
+                          standby._download_image,
+                          image_info)
 
     @mock.patch('teeth_agent.standby._verify_image', autospec=True)
     @mock.patch('__builtin__.open', autospec=True)

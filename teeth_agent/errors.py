@@ -61,3 +61,15 @@ class HeartbeatError(errors.RESTError):
     def __init__(self, details):
         super(HeartbeatError, self).__init__()
         self.details = details
+
+
+class ImageDownloadError(errors.RESTError):
+    """Error raised when an image cannot be downloaded."""
+
+    message = 'Error downloading image.'
+
+    def __init__(self, image_id, image_url):
+        details = 'Image with id {} not found at url {}.'.format(image_id,
+                                                                 image_url)
+        super(ImageDownloadError, self).__init__()
+        self.details = details
