@@ -115,6 +115,7 @@ class TestBaseTeethAgent(unittest.TestCase):
             indent=4)
         self.agent = base.BaseTeethAgent(None,
                                          9999,
+                                         None,
                                          9999,
                                          'https://fake_api.example.org:8081/',
                                          'TEST_MODE')
