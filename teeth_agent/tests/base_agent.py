@@ -113,7 +113,8 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.encoder = encoding.RESTJSONEncoder(
             encoding.SerializationViews.PUBLIC,
             indent=4)
-        self.agent = base.BaseTeethAgent(9999,
+        self.agent = base.BaseTeethAgent(None,
+                                         9999,
                                          9999,
                                          'https://fake_api.example.org:8081/',
                                          'TEST_MODE')
