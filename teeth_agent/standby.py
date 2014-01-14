@@ -48,19 +48,24 @@ def _write_image(image_info, configdrive='configdrive', device='/dev/sda'):
 
 
 def _download_image(image_info):
-    # TODO(jimrollenhagen) try all URLs
-    url = image_info['urls'][0]
-    resp = requests.get(url, stream=True)
-    if resp.status_code != 200:
-        raise errors.ImageDownloadError(image_info['id'], url)
-    image_location = _image_location(image_info)
-    with open(image_location, 'wb') as f:
-        for chunk in resp.iter_content(1024 * 1024):
-            f.write(chunk)
+    for index, url in enumerate(image_info['urls']):
+        try:
+            url = image_info['urls'][0]
+            resp = requests.get(url, stream=True)
+            if resp.status_code != 200:
+                raise errors.ImageDownloadError(image_info['id'], url)
+            image_location = _image_location(image_info)
+            with open(image_location, 'wb') as f:
+                for chunk in resp.iter_content(1024 * 1024):
+                    f.write(chunk)
 
-    if not _verify_image(image_info, image_location):
-        # TODO(jimrollenhagen) retry download?
-        raise errors.ImageChecksumError(image_info['id'])
+            if not _verify_image(image_info, image_location):
+                # TODO(jimrollenhagen) retry download?
+                raise errors.ImageChecksumError(image_info['id'])
+        except Exception:
+            continue
+        else:
+            return index
 
 
 def _verify_image(image_info, image_location):
