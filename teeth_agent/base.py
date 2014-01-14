@@ -324,7 +324,8 @@ class BaseTeethAgent(object):
 
         try:
             server.start()
-        except BaseException:
+        except BaseException as e:
+            self.log.error('shutting down', exception=e)
             server.stop()
 
         self.heartbeater.stop()
