@@ -30,4 +30,4 @@ def run():
 
     args = parser.parse_args()
     logging.configure()
-    standby.StandbyAgent('0.0.0.0', 9999, args.api_url).run()
+    standby.StandbyAgent(9999, args.api_url).run()

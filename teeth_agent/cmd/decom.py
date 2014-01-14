@@ -31,4 +31,4 @@ def run():
     args = parser.parse_args()
 
     logging.configure()
-    decom.DecomAgent('0.0.0.0', 9999, args.api_url).run()
+    decom.DecomAgent(9999, args.api_url).run()
