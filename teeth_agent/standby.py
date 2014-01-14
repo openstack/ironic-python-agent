@@ -59,9 +59,8 @@ def _download_image(image_info):
             f.write(chunk)
 
     if not _verify_image(image_info, image_location):
-        # TODO(jimrollenhagen) better exception
-        # TODO(jimrollenhagen) retry?
-        raise Exception
+        # TODO(jimrollenhagen) retry download?
+        raise errors.ImageChecksumError(image_info['id'])
 
 
 def _verify_image(image_info, image_location):

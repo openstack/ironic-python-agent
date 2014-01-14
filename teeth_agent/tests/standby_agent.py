@@ -133,7 +133,9 @@ class TestBaseTeethAgent(unittest.TestCase):
         response = requests_mock.return_value
         response.status_code = 200
         verify_mock.return_value = False
-        self.assertRaises(Exception, standby._download_image, image_info)
+        self.assertRaises(errors.ImageChecksumError,
+                          standby._download_image,
+                          image_info)
 
     def test_verify_image_success(self):
         pass

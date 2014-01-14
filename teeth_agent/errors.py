@@ -73,3 +73,15 @@ class ImageDownloadError(errors.RESTError):
                                                                  image_url)
         super(ImageDownloadError, self).__init__()
         self.details = details
+
+
+class ImageChecksumError(errors.RESTError):
+    """Error raised when an image fails to verify against its checksum."""
+
+    message = 'Error verifying image checksum.'
+
+    def __init__(self, image_id):
+        details = 'Image with id {} failed to verify against checksum.'
+        details = details.format(image_id)
+        super(ImageChecksumError, self).__init__()
+        self.details = details
