@@ -45,7 +45,7 @@ def _write_image(image_info, configdrive='configdrive', device='/dev/sda'):
 
     cwd = os.path.dirname(os.path.realpath(__file__))
     script = os.path.join(cwd, 'shell/makefs.sh')
-    command = ['sh', script, configdrive, image, device]
+    command = ['/bin/bash', script, configdrive, image, device]
     return subprocess.call(command)
 
 
