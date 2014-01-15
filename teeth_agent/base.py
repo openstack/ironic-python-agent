@@ -183,7 +183,7 @@ class TeethAgentHeartbeater(threading.Thread):
                 mac_addr=self.agent.get_agent_mac_addr(),
                 url=self.agent.get_agent_url(),
                 version=self.agent.version,
-                mode=self.agent.mode)
+                mode=self.agent.mode_implementation.name)
             self.error_delay = self.initial_delay
             self.log.info('heartbeat successful')
         except Exception as e:
@@ -214,19 +214,17 @@ class TeethAgent(object):
                  listen_port,
                  advertise_host,
                  advertise_port,
-                 api_url,
-                 mode):
+                 api_url):
         self.listen_host = listen_host
         self.listen_port = listen_port
         self.advertise_host = advertise_host
         self.advertise_port = advertise_port
         self.api_url = api_url
         self.started_at = None
-        self.mode = mode
+        self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = api.TeethAgentAPIServer(self)
         self.command_results = collections.OrderedDict()
-        self.command_map = {}
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.HardwareInspector()
         self.command_lock = threading.Lock()
@@ -235,7 +233,7 @@ class TeethAgent(object):
     def get_status(self):
         """Retrieve a serializable status."""
         return TeethAgentStatus(
-            mode=self.mode,
+            mode=self.mode_implementation.name,
             started_at=self.started_at,
             version=self.version
         )
@@ -302,11 +300,12 @@ class TeethAgent(object):
                 if not last_command.is_done():
                     raise errors.CommandExecutionError('agent is busy')
 
-            if command_name not in self.command_map:
+            if command_name not in self.mode_implementation:
                 raise errors.InvalidCommandError(command_name)
 
             try:
-                result = self.command_map[command_name](command_name, **kwargs)
+                command_fn = self.mode_implementation[command_name]
+                result = command_fn(command_name, **kwargs)
                 if not isinstance(result, BaseCommandResult):
                     result = SyncCommandResult(command_name,
                                                kwargs,
@@ -333,6 +332,8 @@ class TeethAgent(object):
 
         if not self.listen_host:
             self.listen_host = self.advertise_host
+
+        self.mode_implementation = self.load_mode_implementation('standby')
 
         self.heartbeater.start()
 
