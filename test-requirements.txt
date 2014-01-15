@@ -1,5 +1,5 @@
 mock
-httmock==1.0.7
+httmock
 coverage
 nose
 hacking
