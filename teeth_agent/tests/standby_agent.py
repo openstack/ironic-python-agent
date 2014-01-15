@@ -112,7 +112,7 @@ class TestBaseTeethAgent(unittest.TestCase):
 
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('subprocess.call', autospec=True)
-    def test_write_image_success(self, call_mock, open_mock):
+    def test_write_image(self, call_mock, open_mock):
         image_info = self._build_fake_image_info()
         configdrive = 'configdrive'
         device = '/dev/sda'
@@ -127,16 +127,7 @@ class TestBaseTeethAgent(unittest.TestCase):
                              device)
         call_mock.assert_called_once_with(command)
 
-    @mock.patch('__builtin__.open', autospec=True)
-    @mock.patch('subprocess.call', autospec=True)
-    def test_write_image_failure(self, call_mock, open_mock):
-        image_info = self._build_fake_image_info()
-        configdrive = 'configdrive'
-        device = '/dev/sda'
-        location = standby._image_location(image_info)
-        standby_dir = os.path.dirname(os.path.realpath(standby.__file__))
-        script = os.path.join(standby_dir, 'shell/makefs.sh')
-        command = ['/bin/bash', script, configdrive, location, device]
+        call_mock.reset_mock()
         call_mock.return_value = 1
 
         self.assertRaises(errors.ImageWriteError,
