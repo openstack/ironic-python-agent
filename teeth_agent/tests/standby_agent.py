@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 import mock
+import os
 import unittest
 
 from teeth_agent import errors
@@ -90,7 +91,9 @@ class TestBaseTeethAgent(unittest.TestCase):
         configdrive = 'configdrive'
         device = '/dev/sda'
         location = standby._image_location(image_info)
-        command = ['sh', 'shell/makefs.sh', configdrive, location, device]
+        standby_dir = os.path.dirname(os.path.realpath(standby.__file__))
+        script = os.path.join(standby_dir, 'shell/makefs.sh')
+        command = ['/bin/bash', script, configdrive, location, device]
 
         standby._write_image(image_info,
                              configdrive=configdrive,
