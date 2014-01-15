@@ -182,8 +182,28 @@ class TestBaseTeethAgent(unittest.TestCase):
                           standby._download_image,
                           image_info)
 
-    def test_verify_image_success(self):
-        pass
+    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch('hashlib.sha1', autospec=True)
+    @mock.patch('hashlib.md5', autospec=True)
+    def test_verify_image_success(self, md5_mock, sha1_mock, open_mock):
+        image_info = self._build_fake_image_info()
+        image_info['hashes']['sha1'] = image_info['hashes']['md5']
+        md5_mock.return_value = image_info['hashes']['md5']
+        sha1_mock.return_value = image_info['hashes']['sha1']
+        image_location = '/foo/bar'
 
-    def test_verify_image_failure(self):
-        pass
+        verified = standby._verify_image(image_info, image_location)
+        self.assertTrue(verified)
+        # make sure we only check one hash, even though both are valid
+        self.assertEqual(md5_mock.call_count + sha1_mock.call_count, 1)
+
+    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch('hashlib.md5', autospec=True)
+    def test_verify_image_failure(self, md5_mock, open_mock):
+        image_info = self._build_fake_image_info()
+        md5_mock.return_value = 'wrong hash'
+        image_location = '/foo/bar'
+
+        verified = standby._verify_image(image_info, image_location)
+        self.assertFalse(verified)
+        self.assertEqual(md5_mock.call_count, 1)
