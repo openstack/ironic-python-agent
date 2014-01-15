@@ -208,7 +208,7 @@ class BaseAgentMode(dict):
         self.name = name
 
 
-class BaseTeethAgent(object):
+class TeethAgent(object):
     def __init__(self,
                  listen_host,
                  listen_port,
