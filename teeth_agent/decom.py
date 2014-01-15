@@ -17,16 +17,6 @@ limitations under the License.
 from teeth_agent import base
 
 
-class DecomAgent(base.BaseTeethAgent):
-    def __init__(self,
-                 listen_host,
-                 listen_port,
-                 advertise_host,
-                 advertise_port,
-                 api_url):
-        super(DecomAgent, self).__init__(listen_host,
-                                         listen_port,
-                                         advertise_host,
-                                         advertise_port,
-                                         api_url,
-                                         'DECOM')
+class DecomMode(base.BaseTeethAgent):
+    def __init__(self):
+        super(DecomMode, self).__init__('DECOM')
