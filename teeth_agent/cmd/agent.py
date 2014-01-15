@@ -16,13 +16,14 @@ limitations under the License.
 
 import argparse
 
+from teeth_agent import base
 from teeth_agent import logging
-from teeth_agent import standby
 
 
 def run():
     parser = argparse.ArgumentParser(
-        description='Run the teeth-agent in standby mode')
+        description=('An agent that handles decomissioning and provisioning'
+                     ' on behalf of teeth-overlord.'))
 
     parser.add_argument('--api-url',
                         required=True,
@@ -55,8 +56,8 @@ def run():
     args = parser.parse_args()
     logging.configure()
     advertise_port = args.advertise_port or args.listen_port
-    standby.StandbyAgent(args.listen_host,
-                         args.listen_port,
-                         args.advertise_host,
-                         advertise_port,
-                         args.api_url).run()
+    base.TeethAgent(args.listen_host,
+                    args.listen_port,
+                    args.advertise_host,
+                    advertise_port,
+                    args.api_url).run()
