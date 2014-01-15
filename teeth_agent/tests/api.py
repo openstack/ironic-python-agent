@@ -24,6 +24,7 @@ from werkzeug import wrappers
 
 from teeth_rest import encoding
 
+from teeth_agent import agent
 from teeth_agent import api
 from teeth_agent import base
 
@@ -44,7 +45,7 @@ class TestTeethAPI(unittest.TestCase):
         return client.open(self._get_env_builder(method, path, data, query))
 
     def test_get_agent_status(self):
-        status = base.TeethAgentStatus('TEST_MODE', time.time(), 'v72ac9')
+        status = agent.TeethAgentStatus('TEST_MODE', time.time(), 'v72ac9')
         mock_agent = mock.MagicMock()
         mock_agent.get_status.return_value = status
         api_server = api.TeethAgentAPIServer(mock_agent)
@@ -120,7 +121,7 @@ class TestTeethAPI(unittest.TestCase):
                                             True,
                                             {'test': 'result'})
 
-        mock_agent = mock.create_autospec(base.BaseTeethAgent)
+        mock_agent = mock.create_autospec(agent.TeethAgent)
         mock_agent.list_command_results.return_value = [
             cmd_result,
         ]
@@ -144,7 +145,7 @@ class TestTeethAPI(unittest.TestCase):
         serialized_cmd_result = cmd_result.serialize(
             encoding.SerializationViews.PUBLIC)
 
-        mock_agent = mock.create_autospec(base.BaseTeethAgent)
+        mock_agent = mock.create_autospec(agent.TeethAgent)
         mock_agent.get_command_result.return_value = cmd_result
 
         api_server = api.TeethAgentAPIServer(mock_agent)
