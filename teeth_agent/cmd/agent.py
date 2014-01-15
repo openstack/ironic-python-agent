@@ -16,7 +16,7 @@ limitations under the License.
 
 import argparse
 
-from teeth_agent import base
+from teeth_agent import agent
 from teeth_agent import logging
 
 
@@ -56,8 +56,8 @@ def run():
     args = parser.parse_args()
     logging.configure()
     advertise_port = args.advertise_port or args.listen_port
-    base.TeethAgent(args.listen_host,
-                    args.listen_port,
-                    args.advertise_host,
-                    advertise_port,
-                    args.api_url).run()
+    agent.build_agent(args.api_url,
+                      args.listen_host,
+                      args.listen_port,
+                      args.advertise_host,
+                      advertise_port).run()

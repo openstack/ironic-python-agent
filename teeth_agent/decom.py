@@ -17,6 +17,6 @@ limitations under the License.
 from teeth_agent import base
 
 
-class DecomMode(base.BaseTeethAgent):
+class DecomMode(base.BaseAgentMode):
     def __init__(self):
         super(DecomMode, self).__init__('DECOM')
