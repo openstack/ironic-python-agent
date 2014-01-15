@@ -40,13 +40,15 @@ def _write_local_config_drive(location, data):
 
 
 def _write_image(image_info, configdrive_dir, device):
-    # TODO(jimrollenhagen) don't hardcode these kwargs
     image = _image_location(image_info)
 
     cwd = os.path.dirname(os.path.realpath(__file__))
     script = os.path.join(cwd, 'shell/makefs.sh')
     command = ['/bin/bash', script, configdrive_dir, image, device]
-    return subprocess.call(command)
+
+    exit_code = subprocess.call(command)
+    if exit_code != 0:
+        raise errors.ImageWriteError(exit_code, device)
 
 
 def _request_url(image_info, url):

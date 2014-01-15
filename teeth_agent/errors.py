@@ -84,3 +84,15 @@ class ImageChecksumError(errors.RESTError):
         details = details.format(image_id)
         super(ImageChecksumError, self).__init__()
         self.details = details
+
+
+class ImageWriteError(errors.RESTError):
+    """Error raised when an image cannot be written to a device."""
+
+    message = 'Error writing image to device.'
+
+    def __init__(self, exit_code, device):
+        details = 'Writing image to device {} failed with exit code {}.'
+        details = details.format(device, exit_code)
+        super(ImageWriteError, self).__init__()
+        self.details = details
