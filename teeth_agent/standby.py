@@ -39,13 +39,13 @@ def _write_local_config_drive(location, data):
         f.write(json_data)
 
 
-def _write_image(image_info, configdrive='configdrive', device='/dev/sda'):
+def _write_image(image_info, configdrive_dir, device):
     # TODO(jimrollenhagen) don't hardcode these kwargs
     image = _image_location(image_info)
 
     cwd = os.path.dirname(os.path.realpath(__file__))
     script = os.path.join(cwd, 'shell/makefs.sh')
-    command = ['/bin/bash', script, configdrive, image, device]
+    command = ['/bin/bash', script, configdrive_dir, image, device]
     return subprocess.call(command)
 
 
