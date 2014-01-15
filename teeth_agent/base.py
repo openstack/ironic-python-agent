@@ -200,6 +200,13 @@ class TeethAgentHeartbeater(threading.Thread):
         return self.join()
 
 
+class BaseAgentMode(dict):
+    def __init__(self, name):
+        super(BaseAgentMode, self).__init__()
+        self.log = structlog.get_logger(agent_mode=name)
+        self.name = name
+
+
 class BaseTeethAgent(object):
     def __init__(self,
                  listen_host,
