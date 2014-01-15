@@ -25,6 +25,7 @@ import uuid
 
 from cherrypy import wsgiserver
 import pkg_resources
+from stevedore import driver
 import structlog
 from teeth_rest import encoding
 from teeth_rest import errors as rest_errors
@@ -270,6 +271,15 @@ class BaseTeethAgent(object):
         self.log.info('resolved listen IP', listen_ip=listen_ip)
 
         return listen_ip
+
+    def load_mode_implementation(self, mode_name):
+        mgr = driver.DriverManager(
+            namespace='teeth_agent.modes',
+            name=mode_name,
+            invoke_on_load=True,
+            invoke_args=[],
+        )
+        return mgr.driver
 
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
