@@ -25,9 +25,16 @@ class CacheImagesCommand(base.AsyncCommandResult):
 
 
 class StandbyAgent(base.BaseTeethAgent):
-    def __init__(self, listen_host, listen_port, api_url):
+    def __init__(self,
+                 listen_host,
+                 listen_port,
+                 advertise_host,
+                 advertise_port,
+                 api_url):
         super(StandbyAgent, self).__init__(listen_host,
                                            listen_port,
+                                           advertise_host,
+                                           advertise_port,
                                            api_url,
                                            'STANDBY')
 
