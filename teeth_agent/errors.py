@@ -68,9 +68,8 @@ class ImageDownloadError(errors.RESTError):
 
     message = 'Error downloading image.'
 
-    def __init__(self, image_id, image_url):
-        details = 'Image with id {} not found at url {}.'.format(image_id,
-                                                                 image_url)
+    def __init__(self, image_id):
+        details = 'Could not download image with id {}.'.format(image_id)
         super(ImageDownloadError, self).__init__()
         self.details = details
 

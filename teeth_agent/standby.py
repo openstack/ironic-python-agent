@@ -49,25 +49,33 @@ def _write_image(image_info, configdrive='configdrive', device='/dev/sda'):
     return subprocess.call(command)
 
 
-def _download_image(image_info):
-    for index, url in enumerate(image_info['urls']):
-        try:
-            url = image_info['urls'][0]
-            resp = requests.get(url, stream=True)
-            if resp.status_code != 200:
-                raise errors.ImageDownloadError(image_info['id'], url)
-            image_location = _image_location(image_info)
-            with open(image_location, 'wb') as f:
-                for chunk in resp.iter_content(1024 * 1024):
-                    f.write(chunk)
+def _request_url(image_info, url):
+    resp = requests.get(url, stream=True)
+    if resp.status_code != 200:
+        raise errors.ImageDownloadError(image_info['id'])
+    return resp
 
-            if not _verify_image(image_info, image_location):
-                # TODO(jimrollenhagen) retry download?
-                raise errors.ImageChecksumError(image_info['id'])
-        except Exception:
+
+def _download_image(image_info):
+    resp = None
+    for url in image_info['urls']:
+        try:
+            resp = _request_url(image_info, url)
+        except errors.ImageDownloadError:
             continue
         else:
-            return index
+            break
+    if resp is None:
+        raise errors.ImageDownloadError(image_info['id'])
+
+    image_location = _image_location(image_info)
+    with open(image_location, 'wb') as f:
+        for chunk in resp.iter_content(1024 * 1024):
+            f.write(chunk)
+
+    if not _verify_image(image_info, image_location):
+        # TODO(jimrollenhagen) retry download?
+        raise errors.ImageChecksumError(image_info['id'])
 
 
 def _verify_image(image_info, image_location):
