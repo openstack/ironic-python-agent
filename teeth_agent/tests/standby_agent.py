@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import json
 import mock
 import os
 import unittest
@@ -83,6 +84,31 @@ class TestBaseTeethAgent(unittest.TestCase):
         image_info = self._build_fake_image_info()
         location = standby._image_location(image_info)
         self.assertEqual(location, '/tmp/fake_id')
+
+    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch('os.makedirs', autospec=True)
+    @mock.patch('os.path', autospec=True)
+    def test_write_local_config_drive(self, path_mock, makedirs_mock,
+                                      open_mock):
+        open_mock.return_value.__enter__ = lambda s: s
+        open_mock.return_value.__exit__ = mock.Mock()
+        write_mock = open_mock.return_value.write
+        path_mock.exists.return_value = True
+        path_mock.join.return_value = '/tmp/configdrive/meta_data.json'
+
+        location = '/tmp/configdrive'
+        filename = '{}/meta_data.json'.format(location)
+        data = {'uuid': 'test', 'hostname': 'teeth-test'}
+
+        standby._write_local_config_drive(location, data)
+        path_mock.exists.assert_called_once_with(location)
+        self.assertEqual(makedirs_mock.call_count, 0)
+        open_mock.assert_called_once_with(filename, 'w')
+        write_mock.assert_called_once_with(json.dumps(data))
+
+        path_mock.exists.return_value = False
+        standby._write_local_config_drive(location, data)
+        self.assertEqual(makedirs_mock.call_count, 1)
 
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('subprocess.call', autospec=True)

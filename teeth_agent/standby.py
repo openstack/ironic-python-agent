@@ -34,7 +34,7 @@ def _write_local_config_drive(location, data):
     if not os.path.exists(location):
         os.makedirs(location)
 
-    filename = '{}/meta_data.json'.format(location)
+    filename = os.path.join(location, 'meta_data.json')
     with open(filename, 'w') as f:
         json_data = json.dumps(data)
         f.write(json_data)
@@ -77,7 +77,6 @@ def _download_image(image_info):
             f.write(chunk)
 
     if not _verify_image(image_info, image_location):
-        # TODO(jimrollenhagen) retry download?
         raise errors.ImageChecksumError(image_info['id'])
 
 
