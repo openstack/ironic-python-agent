@@ -73,8 +73,11 @@ def _download_image(image_info):
 
     image_location = _image_location(image_info)
     with open(image_location, 'wb') as f:
-        for chunk in resp.iter_content(1024 * 1024):
-            f.write(chunk)
+        try:
+            for chunk in resp.iter_content(1024 * 1024):
+                f.write(chunk)
+        except Exception:
+            raise errors.ImageDownloadError(image_info['id'])
 
     if not _verify_image(image_info, image_location):
         raise errors.ImageChecksumError(image_info['id'])
