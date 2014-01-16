@@ -61,3 +61,35 @@ class HeartbeatError(errors.RESTError):
     def __init__(self, details):
         super(HeartbeatError, self).__init__()
         self.details = details
+
+
+class ImageDownloadError(errors.RESTError):
+    """Error raised when an image cannot be downloaded."""
+
+    message = 'Error downloading image.'
+
+    def __init__(self, image_id):
+        super(ImageDownloadError, self).__init__()
+        self.details = 'Could not download image with id {}.'.format(image_id)
+
+
+class ImageChecksumError(errors.RESTError):
+    """Error raised when an image fails to verify against its checksum."""
+
+    message = 'Error verifying image checksum.'
+
+    def __init__(self, image_id):
+        super(ImageChecksumError, self).__init__()
+        self.details = 'Image with id {} failed to verify against checksum.'
+        self.details = self.details.format(image_id)
+
+
+class ImageWriteError(errors.RESTError):
+    """Error raised when an image cannot be written to a device."""
+
+    message = 'Error writing image to device.'
+
+    def __init__(self, exit_code, device):
+        super(ImageWriteError, self).__init__()
+        self.details = 'Writing image to device {} failed with exit code {}.'
+        self.details = self.details.format(device, exit_code)
