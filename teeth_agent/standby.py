@@ -89,7 +89,7 @@ def _verify_image(image_info, image_location):
         algo = getattr(hashlib, k, None)
         if algo is None:
             continue
-        hash_ = algo(open(image_location).read())
+        hash_ = algo(open(image_location).read()).hexdigest()
         if hash_ == v:
             return True
     return False
