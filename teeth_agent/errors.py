@@ -69,9 +69,8 @@ class ImageDownloadError(errors.RESTError):
     message = 'Error downloading image.'
 
     def __init__(self, image_id):
-        details = 'Could not download image with id {}.'.format(image_id)
         super(ImageDownloadError, self).__init__()
-        self.details = details
+        self.details = 'Could not download image with id {}.'.format(image_id)
 
 
 class ImageChecksumError(errors.RESTError):
@@ -80,10 +79,9 @@ class ImageChecksumError(errors.RESTError):
     message = 'Error verifying image checksum.'
 
     def __init__(self, image_id):
-        details = 'Image with id {} failed to verify against checksum.'
-        details = details.format(image_id)
         super(ImageChecksumError, self).__init__()
-        self.details = details
+        self.details = 'Image with id {} failed to verify against checksum.'
+        self.details = self.details.format(image_id)
 
 
 class ImageWriteError(errors.RESTError):
@@ -92,7 +90,6 @@ class ImageWriteError(errors.RESTError):
     message = 'Error writing image to device.'
 
     def __init__(self, exit_code, device):
-        details = 'Writing image to device {} failed with exit code {}.'
-        details = details.format(device, exit_code)
         super(ImageWriteError, self).__init__()
-        self.details = details
+        self.details = 'Writing image to device {} failed with exit code {}.'
+        self.details = self.details.format(device, exit_code)
