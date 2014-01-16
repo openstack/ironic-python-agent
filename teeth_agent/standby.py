@@ -139,13 +139,14 @@ class StandbyAgent(base.BaseTeethAgent):
                 msg = 'Image is missing \'{}\' field.'.format(field)
                 raise errors.InvalidCommandParamsError(msg)
 
-        if type(image_info['urls']) != list:
+        if type(image_info['urls']) != list or not image_info['urls']:
             raise errors.InvalidCommandParamsError(
-                'Image \'urls\' must be a list.')
+                'Image \'urls\' must be a list with at least one element.')
 
-        if type(image_info['hashes']) != dict:
+        if type(image_info['hashes']) != dict or not image_info['hashes']:
             raise errors.InvalidCommandParamsError(
-                'Image \'hashes\' must be a dictionary.')
+                'Image \'hashes\' must be a dictionary with at least one '
+                'element.')
 
     def cache_images(self, command_name, image_infos):
         if type(image_infos) != list:

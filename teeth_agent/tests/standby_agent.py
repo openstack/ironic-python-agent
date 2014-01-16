@@ -61,9 +61,25 @@ class TestBaseTeethAgent(unittest.TestCase):
                           self.agent._validate_image_info,
                           invalid_info)
 
+    def test_validate_image_info_empty_urls(self):
+        invalid_info = self._build_fake_image_info()
+        invalid_info['urls'] = []
+
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.agent._validate_image_info,
+                          invalid_info)
+
     def test_validate_image_info_invalid_hashes(self):
         invalid_info = self._build_fake_image_info()
         invalid_info['hashes'] = 'this_is_not_a_dict'
+
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.agent._validate_image_info,
+                          invalid_info)
+
+    def test_validate_image_info_empty_hashes(self):
+        invalid_info = self._build_fake_image_info()
+        invalid_info['hashes'] = {}
 
         self.assertRaises(errors.InvalidCommandParamsError,
                           self.agent._validate_image_info,
