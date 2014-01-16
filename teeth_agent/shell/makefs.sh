@@ -1,9 +1,6 @@
 #!/bin/bash
 #
-# This is hardcoded for the image available here:
-# http://cloud-images.ubuntu.com/saucy/current/saucy-server-cloudimg-amd64-disk1.img
-#
-# It should work with almost any image that uses MBR partitioning and doesn't already
+# This should work with almost any image that uses MBR partitioning and doesn't already
 # have 3 or more partitions.
 
 set -e
