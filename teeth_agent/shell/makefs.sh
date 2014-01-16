@@ -22,6 +22,10 @@ DEVICE="$3"
 [[ -f $IMAGEFILE ]] || usage "$2 (IMAGEFILE) is not a file"
 [[ -b $DEVICE ]] || usage "$3 (DEVICE) is not a block device"
 
+# In production this will be replaced with secure erasing the drives
+# For now we need to ensure there aren't any old (GPT) partitions on the drive
+dd if=/dev/zero of=$DEVICE bs=512 count=10
+
 qemu-img convert -O raw $IMAGEFILE $DEVICE
 
 # Create small partition at the end of the device
