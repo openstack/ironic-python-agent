@@ -16,7 +16,6 @@ limitations under the License.
 
 import json
 import mock
-import os
 import unittest
 
 from teeth_agent import errors
@@ -133,8 +132,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         configdrive = 'configdrive'
         device = '/dev/sda'
         location = standby._image_location(image_info)
-        standby_dir = os.path.dirname(os.path.realpath(standby.__file__))
-        script = os.path.join(standby_dir, 'shell/makefs.sh')
+        script = standby._path_to_script('shell/makefs.sh')
         command = ['/bin/bash', script, configdrive, location, device]
         call_mock.return_value = 0
 
@@ -226,3 +224,20 @@ class TestBaseTeethAgent(unittest.TestCase):
         verified = standby._verify_image(image_info, image_location)
         self.assertFalse(verified)
         self.assertEqual(md5_mock.call_count, 1)
+
+    @mock.patch('subprocess.call', autospec=True)
+    def test_run_image(self, call_mock):
+        script = standby._path_to_script('shell/reboot.sh')
+        command = ['/bin/bash', script]
+        call_mock.return_value = 0
+
+        standby._run_image()
+        call_mock.assert_called_once_with(command)
+
+        call_mock.reset_mock()
+        call_mock.return_value = 1
+
+        self.assertRaises(errors.SystemRebootError,
+                          standby._run_image)
+
+        call_mock.assert_called_once_with(command)

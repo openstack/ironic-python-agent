@@ -40,11 +40,15 @@ def _write_local_config_drive(location, data):
         f.write(json_data)
 
 
+def _path_to_script(script):
+    cwd = os.path.dirname(os.path.realpath(__file__))
+    return os.path.join(cwd, script)
+
+
 def _write_image(image_info, configdrive_dir, device):
     image = _image_location(image_info)
 
-    cwd = os.path.dirname(os.path.realpath(__file__))
-    script = os.path.join(cwd, 'shell/makefs.sh')
+    script = _path_to_script('shell/makefs.sh')
     command = ['/bin/bash', script, configdrive_dir, image, device]
 
     exit_code = subprocess.call(command)
@@ -95,6 +99,15 @@ def _verify_image(image_info, image_location):
     return False
 
 
+def _run_image():
+    script = _path_to_script('shell/reboot.sh')
+    command = ['/bin/bash', script]
+    # this should never return if successful
+    exit_code = subprocess.call(command)
+    if exit_code != 0:
+        raise errors.SystemRebootError(exit_code)
+
+
 class CacheImagesCommand(base.AsyncCommandResult):
     def execute(self):
         # TODO(russellhaering): Actually cache images
@@ -116,8 +129,7 @@ class PrepareImageCommand(base.AsyncCommandResult):
 
 class RunImageCommand(base.AsyncCommandResult):
     def execute(self):
-        # TODO(jimrollenhagen): Actually run image, reboot/kexec/whatever
-        pass
+        _run_image()
 
 
 class StandbyAgent(base.BaseTeethAgent):
