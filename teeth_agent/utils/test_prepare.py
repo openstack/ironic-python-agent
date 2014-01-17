@@ -16,12 +16,22 @@ limitations under the License.
 
 import json
 import requests
-import time
 import uuid
 
 
 def main():
     headers = {'Content-Type': 'application/json'}
+
+    metadata = {
+        'uuid': str(uuid.uuid4()),
+        'admin_pass': 'password',
+        'name': 'teeth',
+        'random_seed': str(uuid.uuid4()).encode('base64'),
+        'hostname': str(uuid.uuid4()),
+        'availability_zone': 'teeth',
+        'launch_index': 0
+    }
+    base64_metadata = json.dumps(metadata).encode('base64')
 
     data = {
         'name': 'prepare_image',
@@ -40,21 +50,14 @@ def main():
                 }
             },
             'configdrive': {
+                'meta_data.json': base64_metadata,
                 'location': '/tmp/configdrive',
-                'data': {
-                    'uuid': str(uuid.uuid4()),
-                    'admin_pass': 'password',
-                    'name': 'teeth',
-                    'random_seed': str(uuid.uuid4()).encode('base64'),
-                    'hostname': str(uuid.uuid4()),
-                    'availability_zone': 'teeth',
-                    'launch_index': 0
-                }
             },
             'device': '/dev/sda'
         }
     }
 
+    #print(json.dumps(data))
     res = requests.post('http://localhost:9999/v1.0/commands',
                         data=json.dumps(data),
                         headers=headers)
@@ -62,11 +65,9 @@ def main():
     print(res.json())
 
     job_id = res.json()['id']
-    while res.json()['command_status'] == 'RUNNING':
-        time.sleep(1)
-        url = 'http://localhost:9999/v1.0/commands/{}'.format(job_id)
-        res = requests.get(url)
-        print(res.json())
+    url = 'http://localhost:9999/v1.0/commands/{}'.format(job_id)
+    res = requests.get(url, params={'wait': 'true'})
+    print(res.json())
 
 if __name__ == '__main__':
     main()

@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import json
 import mock
 import os
 import unittest
@@ -110,17 +109,17 @@ class TestBaseTeethAgent(unittest.TestCase):
         open_mock.return_value.__exit__ = mock.Mock()
         write_mock = open_mock.return_value.write
         path_mock.exists.return_value = True
-        path_mock.join.return_value = '/tmp/configdrive/meta_data.json'
 
         location = '/tmp/configdrive'
         filename = '{}/meta_data.json'.format(location)
-        data = {'uuid': 'test', 'hostname': 'teeth-test'}
+        path_mock.join.return_value = filename
+        data = {'meta_data.json': 'contents'.encode('base64')}
 
         standby._write_local_config_drive(location, data)
         path_mock.exists.assert_called_once_with(location)
         self.assertEqual(makedirs_mock.call_count, 0)
         open_mock.assert_called_once_with(filename, 'w')
-        write_mock.assert_called_once_with(json.dumps(data))
+        write_mock.assert_called_once_with('contents')
 
         path_mock.exists.return_value = False
         standby._write_local_config_drive(location, data)

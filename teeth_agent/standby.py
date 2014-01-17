@@ -15,7 +15,6 @@ limitations under the License.
 """
 
 import hashlib
-import json
 import os
 import subprocess
 
@@ -34,10 +33,11 @@ def _write_local_config_drive(location, data):
     if not os.path.exists(location):
         os.makedirs(location)
 
-    filename = os.path.join(location, 'meta_data.json')
-    with open(filename, 'w') as f:
-        json_data = json.dumps(data)
-        f.write(json_data)
+    for path, contents in data.iteritems():
+        filename = os.path.join(location, path)
+        with open(filename, 'w') as f:
+            json_data = contents.decode('base64')
+            f.write(json_data)
 
 
 def _write_image(image_info, configdrive_dir, device):
