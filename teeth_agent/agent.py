@@ -221,7 +221,7 @@ def _get_api_facing_ip_address(api_url):
 def _load_mode_implementation(mode_name):
     mgr = driver.DriverManager(
         namespace='teeth_agent.modes',
-        name=mode_name,
+        name=mode_name.lower(),
         invoke_on_load=True,
         invoke_args=[],
     )
@@ -233,16 +233,26 @@ def build_agent(api_url,
                 listen_port,
                 advertise_host,
                 advertise_port):
+    log = structlog.get_logger()
 
     if not advertise_host:
+        log.info('resolving API-facing IP address')
         advertise_host = _get_api_facing_ip_address(api_url)
+        log.info('resolved API-facing IP address', ip_address=advertise_host)
 
     if not listen_host:
         listen_host = advertise_host
 
-    # TODO(russellhaering): Load this from the configuration API
-    mode_name = 'standby'
+    mac_addr = hardware.HardwareInspector().get_primary_mac_address()
+    api_client = overlord_agent_api.APIClient(api_url)
 
+    log.info('fetching agent configuration from API',
+             api_url=api_url,
+             mac_addr=mac_addr)
+    config = api_client.get_configuration(mac_addr)
+    mode_name = config['mode']
+
+    log.info('loading mode implementation', mode=mode_name)
     mode_implementation = _load_mode_implementation(mode_name)
 
     return TeethAgent(api_url,
