@@ -36,8 +36,8 @@ def _write_local_config_drive(location, data):
     for path, contents in data.iteritems():
         filename = os.path.join(location, path)
         with open(filename, 'w') as f:
-            json_data = contents.decode('base64')
-            f.write(json_data)
+            file_data = contents.decode('base64')
+            f.write(file_data)
 
 
 def _write_image(image_info, configdrive_dir, device):
