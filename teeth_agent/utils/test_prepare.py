@@ -51,7 +51,6 @@ def main():
             },
             'configdrive': {
                 'meta_data.json': base64_metadata,
-                'location': '/tmp/configdrive',
             },
             'device': '/dev/sda'
         }

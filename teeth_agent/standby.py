@@ -24,6 +24,10 @@ from teeth_agent import base
 from teeth_agent import errors
 
 
+def _configdrive_location():
+    return '/tmp/configdrive'
+
+
 def _image_location(image_info):
     return '/tmp/{}'.format(image_info['id'])
 
@@ -105,8 +109,8 @@ class PrepareImageCommand(base.AsyncCommandResult):
     """Downloads and writes an image and configdrive to a device."""
     def execute(self):
         image_info = self.command_params['image_info']
-        location = self.command_params['configdrive']['location']
-        data = self.command_params['configdrive']['data']
+        location = _configdrive_location()
+        data = self.command_params['configdrive']
         device = self.command_params['device']
 
         _download_image(image_info)
