@@ -65,7 +65,7 @@ class TestStandbyMode(unittest.TestCase):
         invalid_info['urls'] = []
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent._validate_image_info,
+                          self.agent_mode._validate_image_info,
                           invalid_info)
 
     def test_validate_image_info_invalid_hashes(self):
@@ -81,7 +81,7 @@ class TestStandbyMode(unittest.TestCase):
         invalid_info['hashes'] = {}
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent._validate_image_info,
+                          self.agent_mode._validate_image_info,
                           invalid_info)
 
     def test_cache_images_success(self):
