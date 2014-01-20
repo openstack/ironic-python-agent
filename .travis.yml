@@ -4,3 +4,10 @@ install:
 - pip install tox
 script:
 - tox
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net#teeth-dev"
+    use_notice: true
+    skip_join: true
+  email: false
