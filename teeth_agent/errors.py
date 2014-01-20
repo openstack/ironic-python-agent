@@ -93,3 +93,14 @@ class ImageWriteError(errors.RESTError):
         super(ImageWriteError, self).__init__()
         self.details = 'Writing image to device {} failed with exit code {}.'
         self.details = self.details.format(device, exit_code)
+
+
+class SystemRebootError(errors.RESTError):
+    """Error raised when a system cannot reboot."""
+
+    message = 'Error rebooting system.'
+
+    def __init__(self, exit_code):
+        super(SystemRebootError, self).__init__()
+        self.details = 'Reboot script failed with exit code {}.'
+        self.details = self.details.format(exit_code)
