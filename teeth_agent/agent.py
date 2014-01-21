@@ -158,12 +158,9 @@ class TeethAgent(object):
                 if not last_command.is_done():
                     raise errors.CommandExecutionError('agent is busy')
 
-            if command_name not in self.mode_implementation:
-                raise errors.InvalidCommandError(command_name)
-
             try:
-                command_fn = self.mode_implementation[command_name]
-                result = command_fn(command_name, **kwargs)
+                result = self.mode_implementation.execute(command_name,
+                                                          **kwargs)
                 if not isinstance(result, base.BaseCommandResult):
                     result = base.SyncCommandResult(command_name,
                                                     kwargs,

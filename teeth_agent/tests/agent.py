@@ -144,7 +144,8 @@ class TestBaseAgent(unittest.TestCase):
 
     def test_execute_command(self):
         do_something_impl = mock.Mock()
-        self.agent.mode_implementation['do_something'] = do_something_impl
+        command_map = self.agent.mode_implementation.command_map
+        command_map['do_something'] = do_something_impl
 
         self.agent.execute_command('do_something', foo='bar')
         do_something_impl.assert_called_once_with('do_something', foo='bar')

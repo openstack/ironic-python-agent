@@ -135,9 +135,9 @@ class RunImageCommand(base.AsyncCommandResult):
 class StandbyMode(base.BaseAgentMode):
     def __init__(self):
         super(StandbyMode, self).__init__('STANDBY')
-        self['cache_images'] = self.cache_images
-        self['prepare_image'] = self.prepare_image
-        self['run_image'] = self.run_image
+        self.command_map['cache_images'] = self.cache_images
+        self.command_map['prepare_image'] = self.prepare_image
+        self.command_map['run_image'] = self.run_image
 
     def _validate_image_info(self, image_info):
         for field in ['id', 'urls', 'hashes']:

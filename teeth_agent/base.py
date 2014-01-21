@@ -118,8 +118,15 @@ class AsyncCommandResult(BaseCommandResult):
         pass
 
 
-class BaseAgentMode(dict):
+class BaseAgentMode(object):
     def __init__(self, name):
         super(BaseAgentMode, self).__init__()
         self.log = structlog.get_logger(agent_mode=name)
         self.name = name
+        self.command_map = {}
+
+    def execute(self, command_name, **kwargs):
+        if command_name not in self.command_map:
+            raise errors.InvalidCommandError(command_name)
+
+        return self.command_map[command_name](command_name, **kwargs)
