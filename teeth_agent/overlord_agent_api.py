@@ -14,8 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import requests
+import json
 
+import requests
 from teeth_rest import encoding
 
 from teeth_agent import errors
@@ -72,3 +73,19 @@ class APIClient(object):
             raise errors.HeartbeatError('Missing Heartbeat-Before header')
         except Exception:
             raise errors.HeartbeatError('Invalid Heartbeat-Before header')
+
+    def get_configuration(self, mac_addr):
+        path = '/{api_version}/agents/{mac_addr}/configuration'.format(
+            api_version=self.api_version,
+            mac_addr=mac_addr)
+
+        response = self._request('GET', path)
+
+        if response.status_code != requests.codes.OK:
+            msg = 'Invalid status code: {}'.format(response.status_code)
+            raise errors.OverlordAPIError(msg)
+
+        try:
+            return json.loads(response.content)
+        except Exception as e:
+            raise errors.OverlordAPIError('Error decoding response: ' + str(e))

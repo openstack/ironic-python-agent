@@ -23,6 +23,7 @@ import pkg_resources
 
 from teeth_rest import encoding
 
+from teeth_agent import agent
 from teeth_agent import base
 from teeth_agent import errors
 
@@ -38,10 +39,15 @@ class FooTeethAgentCommandResult(base.AsyncCommandResult):
             return 'command execution succeeded'
 
 
+class FakeMode(base.BaseAgentMode):
+    def __init__(self):
+        super(FakeMode, self).__init__('FAKE')
+
+
 class TestHeartbeater(unittest.TestCase):
     def setUp(self):
         self.mock_agent = mock.Mock()
-        self.heartbeater = base.TeethAgentHeartbeater(self.mock_agent)
+        self.heartbeater = agent.TeethAgentHeartbeater(self.mock_agent)
         self.heartbeater.api = mock.Mock()
         self.heartbeater.stop_event = mock.Mock()
 
@@ -108,17 +114,15 @@ class TestHeartbeater(unittest.TestCase):
         self.assertEqual(self.heartbeater.error_delay, 2.7)
 
 
-class TestBaseTeethAgent(unittest.TestCase):
+class TestBaseAgent(unittest.TestCase):
     def setUp(self):
         self.encoder = encoding.RESTJSONEncoder(
             encoding.SerializationViews.PUBLIC,
             indent=4)
-        self.agent = base.BaseTeethAgent(None,
-                                         9999,
-                                         None,
-                                         9999,
-                                         'https://fake_api.example.org:8081/',
-                                         'TEST_MODE')
+        self.agent = agent.TeethAgent('https://fake_api.example.org:8081/',
+                                      ('localhost', 9999),
+                                      ('localhost', 9999),
+                                      FakeMode())
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
@@ -133,17 +137,15 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.agent.started_at = started_at
 
         status = self.agent.get_status()
-        self.assertIsInstance(status, base.TeethAgentStatus)
-        self.assertEqual(status.mode, 'TEST_MODE')
+        self.assertIsInstance(status, agent.TeethAgentStatus)
         self.assertEqual(status.started_at, started_at)
         self.assertEqual(status.version,
                          pkg_resources.get_distribution('teeth-agent').version)
 
     def test_execute_command(self):
         do_something_impl = mock.Mock()
-        self.agent.command_map = {
-            'do_something': do_something_impl,
-        }
+        command_map = self.agent.mode_implementation.command_map
+        command_map['do_something'] = do_something_impl
 
         self.agent.execute_command('do_something', foo='bar')
         do_something_impl.assert_called_once_with('do_something', foo='bar')
@@ -159,12 +161,10 @@ class TestBaseTeethAgent(unittest.TestCase):
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
 
-        self.agent.get_api_facing_ip_address = mock.Mock()
-        self.agent.get_api_facing_ip_address.return_value = '1.2.3.4'
         self.agent.heartbeater = mock.Mock()
         self.agent.run()
 
-        listen_addr = ('1.2.3.4', 9999)
+        listen_addr = ('localhost', 9999)
         wsgi_server_cls.assert_called_once_with(listen_addr, self.agent.api)
         wsgi_server.start.assert_called_once_with()
         wsgi_server.stop.assert_called_once_with()
