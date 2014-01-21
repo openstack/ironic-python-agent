@@ -53,14 +53,23 @@ class RequestedObjectNotFoundError(errors.NotFound):
         self.details = details
 
 
-class HeartbeatError(errors.RESTError):
+class OverlordAPIError(errors.RESTError):
+    """Error raised when a call to the agent API fails."""
+
+    message = 'Error in call to teeth-agent-api.'
+
+    def __init__(self, details):
+        super(OverlordAPIError, self).__init__(details)
+        self.details = details
+
+
+class HeartbeatError(OverlordAPIError):
     """Error raised when a heartbeat to the agent API fails."""
 
     message = 'Error heartbeating to agent API.'
 
     def __init__(self, details):
-        super(HeartbeatError, self).__init__()
-        self.details = details
+        super(HeartbeatError, self).__init__(details)
 
 
 class ImageDownloadError(errors.RESTError):

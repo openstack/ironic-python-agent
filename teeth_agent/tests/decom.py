@@ -19,9 +19,9 @@ import unittest
 from teeth_agent import decom
 
 
-class TestBaseTeethAgent(unittest.TestCase):
+class TestDecomMode(unittest.TestCase):
     def setUp(self):
-        self.agent = decom.DecomAgent(None, 9999, None, 9999, 'fake_api')
+        self.agent_mode = decom.DecomMode()
 
     def test_decom_mode(self):
-        self.assertEqual(self.agent.mode, 'DECOM')
+        self.assertEqual(self.agent_mode.name, 'DECOM')

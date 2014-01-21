@@ -126,25 +126,12 @@ class RunImageCommand(base.AsyncCommandResult):
         _run_image()
 
 
-class StandbyAgent(base.BaseTeethAgent):
-    def __init__(self,
-                 listen_host,
-                 listen_port,
-                 advertise_host,
-                 advertise_port,
-                 api_url):
-        super(StandbyAgent, self).__init__(listen_host,
-                                           listen_port,
-                                           advertise_host,
-                                           advertise_port,
-                                           api_url,
-                                           'STANDBY')
-
-        self.command_map = {
-            'cache_images': self.cache_images,
-            'prepare_image': self.prepare_image,
-            'run_image': self.run_image,
-        }
+class StandbyMode(base.BaseAgentMode):
+    def __init__(self):
+        super(StandbyMode, self).__init__('STANDBY')
+        self.command_map['cache_images'] = self.cache_images
+        self.command_map['prepare_image'] = self.prepare_image
+        self.command_map['run_image'] = self.run_image
 
     def _validate_image_info(self, image_info):
         for field in ['id', 'urls', 'hashes']:

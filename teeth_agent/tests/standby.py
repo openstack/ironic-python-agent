@@ -21,12 +21,12 @@ from teeth_agent import errors
 from teeth_agent import standby
 
 
-class TestBaseTeethAgent(unittest.TestCase):
+class TestStandbyMode(unittest.TestCase):
     def setUp(self):
-        self.agent = standby.StandbyAgent(None, 9999, None, 9999, 'fake_api')
+        self.agent_mode = standby.StandbyMode()
 
     def test_standby_mode(self):
-        self.assertEqual(self.agent.mode, 'STANDBY')
+        self.assertEqual(self.agent_mode.name, 'STANDBY')
 
     def _build_fake_image_info(self):
         return {
@@ -40,7 +40,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         }
 
     def test_validate_image_info_success(self):
-        self.agent._validate_image_info(self._build_fake_image_info())
+        self.agent_mode._validate_image_info(self._build_fake_image_info())
 
     def test_validate_image_info_missing_field(self):
         for field in ['id', 'urls', 'hashes']:
@@ -48,7 +48,7 @@ class TestBaseTeethAgent(unittest.TestCase):
             del invalid_info[field]
 
             self.assertRaises(errors.InvalidCommandParamsError,
-                              self.agent._validate_image_info,
+                              self.agent_mode._validate_image_info,
                               invalid_info)
 
     def test_validate_image_info_invalid_urls(self):
@@ -56,7 +56,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         invalid_info['urls'] = 'this_is_not_a_list'
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent._validate_image_info,
+                          self.agent_mode._validate_image_info,
                           invalid_info)
 
     def test_validate_image_info_empty_urls(self):
@@ -64,7 +64,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         invalid_info['urls'] = []
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent._validate_image_info,
+                          self.agent_mode._validate_image_info,
                           invalid_info)
 
     def test_validate_image_info_invalid_hashes(self):
@@ -72,7 +72,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         invalid_info['hashes'] = 'this_is_not_a_dict'
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent._validate_image_info,
+                          self.agent_mode._validate_image_info,
                           invalid_info)
 
     def test_validate_image_info_empty_hashes(self):
@@ -80,17 +80,17 @@ class TestBaseTeethAgent(unittest.TestCase):
         invalid_info['hashes'] = {}
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent._validate_image_info,
+                          self.agent_mode._validate_image_info,
                           invalid_info)
 
     def test_cache_images_success(self):
-        result = self.agent.cache_images('cache_images',
-                                         [self._build_fake_image_info()])
+        result = self.agent_mode.cache_images('cache_images',
+                                              [self._build_fake_image_info()])
         result.join()
 
     def test_cache_images_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent.cache_images,
+                          self.agent_mode.cache_images,
                           'cache_images',
                           {'foo': 'bar'})
 
