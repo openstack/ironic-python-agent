@@ -161,11 +161,6 @@ class TeethAgent(object):
             try:
                 result = self.mode_implementation.execute(command_name,
                                                           **kwargs)
-                if not isinstance(result, base.BaseCommandResult):
-                    result = base.SyncCommandResult(command_name,
-                                                    kwargs,
-                                                    True,
-                                                    result)
             except rest_errors.InvalidContentError as e:
                 # Any command may raise a InvalidContentError which will be
                 # returned to the caller directly.

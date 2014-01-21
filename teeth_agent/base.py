@@ -129,4 +129,12 @@ class BaseAgentMode(object):
         if command_name not in self.command_map:
             raise errors.InvalidCommandError(command_name)
 
-        return self.command_map[command_name](command_name, **kwargs)
+        result = self.command_map[command_name](command_name, **kwargs)
+
+        # In order to enable extremely succinct synchronous commands, we allow
+        # them to return a value directly, and we'll handle wrapping it up in a
+        # SyncCommandResult
+        if not isinstance(result, BaseCommandResult):
+            result = SyncCommandResult(command_name, kwargs, True, result)
+
+        return result
