@@ -114,7 +114,7 @@ class PrepareImageCommand(base.AsyncCommandResult):
         location = _configdrive_location()
         metadata = self.command_params['user_metadata']
         files = self.command_params['files']
-        device = self.command_params['device']
+        device = '/dev/sda'
 
         _download_image(image_info)
         configdrive.write(location, metadata, files)
