@@ -17,6 +17,7 @@ limitations under the License.
 import base64
 import collections
 import json
+import os
 
 
 class ConfigDriveWriter(object):
@@ -30,9 +31,7 @@ class ConfigDriveWriter(object):
     def add_file(self, filepath, contents):
         self.files[filepath] = contents
 
-    def serialize(self, prefix='openstack'):
-        out = {}
-
+    def write(self, location, prefix='teeth', version='latest'):
         metadata = {}
         for k, v in self.metadata.iteritems():
             metadata[k] = v
@@ -48,12 +47,31 @@ class ConfigDriveWriter(object):
             }
             metadata['files'].append(file_info)
 
-            metadata_path = prefix + content_path
-            out[metadata_path] = contents
+            content_path = os.path.join(location, content_path[1:])
+            with open(content_path, 'wb') as f:
+                f.write(contents)
+
             filenumber += 1
 
         json_metadata = json.dumps(metadata)
-        metadata_path = '{}/latest/meta_data.json'.format(prefix)
-        out[metadata_path] = base64.b64encode(json_metadata)
+        metadata_path = '{}/{}/meta_data.json'.format(prefix, version)
+        metadata_path = os.path.join(location, metadata_path)
+        with open(metadata_path, 'wb') as f:
+            f.write(json_metadata)
 
-        return out
+
+def write_configdrive(location, metadata, files, prefix='teeth',
+                      version='latest'):
+    """Generates and writes a valid configdrive to `location`.
+    `files` are passed in as a dict {path: base64_contents}.
+    """
+    writer = ConfigDriveWriter()
+
+    for k, v in metadata.iteritems():
+        writer.add_metadata(k, v)
+
+    for path, b64_contents in files.iteritems():
+        contents = base64.b64decode(b64_contents)
+        writer.add_file(path, contents)
+
+    writer.write(location)

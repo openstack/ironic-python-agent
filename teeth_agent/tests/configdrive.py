@@ -16,6 +16,7 @@ limitations under the License.
 
 import base64
 import json
+import mock
 import unittest
 
 from teeth_agent import configdrive
@@ -36,52 +37,106 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         files = self.writer.files
         self.assertEqual(files, {'/etc/filename': 'contents'})
 
-    def test_serialize_no_files(self):
-        self.writer.add_metadata('admin_pass', 'password')
-        self.writer.add_metadata('hostname', 'test')
+    @mock.patch('__builtin__.open', autospec=True)
+    def test_write_no_files(self, open_mock):
+        metadata = {'admin_pass': 'password', 'hostname': 'test'}
+        json_metadata = json.dumps(metadata)
+        metadata_path = '/lol/teeth/latest/meta_data.json'
+        for k, v in metadata.iteritems():
+            self.writer.add_metadata(k, v)
 
-        metadata = self.writer.metadata
-        metadata = base64.b64encode(json.dumps(metadata))
-        expected = {'openstack/latest/meta_data.json': metadata}
+        open_mock.return_value.__enter__ = lambda s: s
+        open_mock.return_value.__exit__ = mock.Mock()
+        write_mock = open_mock.return_value.write
 
-        data = self.writer.serialize()
-        self.assertEqual(data, expected)
+        self.writer.write('/lol', prefix='teeth', version='latest')
+        open_mock.assert_called_once_with(metadata_path, 'wb')
+        write_mock.assert_called_once_with(json_metadata)
 
-    def test_serialize_with_prefix(self):
-        self.writer.add_metadata('admin_pass', 'password')
-        self.writer.add_metadata('hostname', 'test')
+    @mock.patch('__builtin__.open', autospec=True)
+    def test_write_with_files(self, open_mock):
+        metadata = {'admin_pass': 'password', 'hostname': 'test'}
+        for k, v in metadata.iteritems():
+            self.writer.add_metadata(k, v)
+        files = {
+            '/etc/conf0': 'contents0',
+            '/etc/conf1': 'contents1',
+        }
+        for path, contents in files.iteritems():
+            self.writer.add_file(path, contents)
 
-        metadata = self.writer.metadata
-        metadata = base64.b64encode(json.dumps(metadata))
-        expected = {'teeth/latest/meta_data.json': metadata}
-
-        data = self.writer.serialize(prefix='teeth')
-        self.assertEqual(data, expected)
-
-    def test_serialize_with_files(self):
-        self.writer.add_metadata('admin_pass', 'password')
-        self.writer.add_metadata('hostname', 'test')
-        self.writer.add_file('/etc/conf0', 'contents0')
-        self.writer.add_file('/etc/conf1', 'contents1')
+        open_mock.return_value.__enter__ = lambda s: s
+        open_mock.return_value.__exit__ = mock.Mock()
+        write_mock = open_mock.return_value.write
 
         metadata = self.writer.metadata
         metadata['files'] = [
             {'content_path': '/content/0000', 'path': '/etc/conf0'},
             {'content_path': '/content/0001', 'path': '/etc/conf1'},
         ]
-        metadata = base64.b64encode(json.dumps(metadata))
-        expected = {
-            'openstack/latest/meta_data.json': metadata,
-            'openstack/content/0000': 'contents0',
-            'openstack/content/0001': 'contents1'
-        }
 
-        data = self.writer.serialize()
-        self.assertEqual(len(data.keys()), len(expected.keys()))
-        for k, v in expected.items():
-            if '.json' in k:
-                _actual = json.loads(base64.b64decode(data[k]))
-                _expected = json.loads(base64.b64decode(v))
-                self.assertEqual(_actual, _expected)
-            else:
-                self.assertEqual(data[k], v)
+        self.writer.write('/lol', prefix='teeth', version='latest')
+
+        # have to pull out the JSON passed to write and parse it
+        # because arbitrary dictionary ordering, etc
+        calls = write_mock.mock_calls
+        json_data = calls[-1][1][0]
+        data = json.loads(json_data)
+        self.assertEqual(data, metadata)
+
+        open_calls = [
+            mock.call('/lol/content/0000', 'wb'),
+            mock.call().write('contents0'),
+            mock.call().__exit__(None, None, None),
+            mock.call('/lol/content/0001', 'wb'),
+            mock.call().write('contents1'),
+            mock.call().__exit__(None, None, None),
+            mock.call('/lol/teeth/latest/meta_data.json', 'wb'),
+            # already checked
+            mock.call().write(mock.ANY),
+            mock.call().__exit__(None, None, None),
+        ]
+        self.assertEqual(open_mock.mock_calls, open_calls)
+
+    @mock.patch('__builtin__.open', autospec=True)
+    def test_write_configdrive(self, open_mock):
+        metadata = {'admin_pass': 'password', 'hostname': 'test'}
+        files = {
+            '/etc/conf0': base64.b64encode('contents0'),
+            '/etc/conf1': base64.b64encode('contents1'),
+        }
+        metadata['files'] = [
+            {'content_path': '/content/0000', 'path': '/etc/conf0'},
+            {'content_path': '/content/0001', 'path': '/etc/conf1'},
+        ]
+
+        open_mock.return_value.__enter__ = lambda s: s
+        open_mock.return_value.__exit__ = mock.Mock()
+        write_mock = open_mock.return_value.write
+
+        configdrive.write_configdrive('/lol',
+                                      metadata,
+                                      files,
+                                      prefix='teeth',
+                                      version='latest')
+
+        # have to pull out the JSON passed to write and parse it
+        # because arbitrary dictionary ordering, etc
+        calls = write_mock.mock_calls
+        json_data = calls[-1][1][0]
+        data = json.loads(json_data)
+        self.assertEqual(data, metadata)
+
+        open_calls = [
+            mock.call('/lol/content/0000', 'wb'),
+            mock.call().write('contents0'),
+            mock.call().__exit__(None, None, None),
+            mock.call('/lol/content/0001', 'wb'),
+            mock.call().write('contents1'),
+            mock.call().__exit__(None, None, None),
+            mock.call('/lol/teeth/latest/meta_data.json', 'wb'),
+            # already checked
+            mock.call().write(mock.ANY),
+            mock.call().__exit__(None, None, None),
+        ]
+        self.assertEqual(open_mock.mock_calls, open_calls)

@@ -21,6 +21,7 @@ import subprocess
 import requests
 
 from teeth_agent import base
+from teeth_agent import configdrive
 from teeth_agent import errors
 
 
@@ -30,18 +31,6 @@ def _configdrive_location():
 
 def _image_location(image_info):
     return '/tmp/{}'.format(image_info['id'])
-
-
-def _write_local_config_drive(location, data):
-    """Writes a config_drive directory at `location`."""
-    if not os.path.exists(location):
-        os.makedirs(location)
-
-    for path, contents in data.iteritems():
-        filename = os.path.join(location, path)
-        with open(filename, 'w') as f:
-            file_data = contents.decode('base64')
-            f.write(file_data)
 
 
 def _path_to_script(script):
@@ -123,11 +112,12 @@ class PrepareImageCommand(base.AsyncCommandResult):
     def execute(self):
         image_info = self.command_params['image_info']
         location = _configdrive_location()
-        data = self.command_params['configdrive']
+        metadata = self.command_params['user_metadata']
+        files = self.command_params['files']
         device = self.command_params['device']
 
         _download_image(image_info)
-        _write_local_config_drive(location, data)
+        configdrive.write(location, metadata, files)
         _write_image(image_info, location, device)
 
 
