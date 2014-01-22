@@ -20,9 +20,9 @@ import unittest
 from teeth_agent import hardware
 
 
-class TestBaseHardwareManager(unittest.TestCase):
+class TestGenericHardwareManager(unittest.TestCase):
     def setUp(self):
-        self.hardware = hardware.BaseHardwareManager()
+        self.hardware = hardware.GenericHardwareManager()
 
     @mock.patch('__builtin__.open')
     def test_decom_mode(self, mocked_open):

@@ -14,57 +14,65 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from stevedore import enabled
+import abc
+
+from stevedore import extension
 import structlog
 
+_global_manager = None
 
-class BaseHardwareManager(object):
-    @staticmethod
-    def supports_hardware():
-        return True
+
+class HardwareSupport(object):
+    """These are just guidelines to suggest values that might be returned by
+    calls to `evaluate_hardware_support`. No HardwareManager in mainline
+    teeth-agent will ever offer a value greater than `MAINLINE`. Service
+    Providers should feel free to return values greater than SERVICE_PROVIDER
+    to distinguish between additional levels of support.
+    """
+    NONE = 0
+    GENERIC = 1
+    MAINLINE = 2
+    SERVICE_PROVIDER = 3
+
+
+class HardwareManager(object):
+    @abc.abstractmethod
+    def evaluate_hardware_support(cls):
+        pass
+
+    @abc.abstractmethod
+    def get_primary_mac_address(self):
+        pass
+
+
+class GenericHardwareManager(HardwareManager):
+    def evaluate_hardware_support(cls):
+        return HardwareSupport.GENERIC
 
     def get_primary_mac_address(self):
         return open('/sys/class/net/eth0/address', 'r').read().strip('\n')
 
 
-def extension_supports_hardware(extension):
-    return extension.plugin.supports_hardware()
+def _compare_extensions(ext1, ext2):
+    mgr1 = ext1.obj
+    mgr2 = ext2.obj
+    return mgr1.evaluate_hardware_support() - mgr2.evaluate_hardware_support()
 
 
 def load_hardware_manager():
-    # The idea here is that there is an inheritance tree of Hardware Managers.
-    # For example:
-    #
-    #                         BaseHardwareManager
-    #                           /              \
-    #             SmallServerManager       LargeServerManager
-    #                /    \                    /   \
-    #              v1      v2                v1     v2
-    #
-    # In this hierarchy, any manager can claim to support the hardware, but any
-    # of its subclasses may supercede its claim. In cases where two managers
-    # with no ancestral relationship both claim to support the hardware, the
-    # result is undefined.
-    #
-    # NOTE(russellhaering): I don't know if this is actually a good idea, I
-    #                       just want to be able to have a base manager which
-    #                       tries to supply reasonable defaults, and be able to
-    #                       override it simply by installing an appropriate
-    #                       plugin.
     log = structlog.get_logger()
-    selected_plugin = BaseHardwareManager
-    extension_manager = enabled.EnabledExtensionManager(
+    extension_manager = extension.ExtensionManager(
         namespace='teeth_agent.hardware_managers',
-        check_func=extension_supports_hardware)
+        invoke_on_load=True)
 
-    for extension in extension_manager:
-        plugin = extension.plugin
-        log.info('found qualified hardware manager',
-                 manager_name=plugin.__name__)
-        if issubclass(plugin, selected_plugin):
-            selected_plugin = plugin
+    # There will always be at least one extension available (the
+    # GenericHardwareManager).
+    preferred_extension = sorted(extension_manager, _compare_extensions)[0]
+    preferred_manager = preferred_extension.obj
+
+    if preferred_manager.evaluate_hardware_support() <= 0:
+        raise RuntimeError('No suitable HardwareManager could be found')
 
     log.info('selected hardware manager',
-             manager_name=selected_plugin.__name__)
-
-    return selected_plugin()
+             manager_name=preferred_extension.entry_point_target)
+    return preferred_manager
