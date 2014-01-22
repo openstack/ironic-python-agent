@@ -16,7 +16,7 @@ limitations under the License.
 
 import abc
 
-from stevedore import extension
+import stevedore
 import structlog
 
 _global_manager = None
@@ -61,7 +61,7 @@ def _compare_extensions(ext1, ext2):
 
 def load_hardware_manager():
     log = structlog.get_logger()
-    extension_manager = extension.ExtensionManager(
+    extension_manager = stevedore.ExtensionManager(
         namespace='teeth_agent.hardware_managers',
         invoke_on_load=True)
 
