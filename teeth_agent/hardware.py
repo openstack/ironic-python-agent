@@ -14,7 +14,65 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+import abc
 
-class HardwareInspector(object):
+import stevedore
+import structlog
+
+_global_manager = None
+
+
+class HardwareSupport(object):
+    """These are just guidelines to suggest values that might be returned by
+    calls to `evaluate_hardware_support`. No HardwareManager in mainline
+    teeth-agent will ever offer a value greater than `MAINLINE`. Service
+    Providers should feel free to return values greater than SERVICE_PROVIDER
+    to distinguish between additional levels of support.
+    """
+    NONE = 0
+    GENERIC = 1
+    MAINLINE = 2
+    SERVICE_PROVIDER = 3
+
+
+class HardwareManager(object):
+    @abc.abstractmethod
+    def evaluate_hardware_support(cls):
+        pass
+
+    @abc.abstractmethod
+    def get_primary_mac_address(self):
+        pass
+
+
+class GenericHardwareManager(HardwareManager):
+    def evaluate_hardware_support(cls):
+        return HardwareSupport.GENERIC
+
     def get_primary_mac_address(self):
         return open('/sys/class/net/eth0/address', 'r').read().strip('\n')
+
+
+def _compare_extensions(ext1, ext2):
+    mgr1 = ext1.obj
+    mgr2 = ext2.obj
+    return mgr1.evaluate_hardware_support() - mgr2.evaluate_hardware_support()
+
+
+def load_hardware_manager():
+    log = structlog.get_logger()
+    extension_manager = stevedore.ExtensionManager(
+        namespace='teeth_agent.hardware_managers',
+        invoke_on_load=True)
+
+    # There will always be at least one extension available (the
+    # GenericHardwareManager).
+    preferred_extension = sorted(extension_manager, _compare_extensions)[0]
+    preferred_manager = preferred_extension.obj
+
+    if preferred_manager.evaluate_hardware_support() <= 0:
+        raise RuntimeError('No suitable HardwareManager could be found')
+
+    log.info('selected hardware manager',
+             manager_name=preferred_extension.entry_point_target)
+    return preferred_manager
