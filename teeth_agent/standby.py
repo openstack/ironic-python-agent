@@ -112,7 +112,7 @@ class PrepareImageCommand(base.AsyncCommandResult):
     def execute(self):
         image_info = self.command_params['image_info']
         location = _configdrive_location()
-        metadata = self.command_params['user_metadata']
+        metadata = self.command_params['metadata']
         files = self.command_params['files']
         device = '/dev/sda'
 
