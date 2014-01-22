@@ -41,7 +41,7 @@ parted -a optimal -s -- $DEVICE mkpart primary ext2 -16MiB -0
 
 # Find partition we just created 
 # Dump all partitions, ignore empty ones, then get the last partition ID
-ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v '0,' | tail -n1 | awk '{print $1}'`
+ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v ' 0,' | tail -n1 | awk '{print $1}'`
 
 # This generates the ISO image of the config drive.
 log "Writing Configdrive contents in $CONFIGDRIVE_DIR to $ISO_PARTITION"
