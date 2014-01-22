@@ -31,7 +31,7 @@ class ConfigDriveWriter(object):
     def add_file(self, filepath, contents):
         self.files[filepath] = contents
 
-    def write(self, location, prefix='teeth', version='latest'):
+    def write(self, location, prefix='openstack', version='latest'):
         metadata = {}
         for k, v in self.metadata.iteritems():
             metadata[k] = v
@@ -60,7 +60,7 @@ class ConfigDriveWriter(object):
             f.write(json_metadata)
 
 
-def write_configdrive(location, metadata, files, prefix='teeth',
+def write_configdrive(location, metadata, files, prefix='openstack',
                       version='latest'):
     """Generates and writes a valid configdrive to `location`.
     `files` are passed in as a dict {path: base64_contents}.
@@ -74,4 +74,4 @@ def write_configdrive(location, metadata, files, prefix='teeth',
         contents = base64.b64decode(b64_contents)
         writer.add_file(path, contents)
 
-    writer.write(location)
+    writer.write(location, prefix=prefix, version=version)

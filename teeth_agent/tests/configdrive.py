@@ -75,7 +75,7 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
             {'content_path': '/content/0001', 'path': '/etc/conf1'},
         ]
 
-        self.writer.write('/lol', prefix='teeth', version='latest')
+        self.writer.write('/lol', prefix='openstack', version='latest')
 
         # have to pull out the JSON passed to write and parse it
         # because arbitrary dictionary ordering, etc
@@ -91,7 +91,7 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
             mock.call('/lol/content/0001', 'wb'),
             mock.call().write('contents1'),
             mock.call().__exit__(None, None, None),
-            mock.call('/lol/teeth/latest/meta_data.json', 'wb'),
+            mock.call('/lol/openstack/latest/meta_data.json', 'wb'),
             # already checked
             mock.call().write(mock.ANY),
             mock.call().__exit__(None, None, None),
@@ -117,7 +117,7 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         configdrive.write_configdrive('/lol',
                                       metadata,
                                       files,
-                                      prefix='teeth',
+                                      prefix='openstack',
                                       version='latest')
 
         # have to pull out the JSON passed to write and parse it
@@ -134,7 +134,7 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
             mock.call('/lol/content/0001', 'wb'),
             mock.call().write('contents1'),
             mock.call().__exit__(None, None, None),
-            mock.call('/lol/teeth/latest/meta_data.json', 'wb'),
+            mock.call('/lol/openstack/latest/meta_data.json', 'wb'),
             # already checked
             mock.call().write(mock.ANY),
             mock.call().__exit__(None, None, None),
