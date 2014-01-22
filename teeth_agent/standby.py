@@ -117,7 +117,7 @@ class PrepareImageCommand(base.AsyncCommandResult):
         device = '/dev/sda'
 
         _download_image(image_info)
-        configdrive.write(location, metadata, files)
+        configdrive.write_configdrive(location, metadata, files)
         _write_image(image_info, location, device)
 
 
