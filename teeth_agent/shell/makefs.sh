@@ -6,7 +6,7 @@
 set -e
 
 log() {
-  echo "makefs.sh: $@"
+  echo "`basename $0`: $@"
 }
 
 usage() {
