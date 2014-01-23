@@ -59,20 +59,26 @@ def _compare_extensions(ext1, ext2):
     return mgr1.evaluate_hardware_support() - mgr2.evaluate_hardware_support()
 
 
-def load_hardware_manager():
-    log = structlog.get_logger()
-    extension_manager = stevedore.ExtensionManager(
-        namespace='teeth_agent.hardware_managers',
-        invoke_on_load=True)
+def get_manager():
+    global _global_manager
 
-    # There will always be at least one extension available (the
-    # GenericHardwareManager).
-    preferred_extension = sorted(extension_manager, _compare_extensions)[0]
-    preferred_manager = preferred_extension.obj
+    if not _global_manager:
+        log = structlog.get_logger()
+        extension_manager = stevedore.ExtensionManager(
+            namespace='teeth_agent.hardware_managers',
+            invoke_on_load=True)
 
-    if preferred_manager.evaluate_hardware_support() <= 0:
-        raise RuntimeError('No suitable HardwareManager could be found')
+        # There will always be at least one extension available (the
+        # GenericHardwareManager).
+        preferred_extension = sorted(extension_manager, _compare_extensions)[0]
+        preferred_manager = preferred_extension.obj
 
-    log.info('selected hardware manager',
-             manager_name=preferred_extension.entry_point_target)
-    return preferred_manager
+        if preferred_manager.evaluate_hardware_support() <= 0:
+            raise RuntimeError('No suitable HardwareManager could be found')
+
+        log.info('selected hardware manager',
+                 manager_name=preferred_extension.entry_point_target)
+
+        _global_manager = preferred_manager
+
+    return _global_manager

@@ -118,7 +118,7 @@ class TeethAgent(object):
         self.api = api.TeethAgentAPIServer(self)
         self.command_results = collections.OrderedDict()
         self.heartbeater = TeethAgentHeartbeater(self)
-        self.hardware = hardware.load_hardware_manager()
+        self.hardware = hardware.get_manager()
         self.command_lock = threading.Lock()
         self.log = structlog.get_logger()
         self.started_at = None
@@ -235,7 +235,7 @@ def build_agent(api_url,
     if not listen_host:
         listen_host = advertise_host
 
-    mac_addr = hardware.load_hardware_manager().get_primary_mac_address()
+    mac_addr = hardware.get_manager().get_primary_mac_address()
     api_client = overlord_agent_api.APIClient(api_url)
 
     log.info('fetching agent configuration from API',
