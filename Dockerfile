@@ -8,7 +8,7 @@ ADD . /tmp/teeth-agent
 # Install requirements: Python for teeth-agent, others for putting an image on disk
 RUN apt-get update && apt-get -y install \
     python python-pip python-dev \
-    qemu-utils parted util-linux genisoimage
+    qemu-utils parted util-linux genisoimage git
 
 RUN pip install /tmp/teeth-agent
 
