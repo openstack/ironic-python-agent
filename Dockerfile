@@ -16,4 +16,4 @@ RUN pip install -r /tmp/teeth-agent/requirements.txt
 # This will succeed because all the dependencies (including pesky teeth_rest) were installed previously
 RUN pip install /tmp/teeth-agent
 
-ENTRYPOINT [ "/usr/local/bin/teeth-standby-agent" ]
+CMD [ "/usr/local/bin/teeth-standby-agent" ]
