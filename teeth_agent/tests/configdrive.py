@@ -37,8 +37,9 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         files = self.writer.files
         self.assertEqual(files, {'/etc/filename': 'contents'})
 
+    @mock.patch('os.makedirs', autospec=True)
     @mock.patch('__builtin__.open', autospec=True)
-    def test_write_no_files(self, open_mock):
+    def test_write_no_files(self, open_mock, makedirs_mock):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
         json_metadata = json.dumps(metadata)
         metadata_path = '/lol/teeth/latest/meta_data.json'
@@ -52,9 +53,15 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         self.writer.write('/lol', prefix='teeth', version='latest')
         open_mock.assert_called_once_with(metadata_path, 'wb')
         write_mock.assert_called_once_with(json_metadata)
+        makedirs_calls = [
+            mock.call('/lol/teeth/latest'),
+            mock.call('/lol/content')
+        ]
+        self.assertEqual(makedirs_calls, makedirs_mock.call_args_list)
 
+    @mock.patch('os.makedirs', autospec=True)
     @mock.patch('__builtin__.open', autospec=True)
-    def test_write_with_files(self, open_mock):
+    def test_write_with_files(self, open_mock, makedirs_mock):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
         for k, v in metadata.iteritems():
             self.writer.add_metadata(k, v)
@@ -98,8 +105,15 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         ]
         self.assertEqual(open_mock.mock_calls, open_calls)
 
+        makedirs_calls = [
+            mock.call('/lol/openstack/latest'),
+            mock.call('/lol/content')
+        ]
+        self.assertEqual(makedirs_calls, makedirs_mock.call_args_list)
+
+    @mock.patch('os.makedirs', autospec=True)
     @mock.patch('__builtin__.open', autospec=True)
-    def test_write_configdrive(self, open_mock):
+    def test_write_configdrive(self, open_mock, makedirs_mock):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
         files = {
             '/etc/conf0': base64.b64encode('contents0'),
@@ -140,3 +154,9 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
             mock.call().__exit__(None, None, None),
         ]
         self.assertEqual(open_mock.mock_calls, open_calls)
+
+        makedirs_calls = [
+            mock.call('/lol/openstack/latest'),
+            mock.call('/lol/content')
+        ]
+        self.assertEqual(makedirs_calls, makedirs_mock.call_args_list)
