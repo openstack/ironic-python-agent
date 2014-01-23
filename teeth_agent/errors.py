@@ -30,10 +30,9 @@ class CommandExecutionError(errors.RESTError):
 class InvalidCommandError(errors.InvalidContentError):
     """Error which is raised when an unknown command is issued."""
 
-    messsage = 'Unknown command'
+    messsage = 'Invalid command'
 
-    def __init__(self, command_name):
-        details = 'Command \'{}\' is unknown.'.format(command_name)
+    def __init__(self, details):
         super(InvalidCommandError, self).__init__(details)
 
 
