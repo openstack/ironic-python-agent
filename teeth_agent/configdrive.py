@@ -32,6 +32,9 @@ class ConfigDriveWriter(object):
         self.files[filepath] = contents
 
     def write(self, location, prefix='openstack', version='latest'):
+        os.makedirs(os.path.join(location, prefix, version))
+        os.makedirs(os.path.join(location, 'content'))
+
         metadata = {}
         for k, v in self.metadata.iteritems():
             metadata[k] = v
