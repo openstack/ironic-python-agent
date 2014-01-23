@@ -121,8 +121,7 @@ class TestBaseAgent(unittest.TestCase):
             indent=4)
         self.agent = agent.TeethAgent('https://fake_api.example.org:8081/',
                                       ('localhost', 9999),
-                                      ('localhost', 9999),
-                                      FakeMode())
+                                      ('localhost', 9999))
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
@@ -144,10 +143,11 @@ class TestBaseAgent(unittest.TestCase):
 
     def test_execute_command(self):
         do_something_impl = mock.Mock()
+        self.agent.mode_implementation = FakeMode()
         command_map = self.agent.mode_implementation.command_map
         command_map['do_something'] = do_something_impl
 
-        self.agent.execute_command('do_something', foo='bar')
+        self.agent.execute_command('fake.do_something', foo='bar')
         do_something_impl.assert_called_once_with('do_something', foo='bar')
 
     def test_execute_invalid_command(self):

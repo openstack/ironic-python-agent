@@ -127,7 +127,8 @@ class BaseAgentMode(object):
 
     def execute(self, command_name, **kwargs):
         if command_name not in self.command_map:
-            raise errors.InvalidCommandError(command_name)
+            raise errors.InvalidCommandError(
+                'Unknown command: {}'.format(command_name))
 
         result = self.command_map[command_name](command_name, **kwargs)
 
