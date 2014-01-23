@@ -90,7 +90,7 @@ class TeethAgentHeartbeater(threading.Thread):
                 mac_addr=self.agent.get_agent_mac_addr(),
                 url=self.agent.get_agent_url(),
                 version=self.agent.version,
-                mode=self.agent.mode_implementation.name)
+                mode=self.agent.get_mode_name())
             self.error_delay = self.initial_delay
             self.log.info('heartbeat successful')
         except Exception as e:
@@ -109,11 +109,11 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class TeethAgent(object):
-    def __init__(self, api_url, listen_address, advertise_address, mode_impl):
+    def __init__(self, api_url, listen_address, advertise_address):
         self.api_url = api_url
         self.listen_address = listen_address
         self.advertise_address = advertise_address
-        self.mode_implementation = mode_impl
+        self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = api.TeethAgentAPIServer(self)
         self.command_results = collections.OrderedDict()
@@ -123,10 +123,16 @@ class TeethAgent(object):
         self.log = structlog.get_logger()
         self.started_at = None
 
+    def get_mode_name(self):
+        if self.mode_implementation:
+            return self.mode_implementation.name
+        else:
+            return 'NONE'
+
     def get_status(self):
         """Retrieve a serializable status."""
         return TeethAgentStatus(
-            mode=self.mode_implementation.name,
+            mode=self.get_mode_name(),
             started_at=self.started_at,
             version=self.version
         )
@@ -150,16 +156,38 @@ class TeethAgent(object):
             raise errors.RequestedObjectNotFoundError('Command Result',
                                                       result_id)
 
+    def _split_command(self, command_name):
+        command_parts = command_name.split('.', 1)
+        if len(command_parts) != 2:
+            raise errors.InvalidCommandError(
+                'Command name must be of the form <mode>.<name>')
+
+        return (command_parts[0], command_parts[1])
+
+    def _verify_mode(self, mode_name, command_name):
+        if not self.mode_implementation:
+            try:
+                self.mode_implementation = _load_mode_implementation(mode_name)
+            except Exception:
+                raise errors.InvalidCommandError(
+                    'Unknown mode: {}'.format(mode_name))
+        elif self.get_mode_name().lower() != mode_name:
+            raise errors.InvalidCommandError(
+                'Agent is already in {} mode'.format(self.get_mode_name()))
+
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
         with self.command_lock:
+            mode_part, command_part = self._split_command(command_name)
+            self._verify_mode(mode_part, command_part)
+
             if len(self.command_results) > 0:
                 last_command = self.command_results.values()[-1]
                 if not last_command.is_done():
                     raise errors.CommandExecutionError('agent is busy')
 
             try:
-                result = self.mode_implementation.execute(command_name,
+                result = self.mode_implementation.execute(command_part,
                                                           **kwargs)
             except rest_errors.InvalidContentError as e:
                 # Any command may raise a InvalidContentError which will be
@@ -235,19 +263,6 @@ def build_agent(api_url,
     if not listen_host:
         listen_host = advertise_host
 
-    mac_addr = hardware.get_manager().get_primary_mac_address()
-    api_client = overlord_agent_api.APIClient(api_url)
-
-    log.info('fetching agent configuration from API',
-             api_url=api_url,
-             mac_addr=mac_addr)
-    config = api_client.get_configuration(mac_addr)
-    mode_name = config['mode']
-
-    log.info('loading mode implementation', mode=mode_name)
-    mode_implementation = _load_mode_implementation(mode_name)
-
     return TeethAgent(api_url,
                       (listen_host, listen_port),
-                      (advertise_host, advertise_port),
-                      mode_implementation)
+                      (advertise_host, advertise_port))
