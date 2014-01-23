@@ -10,6 +10,10 @@ RUN apt-get update && apt-get -y install \
     python python-pip python-dev \
     qemu-utils parted util-linux genisoimage git
 
+# Install requirements separately, because pip understands a git+https url while setuptools doesn't
+RUN pip install -r /tmp/teeth-agent/requirements.txt
+
+# This will succeed because all the dependencies (including pesky teeth_rest) were installed previously
 RUN pip install /tmp/teeth-agent
 
 ENTRYPOINT [ "/usr/local/bin/teeth-standby-agent" ]
