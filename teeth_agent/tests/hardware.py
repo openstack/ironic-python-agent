@@ -25,7 +25,7 @@ class TestGenericHardwareManager(unittest.TestCase):
         self.hardware = hardware.GenericHardwareManager()
 
     @mock.patch('__builtin__.open')
-    def test_decom_mode(self, mocked_open):
+    def test_get_primary_mac_address(self, mocked_open):
         f = mocked_open.return_value
         f.read.return_value = '00:0c:29:8c:11:b1\n'
 
@@ -34,3 +34,6 @@ class TestGenericHardwareManager(unittest.TestCase):
 
         mocked_open.assert_called_once_with('/sys/class/net/eth0/address', 'r')
         f.read.assert_called_once_with()
+
+    def test_get_os_install_device(self):
+        self.assertEqual(self.hardware.get_os_install_device(), '/dev/sda')

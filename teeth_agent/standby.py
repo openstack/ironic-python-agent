@@ -23,6 +23,7 @@ import requests
 from teeth_agent import base
 from teeth_agent import configdrive
 from teeth_agent import errors
+from teeth_agent import hardware
 
 
 def _configdrive_location():
@@ -114,7 +115,7 @@ class PrepareImageCommand(base.AsyncCommandResult):
         location = _configdrive_location()
         metadata = self.command_params['metadata']
         files = self.command_params['files']
-        device = '/dev/sda'
+        device = hardware.get_manager().get_os_install_device()
 
         _download_image(image_info)
         configdrive.write_configdrive(location, metadata, files)

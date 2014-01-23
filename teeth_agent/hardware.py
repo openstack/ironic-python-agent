@@ -44,6 +44,10 @@ class HardwareManager(object):
     def get_primary_mac_address(self):
         pass
 
+    @abc.abstractmethod
+    def get_os_install_device(self):
+        pass
+
 
 class GenericHardwareManager(HardwareManager):
     def evaluate_hardware_support(cls):
@@ -51,6 +55,9 @@ class GenericHardwareManager(HardwareManager):
 
     def get_primary_mac_address(self):
         return open('/sys/class/net/eth0/address', 'r').read().strip('\n')
+
+    def get_os_install_device(self):
+        return '/dev/sda'
 
 
 def _compare_extensions(ext1, ext2):
