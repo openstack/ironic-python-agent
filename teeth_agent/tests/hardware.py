@@ -36,4 +36,16 @@ class TestGenericHardwareManager(unittest.TestCase):
         f.read.assert_called_once_with()
 
     def test_get_os_install_device(self):
-        self.assertEqual(self.hardware.get_os_install_device(), '/dev/sda')
+        self.hardware._cmd = mock.Mock()
+        self.hardware._cmd.return_value = blockdev = mock.Mock()
+        blockdev.return_value = (
+            'RO    RA   SSZ   BSZ   StartSec            Size   Device\n'
+            'rw   256   512  4096          0     31016853504   /dev/sdb\n'
+            'rw   256   512  4096          0    249578283616   /dev/sda\n'
+            'rw   256   512  4096       2048      8587837440   /dev/sda1\n'
+            'rw   256   512  4096  124967424        15728640   /dev/sda2\n'
+            'rw   256   512  4096          0    249578283616   /dev/sdc\n')
+
+        self.assertEqual(self.hardware.get_os_install_device(), '/dev/sdb')
+        self.hardware._cmd.assert_called_once_with('blockdev')
+        blockdev.assert_called_once_with('--report')
