@@ -52,7 +52,7 @@ def _write_image(image_info, configdrive_dir, device):
     exit_code = subprocess.call(command)
     if exit_code != 0:
         raise errors.ImageWriteError(exit_code, device)
-    totaltime = int(time.time() - starttime)
+    totaltime = time.time() - starttime
     log.info('Image written', device=device, seconds=totaltime, image=image)
 
 
@@ -87,7 +87,7 @@ def _download_image(image_info):
         except Exception:
             raise errors.ImageDownloadError(image_info['id'])
 
-    totaltime = int(time.time() - starttime)
+    totaltime = time.time() - starttime
     log.info("Image downloaded", image=image_location, seconds=totaltime)
 
     if not _verify_image(image_info, image_location):
