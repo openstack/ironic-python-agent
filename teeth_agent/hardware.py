@@ -16,6 +16,7 @@ limitations under the License.
 
 import abc
 
+import plumbum
 import stevedore
 import structlog
 
@@ -33,6 +34,13 @@ class HardwareSupport(object):
     GENERIC = 1
     MAINLINE = 2
     SERVICE_PROVIDER = 3
+
+
+class BlockDevice(object):
+    def __init__(self, name, size, start_sector):
+        self.name = name
+        self.size = size
+        self.start_sector = start_sector
 
 
 class HardwareManager(object):
@@ -56,8 +64,35 @@ class GenericHardwareManager(HardwareManager):
     def get_primary_mac_address(self):
         return open('/sys/class/net/eth0/address', 'r').read().strip('\n')
 
+    def _cmd(self, command_name):
+        """Mocking plumbum is frustratingly difficult. Instead, mock this."""
+        return plumbum.local[command_name]
+
+    def _list_block_devices(self):
+        report = self._cmd('blockdev')('--report').strip()
+        lines = report.split('\n')
+        lines = [line.split() for line in lines]
+        startsec_idx = lines[0].index('StartSec')
+        device_idx = lines[0].index('Device')
+        size_idx = lines[0].index('Size')
+        return [BlockDevice(line[device_idx],
+                            int(line[size_idx]),
+                            int(line[startsec_idx]))
+                for line
+                in lines[1:]]
+
     def get_os_install_device(self):
-        return '/dev/sda'
+        # Assume anything with a start sector other than 0, is a partition
+        block_devices = [device for device in self._list_block_devices()
+                         if device.start_sector == 0]
+
+        # Find the first device larger than 4GB, assume it is the OS disk
+        # TODO(russellhaering): This isn't a valid assumption in all cases,
+        #                       is there a more reasonable default behavior?
+        block_devices.sort(key=lambda device: device.size)
+        for device in block_devices:
+            if device.size >= (4 * pow(1024, 3)):
+                return device.name
 
 
 def _compare_extensions(ext1, ext2):
