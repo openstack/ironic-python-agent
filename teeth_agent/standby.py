@@ -48,12 +48,12 @@ def _write_image(image_info, configdrive_dir, device):
 
     script = _path_to_script('shell/makefs.sh')
     command = ['/bin/bash', script, configdrive_dir, image, device]
-    log.info('Writing image via {}'.format(' '.join(command)))
+    log.info('Writing image', command=' '.join(command))
     exit_code = subprocess.call(command)
     if exit_code != 0:
         raise errors.ImageWriteError(exit_code, device)
     totaltime = int(time.time() - starttime)
-    log.info('Image written to {} in {}s'.format(device, totaltime))
+    log.info('Image written', device=device, seconds=totaltime, image=image)
 
 
 def _request_url(image_info, url):
@@ -68,10 +68,11 @@ def _download_image(image_info):
     resp = None
     for url in image_info['urls']:
         try:
-            log.info("Attempting to download image from {}".format(url))
+            log.info("Attempting to download image", url=url)
             resp = _request_url(image_info, url)
         except errors.ImageDownloadError:
-            log.warning("Image download failed from {}".format(url))
+            failtime = time.time() - starttime
+            log.warning("Image download failed", url=url, seconds=failtime)
             continue
         else:
             break
@@ -87,7 +88,7 @@ def _download_image(image_info):
             raise errors.ImageDownloadError(image_info['id'])
 
     totaltime = int(time.time() - starttime)
-    log.info("Image {} downloaded in {}s".format(image_location, totaltime))
+    log.info("Image downloaded", image=image_location, seconds=totaltime)
 
     if not _verify_image(image_info, image_location):
         raise errors.ImageChecksumError(image_info['id'])
@@ -99,13 +100,14 @@ def _verify_image(image_info, image_location):
         algo = getattr(hashlib, k, None)
         if algo is None:
             continue
-        log.debug('Verifying {} against {}:{}'.format(image_location, k, v))
+        log.debug('Verifying image', image=image_location, algo=k,
+                  passed_hash=v)
         hash_ = algo(open(image_location).read()).hexdigest()
         if hash_ == v:
             return True
         else:
-            logline = 'Image at {} with {}: {} does not match expected {}: {}'
-            log.warning(logline.format(image_location, k, hash_, k, v))
+            log.warning('Image verification failed', image=image_location,
+                        algo=k, imagehash=hash_, passed_hash=v)
     return False
 
 
@@ -135,7 +137,7 @@ class PrepareImageCommand(base.AsyncCommandResult):
         device = hardware.get_manager().get_os_install_device()
 
         _download_image(image_info)
-        log.debug('Writing configdrive to {}'.format(location))
+        log.debug('Writing configdrive', location=location)
         configdrive.write_configdrive(location, metadata, files)
         _write_image(image_info, location, device)
 
