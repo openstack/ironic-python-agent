@@ -16,14 +16,17 @@ limitations under the License.
 
 import hashlib
 import os
-import subprocess
-
 import requests
+import structlog
+import subprocess
+import time
 
 from teeth_agent import base
 from teeth_agent import configdrive
 from teeth_agent import errors
 from teeth_agent import hardware
+
+log = structlog.get_logger()
 
 
 def _configdrive_location():
@@ -40,14 +43,17 @@ def _path_to_script(script):
 
 
 def _write_image(image_info, configdrive_dir, device):
+    starttime = time.time()
     image = _image_location(image_info)
 
     script = _path_to_script('shell/makefs.sh')
     command = ['/bin/bash', script, configdrive_dir, image, device]
-
+    log.info('Writing image via {}'.format(' '.join(command)))
     exit_code = subprocess.call(command)
     if exit_code != 0:
         raise errors.ImageWriteError(exit_code, device)
+    totaltime = int(time.time() - starttime)
+    log.info('Image written to {} in {}s'.format(device, totaltime))
 
 
 def _request_url(image_info, url):
@@ -58,11 +64,14 @@ def _request_url(image_info, url):
 
 
 def _download_image(image_info):
+    starttime = time.time()
     resp = None
     for url in image_info['urls']:
         try:
+            log.info("Attempting to download image from {}".format(url))
             resp = _request_url(image_info, url)
         except errors.ImageDownloadError:
+            log.warning("Image download failed from {}".format(url))
             continue
         else:
             break
@@ -77,6 +86,9 @@ def _download_image(image_info):
         except Exception:
             raise errors.ImageDownloadError(image_info['id'])
 
+    totaltime = int(time.time() - starttime)
+    log.info("Image {} downloaded in {}s".format(image_location, totaltime))
+
     if not _verify_image(image_info, image_location):
         raise errors.ImageChecksumError(image_info['id'])
 
@@ -87,14 +99,19 @@ def _verify_image(image_info, image_location):
         algo = getattr(hashlib, k, None)
         if algo is None:
             continue
+        log.debug('Verifying {} against {}:{}'.format(image_location, k, v))
         hash_ = algo(open(image_location).read()).hexdigest()
         if hash_ == v:
             return True
+        else:
+            logline = 'Image at {} with {}: {} does not match expected {}: {}'
+            log.warning(logline.format(image_location, k, hash_, k, v))
     return False
 
 
 def _run_image():
     script = _path_to_script('shell/reboot.sh')
+    log.info("Rebooting system")
     command = ['/bin/bash', script]
     # this should never return if successful
     exit_code = subprocess.call(command)
@@ -118,6 +135,7 @@ class PrepareImageCommand(base.AsyncCommandResult):
         device = hardware.get_manager().get_os_install_device()
 
         _download_image(image_info)
+        log.debug('Writing configdrive to {}'.format(location))
         configdrive.write_configdrive(location, metadata, files)
         _write_image(image_info, location, device)
 
