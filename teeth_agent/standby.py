@@ -100,14 +100,19 @@ def _verify_image(image_info, image_location):
         algo = getattr(hashlib, k, None)
         if algo is None:
             continue
-        log.debug('Verifying image', image=image_location, algo=k,
+        log.debug('Verifying image',
+                  image=image_location,
+                  algo=k,
                   passed_hash=v)
         hash_ = algo(open(image_location).read()).hexdigest()
         if hash_ == v:
             return True
         else:
-            log.warning('Image verification failed', image=image_location,
-                        algo=k, imagehash=hash_, passed_hash=v)
+            log.warning('Image verification failed',
+                        image=image_location,
+                        algo=k,
+                        imagehash=hash_,
+                        passed_hash=v)
     return False
 
 
