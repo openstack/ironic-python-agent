@@ -55,7 +55,7 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         write_mock.assert_called_once_with(json_metadata)
         makedirs_calls = [
             mock.call('/lol/teeth/latest'),
-            mock.call('/lol/content')
+            mock.call('/lol/teeth/content')
         ]
         self.assertEqual(makedirs_calls, makedirs_mock.call_args_list)
 
@@ -92,10 +92,10 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         self.assertEqual(data, metadata)
 
         open_calls = [
-            mock.call('/lol/content/0000', 'wb'),
+            mock.call('/lol/openstack/content/0000', 'wb'),
             mock.call().write('contents0'),
             mock.call().__exit__(None, None, None),
-            mock.call('/lol/content/0001', 'wb'),
+            mock.call('/lol/openstack/content/0001', 'wb'),
             mock.call().write('contents1'),
             mock.call().__exit__(None, None, None),
             mock.call('/lol/openstack/latest/meta_data.json', 'wb'),
@@ -107,7 +107,7 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
 
         makedirs_calls = [
             mock.call('/lol/openstack/latest'),
-            mock.call('/lol/content')
+            mock.call('/lol/openstack/content')
         ]
         self.assertEqual(makedirs_calls, makedirs_mock.call_args_list)
 
@@ -142,10 +142,10 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         self.assertEqual(data, metadata)
 
         open_calls = [
-            mock.call('/lol/content/0000', 'wb'),
+            mock.call('/lol/openstack/content/0000', 'wb'),
             mock.call().write('contents0'),
             mock.call().__exit__(None, None, None),
-            mock.call('/lol/content/0001', 'wb'),
+            mock.call('/lol/openstack/content/0001', 'wb'),
             mock.call().write('contents1'),
             mock.call().__exit__(None, None, None),
             mock.call('/lol/openstack/latest/meta_data.json', 'wb'),
@@ -157,6 +157,6 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
 
         makedirs_calls = [
             mock.call('/lol/openstack/latest'),
-            mock.call('/lol/content')
+            mock.call('/lol/openstack/content')
         ]
         self.assertEqual(makedirs_calls, makedirs_mock.call_args_list)
