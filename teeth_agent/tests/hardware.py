@@ -25,22 +25,19 @@ class TestGenericHardwareManager(unittest.TestCase):
         self.hardware = hardware.GenericHardwareManager()
 
     @mock.patch('os.listdir')
+    @mock.patch('os.path.exists')
     @mock.patch('__builtin__.open')
-    def test_list_network_interfaces(self, mocked_open, mocked_listdir):
+    def test_list_network_interfaces(self,
+                                     mocked_open,
+                                     mocked_exists,
+                                     mocked_listdir):
         mocked_listdir.return_value = ['lo', 'eth0']
-        file1 = mock.Mock()
-        file1.read.return_value = '00:00:00:00:00:00\n'
-
-        file2 = mock.Mock()
-        file2.read.return_value = '00:0c:29:8c:11:b1\n'
-
-        mocked_open.side_effect = [file1, file2]
+        mocked_exists.side_effect = [False, True]
+        mocked_open.return_value.read.return_value = '00:0c:29:8c:11:b1\n'
         interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(len(interfaces), 2)
-        self.assertEqual(interfaces[0].name, 'lo')
-        self.assertEqual(interfaces[0].mac_address, '00:00:00:00:00:00')
-        self.assertEqual(interfaces[1].name, 'eth0')
-        self.assertEqual(interfaces[1].mac_address, '00:0c:29:8c:11:b1')
+        self.assertEqual(len(interfaces), 1)
+        self.assertEqual(interfaces[0].name, 'eth0')
+        self.assertEqual(interfaces[0].mac_address, '00:0c:29:8c:11:b1')
 
     def test_get_os_install_device(self):
         self.hardware._cmd = mock.Mock()
