@@ -53,3 +53,17 @@ class TestGenericHardwareManager(unittest.TestCase):
         self.assertEqual(self.hardware.get_os_install_device(), '/dev/sdb')
         self.hardware._cmd.assert_called_once_with('blockdev')
         blockdev.assert_called_once_with('--report')
+
+    def test_list_hardwre_info(self):
+        self.hardware.list_network_interfaces = mock.Mock()
+        self.hardware.list_network_interfaces.return_value = [
+            hardware.NetworkInterface('eth0', '00:0c:29:8c:11:b1'),
+            hardware.NetworkInterface('eth1', '00:0c:29:8c:11:b2'),
+        ]
+
+        hardware_info = self.hardware.list_hardware_info()
+        self.assertEqual(len(hardware_info), 2)
+        self.assertEqual(hardware_info[0].type, 'mac_address')
+        self.assertEqual(hardware_info[1].type, 'mac_address')
+        self.assertEqual(hardware_info[0].id, '00:0c:29:8c:11:b1')
+        self.assertEqual(hardware_info[1].id, '00:0c:29:8c:11:b2')
