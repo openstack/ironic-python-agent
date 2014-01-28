@@ -50,7 +50,7 @@ class NetworkInterface(object):
         self.mac_address = mac_addr
         # TODO(russellhaering): Pull these from LLDP
         self.switch_port_descr = None
-        self.switch_chassi_descr = None
+        self.switch_chassis_descr = None
 
 
 class HardwareManager(object):
