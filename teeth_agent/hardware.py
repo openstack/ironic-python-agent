@@ -15,11 +15,14 @@ limitations under the License.
 """
 
 import abc
+import collections
 import os
 
 import plumbum
 import stevedore
 import structlog
+
+from teeth_rest import encoding
 
 _global_manager = None
 
@@ -35,6 +38,22 @@ class HardwareSupport(object):
     GENERIC = 1
     MAINLINE = 2
     SERVICE_PROVIDER = 3
+
+
+class HardwareType(object):
+    MAC_ADDRESS = 'mac_address'
+
+
+class HardwareInfo(encoding.Serializable):
+    def __init__(self, type, id):
+        self.type = type
+        self.id = id
+
+    def serialize(self, view):
+        return collections.OrderedDict([
+            ('type', self.type),
+            ('id', self.id),
+        ])
 
 
 class BlockDevice(object):
@@ -65,6 +84,13 @@ class HardwareManager(object):
     @abc.abstractmethod
     def get_os_install_device(self):
         pass
+
+    def list_hardware_info(self):
+        hardware_info = []
+        for interface in self.list_network_interfaces():
+            hardware_info.append(HardwareInfo(HardwareType.MAC_ADDRESS,
+                                              interface.mac_address))
+        return hardware_info
 
 
 class GenericHardwareManager(HardwareManager):
