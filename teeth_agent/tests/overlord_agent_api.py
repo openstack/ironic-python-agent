@@ -21,6 +21,7 @@ import time
 import unittest
 
 from teeth_agent import errors
+from teeth_agent import hardware
 from teeth_agent import overlord_agent_api
 
 API_URL = 'http://agent-api.overlord.example.org/'
@@ -29,6 +30,12 @@ API_URL = 'http://agent-api.overlord.example.org/'
 class TestBaseTeethAgent(unittest.TestCase):
     def setUp(self):
         self.api_client = overlord_agent_api.APIClient(API_URL)
+        self.hardware_info = [
+            hardware.HardwareInfo(hardware.HardwareType.MAC_ADDRESS,
+                                  'a:b:c:d'),
+            hardware.HardwareInfo(hardware.HardwareType.MAC_ADDRESS,
+                                  '0:1:2:3'),
+        ]
 
     def test_successful_heartbeat(self):
         expected_heartbeat_before = time.time() + 120
@@ -40,8 +47,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request.return_value = response
 
         heartbeat_before = self.api_client.heartbeat(
-            url='http://1.2.3.4:9999/',
-            mac_addr='a:b:c:d',
+            hardware_info=self.hardware_info,
             version='15',
             mode='STANDBY')
 
@@ -49,13 +55,22 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'PUT')
-        self.assertEqual(request_args[1], API_URL + 'v1/agents/a:b:c:d')
+        self.assertEqual(request_args[1], API_URL + 'v1/agents')
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
-        self.assertEqual(content['url'], 'http://1.2.3.4:9999/')
         self.assertEqual(content['mode'], 'STANDBY')
         self.assertEqual(content['version'], '15')
+        self.assertEqual(content['hardware'], [
+            {
+                'type': 'mac_address',
+                'id': 'a:b:c:d',
+            },
+            {
+                'type': 'mac_address',
+                'id': '0:1:2:3',
+            },
+        ])
 
     def test_heartbeat_requests_exception(self):
         self.api_client.session.request = mock.Mock()
@@ -63,8 +78,7 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          url='http://1.2.3.4:9999/',
-                          mac_addr='a:b:c:d',
+                          hardware_info=self.hardware_info,
                           version='15',
                           mode='STANDBY')
 
@@ -75,8 +89,7 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          url='http://1.2.3.4:9999/',
-                          mac_addr='a:b:c:d',
+                          hardware_info=self.hardware_info,
                           version='15',
                           mode='STANDBY')
 
@@ -87,8 +100,7 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          url='http://1.2.3.4:9999/',
-                          mac_addr='a:b:c:d',
+                          hardware_info=self.hardware_info,
                           version='15',
                           mode='STANDBY')
 
@@ -101,7 +113,6 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          url='http://1.2.3.4:9999/',
-                          mac_addr='a:b:c:d',
+                          hardware_info=self.hardware_info,
                           version='15',
                           mode='STANDBY')
