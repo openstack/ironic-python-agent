@@ -24,17 +24,6 @@ class TestGenericHardwareManager(unittest.TestCase):
     def setUp(self):
         self.hardware = hardware.GenericHardwareManager()
 
-    @mock.patch('__builtin__.open')
-    def test_get_primary_mac_address(self, mocked_open):
-        f = mocked_open.return_value
-        f.read.return_value = '00:0c:29:8c:11:b1\n'
-
-        mac_addr = self.hardware.get_primary_mac_address()
-        self.assertEqual(mac_addr, '00:0c:29:8c:11:b1')
-
-        mocked_open.assert_called_once_with('/sys/class/net/eth0/address', 'r')
-        f.read.assert_called_once_with()
-
     def test_get_os_install_device(self):
         self.hardware._cmd = mock.Mock()
         self.hardware._cmd.return_value = blockdev = mock.Mock()
