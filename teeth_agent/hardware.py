@@ -85,7 +85,7 @@ class GenericHardwareManager(HardwareManager):
         return NetworkInterface(interface_name, mac_addr)
 
     def list_network_interfaces(self):
-        iface_names = os.listdir('/sys/class/net')
+        iface_names = os.listdir('{}/class/net'.format(self.sys_path))
         return [self._get_interface_info(name) for name in iface_names]
 
     def _cmd(self, command_name):
