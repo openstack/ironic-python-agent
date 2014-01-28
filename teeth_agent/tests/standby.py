@@ -83,15 +83,15 @@ class TestStandbyMode(unittest.TestCase):
                           self.agent_mode._validate_image_info,
                           invalid_info)
 
-    def test_cache_images_success(self):
-        result = self.agent_mode.cache_images('cache_images',
-                                              [self._build_fake_image_info()])
+    def test_cache_image_success(self):
+        result = self.agent_mode.cache_image('cache_image',
+                                             self._build_fake_image_info())
         result.join()
 
-    def test_cache_images_invalid_image_list(self):
+    def test_cache_image_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent_mode.cache_images,
-                          'cache_images',
+                          self.agent_mode.cache_image,
+                          'cache_image',
                           {'foo': 'bar'})
 
     def test_image_location(self):
