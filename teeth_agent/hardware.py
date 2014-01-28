@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 import abc
+import os
 
 import plumbum
 import stevedore
@@ -43,13 +44,22 @@ class BlockDevice(object):
         self.start_sector = start_sector
 
 
+class NetworkInterface(object):
+    def __init__(self, name, mac_addr):
+        self.name = name
+        self.mac_address = mac_addr
+        # TODO(russellhaering): Pull these from LLDP
+        self.switch_port_descr = None
+        self.switch_chassis_descr = None
+
+
 class HardwareManager(object):
     @abc.abstractmethod
     def evaluate_hardware_support(cls):
         pass
 
     @abc.abstractmethod
-    def get_primary_mac_address(self):
+    def list_network_interfaces(self):
         pass
 
     @abc.abstractmethod
@@ -58,11 +68,32 @@ class HardwareManager(object):
 
 
 class GenericHardwareManager(HardwareManager):
+    def __init__(self):
+        self.sys_path = '/sys'
+
+        if os.path.isdir('/mnt/sys'):
+            self.sys_path = '/mnt/sys'
+
     def evaluate_hardware_support(cls):
         return HardwareSupport.GENERIC
 
-    def get_primary_mac_address(self):
-        return open('/sys/class/net/eth0/address', 'r').read().strip('\n')
+    def _get_interface_info(self, interface_name):
+        addr_path = '{}/class/net/{}/address'.format(self.sys_path,
+                                                     interface_name)
+        addr_file = open(addr_path, 'r')
+        mac_addr = addr_file.read().strip()
+        return NetworkInterface(interface_name, mac_addr)
+
+    def _is_device(self, interface_name):
+        device_path = '{}/class/net/{}/device'.format(self.sys_path,
+                                                      interface_name)
+        return os.path.exists(device_path)
+
+    def list_network_interfaces(self):
+        iface_names = os.listdir('{}/class/net'.format(self.sys_path))
+        return [self._get_interface_info(name)
+                for name in iface_names
+                if self._is_device(name)]
 
     def _cmd(self, command_name):
         """Mocking plumbum is frustratingly difficult. Instead, mock this."""
