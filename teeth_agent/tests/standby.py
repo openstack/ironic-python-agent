@@ -103,16 +103,13 @@ class TestStandbyMode(unittest.TestCase):
     @mock.patch('subprocess.call', autospec=True)
     def test_write_image(self, call_mock, open_mock):
         image_info = self._build_fake_image_info()
-        configdrive = 'configdrive'
         device = '/dev/sda'
         location = standby._image_location(image_info)
-        script = standby._path_to_script('shell/makefs.sh')
-        command = ['/bin/bash', script, configdrive, location, device]
+        script = standby._path_to_script('shell/write_image.sh')
+        command = ['/bin/bash', script, location, device]
         call_mock.return_value = 0
 
-        standby._write_image(image_info,
-                             configdrive,
-                             device)
+        standby._write_image(image_info, device)
         call_mock.assert_called_once_with(command)
 
         call_mock.reset_mock()
@@ -121,6 +118,27 @@ class TestStandbyMode(unittest.TestCase):
         self.assertRaises(errors.ImageWriteError,
                           standby._write_image,
                           image_info,
+                          device)
+
+        call_mock.assert_called_once_with(command)
+
+    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch('subprocess.call', autospec=True)
+    def test_copy_configdrive_to_disk(self, call_mock, open_mock):
+        device = '/dev/sda'
+        configdrive = 'configdrive'
+        script = standby._path_to_script('shell/copy_configdrive_to_disk.sh')
+        command = ['/bin/bash', script, configdrive, device]
+        call_mock.return_value = 0
+
+        standby._copy_configdrive_to_disk(configdrive, device)
+        call_mock.assert_called_once_with(command)
+
+        call_mock.reset_mock()
+        call_mock.return_value = 1
+
+        self.assertRaises(errors.ConfigDriveWriteError,
+                          standby._copy_configdrive_to_disk,
                           configdrive,
                           device)
 
