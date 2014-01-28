@@ -84,9 +84,16 @@ class GenericHardwareManager(HardwareManager):
         mac_addr = addr_file.read().strip()
         return NetworkInterface(interface_name, mac_addr)
 
+    def _is_device(self, interface_name):
+        device_path = '{}/class/net/{}/device'.format(self.sys_path,
+                                                      interface_name)
+        return os.path.exists(device_path)
+
     def list_network_interfaces(self):
         iface_names = os.listdir('{}/class/net'.format(self.sys_path))
-        return [self._get_interface_info(name) for name in iface_names]
+        return [self._get_interface_info(name)
+                for name in iface_names
+                if self._is_device(name)]
 
     def _cmd(self, command_name):
         """Mocking plumbum is frustratingly difficult. Instead, mock this."""
