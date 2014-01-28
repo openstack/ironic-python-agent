@@ -103,6 +103,20 @@ class ImageWriteError(errors.RESTError):
         self.details = self.details.format(device, exit_code)
 
 
+class ConfigDriveWriteError(errors.RESTError):
+    """Error raised when a configdrive directory cannot be written to a
+    device.
+    """
+
+    message = 'Error writing configdrive to device.'
+
+    def __init__(self, exit_code, device):
+        details = 'Writing configdrive to device {} failed with exit code {}.'
+        details = details.format(device, exit_code)
+        super(ConfigDriveWriteError, self).__init__(details)
+        self.details = details
+
+
 class SystemRebootError(errors.RESTError):
     """Error raised when a system cannot reboot."""
 
