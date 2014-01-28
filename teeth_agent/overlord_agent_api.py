@@ -47,13 +47,11 @@ class APIClient(object):
                                     headers=request_headers,
                                     data=data)
 
-    def heartbeat(self, mac_addr, url, mode, version):
-        path = '/{api_version}/agents/{mac_addr}'.format(
-            api_version=self.api_version,
-            mac_addr=mac_addr)
+    def heartbeat(self, hardware_info, mode, version):
+        path = '/{api_version}/agents'.format(api_version=self.api_version)
 
         data = {
-            'url': url,
+            'hardware': hardware_info,
             'mode': mode,
             'version': version,
         }
