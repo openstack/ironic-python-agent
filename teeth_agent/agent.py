@@ -67,6 +67,7 @@ class TeethAgentHeartbeater(threading.Thread):
     def __init__(self, agent):
         super(TeethAgentHeartbeater, self).__init__()
         self.agent = agent
+        self.hardware = hardware.get_manager()
         self.api = overlord_agent_api.APIClient(agent.api_url)
         self.log = structlog.get_logger(api_url=agent.api_url)
         self.stop_event = threading.Event()
@@ -87,8 +88,7 @@ class TeethAgentHeartbeater(threading.Thread):
     def do_heartbeat(self):
         try:
             deadline = self.api.heartbeat(
-                mac_addr=self.agent.get_agent_mac_addr(),
-                url=self.agent.get_agent_url(),
+                hardware_info=self.hardware.list_hardware_info(),
                 version=self.agent.version,
                 mode=self.agent.get_mode_name())
             self.error_delay = self.initial_delay
