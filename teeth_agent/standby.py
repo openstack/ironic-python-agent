@@ -145,8 +145,11 @@ def _run_image():
 
 class CacheImageCommand(base.AsyncCommandResult):
     def execute(self):
-        # TODO(russellhaering): Actually cache images
-        pass
+        image_info = self.command_params['image_info']
+        device = hardware.get_manager().get_os_install_device()
+
+        _download_image(image_info)
+        _write_image(image_info, device)
 
 
 class PrepareImageCommand(base.AsyncCommandResult):
