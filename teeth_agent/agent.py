@@ -16,10 +16,8 @@ limitations under the License.
 
 import collections
 import random
-import socket
 import threading
 import time
-import urlparse
 
 from cherrypy import wsgiserver
 import pkg_resources
@@ -109,10 +107,9 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class TeethAgent(object):
-    def __init__(self, api_url, listen_address, advertise_address):
+    def __init__(self, api_url, listen_address):
         self.api_url = api_url
         self.listen_address = listen_address
-        self.advertise_address = advertise_address
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = api.TeethAgentAPIServer(self)
@@ -136,12 +133,6 @@ class TeethAgent(object):
             started_at=self.started_at,
             version=self.version
         )
-
-    def get_agent_url(self):
-        # If we put this behind any sort of proxy (ie, stunnel) we're going to
-        # need to (re)think this.
-        return 'http://{host}:{port}/'.format(host=self.advertise_address[0],
-                                              port=self.advertise_address[1])
 
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
@@ -216,28 +207,6 @@ class TeethAgent(object):
         self.heartbeater.stop()
 
 
-def _get_api_facing_ip_address(api_url):
-    """Note: this will raise an exception if anything goes wrong. That is
-    expected to be fine, if we can't get to the agent API there isn't much
-    point in starting up. Just crash and rely on the process manager to
-    restart us in a sane fashion.
-    """
-    api_addr = urlparse.urlparse(api_url)
-
-    if api_addr.scheme not in ('http', 'https'):
-        raise RuntimeError('API URL scheme must be one of \'http\' or '
-                           '\'https\'.')
-
-    api_port = api_addr.port or {'http': 80, 'https': 443}[api_addr.scheme]
-    api_host = api_addr.hostname
-
-    conn = socket.create_connection((api_host, api_port))
-    listen_ip = conn.getsockname()[0]
-    conn.close()
-
-    return listen_ip
-
-
 def _load_mode_implementation(mode_name):
     mgr = driver.DriverManager(
         namespace='teeth_agent.modes',
@@ -248,21 +217,5 @@ def _load_mode_implementation(mode_name):
     return mgr.driver
 
 
-def build_agent(api_url,
-                listen_host,
-                listen_port,
-                advertise_host,
-                advertise_port):
-    log = structlog.get_logger()
-
-    if not advertise_host:
-        log.info('resolving API-facing IP address')
-        advertise_host = _get_api_facing_ip_address(api_url)
-        log.info('resolved API-facing IP address', ip_address=advertise_host)
-
-    if not listen_host:
-        listen_host = advertise_host
-
-    return TeethAgent(api_url,
-                      (listen_host, listen_port),
-                      (advertise_host, advertise_port))
+def build_agent(api_url, listen_host, listen_port):
+    return TeethAgent(api_url, (listen_host, listen_port))
