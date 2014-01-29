@@ -120,7 +120,6 @@ class TestBaseAgent(unittest.TestCase):
             encoding.SerializationViews.PUBLIC,
             indent=4)
         self.agent = agent.TeethAgent('https://fake_api.example.org:8081/',
-                                      ('localhost', 9999),
                                       ('localhost', 9999))
 
     def assertEqualEncoded(self, a, b):
