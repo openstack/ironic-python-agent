@@ -30,34 +30,17 @@ def run():
                         help='URL of the Teeth agent API')
 
     parser.add_argument('--listen-host',
+                        default='0.0.0.0',
                         type=str,
-                        help=('The IP address to listen on. Leave this blank'
-                              ' to auto-detect. A common use-case would be to'
-                              ' override this with \'localhost\', in order to'
-                              ' run behind a proxy, while leaving'
-                              ' advertise-host unspecified.'))
+                        help=('The IP address to listen on.'))
 
     parser.add_argument('--listen-port',
                         default=9999,
                         type=int,
                         help='The port to listen on')
 
-    parser.add_argument('--advertise-host',
-                        type=str,
-                        help=('The IP address to advertise. Leave this blank'
-                              ' to auto-detect by calling \'getsockname()\' on'
-                              ' a connection to the agent API.'))
-
-    parser.add_argument('--advertise-port',
-                        type=int,
-                        help=('The port to advertise. Defaults to listen-port.'
-                              ' Useful when running behind a proxy.'))
-
     args = parser.parse_args()
     logging.configure()
-    advertise_port = args.advertise_port or args.listen_port
     agent.build_agent(args.api_url,
                       args.listen_host,
-                      args.listen_port,
-                      args.advertise_host,
-                      advertise_port).run()
+                      args.listen_port).run()
