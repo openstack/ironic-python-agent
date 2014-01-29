@@ -42,18 +42,35 @@ def _path_to_script(script):
     return os.path.join(cwd, script)
 
 
-def _write_image(image_info, configdrive_dir, device):
+def _write_image(image_info, device):
     starttime = time.time()
     image = _image_location(image_info)
 
-    script = _path_to_script('shell/makefs.sh')
-    command = ['/bin/bash', script, configdrive_dir, image, device]
+    script = _path_to_script('shell/write_image.sh')
+    command = ['/bin/bash', script, image, device]
     log.info('Writing image', command=' '.join(command))
     exit_code = subprocess.call(command)
     if exit_code != 0:
         raise errors.ImageWriteError(exit_code, device)
     totaltime = time.time() - starttime
     log.info('Image written', device=device, seconds=totaltime, image=image)
+
+
+def _copy_configdrive_to_disk(configdrive_dir, device):
+    starttime = time.time()
+    script = _path_to_script('shell/copy_configdrive_to_disk.sh')
+    command = ['/bin/bash', script, configdrive_dir, device]
+    log.info('copying configdrive to disk', command=' '.join(command))
+    exit_code = subprocess.call(command)
+
+    if exit_code != 0:
+        raise errors.ConfigDriveWriteError(exit_code, device)
+
+    totaltime = time.time() - starttime
+    log.info('configdrive copied',
+             from_directory=configdrive_dir,
+             device=device,
+             seconds=totaltime)
 
 
 def _request_url(image_info, url):
@@ -126,10 +143,13 @@ def _run_image():
         raise errors.SystemRebootError(exit_code)
 
 
-class CacheImagesCommand(base.AsyncCommandResult):
+class CacheImageCommand(base.AsyncCommandResult):
     def execute(self):
-        # TODO(russellhaering): Actually cache images
-        pass
+        image_info = self.command_params['image_info']
+        device = hardware.get_manager().get_os_install_device()
+
+        _download_image(image_info)
+        _write_image(image_info, device)
 
 
 class PrepareImageCommand(base.AsyncCommandResult):
@@ -142,9 +162,11 @@ class PrepareImageCommand(base.AsyncCommandResult):
         device = hardware.get_manager().get_os_install_device()
 
         _download_image(image_info)
+        _write_image(image_info, device)
+
         log.debug('Writing configdrive', location=location)
         configdrive.write_configdrive(location, metadata, files)
-        _write_image(image_info, location, device)
+        _copy_configdrive_to_disk(location, device)
 
 
 class RunImageCommand(base.AsyncCommandResult):
@@ -155,7 +177,7 @@ class RunImageCommand(base.AsyncCommandResult):
 class StandbyMode(base.BaseAgentMode):
     def __init__(self):
         super(StandbyMode, self).__init__('STANDBY')
-        self.command_map['cache_images'] = self.cache_images
+        self.command_map['cache_image'] = self.cache_image
         self.command_map['prepare_image'] = self.prepare_image
         self.command_map['run_image'] = self.run_image
 
@@ -174,15 +196,9 @@ class StandbyMode(base.BaseAgentMode):
                 'Image \'hashes\' must be a dictionary with at least one '
                 'element.')
 
-    def cache_images(self, command_name, image_infos):
-        if type(image_infos) != list:
-            raise errors.InvalidCommandParamsError(
-                '\'image_infos\' parameter must be a list.')
-
-        for image_info in image_infos:
-            self._validate_image_info(image_info)
-
-        return CacheImagesCommand(command_name, image_infos).start()
+    def cache_image(self, command_name, image_info):
+        self._validate_image_info(image_info)
+        return CacheImageCommand(command_name, image_info).start()
 
     def prepare_image(self, command_name, **command_params):
         self._validate_image_info(command_params['image_info'])
