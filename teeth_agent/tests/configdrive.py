@@ -17,6 +17,7 @@ limitations under the License.
 from __future__ import unicode_literals
 
 import base64
+import collections
 import json
 import mock
 import unittest
@@ -67,10 +68,10 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
         for k, v in metadata.iteritems():
             self.writer.add_metadata(k, v)
-        files = {
-            '/etc/conf0': 'contents0',
-            '/etc/conf1': 'contents1',
-        }
+        files = collections.OrderedDict([
+            ('/etc/conf0', 'contents0'),
+            ('/etc/conf1', 'contents1'),
+        ])
         for path, contents in files.iteritems():
             self.writer.add_file(path, contents)
 
@@ -117,10 +118,10 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
     @mock.patch('__builtin__.open', autospec=True)
     def test_write_configdrive(self, open_mock, makedirs_mock):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
-        files = {
-            '/etc/conf0': base64.b64encode('contents0'),
-            '/etc/conf1': base64.b64encode('contents1'),
-        }
+        files = collections.OrderedDict([
+            ('/etc/conf0', base64.b64encode('contents0')),
+            ('/etc/conf1', base64.b64encode('contents1')),
+        ])
         metadata['files'] = [
             {'content_path': '/content/0000', 'path': '/etc/conf0'},
             {'content_path': '/content/0001', 'path': '/etc/conf1'},
