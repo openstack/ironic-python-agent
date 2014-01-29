@@ -1,9 +1,12 @@
 language: python
 python: 2.7
 install:
-- pip install tox
+  - pip install tox
 script:
-- tox
+  - tox
+branches:
+  only:
+    - master
 notifications:
   irc:
     channels:
