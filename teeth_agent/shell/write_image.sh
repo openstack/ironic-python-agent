@@ -27,8 +27,14 @@ DEVICE="$2"
 log "Erasing existing mbr from ${DEVICE}"
 dd if=/dev/zero of=$DEVICE bs=512 count=10
 
-# Converts image to raw and writes to device
-log "Imaging $IMAGEFILE onto $DEVICE"
-qemu-img convert -O raw $IMAGEFILE $DEVICE
+## Doing two steps allows us to use dd, which allows us to tweak things like
+## blocksize and allows use of direct io
+# Converts image to raw
+log "Imaging $IMAGEFILE to RAW format"
+qemu-img convert -O raw $IMAGEFILE /tmp/image.raw
+
+# Write image onto device
+log "Imaging $DEVICE"
+dd if=/tmp/image.raw of=$DEVICE bs=64K oflag=direct
 
 log "${DEVICE} imaged successfully!"
