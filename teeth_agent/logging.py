@@ -14,9 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import traceback
+import string
 
 import structlog
+
+import traceback
 
 EXCEPTION_LOG_METHODS = ['error']
 
@@ -28,9 +30,35 @@ def _capture_stack_trace(logger, method, event):
     return event
 
 
+def _format_event(logger, method, event):
+    """Formats the log message using keyword args.
+    log('hello {keyword}', keyword='world') should log: "hello world"
+    Removes the keywords used for formatting from the logged message.
+    Throws a KeyError if the log message requires formatting but doesn't
+    have enough keys to format.
+    """
+    if 'event' not in event:
+        # nothing to format, e.g. _log_request in teeth_rest/component
+        return event
+    # Get a list of fields that need to be filled.
+    formatter = string.Formatter()
+    try:
+        formatted = formatter.format(event['event'], **event)
+    except KeyError:
+        keys = formatter.parse(event['event'])
+        # index 1 is the key name
+        keys = [item[1] for item in keys]
+        missing_keys = list(set(keys) - set(event))
+        raise KeyError("Log formatter missing keys: {}, cannot format."
+                       .format(missing_keys))
+    event['event'] = formatted
+    return event
+
+
 def configure(pretty=False):
     processors = [
         _capture_stack_trace,
+        _format_event,
     ]
 
     if pretty:
