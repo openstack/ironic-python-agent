@@ -236,27 +236,27 @@ class TestStandbyMode(unittest.TestCase):
 
     def test_cache_image_async(self):
         image_info = self._build_fake_image_info()
-        self.agent_mode._thread_cache_image = mock.Mock(return_value="test")
+        self.agent_mode._thread_cache_image = mock.Mock(return_value='test')
         async_result = self.agent_mode.cache_image(image_info)
         while not async_result.is_done():
             time.sleep(0.1)
-        self.assertEqual("SUCCEEDED", async_result.command_status)
-        self.assertEqual("test", async_result.command_result)
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertEqual('test', async_result.command_result)
 
     def test_prepare_image_async(self):
         image_info = self._build_fake_image_info()
-        self.agent_mode._thread_prepare_image = mock.Mock(return_value="test")
+        self.agent_mode._thread_prepare_image = mock.Mock(return_value='test')
         async_result = self.agent_mode.prepare_image(image_info, {}, [])
         while not async_result.is_done():
             time.sleep(0.1)
-        self.assertEqual("SUCCEEDED", async_result.command_status)
-        self.assertEqual("test", async_result.command_result)
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertEqual('test', async_result.command_result)
 
     def test_run_image_async(self):
         image_info = self._build_fake_image_info()
-        standby._run_image = mock.Mock(return_value="test")
+        standby._run_image = mock.Mock(return_value='test')
         async_result = self.agent_mode.run_image(image_info)
         while not async_result.is_done():
             time.sleep(0.1)
-        self.assertEqual("SUCCEEDED", async_result.command_status)
-        self.assertEqual("test", async_result.command_result)
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertEqual('test', async_result.command_result)

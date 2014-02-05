@@ -169,9 +169,9 @@ class StandbyMode(base.BaseAgentMode):
         self._validate_image_info(image_info)
 
         command_params = {
-            "image_info": image_info
+            'image_info': image_info
         }
-        return base.AsyncCommandResult("cache_image",
+        return base.AsyncCommandResult('cache_image',
                                        command_params,
                                        self._thread_cache_image).start()
 
@@ -179,11 +179,11 @@ class StandbyMode(base.BaseAgentMode):
         self._validate_image_info(image_info)
 
         command_params = {
-            "image_info": image_info,
-            "metadata": metadata,
-            "files": files
+            'image_info': image_info,
+            'metadata': metadata,
+            'files': files
         }
-        return base.AsyncCommandResult("prepare_image",
+        return base.AsyncCommandResult('prepare_image',
                                        command_params,
                                        self._thread_prepare_image).start()
 
@@ -191,9 +191,9 @@ class StandbyMode(base.BaseAgentMode):
         self._validate_image_info(image_info)
 
         command_params = {
-            "image_info": image_info
+            'image_info': image_info
         }
-        return base.AsyncCommandResult("run_image",
+        return base.AsyncCommandResult('run_image',
                                        command_params,
                                        _run_image).start()
 
