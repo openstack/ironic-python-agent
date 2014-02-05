@@ -20,6 +20,8 @@ import unittest
 from teeth_agent import errors
 from teeth_agent import standby
 
+import time
+
 
 class TestStandbyMode(unittest.TestCase):
     def setUp(self):
@@ -84,14 +86,12 @@ class TestStandbyMode(unittest.TestCase):
                           invalid_info)
 
     def test_cache_image_success(self):
-        result = self.agent_mode.cache_image('cache_image',
-                                             self._build_fake_image_info())
+        result = self.agent_mode.cache_image(self._build_fake_image_info())
         result.join()
 
     def test_cache_image_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
                           self.agent_mode.cache_image,
-                          'cache_image',
                           {'foo': 'bar'})
 
     def test_image_location(self):
@@ -233,3 +233,30 @@ class TestStandbyMode(unittest.TestCase):
                           standby._run_image)
 
         call_mock.assert_called_once_with(command)
+
+    def test_cache_image_async(self):
+        image_info = self._build_fake_image_info()
+        self.agent_mode._thread_cache_image = mock.Mock(return_value="test")
+        async_result = self.agent_mode.cache_image(image_info)
+        while not async_result.is_done():
+            time.sleep(0.1)
+        self.assertEqual("SUCCEEDED", async_result.command_status)
+        self.assertEqual("test", async_result.command_result)
+
+    def test_prepare_image_async(self):
+        image_info = self._build_fake_image_info()
+        self.agent_mode._thread_prepare_image = mock.Mock(return_value="test")
+        async_result = self.agent_mode.prepare_image(image_info, {}, [])
+        while not async_result.is_done():
+            time.sleep(0.1)
+        self.assertEqual("SUCCEEDED", async_result.command_status)
+        self.assertEqual("test", async_result.command_result)
+
+    def test_run_image_async(self):
+        image_info = self._build_fake_image_info()
+        standby._run_image = mock.Mock(return_value="test")
+        async_result = self.agent_mode.run_image(image_info)
+        while not async_result.is_done():
+            time.sleep(0.1)
+        self.assertEqual("SUCCEEDED", async_result.command_status)
+        self.assertEqual("test", async_result.command_result)

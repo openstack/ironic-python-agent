@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import abc
 import collections
 import threading
 import uuid
@@ -71,11 +70,13 @@ class SyncCommandResult(BaseCommandResult):
 
 
 class AsyncCommandResult(BaseCommandResult):
-    """A command that executes asynchronously in the background. Subclasses
-    should override `execute` to implement actual command execution.
+    """A command that executes asynchronously in the background.
+
+    :param execute_method: a callable to be executed asynchronously
     """
-    def __init__(self, command_name, command_params):
+    def __init__(self, command_name, command_params, execute_method):
         super(AsyncCommandResult, self).__init__(command_name, command_params)
+        self.execute_method = execute_method
         self.command_state_lock = threading.Lock()
 
         thread_name = 'agent-command-{}'.format(self.id)
@@ -100,7 +101,7 @@ class AsyncCommandResult(BaseCommandResult):
 
     def run(self):
         try:
-            result = self.execute()
+            result = self.execute_method(**self.command_params)
             with self.command_state_lock:
                 self.command_result = result
                 self.command_status = AgentCommandStatus.SUCCEEDED
@@ -112,10 +113,6 @@ class AsyncCommandResult(BaseCommandResult):
             with self.command_state_lock:
                 self.command_error = e
                 self.command_status = AgentCommandStatus.FAILED
-
-    @abc.abstractmethod
-    def execute(self):
-        pass
 
 
 class BaseAgentMode(object):

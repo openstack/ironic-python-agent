@@ -143,37 +143,6 @@ def _run_image():
         raise errors.SystemRebootError(exit_code)
 
 
-class CacheImageCommand(base.AsyncCommandResult):
-    def execute(self):
-        image_info = self.command_params['image_info']
-        device = hardware.get_manager().get_os_install_device()
-
-        _download_image(image_info)
-        _write_image(image_info, device)
-
-
-class PrepareImageCommand(base.AsyncCommandResult):
-    """Downloads and writes an image and configdrive to a device."""
-    def execute(self):
-        image_info = self.command_params['image_info']
-        location = _configdrive_location()
-        metadata = self.command_params['metadata']
-        files = self.command_params['files']
-        device = hardware.get_manager().get_os_install_device()
-
-        _download_image(image_info)
-        _write_image(image_info, device)
-
-        log.debug('Writing configdrive', location=location)
-        configdrive.write_configdrive(location, metadata, files)
-        _copy_configdrive_to_disk(location, device)
-
-
-class RunImageCommand(base.AsyncCommandResult):
-    def execute(self):
-        _run_image()
-
-
 class StandbyMode(base.BaseAgentMode):
     def __init__(self):
         super(StandbyMode, self).__init__('STANDBY')
@@ -196,16 +165,51 @@ class StandbyMode(base.BaseAgentMode):
                 'Image \'hashes\' must be a dictionary with at least one '
                 'element.')
 
-    def cache_image(self, command_name, image_info):
-        self._validate_image_info(image_info)
-        return CacheImageCommand(command_name, image_info).start()
-
-    def prepare_image(self, command_name, **command_params):
-        self._validate_image_info(command_params['image_info'])
-
-        return PrepareImageCommand(command_name, command_params).start()
-
-    def run_image(self, command_name, image_info):
+    def cache_image(self, image_info):
         self._validate_image_info(image_info)
 
-        return RunImageCommand(command_name, image_info).start()
+        command_params = {
+            "image_info": image_info
+        }
+        return base.AsyncCommandResult("cache_image",
+                                       command_params,
+                                       self._thread_cache_image).start()
+
+    def prepare_image(self, image_info, metadata, files):
+        self._validate_image_info(image_info)
+
+        command_params = {
+            "image_info": image_info,
+            "metadata": metadata,
+            "files": files
+        }
+        return base.AsyncCommandResult("prepare_image",
+                                       command_params,
+                                       self._thread_prepare_image).start()
+
+    def run_image(self, image_info):
+        self._validate_image_info(image_info)
+
+        command_params = {
+            "image_info": image_info
+        }
+        return base.AsyncCommandResult("run_image",
+                                       command_params,
+                                       _run_image).start()
+
+    def _thread_cache_image(self, image_info):
+        device = hardware.get_manager().get_os_install_device()
+
+        _download_image(image_info)
+        _write_image(image_info, device)
+
+    def _thread_prepare_image(self, image_info, metadata, files):
+        location = _configdrive_location()
+        device = hardware.get_manager().get_os_install_device()
+
+        _download_image(image_info)
+        _write_image(image_info, device)
+
+        log.debug('Writing configdrive', location=location)
+        configdrive.write_configdrive(location, metadata, files)
+        _copy_configdrive_to_disk(location, device)
