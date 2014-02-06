@@ -31,7 +31,7 @@ from teeth_agent import errors
 EXPECTED_ERROR = RuntimeError('command execution failed')
 
 
-def foo_execute(**kwargs):
+def foo_execute(*args, **kwargs):
     if kwargs['fail']:
         raise EXPECTED_ERROR
     else:

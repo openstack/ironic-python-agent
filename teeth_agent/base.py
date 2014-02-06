@@ -101,7 +101,8 @@ class AsyncCommandResult(BaseCommandResult):
 
     def run(self):
         try:
-            result = self.execute_method(**self.command_params)
+            result = self.execute_method(self.command_name,
+                                         **self.command_params)
             with self.command_state_lock:
                 self.command_result = result
                 self.command_status = AgentCommandStatus.SUCCEEDED

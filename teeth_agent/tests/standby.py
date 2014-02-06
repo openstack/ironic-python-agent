@@ -223,14 +223,14 @@ class TestStandbyMode(unittest.TestCase):
         command = ['/bin/bash', script]
         call_mock.return_value = 0
 
-        standby._run_image()
+        self.agent_mode._thread_run_image('run_image')
         call_mock.assert_called_once_with(command)
 
         call_mock.reset_mock()
         call_mock.return_value = 1
 
-        self.assertRaises(errors.SystemRebootError,
-                          standby._run_image)
+        with self.assertRaises(errors.SystemRebootError):
+            self.agent_mode._thread_run_image('run_image')
 
         call_mock.assert_called_once_with(command)
 
@@ -254,7 +254,7 @@ class TestStandbyMode(unittest.TestCase):
 
     def test_run_image_async(self):
         image_info = self._build_fake_image_info()
-        standby._run_image = mock.Mock(return_value='test')
+        self.agent_mode._thread_run_image = mock.Mock(return_value='test')
         async_result = self.agent_mode.run_image(image_info)
         while not async_result.is_done():
             time.sleep(0.1)

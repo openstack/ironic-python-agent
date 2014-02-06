@@ -133,16 +133,6 @@ def _verify_image(image_info, image_location):
     return False
 
 
-def _run_image():
-    script = _path_to_script('shell/reboot.sh')
-    log.info("Rebooting system")
-    command = ['/bin/bash', script]
-    # this should never return if successful
-    exit_code = subprocess.call(command)
-    if exit_code != 0:
-        raise errors.SystemRebootError(exit_code)
-
-
 class StandbyMode(base.BaseAgentMode):
     def __init__(self):
         super(StandbyMode, self).__init__('STANDBY')
@@ -195,15 +185,16 @@ class StandbyMode(base.BaseAgentMode):
         }
         return base.AsyncCommandResult('run_image',
                                        command_params,
-                                       _run_image).start()
+                                       self._thread_run_image).start()
 
-    def _thread_cache_image(self, image_info):
+    def _thread_cache_image(self, command_name, image_info):
         device = hardware.get_manager().get_os_install_device()
 
         _download_image(image_info)
         _write_image(image_info, device)
 
-    def _thread_prepare_image(self, image_info, metadata, files):
+    def _thread_prepare_image(self, command_name, image_info, metadata, files):
+
         location = _configdrive_location()
         device = hardware.get_manager().get_os_install_device()
 
@@ -213,3 +204,12 @@ class StandbyMode(base.BaseAgentMode):
         log.debug('Writing configdrive', location=location)
         configdrive.write_configdrive(location, metadata, files)
         _copy_configdrive_to_disk(location, device)
+
+    def _thread_run_image(self, command_name):
+        script = _path_to_script('shell/reboot.sh')
+        log.info("Rebooting system")
+        command = ['/bin/bash', script]
+        # this should never return if successful
+        exit_code = subprocess.call(command)
+        if exit_code != 0:
+            raise errors.SystemRebootError(exit_code)
