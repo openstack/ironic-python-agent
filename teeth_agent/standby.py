@@ -23,6 +23,7 @@ import time
 
 from teeth_agent import base
 from teeth_agent import configdrive
+from teeth_agent import decorators
 from teeth_agent import errors
 from teeth_agent import hardware
 
@@ -133,6 +134,22 @@ def _verify_image(image_info, image_location):
     return False
 
 
+def _validate_image_info(image_info, *args, **kwargs):
+    for field in ['id', 'urls', 'hashes']:
+        if field not in image_info:
+            msg = 'Image is missing \'{}\' field.'.format(field)
+            raise errors.InvalidCommandParamsError(msg)
+
+    if type(image_info['urls']) != list or not image_info['urls']:
+        raise errors.InvalidCommandParamsError(
+            'Image \'urls\' must be a list with at least one element.')
+
+    if type(image_info['hashes']) != dict or not image_info['hashes']:
+        raise errors.InvalidCommandParamsError(
+            'Image \'hashes\' must be a dictionary with at least one '
+            'element.')
+
+
 class StandbyMode(base.BaseAgentMode):
     def __init__(self):
         super(StandbyMode, self).__init__('STANDBY')
@@ -140,61 +157,15 @@ class StandbyMode(base.BaseAgentMode):
         self.command_map['prepare_image'] = self.prepare_image
         self.command_map['run_image'] = self.run_image
 
-    def _validate_image_info(self, image_info):
-        for field in ['id', 'urls', 'hashes']:
-            if field not in image_info:
-                msg = 'Image is missing \'{}\' field.'.format(field)
-                raise errors.InvalidCommandParamsError(msg)
-
-        if type(image_info['urls']) != list or not image_info['urls']:
-            raise errors.InvalidCommandParamsError(
-                'Image \'urls\' must be a list with at least one element.')
-
-        if type(image_info['hashes']) != dict or not image_info['hashes']:
-            raise errors.InvalidCommandParamsError(
-                'Image \'hashes\' must be a dictionary with at least one '
-                'element.')
-
+    @decorators.async_command(_validate_image_info)
     def cache_image(self, image_info):
-        self._validate_image_info(image_info)
-
-        command_params = {
-            'image_info': image_info
-        }
-        return base.AsyncCommandResult('cache_image',
-                                       command_params,
-                                       self._thread_cache_image).start()
-
-    def prepare_image(self, image_info, metadata, files):
-        self._validate_image_info(image_info)
-
-        command_params = {
-            'image_info': image_info,
-            'metadata': metadata,
-            'files': files
-        }
-        return base.AsyncCommandResult('prepare_image',
-                                       command_params,
-                                       self._thread_prepare_image).start()
-
-    def run_image(self, image_info):
-        self._validate_image_info(image_info)
-
-        command_params = {
-            'image_info': image_info
-        }
-        return base.AsyncCommandResult('run_image',
-                                       command_params,
-                                       self._thread_run_image).start()
-
-    def _thread_cache_image(self, command_name, image_info):
         device = hardware.get_manager().get_os_install_device()
 
         _download_image(image_info)
         _write_image(image_info, device)
 
-    def _thread_prepare_image(self, command_name, image_info, metadata, files):
-
+    @decorators.async_command(_validate_image_info)
+    def prepare_image(self, image_info, metadata, files):
         location = _configdrive_location()
         device = hardware.get_manager().get_os_install_device()
 
@@ -205,7 +176,8 @@ class StandbyMode(base.BaseAgentMode):
         configdrive.write_configdrive(location, metadata, files)
         _copy_configdrive_to_disk(location, device)
 
-    def _thread_run_image(self, command_name):
+    @decorators.async_command()
+    def run_image(self):
         script = _path_to_script('shell/reboot.sh')
         log.info("Rebooting system")
         command = ['/bin/bash', script]
