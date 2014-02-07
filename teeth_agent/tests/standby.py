@@ -246,11 +246,11 @@ class TestStandbyMode(unittest.TestCase):
                            configdrive_mock,
                            configdrive_copy_mock):
         image_info = self._build_fake_image_info()
-        location_mock.return_value = "THE CLOUD"
+        location_mock.return_value = 'THE CLOUD'
         download_mock.return_value = None
         write_mock.return_value = None
         manager_mock = hardware_mock.return_value
-        manager_mock.get_os_install_device.return_value = "manager"
+        manager_mock.get_os_install_device.return_value = 'manager'
         configdrive_mock.return_value = None
         configdrive_copy_mock.return_value = None
 
@@ -259,9 +259,9 @@ class TestStandbyMode(unittest.TestCase):
             time.sleep(0.01)
 
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, "manager")
-        configdrive_mock.assert_called_once_with("THE CLOUD", {}, [])
-        configdrive_copy_mock.assert_called_once_with("THE CLOUD", "manager")
+        write_mock.assert_called_once_with(image_info, 'manager')
+        configdrive_mock.assert_called_once_with('THE CLOUD', {}, [])
+        configdrive_copy_mock.assert_called_once_with('THE CLOUD', 'manager')
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertEqual(None, async_result.command_result)

@@ -179,7 +179,7 @@ class StandbyMode(base.BaseAgentMode):
     @decorators.async_command()
     def run_image(self):
         script = _path_to_script('shell/reboot.sh')
-        log.info("Rebooting system")
+        log.info('Rebooting system')
         command = ['/bin/bash', script]
         # this should never return if successful
         exit_code = subprocess.call(command)
