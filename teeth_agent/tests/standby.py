@@ -20,8 +20,6 @@ import unittest
 from teeth_agent import errors
 from teeth_agent import standby
 
-import time
-
 
 class TestStandbyMode(unittest.TestCase):
     def setUp(self):
@@ -224,8 +222,7 @@ class TestStandbyMode(unittest.TestCase):
         download_mock.return_value = None
         write_mock.return_value = None
         async_result = self.agent_mode.cache_image(image_info)
-        while not async_result.is_done():
-            time.sleep(0.01)
+        async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, None)
         self.assertEqual('SUCCEEDED', async_result.command_status)
@@ -255,8 +252,7 @@ class TestStandbyMode(unittest.TestCase):
         configdrive_copy_mock.return_value = None
 
         async_result = self.agent_mode.prepare_image(image_info, {}, [])
-        while not async_result.is_done():
-            time.sleep(0.01)
+        async_result.join()
 
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
@@ -273,16 +269,14 @@ class TestStandbyMode(unittest.TestCase):
         call_mock.return_value = 0
 
         success_result = self.agent_mode.run_image()
-        while not success_result.is_done():
-            time.sleep(0.01)
+        success_result.join()
         call_mock.assert_called_once_with(command)
 
         call_mock.reset_mock()
         call_mock.return_value = 1
 
         failed_result = self.agent_mode.run_image()
-        while not failed_result.is_done():
-            time.sleep(0.01)
+        failed_result.join()
 
         call_mock.assert_called_once_with(command)
         self.assertEqual('FAILED', failed_result.command_status)
