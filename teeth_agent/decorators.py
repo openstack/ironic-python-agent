@@ -18,14 +18,14 @@ import functools
 from teeth_agent import base
 
 
-def async_command(command_name, validator=None):
+def async_command(validator=None):
     """Will run the command in an AsyncCommandResult in its own thread.
     command_name is set based on the func name and command_params will
     be whatever args/kwargs you pass into the decorated command.
     """
     def async_decorator(func):
         @functools.wraps(func)
-        def wrapper(self, **command_params):
+        def wrapper(self, command_name, **command_params):
             # Run a validator before passing everything off to async.
             # validators should raise exceptions or return silently.
             if validator:

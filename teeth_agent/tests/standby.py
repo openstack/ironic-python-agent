@@ -85,12 +85,14 @@ class TestStandbyMode(unittest.TestCase):
 
     def test_cache_image_success(self):
         result = self.agent_mode.cache_image(
+            'cache_image',
             image_info=self._build_fake_image_info())
         result.join()
 
     def test_cache_image_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
                           self.agent_mode.cache_image,
+                          'cache_image',
                           image_info={'foo': 'bar'})
 
     def test_image_location(self):
@@ -222,7 +224,8 @@ class TestStandbyMode(unittest.TestCase):
         image_info = self._build_fake_image_info()
         download_mock.return_value = None
         write_mock.return_value = None
-        async_result = self.agent_mode.cache_image(image_info=image_info)
+        async_result = self.agent_mode.cache_image('cache_image',
+                                                   image_info=image_info)
         async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, None)
@@ -252,7 +255,8 @@ class TestStandbyMode(unittest.TestCase):
         configdrive_mock.return_value = None
         configdrive_copy_mock.return_value = None
 
-        async_result = self.agent_mode.prepare_image(image_info=image_info,
+        async_result = self.agent_mode.prepare_image('prepare_image',
+                                                     image_info=image_info,
                                                      metadata={},
                                                      files=[])
         async_result.join()
@@ -271,14 +275,14 @@ class TestStandbyMode(unittest.TestCase):
         command = ['/bin/bash', script]
         call_mock.return_value = 0
 
-        success_result = self.agent_mode.run_image()
+        success_result = self.agent_mode.run_image('run_image')
         success_result.join()
         call_mock.assert_called_once_with(command)
 
         call_mock.reset_mock()
         call_mock.return_value = 1
 
-        failed_result = self.agent_mode.run_image()
+        failed_result = self.agent_mode.run_image('run_image')
         failed_result.join()
 
         call_mock.assert_called_once_with(command)

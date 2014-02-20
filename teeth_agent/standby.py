@@ -159,15 +159,19 @@ class StandbyMode(base.BaseAgentMode):
         self.command_map['prepare_image'] = self.prepare_image
         self.command_map['run_image'] = self.run_image
 
-    @decorators.async_command('cache_image', _validate_image_info)
-    def cache_image(self, image_info=None):
+    @decorators.async_command(_validate_image_info)
+    def cache_image(self, command_name, image_info=None):
         device = hardware.get_manager().get_os_install_device()
 
         _download_image(image_info)
         _write_image(image_info, device)
 
-    @decorators.async_command('prepare_image', _validate_image_info)
-    def prepare_image(self, image_info=None, metadata=None, files=None):
+    @decorators.async_command(_validate_image_info)
+    def prepare_image(self,
+                      command_name,
+                      image_info=None,
+                      metadata=None,
+                      files=None):
         location = _configdrive_location()
         device = hardware.get_manager().get_os_install_device()
 
@@ -178,8 +182,8 @@ class StandbyMode(base.BaseAgentMode):
         configdrive.write_configdrive(location, metadata, files)
         _copy_configdrive_to_disk(location, device)
 
-    @decorators.async_command('run_image')
-    def run_image(self):
+    @decorators.async_command()
+    def run_image(self, command_name):
         script = _path_to_script('shell/reboot.sh')
         log.info('Rebooting system')
         command = ['/bin/bash', script]
