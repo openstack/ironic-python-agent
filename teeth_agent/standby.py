@@ -162,13 +162,13 @@ class StandbyMode(base.BaseAgentMode):
         self.cached_image_id = None
 
     @decorators.async_command(_validate_image_info)
-    def cache_image(self, command_name, image_info=None):
+    def cache_image(self, command_name, image_info=None, force=False):
         device = hardware.get_manager().get_os_install_device()
 
-        _download_image(image_info)
-        _write_image(image_info, device)
-
-        self.cached_image_id = image_info['id']
+        if self.cached_image_id != image_info['id'] or force:
+            _download_image(image_info)
+            _write_image(image_info, device)
+            self.cached_image_id = image_info['id']
 
     @decorators.async_command(_validate_image_info)
     def prepare_image(self,
