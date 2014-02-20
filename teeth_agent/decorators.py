@@ -18,7 +18,7 @@ import functools
 from teeth_agent import base
 
 
-def async_command(validator=None):
+def async_command(command_name, validator=None):
     """Will run the command in an AsyncCommandResult in its own thread.
     command_name is set based on the func name and command_params will
     be whatever args/kwargs you pass into the decorated command.
@@ -35,7 +35,7 @@ def async_command(validator=None):
             # know about the mode
             bound_func = functools.partial(func, self)
 
-            return base.AsyncCommandResult(func.__name__,
+            return base.AsyncCommandResult(command_name,
                                            command_params,
                                            bound_func).start()
         return wrapper
