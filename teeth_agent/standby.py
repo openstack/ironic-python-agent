@@ -134,7 +134,9 @@ def _verify_image(image_info, image_location):
     return False
 
 
-def _validate_image_info(image_info, *args, **kwargs):
+def _validate_image_info(image_info=None, **kwargs):
+    image_info = image_info or {}
+
     for field in ['id', 'urls', 'hashes']:
         if field not in image_info:
             msg = 'Image is missing \'{}\' field.'.format(field)
@@ -158,14 +160,14 @@ class StandbyMode(base.BaseAgentMode):
         self.command_map['run_image'] = self.run_image
 
     @decorators.async_command(_validate_image_info)
-    def cache_image(self, image_info):
+    def cache_image(self, image_info=None):
         device = hardware.get_manager().get_os_install_device()
 
         _download_image(image_info)
         _write_image(image_info, device)
 
     @decorators.async_command(_validate_image_info)
-    def prepare_image(self, image_info, metadata, files):
+    def prepare_image(self, image_info=None, metadata=None, files=None):
         location = _configdrive_location()
         device = hardware.get_manager().get_os_install_device()
 

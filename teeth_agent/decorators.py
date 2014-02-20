@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 import functools
-import inspect
 
 from teeth_agent import base
 
@@ -26,22 +25,18 @@ def async_command(validator=None):
     """
     def async_decorator(func):
         @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
+        def wrapper(self, **command_params):
             # Run a validator before passing everything off to async.
             # validators should raise exceptions or return silently.
             if validator:
-                validator(*args, **kwargs)
-            # Grab the variable names from the func definition.
-            command_names = inspect.getargspec(func)[0]
-            # Create dict {command_name: arg,...}
-            if command_names[0] == "self":
-                command_params = dict(zip(command_names[1:len(args)+1], args))
-            else:
-                command_params = dict(zip(command_names[:len(args)], args))
-            # Add all of kwargs
-            command_params = dict(command_params.items() + kwargs.items())
+                validator(**command_params)
+
+            # bind self to func so that AsyncCommandResult doesn't need to
+            # know about the mode
+            bound_func = functools.partial(func, self)
+
             return base.AsyncCommandResult(func.__name__,
                                            command_params,
-                                           func).start()
+                                           bound_func).start()
         return wrapper
     return async_decorator

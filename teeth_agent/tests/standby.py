@@ -84,13 +84,14 @@ class TestStandbyMode(unittest.TestCase):
                           invalid_info)
 
     def test_cache_image_success(self):
-        result = self.agent_mode.cache_image(self._build_fake_image_info())
+        result = self.agent_mode.cache_image(
+            image_info=self._build_fake_image_info())
         result.join()
 
     def test_cache_image_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
                           self.agent_mode.cache_image,
-                          {'foo': 'bar'})
+                          image_info={'foo': 'bar'})
 
     def test_image_location(self):
         image_info = self._build_fake_image_info()
@@ -221,7 +222,7 @@ class TestStandbyMode(unittest.TestCase):
         image_info = self._build_fake_image_info()
         download_mock.return_value = None
         write_mock.return_value = None
-        async_result = self.agent_mode.cache_image(image_info)
+        async_result = self.agent_mode.cache_image(image_info=image_info)
         async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, None)
@@ -251,7 +252,9 @@ class TestStandbyMode(unittest.TestCase):
         configdrive_mock.return_value = None
         configdrive_copy_mock.return_value = None
 
-        async_result = self.agent_mode.prepare_image(image_info, {}, [])
+        async_result = self.agent_mode.prepare_image(image_info=image_info,
+                                                     metadata={},
+                                                     files=[])
         async_result.join()
 
         download_mock.assert_called_once_with(image_info)
