@@ -40,7 +40,7 @@ class TestStandbyMode(unittest.TestCase):
         }
 
     def test_validate_image_info_success(self):
-        self.agent_mode._validate_image_info(self._build_fake_image_info())
+        standby._validate_image_info(self._build_fake_image_info())
 
     def test_validate_image_info_missing_field(self):
         for field in ['id', 'urls', 'hashes']:
@@ -48,7 +48,7 @@ class TestStandbyMode(unittest.TestCase):
             del invalid_info[field]
 
             self.assertRaises(errors.InvalidCommandParamsError,
-                              self.agent_mode._validate_image_info,
+                              standby._validate_image_info,
                               invalid_info)
 
     def test_validate_image_info_invalid_urls(self):
@@ -56,7 +56,7 @@ class TestStandbyMode(unittest.TestCase):
         invalid_info['urls'] = 'this_is_not_a_list'
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent_mode._validate_image_info,
+                          standby._validate_image_info,
                           invalid_info)
 
     def test_validate_image_info_empty_urls(self):
@@ -64,7 +64,7 @@ class TestStandbyMode(unittest.TestCase):
         invalid_info['urls'] = []
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent_mode._validate_image_info,
+                          standby._validate_image_info,
                           invalid_info)
 
     def test_validate_image_info_invalid_hashes(self):
@@ -72,7 +72,7 @@ class TestStandbyMode(unittest.TestCase):
         invalid_info['hashes'] = 'this_is_not_a_dict'
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent_mode._validate_image_info,
+                          standby._validate_image_info,
                           invalid_info)
 
     def test_validate_image_info_empty_hashes(self):
@@ -80,18 +80,16 @@ class TestStandbyMode(unittest.TestCase):
         invalid_info['hashes'] = {}
 
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent_mode._validate_image_info,
+                          standby._validate_image_info,
                           invalid_info)
 
     def test_cache_image_success(self):
-        result = self.agent_mode.cache_image('cache_image',
-                                             self._build_fake_image_info())
+        result = self.agent_mode.cache_image(self._build_fake_image_info())
         result.join()
 
     def test_cache_image_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
                           self.agent_mode.cache_image,
-                          'cache_image',
                           {'foo': 'bar'})
 
     def test_image_location(self):
@@ -217,19 +215,68 @@ class TestStandbyMode(unittest.TestCase):
         self.assertFalse(verified)
         self.assertEqual(md5_mock.call_count, 1)
 
+    @mock.patch('teeth_agent.standby._write_image', autospec=True)
+    @mock.patch('teeth_agent.standby._download_image', autospec=True)
+    def test_cache_image(self, download_mock, write_mock):
+        image_info = self._build_fake_image_info()
+        download_mock.return_value = None
+        write_mock.return_value = None
+        async_result = self.agent_mode.cache_image(image_info)
+        async_result.join()
+        download_mock.assert_called_once_with(image_info)
+        write_mock.assert_called_once_with(image_info, None)
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertEqual(None, async_result.command_result)
+
+    @mock.patch('teeth_agent.standby._copy_configdrive_to_disk', autospec=True)
+    @mock.patch('teeth_agent.standby.configdrive.write_configdrive',
+                autospec=True)
+    @mock.patch('teeth_agent.hardware.get_manager', autospec=True)
+    @mock.patch('teeth_agent.standby._write_image', autospec=True)
+    @mock.patch('teeth_agent.standby._download_image', autospec=True)
+    @mock.patch('teeth_agent.standby._configdrive_location', autospec=True)
+    def test_prepare_image(self,
+                           location_mock,
+                           download_mock,
+                           write_mock,
+                           hardware_mock,
+                           configdrive_mock,
+                           configdrive_copy_mock):
+        image_info = self._build_fake_image_info()
+        location_mock.return_value = 'THE CLOUD'
+        download_mock.return_value = None
+        write_mock.return_value = None
+        manager_mock = hardware_mock.return_value
+        manager_mock.get_os_install_device.return_value = 'manager'
+        configdrive_mock.return_value = None
+        configdrive_copy_mock.return_value = None
+
+        async_result = self.agent_mode.prepare_image(image_info, {}, [])
+        async_result.join()
+
+        download_mock.assert_called_once_with(image_info)
+        write_mock.assert_called_once_with(image_info, 'manager')
+        configdrive_mock.assert_called_once_with('THE CLOUD', {}, [])
+        configdrive_copy_mock.assert_called_once_with('THE CLOUD', 'manager')
+
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertEqual(None, async_result.command_result)
+
     @mock.patch('subprocess.call', autospec=True)
     def test_run_image(self, call_mock):
         script = standby._path_to_script('shell/reboot.sh')
         command = ['/bin/bash', script]
         call_mock.return_value = 0
 
-        standby._run_image()
+        success_result = self.agent_mode.run_image()
+        success_result.join()
         call_mock.assert_called_once_with(command)
 
         call_mock.reset_mock()
         call_mock.return_value = 1
 
-        self.assertRaises(errors.SystemRebootError,
-                          standby._run_image)
+        failed_result = self.agent_mode.run_image()
+        failed_result.join()
 
         call_mock.assert_called_once_with(command)
+        self.assertEqual('FAILED', failed_result.command_status)

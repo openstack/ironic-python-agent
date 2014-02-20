@@ -31,12 +31,11 @@ from teeth_agent import errors
 EXPECTED_ERROR = RuntimeError('command execution failed')
 
 
-class FooTeethAgentCommandResult(base.AsyncCommandResult):
-    def execute(self):
-        if self.command_params['fail']:
-            raise EXPECTED_ERROR
-        else:
-            return 'command execution succeeded'
+def foo_execute(*args, **kwargs):
+    if kwargs['fail']:
+        raise EXPECTED_ERROR
+    else:
+        return 'command execution succeeded'
 
 
 class FakeMode(base.BaseAgentMode):
@@ -171,7 +170,8 @@ class TestBaseAgent(unittest.TestCase):
         self.agent.heartbeater.start.assert_called_once_with()
 
     def test_async_command_success(self):
-        result = FooTeethAgentCommandResult('foo_command', {'fail': False})
+        result = base.AsyncCommandResult('foo_command', {'fail': False},
+                                         foo_execute)
         expected_result = {
             'id': result.id,
             'command_name': 'foo_command',
@@ -193,7 +193,8 @@ class TestBaseAgent(unittest.TestCase):
         self.assertEqualEncoded(result, expected_result)
 
     def test_async_command_failure(self):
-        result = FooTeethAgentCommandResult('foo_command', {'fail': True})
+        result = base.AsyncCommandResult('foo_command', {'fail': True},
+                                         foo_execute)
         expected_result = {
             'id': result.id,
             'command_name': 'foo_command',

@@ -23,6 +23,7 @@ import time
 
 from teeth_agent import base
 from teeth_agent import configdrive
+from teeth_agent import decorators
 from teeth_agent import errors
 from teeth_agent import hardware
 
@@ -133,45 +134,20 @@ def _verify_image(image_info, image_location):
     return False
 
 
-def _run_image():
-    script = _path_to_script('shell/reboot.sh')
-    log.info("Rebooting system")
-    command = ['/bin/bash', script]
-    # this should never return if successful
-    exit_code = subprocess.call(command)
-    if exit_code != 0:
-        raise errors.SystemRebootError(exit_code)
+def _validate_image_info(image_info, *args, **kwargs):
+    for field in ['id', 'urls', 'hashes']:
+        if field not in image_info:
+            msg = 'Image is missing \'{}\' field.'.format(field)
+            raise errors.InvalidCommandParamsError(msg)
 
+    if type(image_info['urls']) != list or not image_info['urls']:
+        raise errors.InvalidCommandParamsError(
+            'Image \'urls\' must be a list with at least one element.')
 
-class CacheImageCommand(base.AsyncCommandResult):
-    def execute(self):
-        image_info = self.command_params['image_info']
-        device = hardware.get_manager().get_os_install_device()
-
-        _download_image(image_info)
-        _write_image(image_info, device)
-
-
-class PrepareImageCommand(base.AsyncCommandResult):
-    """Downloads and writes an image and configdrive to a device."""
-    def execute(self):
-        image_info = self.command_params['image_info']
-        location = _configdrive_location()
-        metadata = self.command_params['metadata']
-        files = self.command_params['files']
-        device = hardware.get_manager().get_os_install_device()
-
-        _download_image(image_info)
-        _write_image(image_info, device)
-
-        log.debug('Writing configdrive', location=location)
-        configdrive.write_configdrive(location, metadata, files)
-        _copy_configdrive_to_disk(location, device)
-
-
-class RunImageCommand(base.AsyncCommandResult):
-    def execute(self):
-        _run_image()
+    if type(image_info['hashes']) != dict or not image_info['hashes']:
+        raise errors.InvalidCommandParamsError(
+            'Image \'hashes\' must be a dictionary with at least one '
+            'element.')
 
 
 class StandbyMode(base.BaseAgentMode):
@@ -181,31 +157,31 @@ class StandbyMode(base.BaseAgentMode):
         self.command_map['prepare_image'] = self.prepare_image
         self.command_map['run_image'] = self.run_image
 
-    def _validate_image_info(self, image_info):
-        for field in ['id', 'urls', 'hashes']:
-            if field not in image_info:
-                msg = 'Image is missing \'{}\' field.'.format(field)
-                raise errors.InvalidCommandParamsError(msg)
+    @decorators.async_command(_validate_image_info)
+    def cache_image(self, image_info):
+        device = hardware.get_manager().get_os_install_device()
 
-        if type(image_info['urls']) != list or not image_info['urls']:
-            raise errors.InvalidCommandParamsError(
-                'Image \'urls\' must be a list with at least one element.')
+        _download_image(image_info)
+        _write_image(image_info, device)
 
-        if type(image_info['hashes']) != dict or not image_info['hashes']:
-            raise errors.InvalidCommandParamsError(
-                'Image \'hashes\' must be a dictionary with at least one '
-                'element.')
+    @decorators.async_command(_validate_image_info)
+    def prepare_image(self, image_info, metadata, files):
+        location = _configdrive_location()
+        device = hardware.get_manager().get_os_install_device()
 
-    def cache_image(self, command_name, image_info):
-        self._validate_image_info(image_info)
-        return CacheImageCommand(command_name, image_info).start()
+        _download_image(image_info)
+        _write_image(image_info, device)
 
-    def prepare_image(self, command_name, **command_params):
-        self._validate_image_info(command_params['image_info'])
+        log.debug('Writing configdrive', location=location)
+        configdrive.write_configdrive(location, metadata, files)
+        _copy_configdrive_to_disk(location, device)
 
-        return PrepareImageCommand(command_name, command_params).start()
-
-    def run_image(self, command_name, image_info):
-        self._validate_image_info(image_info)
-
-        return RunImageCommand(command_name, image_info).start()
+    @decorators.async_command()
+    def run_image(self):
+        script = _path_to_script('shell/reboot.sh')
+        log.info('Rebooting system')
+        command = ['/bin/bash', script]
+        # this should never return if successful
+        exit_code = subprocess.call(command)
+        if exit_code != 0:
+            raise errors.SystemRebootError(exit_code)
