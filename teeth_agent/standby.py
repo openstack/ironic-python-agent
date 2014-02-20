@@ -159,6 +159,8 @@ class StandbyMode(base.BaseAgentMode):
         self.command_map['prepare_image'] = self.prepare_image
         self.command_map['run_image'] = self.run_image
 
+        self.cached_image_id = None
+
     @decorators.async_command(_validate_image_info)
     def cache_image(self, image_info=None):
         device = hardware.get_manager().get_os_install_device()
@@ -166,13 +168,17 @@ class StandbyMode(base.BaseAgentMode):
         _download_image(image_info)
         _write_image(image_info, device)
 
+        self.cached_image_id = image_info['id']
+
     @decorators.async_command(_validate_image_info)
     def prepare_image(self, image_info=None, metadata=None, files=None):
         location = _configdrive_location()
         device = hardware.get_manager().get_os_install_device()
 
-        _download_image(image_info)
-        _write_image(image_info, device)
+        # don't write image again if already cached
+        if self.cached_image_id != image_info['id']:
+            _download_image(image_info)
+            _write_image(image_info, device)
 
         log.debug('Writing configdrive', location=location)
         configdrive.write_configdrive(location, metadata, files)
