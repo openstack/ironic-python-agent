@@ -229,6 +229,7 @@ class TestStandbyMode(unittest.TestCase):
         async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, None)
+        self.assertEqual(self.agent_mode.cached_image_id, image_info['id'])
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertEqual(None, async_result.command_result)
 
@@ -263,6 +264,25 @@ class TestStandbyMode(unittest.TestCase):
 
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
+        configdrive_mock.assert_called_once_with('THE CLOUD', {}, [])
+        configdrive_copy_mock.assert_called_once_with('THE CLOUD', 'manager')
+
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertEqual(None, async_result.command_result)
+
+        download_mock.reset_mock()
+        write_mock.reset_mock()
+        configdrive_mock.reset_mock()
+        configdrive_copy_mock.reset_mock()
+        # image is now cached, make sure download/write doesn't happen
+        async_result = self.agent_mode.prepare_image('prepare_image',
+                                                     image_info=image_info,
+                                                     metadata={},
+                                                     files=[])
+        async_result.join()
+
+        self.assertEqual(download_mock.call_count, 0)
+        self.assertEqual(write_mock.call_count, 0)
         configdrive_mock.assert_called_once_with('THE CLOUD', {}, [])
         configdrive_copy_mock.assert_called_once_with('THE CLOUD', 'manager')
 
