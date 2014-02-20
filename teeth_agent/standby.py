@@ -179,6 +179,7 @@ class StandbyMode(base.BaseAgentMode):
         if self.cached_image_id != image_info['id']:
             _download_image(image_info)
             _write_image(image_info, device)
+            self.cached_image_id = image_info['id']
 
         log.debug('Writing configdrive', location=location)
         configdrive.write_configdrive(location, metadata, files)
