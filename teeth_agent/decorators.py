@@ -25,7 +25,7 @@ def async_command(validator=None):
     """
     def async_decorator(func):
         @functools.wraps(func)
-        def wrapper(self, **command_params):
+        def wrapper(self, command_name, **command_params):
             # Run a validator before passing everything off to async.
             # validators should raise exceptions or return silently.
             if validator:
@@ -35,7 +35,7 @@ def async_command(validator=None):
             # know about the mode
             bound_func = functools.partial(func, self)
 
-            return base.AsyncCommandResult(func.__name__,
+            return base.AsyncCommandResult(command_name,
                                            command_params,
                                            bound_func).start()
         return wrapper
