@@ -218,17 +218,20 @@ class TestStandbyMode(unittest.TestCase):
         self.assertFalse(verified)
         self.assertEqual(md5_mock.call_count, 1)
 
+    @mock.patch('teeth_agent.hardware.get_manager', autospec=True)
     @mock.patch('teeth_agent.standby._write_image', autospec=True)
     @mock.patch('teeth_agent.standby._download_image', autospec=True)
-    def test_cache_image(self, download_mock, write_mock):
+    def test_cache_image(self, download_mock, write_mock, hardware_mock):
         image_info = self._build_fake_image_info()
         download_mock.return_value = None
         write_mock.return_value = None
+        manager_mock = hardware_mock.return_value
+        manager_mock.get_os_install_device.return_value = 'manager'
         async_result = self.agent_mode.cache_image('cache_image',
                                                    image_info=image_info)
         async_result.join()
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, None)
+        write_mock.assert_called_once_with(image_info, 'manager')
         self.assertEqual(self.agent_mode.cached_image_id, image_info['id'])
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertEqual(None, async_result.command_result)
