@@ -26,7 +26,7 @@ from teeth_rest import encoding
 from teeth_agent import agent
 from teeth_agent import base
 from teeth_agent import errors
-
+from teeth_agent import hardware
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
 
@@ -48,6 +48,8 @@ class TestHeartbeater(unittest.TestCase):
         self.mock_agent = mock.Mock()
         self.heartbeater = agent.TeethAgentHeartbeater(self.mock_agent)
         self.heartbeater.api = mock.Mock()
+        self.heartbeater.hardware = mock.create_autospec(
+            hardware.HardwareManager)
         self.heartbeater.stop_event = mock.Mock()
 
     @mock.patch('time.time')
