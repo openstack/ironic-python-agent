@@ -17,8 +17,8 @@ limitations under the License.
 import abc
 import collections
 import os
+import subprocess
 
-import plumbum
 import stevedore
 import structlog
 
@@ -121,14 +121,14 @@ class GenericHardwareManager(HardwareManager):
                 for name in iface_names
                 if self._is_device(name)]
 
-    def _cmd(self, command_name):
-        """Mocking plumbum is frustratingly difficult. Instead, mock this."""
-        return plumbum.local[command_name]
+    def _cmd(self, command):
+        process = subprocess.Popen(command, stdout=subprocess.PIPE)
+        return process.communicate()
 
     def _list_block_devices(self):
-        report = self._cmd('blockdev')('--report').strip()
+        report = self._cmd(['blockdev', '--report'])[0]
         lines = report.split('\n')
-        lines = [line.split() for line in lines]
+        lines = [line.split() for line in lines if line is not '']
         startsec_idx = lines[0].index('StartSec')
         device_idx = lines[0].index('Device')
         size_idx = lines[0].index('Size')
