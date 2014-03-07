@@ -20,6 +20,7 @@ import unittest
 
 import mock
 import pkg_resources
+from wsgiref import simple_server
 
 from teeth_rest import encoding
 
@@ -156,7 +157,7 @@ class TestBaseAgent(unittest.TestCase):
                           'do_something',
                           foo='bar')
 
-    @mock.patch('cherrypy.wsgiserver.CherryPyWSGIServer', autospec=True)
+    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     def test_run(self, wsgi_server_cls):
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
@@ -165,9 +166,12 @@ class TestBaseAgent(unittest.TestCase):
         self.agent.run()
 
         listen_addr = ('localhost', 9999)
-        wsgi_server_cls.assert_called_once_with(listen_addr, self.agent.api)
-        wsgi_server.start.assert_called_once_with()
-        wsgi_server.stop.assert_called_once_with()
+        wsgi_server_cls.assert_called_once_with(
+            listen_addr[0],
+            listen_addr[1],
+            self.agent.api,
+            server_class=simple_server.WSGIServer)
+        wsgi_server.serve_forever.assert_called_once_with()
 
         self.agent.heartbeater.start.assert_called_once_with()
 

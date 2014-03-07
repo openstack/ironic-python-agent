@@ -19,14 +19,14 @@ import random
 import threading
 import time
 
-from cherrypy import wsgiserver
 import pkg_resources
 from stevedore import driver
 import structlog
 from teeth_rest import encoding
 from teeth_rest import errors as rest_errors
+from wsgiref import simple_server
 
-from teeth_agent import api
+from teeth_agent.api import app
 from teeth_agent import base
 from teeth_agent import errors
 from teeth_agent import hardware
@@ -112,7 +112,7 @@ class TeethAgent(object):
         self.listen_address = listen_address
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
-        self.api = api.TeethAgentAPIServer(self)
+        self.api = app.VersionSelectorApplication()
         self.command_results = collections.OrderedDict()
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.get_manager()
@@ -196,13 +196,16 @@ class TeethAgent(object):
         """Run the Teeth Agent."""
         self.started_at = time.time()
         self.heartbeater.start()
-        server = wsgiserver.CherryPyWSGIServer(self.listen_address, self.api)
+        wsgi = simple_server.make_server(
+            self.listen_address[0],
+            self.listen_address[1],
+            self.api,
+            server_class=simple_server.WSGIServer)
 
         try:
-            server.start()
+            wsgi.serve_forever()
         except BaseException as e:
             self.log.error('shutting down', exception=e)
-            server.stop()
 
         self.heartbeater.stop()
 
