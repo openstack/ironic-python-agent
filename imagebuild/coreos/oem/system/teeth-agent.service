@@ -1,5 +1,5 @@
 [Service]
-ExecStart=/usr/bin/docker run -p 9999:9999 -privileged=true -v=/sys:/mnt/sys oemdocker /usr/local/bin/teeth-agent --api-url http://10.127.75.252:8081
+ExecStart=/usr/bin/docker run -p 9999:9999 -privileged=true -v=/sys:/mnt/sys oemdocker /usr/local/bin/teeth-agent
 Restart=always
 
 [Install]
