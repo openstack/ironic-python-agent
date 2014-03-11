@@ -112,7 +112,7 @@ class TeethAgent(object):
         self.listen_address = listen_address
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
-        self.api = app.VersionSelectorApplication()
+        self.api = app.VersionSelectorApplication(self)
         self.command_results = collections.OrderedDict()
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.get_manager()
@@ -187,7 +187,10 @@ class TeethAgent(object):
             except Exception as e:
                 # Other errors are considered command execution errors, and are
                 # recorded as an
-                result = base.SyncCommandResult(command_name, kwargs, False, e)
+                result = base.SyncCommandResult(command_name,
+                                                kwargs,
+                                                False,
+                                                unicode(e))
 
             self.command_results[result.id] = result
             return result

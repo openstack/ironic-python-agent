@@ -112,7 +112,7 @@ class AsyncCommandResult(BaseCommandResult):
                 e = errors.CommandExecutionError(str(e))
 
             with self.command_state_lock:
-                self.command_error = e
+                self.command_error = '{}: {}'.format(e.message, e.details)
                 self.command_status = AgentCommandStatus.FAILED
 
 

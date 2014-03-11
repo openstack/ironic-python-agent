@@ -16,10 +16,20 @@ limitations under the License.
 
 from oslo.config import cfg
 import pecan
+from pecan import hooks
 
 from teeth_agent.api import config
 
 CONF = cfg.CONF
+
+
+class AgentHook(hooks.PecanHook):
+    def __init__(self, agent, *args, **kwargs):
+        super(AgentHook, self).__init__(*args, **kwargs)
+        self.agent = agent
+
+    def before(self, state):
+        state.request.agent = self.agent
 
 
 def get_pecan_config():
@@ -28,7 +38,7 @@ def get_pecan_config():
     return pecan.configuration.conf_from_file(filename)
 
 
-def setup_app(pecan_config=None, extra_hooks=None):
+def setup_app(agent, pecan_config=None, extra_hooks=None):
     #policy.init()
 
     #app_hooks = [hooks.ConfigHook(),
@@ -38,6 +48,8 @@ def setup_app(pecan_config=None, extra_hooks=None):
                  #hooks.NoExceptionTracebackHook()]
     #if extra_hooks:
         #app_hooks.extend(extra_hooks)
+
+    app_hooks = [AgentHook(agent)]
 
     if not pecan_config:
         pecan_config = get_pecan_config()
@@ -50,7 +62,7 @@ def setup_app(pecan_config=None, extra_hooks=None):
         debug=True,
         #debug=CONF.debug,
         force_canonical=getattr(pecan_config.app, 'force_canonical', True),
-        #hooks=app_hooks,
+        hooks=app_hooks,
         #wrap_app=middleware.ParsableErrorMiddleware,
     )
 
@@ -58,9 +70,9 @@ def setup_app(pecan_config=None, extra_hooks=None):
 
 
 class VersionSelectorApplication(object):
-    def __init__(self):
+    def __init__(self, agent):
         pc = get_pecan_config()
-        self.v1 = setup_app(pecan_config=pc)
+        self.v1 = setup_app(agent, pecan_config=pc)
 
     def __call__(self, environ, start_response):
         return self.v1(environ, start_response)

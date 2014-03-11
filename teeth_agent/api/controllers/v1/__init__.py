@@ -13,13 +13,7 @@
 #    under the License.
 
 """
-Version 1 of the Ironic API
-
-NOTE: IN PROGRESS AND NOT FULLY IMPLEMENTED.
-
-Should maintain feature parity with Nova Baremetal Extension.
-
-Specification can be found at ironic/doc/api/v1.rst
+Version 1 of the Ironic Python Agent API
 """
 
 import pecan
@@ -29,11 +23,8 @@ from wsme import types as wtypes
 import wsmeext.pecan as wsme_pecan
 
 from teeth_agent.api.controllers.v1 import base
-#from ironic.api.controllers.v1 import chassis
-#from ironic.api.controllers.v1 import driver
+from teeth_agent.api.controllers.v1 import command
 from teeth_agent.api.controllers.v1 import link
-#from ironic.api.controllers.v1 import node
-#from ironic.api.controllers.v1 import port
 
 
 class MediaType(base.APIBase):
@@ -59,17 +50,8 @@ class V1(base.APIBase):
     links = [link.Link]
     "Links that point to a specific URL for this version and documentation"
 
-    #chassis = [link.Link]
-    #"Links to the chassis resource"
-
-    #nodes = [link.Link]
-    #"Links to the nodes resource"
-
-    #ports = [link.Link]
-    #"Links to the ports resource"
-
-    #drivers = [link.Link]
-    #"Links to the drivers resource"
+    commands = [link.Link]
+    "Links to the command resource"
 
     @classmethod
     def convert(self):
@@ -84,46 +66,22 @@ class V1(base.APIBase):
                                 'api-spec-v1.html',
                                 bookmark=True, type='text/html')
         ]
+        v1.command = [link.Link.make_link('self', pecan.request.host_url,
+                                          'commands', ''),
+                      link.Link.make_link('bookmark',
+                                          pecan.request.host_url,
+                                          'commands', '',
+                                          bookmark=True)
+                     ]
         v1.media_types = [MediaType('application/json',
                           'application/vnd.openstack.ironic.v1+json')]
-        #v1.chassis = [link.Link.make_link('self', pecan.request.host_url,
-                                          #'chassis', ''),
-                      #link.Link.make_link('bookmark',
-                                           #pecan.request.host_url,
-                                           #'chassis', '',
-                                           #bookmark=True)
-                     #]
-        #v1.nodes = [link.Link.make_link('self', pecan.request.host_url,
-                                        #'nodes', ''),
-                    #link.Link.make_link('bookmark',
-                                        #pecan.request.host_url,
-                                        #'nodes', '',
-                                        #bookmark=True)
-                   #]
-        #v1.ports = [link.Link.make_link('self', pecan.request.host_url,
-                                        #'ports', ''),
-                    #link.Link.make_link('bookmark',
-                                        #pecan.request.host_url,
-                                        #'ports', '',
-                                        #bookmark=True)
-                   #]
-        #v1.drivers = [link.Link.make_link('self', pecan.request.host_url,
-                                          #'drivers', ''),
-                      #link.Link.make_link('bookmark',
-                                          #pecan.request.host_url,
-                                          #'drivers', '',
-                                          #bookmark=True)
-                     #]
         return v1
 
 
 class Controller(rest.RestController):
     """Version 1 API controller root."""
 
-    #nodes = node.NodesController()
-    #ports = port.PortsController()
-    #chassis = chassis.ChassisController()
-    #drivers = driver.DriversController()
+    commands = command.CommandController()
 
     @wsme_pecan.wsexpose(V1)
     def get(self):

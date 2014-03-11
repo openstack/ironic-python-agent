@@ -12,36 +12,44 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import datetime
-
+import six
 import wsme
 from wsme import types as wtypes
 
 
+class MultiType(wtypes.UserType):
+    """A complex type that represents one or more types.
+
+    Used for validating that a value is an instance of one of the types.
+
+    :param *types: Variable-length list of types.
+
+    """
+    def __init__(self, *types):
+        self.types = types
+
+    def __str__(self):
+        return ' | '.join(map(str, self.types))
+
+    def validate(self, value):
+        for t in self.types:
+            if t is wtypes.text and isinstance(value, wtypes.bytes):
+                value = value.decode()
+            if isinstance(value, t):
+                return value
+        else:
+            raise ValueError(
+                "Wrong type. Expected '{type}', got '{value}'".format(
+                    type=self.types, value=type(value)))
+
+
+json_type = MultiType(list, dict, six.integer_types, wtypes.text)
+
+
 class APIBase(wtypes.Base):
-
-    created_at = wsme.wsattr(datetime.datetime, readonly=True)
-    "The time in UTC at which the object is created"
-
-    updated_at = wsme.wsattr(datetime.datetime, readonly=True)
-    "The time in UTC at which the object is updated"
-
     def as_dict(self):
         """Render this object as a dict of its fields."""
         return dict((k, getattr(self, k))
                     for k in self.fields
                     if hasattr(self, k) and
                     getattr(self, k) != wsme.Unset)
-
-    def unset_fields_except(self, except_list=None):
-        """Unset fields so they don't appear in the message body.
-
-        :param except_list: A list of fields that won't be touched.
-
-        """
-        if except_list is None:
-            except_list = []
-
-        for k in self.as_dict():
-            if k not in except_list:
-                setattr(self, k, wsme.Unset)
