@@ -58,21 +58,29 @@ class V1(base.APIBase):
         v1 = V1()
         v1.id = "v1"
         v1.links = [
-            link.Link.make_link('self', pecan.request.host_url,
-                                'v1', '', bookmark=True),
+            link.Link.make_link('self',
+                                pecan.request.host_url,
+                                'v1',
+                                '',
+                                bookmark=True),
             link.Link.make_link('describedby',
                                 'http://docs.openstack.org',
                                 'developer/ironic/dev',
                                 'api-spec-v1.html',
-                                bookmark=True, type='text/html')
+                                bookmark=True,
+                                type='text/html')
         ]
-        v1.command = [link.Link.make_link('self', pecan.request.host_url,
-                                          'commands', ''),
-                      link.Link.make_link('bookmark',
-                                          pecan.request.host_url,
-                                          'commands', '',
-                                          bookmark=True)
-                     ]
+        v1.command = [
+            link.Link.make_link('self',
+                                pecan.request.host_url,
+                                'commands',
+                                ''),
+            link.Link.make_link('bookmark',
+                                pecan.request.host_url,
+                                'commands',
+                                '',
+                                bookmark=True)
+        ]
         v1.media_types = [MediaType('application/json',
                           'application/vnd.openstack.ironic.v1+json')]
         return v1
