@@ -62,7 +62,7 @@ class APIClient(object):
             raise errors.HeartbeatError(str(e))
 
         if response.status_code != requests.codes.NO_CONTENT:
-            msg = 'Invalid status code: {}'.format(response.status_code)
+            msg = 'Invalid status code: {0}'.format(response.status_code)
             raise errors.HeartbeatError(msg)
 
         try:
@@ -80,7 +80,7 @@ class APIClient(object):
         response = self._request('GET', path)
 
         if response.status_code != requests.codes.OK:
-            msg = 'Invalid status code: {}'.format(response.status_code)
+            msg = 'Invalid status code: {0}'.format(response.status_code)
             raise errors.OverlordAPIError(msg)
 
         try:

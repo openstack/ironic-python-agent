@@ -15,12 +15,13 @@ limitations under the License.
 """
 
 import abc
-import collections
 import os
 import subprocess
 
 import stevedore
 import structlog
+
+from teeth_agent import utils
 
 from teeth_rest import encoding
 
@@ -50,7 +51,7 @@ class HardwareInfo(encoding.Serializable):
         self.id = id
 
     def serialize(self, view):
-        return collections.OrderedDict([
+        return utils.get_ordereddict([
             ('type', self.type),
             ('id', self.id),
         ])
@@ -104,19 +105,19 @@ class GenericHardwareManager(HardwareManager):
         return HardwareSupport.GENERIC
 
     def _get_interface_info(self, interface_name):
-        addr_path = '{}/class/net/{}/address'.format(self.sys_path,
+        addr_path = '{0}/class/net/{1}/address'.format(self.sys_path,
                                                      interface_name)
         addr_file = open(addr_path, 'r')
         mac_addr = addr_file.read().strip()
         return NetworkInterface(interface_name, mac_addr)
 
     def _is_device(self, interface_name):
-        device_path = '{}/class/net/{}/device'.format(self.sys_path,
+        device_path = '{0}/class/net/{1}/device'.format(self.sys_path,
                                                       interface_name)
         return os.path.exists(device_path)
 
     def list_network_interfaces(self):
-        iface_names = os.listdir('{}/class/net'.format(self.sys_path))
+        iface_names = os.listdir('{0}/class/net'.format(self.sys_path))
         return [self._get_interface_info(name)
                 for name in iface_names
                 if self._is_device(name)]

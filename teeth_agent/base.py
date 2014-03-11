@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import collections
 import threading
 import uuid
 
@@ -23,6 +22,7 @@ from teeth_rest import encoding
 from teeth_rest import errors as rest_errors
 
 from teeth_agent import errors
+from teeth_agent import utils
 
 
 class AgentCommandStatus(object):
@@ -41,7 +41,7 @@ class BaseCommandResult(encoding.Serializable):
         self.command_result = None
 
     def serialize(self, view):
-        return collections.OrderedDict([
+        return utils.get_ordereddict([
             ('id', self.id),
             ('command_name', self.command_name),
             ('command_params', self.command_params),
@@ -79,7 +79,7 @@ class AsyncCommandResult(BaseCommandResult):
         self.execute_method = execute_method
         self.command_state_lock = threading.Lock()
 
-        thread_name = 'agent-command-{}'.format(self.id)
+        thread_name = 'agent-command-{0}'.format(self.id)
         self.execution_thread = threading.Thread(target=self.run,
                                                  name=thread_name)
 
@@ -126,7 +126,7 @@ class BaseAgentMode(object):
     def execute(self, command_name, **kwargs):
         if command_name not in self.command_map:
             raise errors.InvalidCommandError(
-                'Unknown command: {}'.format(command_name))
+                'Unknown command: {0}'.format(command_name))
 
         result = self.command_map[command_name](command_name, **kwargs)
 

@@ -28,7 +28,7 @@ class AgentCommand(object):
     def deserialize(cls, obj):
         for field in ['name', 'params']:
             if field not in obj:
-                msg = 'Missing command \'{}\' field.'.format(field)
+                msg = 'Missing command \'{0}\' field.'.format(field)
                 raise errors.InvalidContentError(msg)
 
         if type(obj['params']) != dict:

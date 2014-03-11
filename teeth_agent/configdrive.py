@@ -15,15 +15,15 @@ limitations under the License.
 """
 
 import base64
-import collections
 import json
 import os
+from teeth_agent import utils
 
 
 class ConfigDriveWriter(object):
     def __init__(self):
         self.metadata = {}
-        self.files = collections.OrderedDict()
+        self.files = utils.get_ordereddict()
 
     def add_metadata(self, key, value):
         self.metadata[key] = value
@@ -43,7 +43,7 @@ class ConfigDriveWriter(object):
             metadata['files'] = []
         filenumber = 0
         for filepath, contents in self.files.iteritems():
-            content_path = '/content/{:04}'.format(filenumber)
+            content_path = '/content/{0:04}'.format(filenumber)
             file_info = {
                 'content_path': content_path,
                 'path': filepath
@@ -57,7 +57,7 @@ class ConfigDriveWriter(object):
             filenumber += 1
 
         json_metadata = json.dumps(metadata)
-        metadata_path = '{}/{}/meta_data.json'.format(prefix, version)
+        metadata_path = '{0}/{1}/meta_data.json'.format(prefix, version)
         metadata_path = os.path.join(location, metadata_path)
         with open(metadata_path, 'wb') as f:
             f.write(json_metadata)

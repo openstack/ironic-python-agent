@@ -49,7 +49,7 @@ def _format_event(logger, method, event):
         # index 1 is the key name
         keys = [item[1] for item in keys]
         missing_keys = list(set(keys) - set(event))
-        raise KeyError("Log formatter missing keys: {}, cannot format."
+        raise KeyError("Log formatter missing keys: {0}, cannot format."
                        .format(missing_keys))
     event['event'] = formatted
     return event

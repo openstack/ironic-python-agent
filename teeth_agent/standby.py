@@ -35,7 +35,7 @@ def _configdrive_location():
 
 
 def _image_location(image_info):
-    return '/tmp/{}'.format(image_info['id'])
+    return '/tmp/{0}'.format(image_info['id'])
 
 
 def _path_to_script(script):
@@ -139,7 +139,7 @@ def _validate_image_info(image_info=None, **kwargs):
 
     for field in ['id', 'urls', 'hashes']:
         if field not in image_info:
-            msg = 'Image is missing \'{}\' field.'.format(field)
+            msg = 'Image is missing \'{0}\' field.'.format(field)
             raise errors.InvalidCommandParamsError(msg)
 
     if type(image_info['urls']) != list or not image_info['urls']:
