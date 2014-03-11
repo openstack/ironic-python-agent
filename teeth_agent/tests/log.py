@@ -17,7 +17,7 @@ limitations under the License.
 import structlog
 import unittest
 
-import teeth_agent.logging
+import teeth_agent.log
 
 
 def _return_event_processor(logger, method, event):
@@ -26,7 +26,7 @@ def _return_event_processor(logger, method, event):
 
 class EventLogger(unittest.TestCase):
     def test_format_event_basic(self):
-        processors = [teeth_agent.logging._format_event,
+        processors = [teeth_agent.log._format_event,
                       _return_event_processor]
         structlog.configure(processors=processors)
         log = structlog.wrap_logger(structlog.ReturnLogger())
@@ -37,7 +37,7 @@ class EventLogger(unittest.TestCase):
         """Check that we get an exception if you don't provide enough keys to
         format a log message requiring format
         """
-        processors = [teeth_agent.logging._format_event,
+        processors = [teeth_agent.log._format_event,
                       _return_event_processor]
         structlog.configure(processors=processors)
         log = structlog.wrap_logger(structlog.ReturnLogger())

@@ -9,3 +9,4 @@ ChangeLog
 devenv/*
 .coverage
 coverage.xml
+.testrepository
