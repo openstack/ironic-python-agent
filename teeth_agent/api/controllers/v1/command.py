@@ -24,10 +24,10 @@ from teeth_agent.api.controllers.v1 import base
 class CommandResult(base.APIBase):
     id = types.text
     command_name = types.text
-    command_params = base.json_type
+    command_params = types.DictType(types.text, base.json_type)
     command_status = types.text
     command_error = base.exception_type
-    command_result = types.text
+    command_result = types.DictType(types.text, base.json_type)
 
     @classmethod
     def from_result(cls, result):
@@ -51,15 +51,8 @@ class CommandResultList(base.APIBase):
 
 class Command(base.APIBase):
     """A command representation."""
-    name = types.text
-    params = base.json_type
-
-    @classmethod
-    def deserialize(cls, obj):
-        instance = cls()
-        instance.name = obj['name']
-        instance.params = obj['params']
-        return instance
+    name = types.wsattr(types.text, mandatory=True)
+    params = types.wsattr(base.MultiType(dict), mandatory=True)
 
 
 class CommandController(rest.RestController):

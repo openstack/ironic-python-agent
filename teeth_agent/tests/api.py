@@ -25,7 +25,7 @@ from werkzeug import wrappers
 from teeth_rest import encoding
 
 from teeth_agent import agent
-from teeth_agent import api
+from teeth_agent.api import app
 from teeth_agent import base
 
 
@@ -48,9 +48,9 @@ class TestTeethAPI(unittest.TestCase):
         status = agent.TeethAgentStatus('TEST_MODE', time.time(), 'v72ac9')
         mock_agent = mock.MagicMock()
         mock_agent.get_status.return_value = status
-        api_server = api.TeethAgentAPIServer(mock_agent)
+        api_server = app.setup_app(mock_agent)
 
-        response = self._make_request(api_server, 'GET', '/v1.0/status')
+        response = self._make_request(api_server, 'GET', '/v1/status')
         mock_agent.get_status.assert_called_once_with()
 
         self.assertEqual(response.status_code, 200)
@@ -72,11 +72,11 @@ class TestTeethAPI(unittest.TestCase):
 
         mock_agent = mock.MagicMock()
         mock_agent.execute_command.return_value = result
-        api_server = api.TeethAgentAPIServer(mock_agent)
+        api_server = app.setup_app(mock_agent)
 
         response = self._make_request(api_server,
                                       'POST',
-                                      '/v1.0/commands',
+                                      '/v1/commands/',
                                       data=command)
 
         self.assertEqual(mock_agent.execute_command.call_count, 1)
@@ -90,50 +90,54 @@ class TestTeethAPI(unittest.TestCase):
 
     def test_execute_agent_command_validation(self):
         mock_agent = mock.MagicMock()
-        api_server = api.TeethAgentAPIServer(mock_agent)
+        api_server = app.setup_app(mock_agent)
 
-        invalid_command = {}
+        invalid_command = {'invalid': 'stuff'}
         response = self._make_request(api_server,
                                       'POST',
-                                      '/v1.0/commands',
+                                      '/v1/commands',
                                       data=invalid_command)
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
-        self.assertEqual(data['details'], 'Missing command \'name\' field.')
+        msg = 'Invalid input for field/attribute name.'
+        self.assertTrue(msg in data['faultstring'])
+        msg = 'Mandatory field missing'
+        self.assertTrue(msg in data['faultstring'])
 
     def test_execute_agent_command_params_validation(self):
         mock_agent = mock.MagicMock()
-        api_server = api.TeethAgentAPIServer(mock_agent)
+        api_server = app.setup_app(mock_agent)
 
         invalid_command = {'name': 'do_things', 'params': []}
         response = self._make_request(api_server,
                                       'POST',
-                                      '/v1.0/commands',
+                                      '/v1/commands',
                                       data=invalid_command)
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.data)
-        self.assertEqual(data['details'],
-                         'Command params must be a dictionary.')
+        # this message is actually much longer, but I'm ok with this
+        msg = 'Invalid input for field/attribute params.'
+        self.assertTrue(msg in data['faultstring'])
 
     def test_list_command_results(self):
-        cmd_result = base.SyncCommandResult('do_things',
-                                            {'key': 'value'},
+        self.maxDiff = 10000
+        cmd_result = base.SyncCommandResult(u'do_things',
+                                            {u'key': u'value'},
                                             True,
-                                            {'test': 'result'})
+                                            {u'test': u'result'})
 
         mock_agent = mock.create_autospec(agent.TeethAgent)
         mock_agent.list_command_results.return_value = [
             cmd_result,
         ]
 
-        api_server = api.TeethAgentAPIServer(mock_agent)
-        response = self._make_request(api_server, 'GET', '/v1.0/commands')
+        api_server = app.setup_app(mock_agent)
+        response = self._make_request(api_server, 'GET', '/v1/commands')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(response.data), {
-            'items': [
-                cmd_result.serialize(encoding.SerializationViews.PUBLIC),
+            u'commands': [
+                cmd_result.serialize(None),
             ],
-            'links': [],
         })
 
     def test_get_command_result(self):
@@ -148,10 +152,10 @@ class TestTeethAPI(unittest.TestCase):
         mock_agent = mock.create_autospec(agent.TeethAgent)
         mock_agent.get_command_result.return_value = cmd_result
 
-        api_server = api.TeethAgentAPIServer(mock_agent)
+        api_server = app.setup_app(mock_agent)
         response = self._make_request(api_server,
                                       'GET',
-                                      '/v1.0/commands/abc123')
+                                      '/v1/commands/abc123')
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data, serialized_cmd_result)
