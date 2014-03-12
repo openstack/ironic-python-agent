@@ -16,6 +16,30 @@ import six
 from wsme import types as wtypes
 
 
+class ExceptionType(wtypes.UserType):
+    basetype = wtypes.DictType
+    name = 'exception'
+
+    def validate(self, value):
+        if not isinstance(value, BaseException):
+            raise ValueError('Value is not an exception')
+        return value
+
+    def tobasetype(self, value):
+        """Turn a RESTError into a dict."""
+        return {
+            'type': value.__class__.__name__,
+            'code': value.status_code,
+            'message': value.message,
+            'details': value.details,
+        }
+
+    frombasetype = tobasetype
+
+
+exception_type = ExceptionType()
+
+
 class MultiType(wtypes.UserType):
     """A complex type that represents one or more types.
 

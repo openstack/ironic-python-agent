@@ -26,7 +26,7 @@ class CommandResult(base.APIBase):
     command_name = types.text
     command_params = base.json_type
     command_status = types.text
-    command_error = types.text
+    command_error = base.exception_type
     command_result = types.text
 
     @classmethod
