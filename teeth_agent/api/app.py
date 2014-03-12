@@ -39,16 +39,6 @@ def get_pecan_config():
 
 
 def setup_app(agent, pecan_config=None, extra_hooks=None):
-    #policy.init()
-
-    #app_hooks = [hooks.ConfigHook(),
-                 #hooks.DBHook(),
-                 #hooks.ContextHook(pecan_config.app.acl_public_routes),
-                 #hooks.RPCHook(),
-                 #hooks.NoExceptionTracebackHook()]
-    #if extra_hooks:
-        #app_hooks.extend(extra_hooks)
-
     app_hooks = [AgentHook(agent)]
 
     if not pecan_config:
@@ -59,11 +49,11 @@ def setup_app(agent, pecan_config=None, extra_hooks=None):
     app = pecan.make_app(
         pecan_config.app.root,
         static_root=pecan_config.app.static_root,
+        # TODO(jimrollenhagen) move this to an oslo config
         debug=True,
         #debug=CONF.debug,
         force_canonical=getattr(pecan_config.app, 'force_canonical', True),
         hooks=app_hooks,
-        #wrap_app=middleware.ParsableErrorMiddleware,
     )
 
     return app
