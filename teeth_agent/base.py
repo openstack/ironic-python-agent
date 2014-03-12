@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import collections
 import threading
 import uuid
 
@@ -40,7 +39,7 @@ class BaseCommandResult(encoding.Serializable):
         self.command_error = None
         self.command_result = None
 
-    def serialize(self):
+    def serialize(self, view):
         return dict((
             (u'id', self.id),
             (u'command_name', self.command_name),

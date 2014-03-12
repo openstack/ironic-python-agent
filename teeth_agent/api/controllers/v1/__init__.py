@@ -25,6 +25,7 @@ import wsmeext.pecan as wsme_pecan
 from teeth_agent.api.controllers.v1 import base
 from teeth_agent.api.controllers.v1 import command
 from teeth_agent.api.controllers.v1 import link
+from teeth_agent.api.controllers.v1 import status
 
 
 class MediaType(base.APIBase):
@@ -52,6 +53,9 @@ class V1(base.APIBase):
 
     commands = [link.Link]
     "Links to the command resource"
+
+    status = [link.Link]
+    "Links to the status resource"
 
     @classmethod
     def convert(self):
@@ -81,6 +85,17 @@ class V1(base.APIBase):
                                 '',
                                 bookmark=True)
         ]
+        v1.status = [
+            link.Link.make_link('self',
+                                pecan.request.host_url,
+                                'status',
+                                ''),
+            link.Link.make_link('bookmark',
+                                pecan.request.host_url,
+                                'status',
+                                '',
+                                bookmark=True)
+        ]
         v1.media_types = [MediaType('application/json',
                           'application/vnd.openstack.ironic.v1+json')]
         return v1
@@ -90,6 +105,7 @@ class Controller(rest.RestController):
     """Version 1 API controller root."""
 
     commands = command.CommandController()
+    status = status.StatusController()
 
     @wsme_pecan.wsexpose(V1)
     def get(self):
