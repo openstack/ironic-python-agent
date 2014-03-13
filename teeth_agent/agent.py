@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 import random
+import socket
 import threading
 import time
 
@@ -87,8 +88,9 @@ class TeethAgentHeartbeater(threading.Thread):
         try:
             deadline = self.api.heartbeat(
                 hardware_info=self.hardware.list_hardware_info(),
+                mode=self.agent.get_mode_name(),
                 version=self.agent.version,
-                mode=self.agent.get_mode_name())
+                uuid=self.agent.get_node_uuid())
             self.error_delay = self.initial_delay
             self.log.info('heartbeat successful')
         except Exception as e:
@@ -109,6 +111,7 @@ class TeethAgentHeartbeater(threading.Thread):
 class TeethAgent(object):
     def __init__(self, api_url, listen_address):
         self.api_url = api_url
+        self.api_client = overlord_agent_api.APIClient(self.api_url)
         self.listen_address = listen_address
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
@@ -119,6 +122,8 @@ class TeethAgent(object):
         self.command_lock = threading.Lock()
         self.log = structlog.get_logger()
         self.started_at = None
+        self.configuration = None
+        self.content = None
 
     def get_mode_name(self):
         if self.mode_implementation:
@@ -136,6 +141,12 @@ class TeethAgent(object):
 
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
+
+    def get_all_mac_addrs(self):
+        return self.hardware.list_hardware_info()
+
+    def get_node_uuid(self):
+        return self.content['node']['uuid']
 
     def list_command_results(self):
         return self.command_results.values()
@@ -195,6 +206,9 @@ class TeethAgent(object):
     def run(self):
         """Run the Teeth Agent."""
         self.started_at = time.time()
+        # Get the UUID so we can heartbeat to Ironic
+        mac_addresses = self.get_all_mac_addrs()
+        self.configuration = self.api_client.get_configuration(mac_addresses)
         self.heartbeater.start()
         server = wsgiserver.CherryPyWSGIServer(self.listen_address, self.api)
 

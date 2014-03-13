@@ -49,13 +49,15 @@ class TestBaseTeethAgent(unittest.TestCase):
         heartbeat_before = self.api_client.heartbeat(
             hardware_info=self.hardware_info,
             version='15',
-            mode='STANDBY')
+            mode='STANDBY',
+            uuid='fake-uuid')
 
         self.assertEqual(heartbeat_before, expected_heartbeat_before)
 
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'PUT')
-        self.assertEqual(request_args[1], API_URL + 'v1/agents')
+        self.assertEqual(request_args[1], API_URL + 'v1/nodes/fake-uuid/vendor'
+                                                    '_passthru/heartbeat')
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
@@ -71,6 +73,7 @@ class TestBaseTeethAgent(unittest.TestCase):
                 'id': '0:1:2:3',
             },
         ])
+        self.assertEqual(content['agent_url'], API_URL.rstrip('/'))
 
     def test_heartbeat_requests_exception(self):
         self.api_client.session.request = mock.Mock()
@@ -80,7 +83,8 @@ class TestBaseTeethAgent(unittest.TestCase):
                           self.api_client.heartbeat,
                           hardware_info=self.hardware_info,
                           version='15',
-                          mode='STANDBY')
+                          mode='STANDBY',
+                          uuid='fake-uuid')
 
     def test_heartbeat_invalid_status_code(self):
         response = httmock.response(status_code=404)
@@ -91,7 +95,8 @@ class TestBaseTeethAgent(unittest.TestCase):
                           self.api_client.heartbeat,
                           hardware_info=self.hardware_info,
                           version='15',
-                          mode='STANDBY')
+                          mode='STANDBY',
+                          uuid='fake-uuid')
 
     def test_heartbeat_missing_heartbeat_before_header(self):
         response = httmock.response(status_code=204)
@@ -102,7 +107,8 @@ class TestBaseTeethAgent(unittest.TestCase):
                           self.api_client.heartbeat,
                           hardware_info=self.hardware_info,
                           version='15',
-                          mode='STANDBY')
+                          mode='STANDBY',
+                          uuid='fake-uuid')
 
     def test_heartbeat_invalid_heartbeat_before_header(self):
         response = httmock.response(status_code=204, headers={
@@ -115,4 +121,5 @@ class TestBaseTeethAgent(unittest.TestCase):
                           self.api_client.heartbeat,
                           hardware_info=self.hardware_info,
                           version='15',
-                          mode='STANDBY')
+                          mode='STANDBY',
+                          uuid='fake-uuid')

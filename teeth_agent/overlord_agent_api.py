@@ -30,6 +30,7 @@ class APIClient(object):
         self.session = requests.Session()
         self.encoder = encoding.RESTJSONEncoder(
             encoding.SerializationViews.PUBLIC)
+        self.uuid = None
 
     def _request(self, method, path, data=None):
         request_url = '{api_url}{path}'.format(api_url=self.api_url, path=path)
@@ -47,13 +48,16 @@ class APIClient(object):
                                     headers=request_headers,
                                     data=data)
 
-    def heartbeat(self, hardware_info, mode, version):
-        path = '/{api_version}/agents'.format(api_version=self.api_version)
-
+    def heartbeat(self, hardware_info, mode, version, uuid):
+        path = '/{api_version}/nodes/{uuid}/vendor_passthru/heartbeat'.format(
+            api_version=self.api_version,
+            uuid=uuid
+        )
         data = {
             'hardware': hardware_info,
             'mode': mode,
             'version': version,
+            'agent_url': self.api_url
         }
 
         try:
@@ -73,17 +77,27 @@ class APIClient(object):
             raise errors.HeartbeatError('Invalid Heartbeat-Before header')
 
     def get_configuration(self, mac_addr):
-        path = '/{api_version}/agents/{mac_addr}/configuration'.format(
-            api_version=self.api_version,
-            mac_addr=mac_addr)
+        path = '/{api_version}/drivers/teeth/lookup'.format(
+            api_version=self.api_version)
+        data = {
+            'mac_addresses': [mac_addr]
+        }
 
-        response = self._request('GET', path)
+        try:
+            response = self._request('POST', path, data=data)
+        except Exception as e:
+            raise errors.ConfigurationError(str(e))
 
         if response.status_code != requests.codes.OK:
             msg = 'Invalid status code: {0}'.format(response.status_code)
             raise errors.OverlordAPIError(msg)
 
         try:
-            return json.loads(response.content)
+            content = json.loads(response.content)
         except Exception as e:
             raise errors.OverlordAPIError('Error decoding response: ' + str(e))
+
+        if 'node' not in content or 'uuid' not in content['node']:
+            raise errors.OverlordAPIError('Got invalid data from the API: ' +
+                                          content)
+        return content

@@ -162,6 +162,7 @@ class TestBaseAgent(unittest.TestCase):
         wsgi_server.start.side_effect = KeyboardInterrupt()
 
         self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.get_configuration = mock.Mock()
         self.agent.run()
 
         listen_addr = ('localhost', 9999)
