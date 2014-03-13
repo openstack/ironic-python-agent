@@ -14,13 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from oslo.config import cfg
 import pecan
 from pecan import hooks
 
 from teeth_agent.api import config
-
-CONF = cfg.CONF
 
 
 class AgentHook(hooks.PecanHook):
@@ -49,9 +46,7 @@ def setup_app(agent, pecan_config=None, extra_hooks=None):
     app = pecan.make_app(
         pecan_config.app.root,
         static_root=pecan_config.app.static_root,
-        # TODO(jimrollenhagen) move this to an oslo config
-        debug=True,
-        #debug=CONF.debug,
+        debug=pecan_config.app.debug,
         force_canonical=getattr(pecan_config.app, 'force_canonical', True),
         hooks=app_hooks,
     )
