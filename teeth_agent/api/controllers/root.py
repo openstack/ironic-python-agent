@@ -1,8 +1,4 @@
-# -*- encoding: utf-8 -*-
-#
-# Copyright © 2012 New Dream Network, LLC (DreamHost)
-#
-# Author: Doug Hellmann <doug.hellmann@dreamhost.com>
+# Copyright 2014 Rackspace, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
@@ -62,9 +58,9 @@ class Root(base.APIBase):
     @classmethod
     def convert(self):
         root = Root()
-        root.name = "OpenStack Ironic API"
-        root.description = ("Ironic is an OpenStack project which aims to "
-                            "provision baremetal machines.")
+        root.name = 'OpenStack Ironic Python Agent API'
+        root.description = ('Ironic Python Agent is a provisioning agent for '
+                            'OpenStack Ironic')
         root.versions = [Version.convert('v1')]
         root.default_version = Version.convert('v1')
         return root
