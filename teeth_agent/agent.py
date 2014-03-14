@@ -107,9 +107,10 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class TeethAgent(object):
-    def __init__(self, api_url, listen_address):
+    def __init__(self, api_url, listen_address, ipaddr):
         self.api_url = api_url
         self.listen_address = listen_address
+        self.ipaddr = ipaddr
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = api.TeethAgentAPIServer(self)
@@ -217,5 +218,5 @@ def _load_mode_implementation(mode_name):
     return mgr.driver
 
 
-def build_agent(api_url, listen_host, listen_port):
-    return TeethAgent(api_url, (listen_host, listen_port))
+def build_agent(api_url, listen_host, listen_port, ipaddr):
+    return TeethAgent(api_url, (listen_host, listen_port), ipaddr)

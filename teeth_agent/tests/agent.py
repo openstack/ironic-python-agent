@@ -121,7 +121,8 @@ class TestBaseAgent(unittest.TestCase):
             encoding.SerializationViews.PUBLIC,
             indent=4)
         self.agent = agent.TeethAgent('https://fake_api.example.org:8081/',
-                                      ('localhost', 9999))
+                                      ('localhost', 9999),
+                                      '192.168.1.1')
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
