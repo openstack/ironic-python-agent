@@ -171,7 +171,7 @@ class TestBaseAgent(unittest.TestCase):
             listen_addr[1],
             self.agent.api,
             server_class=simple_server.WSGIServer)
-        wsgi_server.serve_forever.assert_called_once_with()
+        wsgi_server.serve_forever.assert_called_once()
 
         self.agent.heartbeater.start.assert_called_once_with()
 

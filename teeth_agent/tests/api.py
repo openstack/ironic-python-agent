@@ -92,7 +92,8 @@ class TestTeethAPI(unittest.TestCase):
         mock_agent = mock.MagicMock()
         api_server = app.setup_app(mock_agent)
 
-        invalid_command = {'invalid': 'stuff'}
+        #invalid_command = {'invalid': 'stuff'}
+        invalid_command = {}
         response = self._make_request(api_server,
                                       'POST',
                                       '/v1/commands',
