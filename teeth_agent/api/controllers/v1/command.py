@@ -69,13 +69,21 @@ class CommandController(rest.RestController):
         agent = pecan.request.agent
         result = agent.get_command_result(result_id)
 
-        #if wait and wait.lower() == 'true':
-            #result.join()
+        if wait and wait.lower() == 'true':
+            result.join()
 
         return CommandResult.from_result(result)
 
     @wsme_pecan.wsexpose(CommandResult, body=Command)
-    def post(self, command):
+    def post(self, wait=False, command=None):
+        # the POST body is always the last arg,
+        # so command must be a kwarg here
+        if command is None:
+            command = Command()
         agent = pecan.request.agent
         result = agent.execute_command(command.name, **command.params)
+
+        if wait and wait.lower() == 'true':
+            result.join()
+
         return result
