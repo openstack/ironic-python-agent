@@ -68,9 +68,9 @@ class V1(base.APIBase):
                                 '',
                                 bookmark=True),
             link.Link.make_link('describedby',
-                                'http://docs.openstack.org',
-                                'developer/ironic/dev',
-                                'api-spec-v1.html',
+                                'https://github.com',
+                                'rackerlabs',
+                                'teeth-agent',
                                 bookmark=True,
                                 type='text/html')
         ]
@@ -96,8 +96,7 @@ class V1(base.APIBase):
                                 '',
                                 bookmark=True)
         ]
-        v1.media_types = [MediaType('application/json',
-                          'application/vnd.openstack.ironic.v1+json')]
+        v1.media_types = [MediaType('application/json')]
         return v1
 
 
