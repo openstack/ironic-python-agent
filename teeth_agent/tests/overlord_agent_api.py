@@ -46,18 +46,73 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        heartbeat_before = self.api_client.heartbeat(
-            hardware_info=self.hardware_info,
-            version='15',
-            mode='STANDBY',
-            uuid='fake-uuid')
+        heartbeat_before = self.api_client.heartbeat(uuid='fake-uuid')
 
         self.assertEqual(heartbeat_before, expected_heartbeat_before)
 
         request_args = self.api_client.session.request.call_args[0]
-        self.assertEqual(request_args[0], 'PUT')
+        self.assertEqual(request_args[0], 'POST')
         self.assertEqual(request_args[1], API_URL + 'v1/nodes/fake-uuid/vendor'
                                                     '_passthru/heartbeat')
+
+    def test_heartbeat_requests_exception(self):
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.side_effect = Exception('api is down!')
+
+        self.assertRaises(errors.HeartbeatError,
+                          self.api_client.heartbeat,
+                          uuid='fake-uuid')
+
+    def test_heartbeat_invalid_status_code(self):
+        response = httmock.response(status_code=404)
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaises(errors.HeartbeatError,
+                          self.api_client.heartbeat,
+                          uuid='fake-uuid')
+
+    def test_heartbeat_missing_heartbeat_before_header(self):
+        response = httmock.response(status_code=204)
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaises(errors.HeartbeatError,
+                          self.api_client.heartbeat,
+                          uuid='fake-uuid')
+
+    def test_heartbeat_invalid_heartbeat_before_header(self):
+        response = httmock.response(status_code=204, headers={
+            'Heartbeat-Before': 'tomorrow',
+        })
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaises(errors.HeartbeatError,
+                          self.api_client.heartbeat,
+                          uuid='fake-uuid')
+
+    def test_get_configuration(self):
+        response = httmock.response(status_code=200, content={
+            'node': {
+                'uuid': 'fake-uuid'
+            }
+        })
+
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.api_client.get_configuration(
+            mac_addrs=['aa:bb:cc:dd:ee:ff', '42:42:42:42:42:42'],
+            ipaddr='42.42.42.42',
+            hardware_info=self.hardware_info,
+            version='15',
+            mode='STANDBY',
+        )
+
+        request_args = self.api_client.session.request.call_args[0]
+        self.assertEqual(request_args[0], 'POST')
+        self.assertEqual(request_args[1], API_URL + 'v1/drivers/teeth/lookup')
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
@@ -73,53 +128,58 @@ class TestBaseTeethAgent(unittest.TestCase):
                 'id': '0:1:2:3',
             },
         ])
-        self.assertEqual(content['agent_url'], API_URL.rstrip('/'))
+        self.assertEqual(content['agent_url'], 'http://42.42.42.42:9999')
 
-    def test_heartbeat_requests_exception(self):
-        self.api_client.session.request = mock.Mock()
-        self.api_client.session.request.side_effect = Exception('api is down!')
-
-        self.assertRaises(errors.HeartbeatError,
-                          self.api_client.heartbeat,
-                          hardware_info=self.hardware_info,
-                          version='15',
-                          mode='STANDBY',
-                          uuid='fake-uuid')
-
-    def test_heartbeat_invalid_status_code(self):
-        response = httmock.response(status_code=404)
-        self.api_client.session.request = mock.Mock()
-        self.api_client.session.request.return_value = response
-
-        self.assertRaises(errors.HeartbeatError,
-                          self.api_client.heartbeat,
-                          hardware_info=self.hardware_info,
-                          version='15',
-                          mode='STANDBY',
-                          uuid='fake-uuid')
-
-    def test_heartbeat_missing_heartbeat_before_header(self):
-        response = httmock.response(status_code=204)
-        self.api_client.session.request = mock.Mock()
-        self.api_client.session.request.return_value = response
-
-        self.assertRaises(errors.HeartbeatError,
-                          self.api_client.heartbeat,
-                          hardware_info=self.hardware_info,
-                          version='15',
-                          mode='STANDBY',
-                          uuid='fake-uuid')
-
-    def test_heartbeat_invalid_heartbeat_before_header(self):
-        response = httmock.response(status_code=204, headers={
-            'Heartbeat-Before': 'tomorrow',
+    def test_get_configuration_bad_response_code(self):
+        response = httmock.response(status_code=400, content={
+            'node': {
+                'uuid': 'fake-uuid'
+            }
         })
+
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.assertRaises(errors.HeartbeatError,
-                          self.api_client.heartbeat,
+        self.assertRaises(errors.ConfigurationError,
+                          self.api_client.get_configuration,
+                          mac_addrs=['aa:bb:cc:dd:ee:ff',
+                                      '42:42:42:42:42:42'],
+                          ipaddr='42.42.42.42',
                           hardware_info=self.hardware_info,
                           version='15',
                           mode='STANDBY',
-                          uuid='fake-uuid')
+        )
+
+    def test_get_configuration_bad_response_data(self):
+        response = httmock.response(status_code=200, content={'a'})
+
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaises(errors.ConfigurationError,
+                          self.api_client.get_configuration,
+                          mac_addrs=['aa:bb:cc:dd:ee:ff',
+                                      '42:42:42:42:42:42'],
+                          ipaddr='42.42.42.42',
+                          hardware_info=self.hardware_info,
+                          version='15',
+                          mode='STANDBY',
+        )
+
+    def test_get_configuration_bad_response_body(self):
+        response = httmock.response(status_code=200, content={
+            'node_node': 'also_not_node'
+        })
+
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaises(errors.ConfigurationError,
+                          self.api_client.get_configuration,
+                          mac_addrs=['aa:bb:cc:dd:ee:ff',
+                                      '42:42:42:42:42:42'],
+                          ipaddr='42.42.42.42',
+                          hardware_info=self.hardware_info,
+                          version='15',
+                          mode='STANDBY',
+        )

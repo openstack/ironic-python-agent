@@ -15,7 +15,6 @@ limitations under the License.
 """
 
 import random
-import socket
 import threading
 import time
 
@@ -86,11 +85,7 @@ class TeethAgentHeartbeater(threading.Thread):
 
     def do_heartbeat(self):
         try:
-            deadline = self.api.heartbeat(
-                hardware_info=self.hardware.list_hardware_info(),
-                mode=self.agent.get_mode_name(),
-                version=self.agent.version,
-                uuid=self.agent.get_node_uuid())
+            deadline = self.api.heartbeat(uuid=self.agent.get_node_uuid())
             self.error_delay = self.initial_delay
             self.log.info('heartbeat successful')
         except Exception as e:
@@ -208,7 +203,13 @@ class TeethAgent(object):
         self.started_at = time.time()
         # Get the UUID so we can heartbeat to Ironic
         mac_addresses = self.get_all_mac_addrs()
-        self.configuration = self.api_client.get_configuration(mac_addresses)
+        self.configuration = self.api_client.get_configuration(
+            mac_addresses,
+            ipaddr=self.ipaddr,
+            hardware_info=self.hardware.list_hardware_info(),
+            mode=self.get_mode_name(),
+            version=self.version,
+        )
         self.heartbeater.start()
         server = wsgiserver.CherryPyWSGIServer(self.listen_address, self.api)
 
