@@ -15,7 +15,6 @@ limitations under the License.
 """
 
 import json
-import os
 
 import requests
 from teeth_rest import encoding

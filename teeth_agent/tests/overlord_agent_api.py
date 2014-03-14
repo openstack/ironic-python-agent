@@ -151,7 +151,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         )
 
     def test_get_configuration_bad_response_data(self):
-        response = httmock.response(status_code=200, content={'a'})
+        response = httmock.response(status_code=200, content='a')
 
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
