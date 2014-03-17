@@ -13,7 +13,7 @@ RUN apt-get update && apt-get -y install \
 # Install requirements separately, because pip understands a git+https url while setuptools doesn't
 RUN pip install -r /tmp/teeth-agent/requirements.txt
 
-# This will succeed because all the dependencies (including pesky teeth_rest) were installed previously
+# This will succeed because all the dependencies were installed previously
 RUN pip install /tmp/teeth-agent
 
 CMD [ "/usr/local/bin/teeth-agent" ]

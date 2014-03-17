@@ -18,15 +18,14 @@ import random
 import threading
 import time
 
-from cherrypy import wsgiserver
 import pkg_resources
 from stevedore import driver
 import structlog
-from teeth_rest import encoding
-from teeth_rest import errors as rest_errors
+from wsgiref import simple_server
 
-from teeth_agent import api
+from teeth_agent.api import app
 from teeth_agent import base
+from teeth_agent import encoding
 from teeth_agent import errors
 from teeth_agent import hardware
 from teeth_agent import overlord_agent_api
@@ -39,7 +38,7 @@ class TeethAgentStatus(encoding.Serializable):
         self.started_at = started_at
         self.version = version
 
-    def serialize(self, view):
+    def serialize(self):
         """Turn the status into a dict."""
         return utils.get_ordereddict([
             ('mode', self.mode),
@@ -107,12 +106,13 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class TeethAgent(object):
-    def __init__(self, api_url, listen_address):
+    def __init__(self, api_url, listen_address, ipaddr):
         self.api_url = api_url
         self.listen_address = listen_address
+        self.ipaddr = ipaddr
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
-        self.api = api.TeethAgentAPIServer(self)
+        self.api = app.VersionSelectorApplication(self)
         self.command_results = utils.get_ordereddict()
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.get_manager()
@@ -180,14 +180,17 @@ class TeethAgent(object):
             try:
                 result = self.mode_implementation.execute(command_part,
                                                           **kwargs)
-            except rest_errors.InvalidContentError as e:
+            except errors.InvalidContentError as e:
                 # Any command may raise a InvalidContentError which will be
                 # returned to the caller directly.
                 raise e
             except Exception as e:
                 # Other errors are considered command execution errors, and are
                 # recorded as an
-                result = base.SyncCommandResult(command_name, kwargs, False, e)
+                result = base.SyncCommandResult(command_name,
+                                                kwargs,
+                                                False,
+                                                unicode(e))
 
             self.command_results[result.id] = result
             return result
@@ -196,13 +199,16 @@ class TeethAgent(object):
         """Run the Teeth Agent."""
         self.started_at = time.time()
         self.heartbeater.start()
-        server = wsgiserver.CherryPyWSGIServer(self.listen_address, self.api)
+        wsgi = simple_server.make_server(
+            self.listen_address[0],
+            self.listen_address[1],
+            self.api,
+            server_class=simple_server.WSGIServer)
 
         try:
-            server.start()
+            wsgi.serve_forever()
         except BaseException as e:
             self.log.error('shutting down', exception=e)
-            server.stop()
 
         self.heartbeater.stop()
 
@@ -217,5 +223,5 @@ def _load_mode_implementation(mode_name):
     return mgr.driver
 
 
-def build_agent(api_url, listen_host, listen_port):
-    return TeethAgent(api_url, (listen_host, listen_port))
+def build_agent(api_url, listen_host, listen_port, ipaddr):
+    return TeethAgent(api_url, (listen_host, listen_port), ipaddr)
