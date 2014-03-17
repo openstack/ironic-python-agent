@@ -96,9 +96,8 @@ class TeethAgentHeartbeater(threading.Thread):
                 mode=self.agent.get_mode_name())
             self.error_delay = self.initial_delay
             self.log.info('heartbeat successful')
-        except Exception as e:
-            self.log.error('error sending heartbeat')
-            self.log.exception(e)
+        except Exception:
+            self.log.exception('error sending heartbeat')
             deadline = _time() + self.error_delay
             self.error_delay = min(self.error_delay * self.backoff_factor,
                                    self.max_delay)
@@ -214,9 +213,8 @@ class TeethAgent(object):
 
         try:
             wsgi.serve_forever()
-        except BaseException as e:
-            self.log.error('shutting down')
-            self.log.exception(e)
+        except BaseException:
+            self.log.exception('shutting down')
 
         self.heartbeater.stop()
 
