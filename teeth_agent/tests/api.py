@@ -44,6 +44,20 @@ class TestTeethAPI(unittest.TestCase):
         client = test.Client(api, wrappers.BaseResponse)
         return client.open(self._get_env_builder(method, path, data, query))
 
+    def test_root(self):
+        mock_agent = mock.MagicMock()
+        api_server = app.setup_app(mock_agent)
+
+        response = self._make_request(api_server, 'GET', '/')
+        self.assertEqual(response.status, '200 OK')
+
+    def test_v1_root(self):
+        mock_agent = mock.MagicMock()
+        api_server = app.setup_app(mock_agent)
+
+        response = self._make_request(api_server, 'GET', '/v1')
+        self.assertEqual(response.status, '200 OK')
+
     def test_get_agent_status(self):
         status = agent.TeethAgentStatus('TEST_MODE', time.time(), 'v72ac9')
         mock_agent = mock.MagicMock()

@@ -96,7 +96,9 @@ class V1(base.APIBase):
                                 '',
                                 bookmark=True)
         ]
-        v1.media_types = [MediaType('application/json')]
+        v1.media_types = [MediaType('application/json',
+                                    ('application/vnd.openstack.'
+                                     'ironic-python-agent.v1+json'))]
         return v1
 
 
