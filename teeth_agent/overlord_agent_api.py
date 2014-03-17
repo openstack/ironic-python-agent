@@ -17,8 +17,8 @@ limitations under the License.
 import json
 
 import requests
-from teeth_rest import encoding
 
+from teeth_agent import encoding
 from teeth_agent import errors
 
 
@@ -28,8 +28,7 @@ class APIClient(object):
     def __init__(self, api_url):
         self.api_url = api_url.rstrip('/')
         self.session = requests.Session()
-        self.encoder = encoding.RESTJSONEncoder(
-            encoding.SerializationViews.PUBLIC)
+        self.encoder = encoding.RESTJSONEncoder()
 
     def _request(self, method, path, data=None):
         request_url = '{api_url}{path}'.format(api_url=self.api_url, path=path)

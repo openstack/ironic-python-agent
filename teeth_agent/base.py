@@ -18,9 +18,8 @@ import threading
 import uuid
 
 import structlog
-from teeth_rest import encoding
-from teeth_rest import errors as rest_errors
 
+from teeth_agent import encoding
 from teeth_agent import errors
 
 
@@ -39,7 +38,7 @@ class BaseCommandResult(encoding.Serializable):
         self.command_error = None
         self.command_result = None
 
-    def serialize(self, view):
+    def serialize(self):
         return dict((
             (u'id', self.id),
             (u'command_name', self.command_name),
@@ -82,9 +81,9 @@ class AsyncCommandResult(BaseCommandResult):
         self.execution_thread = threading.Thread(target=self.run,
                                                  name=thread_name)
 
-    def serialize(self, view):
+    def serialize(self):
         with self.command_state_lock:
-            return super(AsyncCommandResult, self).serialize(view)
+            return super(AsyncCommandResult, self).serialize()
 
     def start(self):
         self.execution_thread.start()
@@ -107,7 +106,7 @@ class AsyncCommandResult(BaseCommandResult):
                 self.command_status = AgentCommandStatus.SUCCEEDED
 
         except Exception as e:
-            if not isinstance(e, rest_errors.RESTError):
+            if not isinstance(e, errors.RESTError):
                 e = errors.CommandExecutionError(str(e))
 
             with self.command_state_lock:

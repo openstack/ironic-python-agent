@@ -22,10 +22,10 @@ import mock
 import pkg_resources
 from wsgiref import simple_server
 
-from teeth_rest import encoding
 
 from teeth_agent import agent
 from teeth_agent import base
+from teeth_agent import encoding
 from teeth_agent import errors
 from teeth_agent import hardware
 
@@ -118,9 +118,7 @@ class TestHeartbeater(unittest.TestCase):
 
 class TestBaseAgent(unittest.TestCase):
     def setUp(self):
-        self.encoder = encoding.RESTJSONEncoder(
-            encoding.SerializationViews.PUBLIC,
-            indent=4)
+        self.encoder = encoding.RESTJSONEncoder(indent=4)
         self.agent = agent.TeethAgent('https://fake_api.example.org:8081/',
                                       ('localhost', 9999),
                                       '192.168.1.1')

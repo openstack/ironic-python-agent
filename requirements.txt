@@ -1,8 +1,8 @@
 Werkzeug==0.9.4
 requests==2.0.0
 stevedore==0.14
--e git+https://github.com/racker/teeth-rest.git@e876c0fddd5ce2f5223ab16936f711b0d57e19c4#egg=teeth_rest
 wsgiref>=0.1.2
 pecan>=0.4.5
 WSME>=0.6
 six>=1.5.2
+structlog==0.4.1

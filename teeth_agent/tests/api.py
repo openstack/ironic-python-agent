@@ -22,7 +22,6 @@ import unittest
 from werkzeug import test
 from werkzeug import wrappers
 
-from teeth_rest import encoding
 
 from teeth_agent import agent
 from teeth_agent.api import app
@@ -99,7 +98,7 @@ class TestTeethAPI(unittest.TestCase):
         self.assertEqual(kwargs, {'key': 'value'})
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
-        expected_result = result.serialize(encoding.SerializationViews.PUBLIC)
+        expected_result = result.serialize()
         self.assertEqual(data, expected_result)
 
     def test_execute_agent_command_validation(self):
@@ -150,7 +149,7 @@ class TestTeethAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(response.data), {
             u'commands': [
-                cmd_result.serialize(None),
+                cmd_result.serialize(),
             ],
         })
 
@@ -160,8 +159,7 @@ class TestTeethAPI(unittest.TestCase):
                                             True,
                                             {'test': 'result'})
 
-        serialized_cmd_result = cmd_result.serialize(
-            encoding.SerializationViews.PUBLIC)
+        serialized_cmd_result = cmd_result.serialize()
 
         mock_agent = mock.create_autospec(agent.TeethAgent)
         mock_agent.get_command_result.return_value = cmd_result

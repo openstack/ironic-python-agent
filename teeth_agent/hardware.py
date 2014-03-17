@@ -22,7 +22,7 @@ import subprocess
 import stevedore
 import structlog
 
-from teeth_rest import encoding
+from teeth_agent import encoding
 
 _global_manager = None
 
@@ -49,7 +49,7 @@ class HardwareInfo(encoding.Serializable):
         self.type = type
         self.id = id
 
-    def serialize(self, view):
+    def serialize(self):
         return collections.OrderedDict([
             ('type', self.type),
             ('id', self.id),

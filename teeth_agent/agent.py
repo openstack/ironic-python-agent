@@ -22,12 +22,11 @@ import time
 import pkg_resources
 from stevedore import driver
 import structlog
-from teeth_rest import encoding
-from teeth_rest import errors as rest_errors
 from wsgiref import simple_server
 
 from teeth_agent.api import app
 from teeth_agent import base
+from teeth_agent import encoding
 from teeth_agent import errors
 from teeth_agent import hardware
 from teeth_agent import overlord_agent_api
@@ -39,7 +38,7 @@ class TeethAgentStatus(encoding.Serializable):
         self.started_at = started_at
         self.version = version
 
-    def serialize(self, view):
+    def serialize(self):
         """Turn the status into a dict."""
         return collections.OrderedDict([
             ('mode', self.mode),
@@ -181,7 +180,7 @@ class TeethAgent(object):
             try:
                 result = self.mode_implementation.execute(command_part,
                                                           **kwargs)
-            except rest_errors.InvalidContentError as e:
+            except errors.InvalidContentError as e:
                 # Any command may raise a InvalidContentError which will be
                 # returned to the caller directly.
                 raise e
