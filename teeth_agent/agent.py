@@ -20,7 +20,6 @@ import time
 
 import pkg_resources
 from stevedore import driver
-import structlog
 from wsgiref import simple_server
 
 from teeth_agent.api import app
@@ -28,8 +27,14 @@ from teeth_agent import base
 from teeth_agent import encoding
 from teeth_agent import errors
 from teeth_agent import hardware
+from teeth_agent.openstack.common import log
 from teeth_agent import overlord_agent_api
 from teeth_agent import utils
+
+
+def _time():
+    """Wraps time.time() for simpler testing."""
+    return time.time()
 
 
 class TeethAgentStatus(encoding.Serializable):
@@ -66,7 +71,7 @@ class TeethAgentHeartbeater(threading.Thread):
         self.agent = agent
         self.hardware = hardware.get_manager()
         self.api = overlord_agent_api.APIClient(agent.api_url)
-        self.log = structlog.get_logger(api_url=agent.api_url)
+        self.log = log.getLogger(__name__)
         self.stop_event = threading.Event()
         self.error_delay = self.initial_delay
 
@@ -79,8 +84,9 @@ class TeethAgentHeartbeater(threading.Thread):
             next_heartbeat_by = self.do_heartbeat()
             interval_multiplier = random.uniform(self.min_jitter_multiplier,
                                                  self.max_jitter_multiplier)
-            interval = (next_heartbeat_by - time.time()) * interval_multiplier
-            self.log.info('sleeping before next heartbeat', interval=interval)
+            interval = (next_heartbeat_by - _time()) * interval_multiplier
+            log_msg = 'sleeping before next heartbeat, interval: {0}'
+            self.log.info(log_msg.format(interval))
 
     def do_heartbeat(self):
         try:
@@ -90,9 +96,9 @@ class TeethAgentHeartbeater(threading.Thread):
                 mode=self.agent.get_mode_name())
             self.error_delay = self.initial_delay
             self.log.info('heartbeat successful')
-        except Exception as e:
-            self.log.error('error sending heartbeat', exception=e)
-            deadline = time.time() + self.error_delay
+        except Exception:
+            self.log.exception('error sending heartbeat')
+            deadline = _time() + self.error_delay
             self.error_delay = min(self.error_delay * self.backoff_factor,
                                    self.max_delay)
             pass
@@ -117,7 +123,7 @@ class TeethAgent(object):
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.get_manager()
         self.command_lock = threading.Lock()
-        self.log = structlog.get_logger()
+        self.log = log.getLogger(__name__)
         self.started_at = None
 
     def get_mode_name(self):
@@ -197,7 +203,7 @@ class TeethAgent(object):
 
     def run(self):
         """Run the Teeth Agent."""
-        self.started_at = time.time()
+        self.started_at = _time()
         self.heartbeater.start()
         wsgi = simple_server.make_server(
             self.listen_address[0],
@@ -207,8 +213,8 @@ class TeethAgent(object):
 
         try:
             wsgi.serve_forever()
-        except BaseException as e:
-            self.log.error('shutting down', exception=e)
+        except BaseException:
+            self.log.exception('shutting down')
 
         self.heartbeater.stop()
 

@@ -17,10 +17,10 @@ limitations under the License.
 import threading
 import uuid
 
-import structlog
 
 from teeth_agent import encoding
 from teeth_agent import errors
+from teeth_agent.openstack.common import log
 
 
 class AgentCommandStatus(object):
@@ -117,7 +117,7 @@ class AsyncCommandResult(BaseCommandResult):
 class BaseAgentMode(object):
     def __init__(self, name):
         super(BaseAgentMode, self).__init__()
-        self.log = structlog.get_logger(agent_mode=name)
+        self.log = log.getLogger(__name__)
         self.name = name
         self.command_map = {}
 

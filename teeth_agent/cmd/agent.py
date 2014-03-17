@@ -17,7 +17,6 @@ limitations under the License.
 import argparse
 
 from teeth_agent import agent
-from teeth_agent import log
 
 
 def run():
@@ -44,7 +43,6 @@ def run():
                         help='The external IP address to advertise to ironic')
 
     args = parser.parse_args()
-    log.configure()
     agent.build_agent(args.api_url,
                       args.listen_host,
                       args.listen_port,
