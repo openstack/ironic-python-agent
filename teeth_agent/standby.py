@@ -17,7 +17,6 @@ limitations under the License.
 import hashlib
 import os
 import requests
-import structlog
 import subprocess
 import time
 
@@ -26,8 +25,9 @@ from teeth_agent import configdrive
 from teeth_agent import decorators
 from teeth_agent import errors
 from teeth_agent import hardware
+from teeth_agent.openstack.common import log
 
-log = structlog.get_logger()
+LOG = log.getLogger(__name__)
 
 
 def _configdrive_location():
@@ -49,29 +49,31 @@ def _write_image(image_info, device):
 
     script = _path_to_script('shell/write_image.sh')
     command = ['/bin/bash', script, image, device]
-    log.info('Writing image', command=' '.join(command))
+    LOG.info('Writing image with command: {0}'.format(' '.join(command)))
     exit_code = subprocess.call(command)
     if exit_code != 0:
         raise errors.ImageWriteError(exit_code, device)
     totaltime = time.time() - starttime
-    log.info('Image written', device=device, seconds=totaltime, image=image)
+    LOG.info('Image {0} written to device {1} in {2} seconds'.format(
+             image, device, totaltime))
 
 
 def _copy_configdrive_to_disk(configdrive_dir, device):
     starttime = time.time()
     script = _path_to_script('shell/copy_configdrive_to_disk.sh')
     command = ['/bin/bash', script, configdrive_dir, device]
-    log.info('copying configdrive to disk', command=' '.join(command))
+    LOG.info('copying configdrive to disk with command {0}'.format(
+             ' '.join(command)))
     exit_code = subprocess.call(command)
 
     if exit_code != 0:
         raise errors.ConfigDriveWriteError(exit_code, device)
 
     totaltime = time.time() - starttime
-    log.info('configdrive copied',
-             from_directory=configdrive_dir,
-             device=device,
-             seconds=totaltime)
+    LOG.info('configdrive copied from {0} to {1} in {2} seconds'.format(
+             configdrive_dir,
+             device,
+             totaltime))
 
 
 def _request_url(image_info, url):
@@ -86,11 +88,12 @@ def _download_image(image_info):
     resp = None
     for url in image_info['urls']:
         try:
-            log.info("Attempting to download image", url=url)
+            LOG.info("Attempting to download image from {0}".format(url))
             resp = _request_url(image_info, url)
         except errors.ImageDownloadError:
             failtime = time.time() - starttime
-            log.warning("Image download failed", url=url, seconds=failtime)
+            log_msg = "Image download failed. URL: {0}; time: {1} seconds"
+            LOG.warning(log_msg.format(url, failtime))
             continue
         else:
             break
@@ -106,7 +109,8 @@ def _download_image(image_info):
             raise errors.ImageDownloadError(image_info['id'])
 
     totaltime = time.time() - starttime
-    log.info("Image downloaded", image=image_location, seconds=totaltime)
+    LOG.info("Image downloaded from {0} in {1} seconds".format(image_location,
+                                                               totaltime))
 
     if not _verify_image(image_info, image_location):
         raise errors.ImageChecksumError(image_info['id'])
@@ -118,19 +122,16 @@ def _verify_image(image_info, image_location):
         algo = getattr(hashlib, k, None)
         if algo is None:
             continue
-        log.debug('Verifying image',
-                  image=image_location,
-                  algo=k,
-                  passed_hash=v)
+        log_msg = 'Verifying image at {0} with algorithm {1} against hash {2}'
+        LOG.debug(log_msg.format(image_location, k, v))
         hash_ = algo(open(image_location).read()).hexdigest()
         if hash_ == v:
             return True
         else:
-            log.warning('Image verification failed',
-                        image=image_location,
-                        algo=k,
-                        imagehash=hash_,
-                        passed_hash=v)
+            log_msg = ('Image verification failed. Location: {0};'
+                       'algorithm: {1}; image hash: {2};'
+                       'verification hash: {3}')
+            LOG.warning(log_msg.format(image_location, k, hash_, v))
     return False
 
 
@@ -185,14 +186,14 @@ class StandbyMode(base.BaseAgentMode):
             _write_image(image_info, device)
             self.cached_image_id = image_info['id']
 
-        log.debug('Writing configdrive', location=location)
+        LOG.debug('Writing configdrive to {0}'.format(location))
         configdrive.write_configdrive(location, metadata, files)
         _copy_configdrive_to_disk(location, device)
 
     @decorators.async_command()
     def run_image(self, command_name):
         script = _path_to_script('shell/reboot.sh')
-        log.info('Rebooting system')
+        LOG.info('Rebooting system')
         command = ['/bin/bash', script]
         # this should never return if successful
         exit_code = subprocess.call(command)

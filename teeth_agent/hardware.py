@@ -20,9 +20,9 @@ import os
 import subprocess
 
 import stevedore
-import structlog
 
 from teeth_agent import encoding
+from teeth_agent.openstack.common import log
 
 _global_manager = None
 
@@ -162,7 +162,7 @@ def get_manager():
     global _global_manager
 
     if not _global_manager:
-        log = structlog.get_logger()
+        LOG = log.getLogger()
         extension_manager = stevedore.ExtensionManager(
             namespace='teeth_agent.hardware_managers',
             invoke_on_load=True)
@@ -175,8 +175,8 @@ def get_manager():
         if preferred_manager.evaluate_hardware_support() <= 0:
             raise RuntimeError('No suitable HardwareManager could be found')
 
-        log.info('selected hardware manager',
-                 manager_name=preferred_extension.entry_point_target)
+        LOG.info('selected hardware manager {0}'.format(
+                 preferred_extension.entry_point_target))
 
         _global_manager = preferred_manager
 

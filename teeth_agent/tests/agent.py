@@ -53,7 +53,7 @@ class TestHeartbeater(unittest.TestCase):
             hardware.HardwareManager)
         self.heartbeater.stop_event = mock.Mock()
 
-    @mock.patch('time.time')
+    @mock.patch('teeth_agent.agent._time')
     @mock.patch('random.uniform')
     def test_heartbeat(self, mocked_uniform, mocked_time):
         time_responses = []
