@@ -17,38 +17,36 @@ limitations under the License.
 import threading
 import uuid
 
-import structlog
-from teeth_rest import encoding
-from teeth_rest import errors as rest_errors
 
+from teeth_agent import encoding
 from teeth_agent import errors
-from teeth_agent import utils
+from teeth_agent.openstack.common import log
 
 
 class AgentCommandStatus(object):
-    RUNNING = 'RUNNING'
-    SUCCEEDED = 'SUCCEEDED'
-    FAILED = 'FAILED'
+    RUNNING = u'RUNNING'
+    SUCCEEDED = u'SUCCEEDED'
+    FAILED = u'FAILED'
 
 
 class BaseCommandResult(encoding.Serializable):
     def __init__(self, command_name, command_params):
-        self.id = str(uuid.uuid4())
+        self.id = unicode(uuid.uuid4())
         self.command_name = command_name
         self.command_params = command_params
         self.command_status = AgentCommandStatus.RUNNING
         self.command_error = None
         self.command_result = None
 
-    def serialize(self, view):
-        return utils.get_ordereddict([
-            ('id', self.id),
-            ('command_name', self.command_name),
-            ('command_params', self.command_params),
-            ('command_status', self.command_status),
-            ('command_error', self.command_error),
-            ('command_result', self.command_result),
-        ])
+    def serialize(self):
+        return dict((
+            (u'id', self.id),
+            (u'command_name', self.command_name),
+            (u'command_params', self.command_params),
+            (u'command_status', self.command_status),
+            (u'command_error', self.command_error),
+            (u'command_result', self.command_result),
+        ))
 
     def is_done(self):
         return self.command_status != AgentCommandStatus.RUNNING
@@ -83,9 +81,9 @@ class AsyncCommandResult(BaseCommandResult):
         self.execution_thread = threading.Thread(target=self.run,
                                                  name=thread_name)
 
-    def serialize(self, view):
+    def serialize(self):
         with self.command_state_lock:
-            return super(AsyncCommandResult, self).serialize(view)
+            return super(AsyncCommandResult, self).serialize()
 
     def start(self):
         self.execution_thread.start()
@@ -108,7 +106,7 @@ class AsyncCommandResult(BaseCommandResult):
                 self.command_status = AgentCommandStatus.SUCCEEDED
 
         except Exception as e:
-            if not isinstance(e, rest_errors.RESTError):
+            if not isinstance(e, errors.RESTError):
                 e = errors.CommandExecutionError(str(e))
 
             with self.command_state_lock:
@@ -119,7 +117,7 @@ class AsyncCommandResult(BaseCommandResult):
 class BaseAgentMode(object):
     def __init__(self, name):
         super(BaseAgentMode, self).__init__()
-        self.log = structlog.get_logger(agent_mode=name)
+        self.log = log.getLogger(__name__)
         self.name = name
         self.command_map = {}
 

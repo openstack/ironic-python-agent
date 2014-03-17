@@ -20,11 +20,12 @@ import unittest
 
 import mock
 import pkg_resources
+from wsgiref import simple_server
 
-from teeth_rest import encoding
 
 from teeth_agent import agent
 from teeth_agent import base
+from teeth_agent import encoding
 from teeth_agent import errors
 from teeth_agent import hardware
 
@@ -52,7 +53,7 @@ class TestHeartbeater(unittest.TestCase):
             hardware.HardwareManager)
         self.heartbeater.stop_event = mock.Mock()
 
-    @mock.patch('time.time')
+    @mock.patch('teeth_agent.agent._time')
     @mock.patch('random.uniform')
     def test_heartbeat(self, mocked_uniform, mocked_time):
         time_responses = []
@@ -117,9 +118,7 @@ class TestHeartbeater(unittest.TestCase):
 
 class TestBaseAgent(unittest.TestCase):
     def setUp(self):
-        self.encoder = encoding.RESTJSONEncoder(
-            encoding.SerializationViews.PUBLIC,
-            indent=4)
+        self.encoder = encoding.RESTJSONEncoder(indent=4)
         self.agent = agent.TeethAgent('https://fake_api.example.org:8081/',
                                       ('localhost', 9999),
                                       '192.168.1.1')
@@ -137,7 +136,7 @@ class TestBaseAgent(unittest.TestCase):
         self.agent.started_at = started_at
 
         status = self.agent.get_status()
-        self.assertIsInstance(status, agent.TeethAgentStatus)
+        self.assertTrue(isinstance(status, agent.TeethAgentStatus))
         self.assertEqual(status.started_at, started_at)
         self.assertEqual(status.version,
                          pkg_resources.get_distribution('teeth-agent').version)
@@ -157,7 +156,7 @@ class TestBaseAgent(unittest.TestCase):
                           'do_something',
                           foo='bar')
 
-    @mock.patch('cherrypy.wsgiserver.CherryPyWSGIServer', autospec=True)
+    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     def test_run(self, wsgi_server_cls):
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
@@ -167,9 +166,12 @@ class TestBaseAgent(unittest.TestCase):
         self.agent.run()
 
         listen_addr = ('localhost', 9999)
-        wsgi_server_cls.assert_called_once_with(listen_addr, self.agent.api)
-        wsgi_server.start.assert_called_once_with()
-        wsgi_server.stop.assert_called_once_with()
+        wsgi_server_cls.assert_called_once_with(
+            listen_addr[0],
+            listen_addr[1],
+            self.agent.api,
+            server_class=simple_server.WSGIServer)
+        wsgi_server.serve_forever.assert_called_once()
 
         self.agent.heartbeater.start.assert_called_once_with()
 

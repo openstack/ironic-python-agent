@@ -18,19 +18,23 @@ import random
 import threading
 import time
 
-from cherrypy import wsgiserver
 import pkg_resources
 from stevedore import driver
-import structlog
-from teeth_rest import encoding
-from teeth_rest import errors as rest_errors
+from wsgiref import simple_server
 
-from teeth_agent import api
+from teeth_agent.api import app
 from teeth_agent import base
+from teeth_agent import encoding
 from teeth_agent import errors
 from teeth_agent import hardware
+from teeth_agent.openstack.common import log
 from teeth_agent import overlord_agent_api
 from teeth_agent import utils
+
+
+def _time():
+    """Wraps time.time() for simpler testing."""
+    return time.time()
 
 
 class TeethAgentStatus(encoding.Serializable):
@@ -39,7 +43,7 @@ class TeethAgentStatus(encoding.Serializable):
         self.started_at = started_at
         self.version = version
 
-    def serialize(self, view):
+    def serialize(self):
         """Turn the status into a dict."""
         return utils.get_ordereddict([
             ('mode', self.mode),
@@ -67,7 +71,7 @@ class TeethAgentHeartbeater(threading.Thread):
         self.agent = agent
         self.hardware = hardware.get_manager()
         self.api = overlord_agent_api.APIClient(agent.api_url)
-        self.log = structlog.get_logger(api_url=agent.api_url)
+        self.log = log.getLogger(__name__)
         self.stop_event = threading.Event()
         self.error_delay = self.initial_delay
 
@@ -80,17 +84,18 @@ class TeethAgentHeartbeater(threading.Thread):
             next_heartbeat_by = self.do_heartbeat()
             interval_multiplier = random.uniform(self.min_jitter_multiplier,
                                                  self.max_jitter_multiplier)
-            interval = (next_heartbeat_by - time.time()) * interval_multiplier
-            self.log.info('sleeping before next heartbeat', interval=interval)
+            interval = (next_heartbeat_by - _time()) * interval_multiplier
+            log_msg = 'sleeping before next heartbeat, interval: {0}'
+            self.log.info(log_msg.format(interval))
 
     def do_heartbeat(self):
         try:
             deadline = self.api.heartbeat(uuid=self.agent.get_node_uuid())
             self.error_delay = self.initial_delay
             self.log.info('heartbeat successful')
-        except Exception as e:
-            self.log.error('error sending heartbeat', exception=e)
-            deadline = time.time() + self.error_delay
+        except Exception:
+            self.log.exception('error sending heartbeat')
+            deadline = _time() + self.error_delay
             self.error_delay = min(self.error_delay * self.backoff_factor,
                                    self.max_delay)
             pass
@@ -111,12 +116,12 @@ class TeethAgent(object):
         self.ipaddr = ipaddr
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
-        self.api = api.TeethAgentAPIServer(self)
+        self.api = app.VersionSelectorApplication(self)
         self.command_results = utils.get_ordereddict()
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.get_manager()
         self.command_lock = threading.Lock()
-        self.log = structlog.get_logger()
+        self.log = log.getLogger(__name__)
         self.started_at = None
         self.configuration = None
         self.content = None
@@ -187,21 +192,24 @@ class TeethAgent(object):
             try:
                 result = self.mode_implementation.execute(command_part,
                                                           **kwargs)
-            except rest_errors.InvalidContentError as e:
+            except errors.InvalidContentError as e:
                 # Any command may raise a InvalidContentError which will be
                 # returned to the caller directly.
                 raise e
             except Exception as e:
                 # Other errors are considered command execution errors, and are
                 # recorded as an
-                result = base.SyncCommandResult(command_name, kwargs, False, e)
+                result = base.SyncCommandResult(command_name,
+                                                kwargs,
+                                                False,
+                                                unicode(e))
 
             self.command_results[result.id] = result
             return result
 
     def run(self):
         """Run the Teeth Agent."""
-        self.started_at = time.time()
+        self.started_at = _time()
         # Get the UUID so we can heartbeat to Ironic
         mac_addresses = self.get_all_mac_addrs()
         self.configuration = self.api_client.get_configuration(
@@ -212,13 +220,16 @@ class TeethAgent(object):
             version=self.version,
         )
         self.heartbeater.start()
-        server = wsgiserver.CherryPyWSGIServer(self.listen_address, self.api)
+        wsgi = simple_server.make_server(
+            self.listen_address[0],
+            self.listen_address[1],
+            self.api,
+            server_class=simple_server.WSGIServer)
 
         try:
-            server.start()
-        except BaseException as e:
-            self.log.error('shutting down', exception=e)
-            server.stop()
+            wsgi.serve_forever()
+        except BaseException:
+            self.log.exception('shutting down')
 
         self.heartbeater.stop()
 
