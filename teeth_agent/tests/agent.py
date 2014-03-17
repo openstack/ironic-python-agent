@@ -136,7 +136,7 @@ class TestBaseAgent(unittest.TestCase):
         self.agent.started_at = started_at
 
         status = self.agent.get_status()
-        self.assertIsInstance(status, agent.TeethAgentStatus)
+        self.assertTrue(isinstance(status, agent.TeethAgentStatus))
         self.assertEqual(status.started_at, started_at)
         self.assertEqual(status.version,
                          pkg_resources.get_distribution('teeth-agent').version)

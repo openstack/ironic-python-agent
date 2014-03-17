@@ -14,9 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import collections
-
 from teeth_agent import encoding
+from teeth_agent import utils
 
 
 class RESTError(Exception, encoding.Serializable):
@@ -27,7 +26,7 @@ class RESTError(Exception, encoding.Serializable):
 
     def serialize(self):
         """Turn a RESTError into a dict."""
-        return collections.OrderedDict([
+        return utils.get_ordereddict([
             ('type', self.__class__.__name__),
             ('code', self.status_code),
             ('message', self.message),
@@ -87,7 +86,7 @@ class InvalidCommandParamsError(InvalidContentError):
 
 class RequestedObjectNotFoundError(NotFound):
     def __init__(self, type_descr, obj_id):
-        details = '{} with id {} not found.'.format(type_descr, obj_id)
+        details = '{0} with id {1} not found.'.format(type_descr, obj_id)
         super(RequestedObjectNotFoundError, self).__init__(details)
         self.details = details
 
@@ -118,7 +117,7 @@ class ImageDownloadError(RESTError):
 
     def __init__(self, image_id):
         super(ImageDownloadError, self).__init__()
-        self.details = 'Could not download image with id {}.'.format(image_id)
+        self.details = 'Could not download image with id {0}.'.format(image_id)
 
 
 class ImageChecksumError(RESTError):
@@ -128,7 +127,7 @@ class ImageChecksumError(RESTError):
 
     def __init__(self, image_id):
         super(ImageChecksumError, self).__init__()
-        self.details = 'Image with id {} failed to verify against checksum.'
+        self.details = 'Image with id {0} failed to verify against checksum.'
         self.details = self.details.format(image_id)
 
 
@@ -139,7 +138,7 @@ class ImageWriteError(RESTError):
 
     def __init__(self, exit_code, device):
         super(ImageWriteError, self).__init__()
-        self.details = 'Writing image to device {} failed with exit code {}.'
+        self.details = 'Writing image to device {0} failed with exit code {1}.'
         self.details = self.details.format(device, exit_code)
 
 
@@ -151,7 +150,8 @@ class ConfigDriveWriteError(RESTError):
     message = 'Error writing configdrive to device.'
 
     def __init__(self, exit_code, device):
-        details = 'Writing configdrive to device {} failed with exit code {}.'
+        details = 'Writing configdrive to device {0} failed with exit code ' \
+                  '{1}.'
         details = details.format(device, exit_code)
         super(ConfigDriveWriteError, self).__init__(details)
         self.details = details
@@ -164,5 +164,5 @@ class SystemRebootError(RESTError):
 
     def __init__(self, exit_code):
         super(SystemRebootError, self).__init__()
-        self.details = 'Reboot script failed with exit code {}.'
+        self.details = 'Reboot script failed with exit code {0}.'
         self.details = self.details.format(exit_code)
