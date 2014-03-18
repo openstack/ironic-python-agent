@@ -29,7 +29,6 @@ class APIClient(object):
         self.api_url = api_url.rstrip('/')
         self.session = requests.Session()
         self.encoder = encoding.RESTJSONEncoder()
-        self.uuid = None
 
     def _request(self, method, path, data=None):
         request_url = '{api_url}{path}'.format(api_url=self.api_url, path=path)
@@ -47,14 +46,16 @@ class APIClient(object):
                                     headers=request_headers,
                                     data=data)
 
-    def heartbeat(self, uuid):
+    def heartbeat(self, uuid, ipaddr, port):
         path = '/{api_version}/nodes/{uuid}/vendor_passthru/heartbeat'.format(
             api_version=self.api_version,
             uuid=uuid
         )
-
+        data = {
+            'agent_url': self._get_agent_url(ipaddr, port)
+        }
         try:
-            response = self._request('POST', path)
+            response = self._request('POST', path, data=data)
         except Exception as e:
             raise errors.HeartbeatError(str(e))
 
@@ -69,12 +70,11 @@ class APIClient(object):
         except Exception:
             raise errors.HeartbeatError('Invalid Heartbeat-Before header')
 
-    def lookup_node(self, ipaddr, hardware_info):
+    def lookup_node(self, hardware_info):
         path = '/{api_version}/drivers/teeth/lookup'.format(
             api_version=self.api_version
         )
         data = {
-            'agent_url': self._get_agent_url(ipaddr),
             'hardware': hardware_info,
         }
 
@@ -98,5 +98,5 @@ class APIClient(object):
                                             '{0}'.format(content))
         return content['node']
 
-    def _get_agent_url(self, ipaddr):
-        return "http://{0}:9999".format(ipaddr)
+    def _get_agent_url(self, ipaddr, port):
+        return "http://{0}:{1}".format(ipaddr, port)

@@ -46,7 +46,9 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        heartbeat_before = self.api_client.heartbeat(uuid='fake-uuid')
+        heartbeat_before = self.api_client.heartbeat(uuid='fake-uuid',
+                                                     ipaddr='42.42.42.42',
+                                                     port=9999)
 
         self.assertEqual(heartbeat_before, expected_heartbeat_before)
 
@@ -61,7 +63,9 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          uuid='fake-uuid')
+                          uuid='fake-uuid',
+                          ipaddr='42.42.42.42',
+                          port=9999)
 
     def test_heartbeat_invalid_status_code(self):
         response = httmock.response(status_code=404)
@@ -70,7 +74,9 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          uuid='fake-uuid')
+                          uuid='fake-uuid',
+                          ipaddr='42.42.42.42',
+                          port=9999)
 
     def test_heartbeat_missing_heartbeat_before_header(self):
         response = httmock.response(status_code=204)
@@ -79,7 +85,9 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          uuid='fake-uuid')
+                          uuid='fake-uuid',
+                          ipaddr='42.42.42.42',
+                          port=9999)
 
     def test_heartbeat_invalid_heartbeat_before_header(self):
         response = httmock.response(status_code=204, headers={
@@ -90,7 +98,9 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          uuid='fake-uuid')
+                          uuid='fake-uuid',
+                          ipaddr='42.42.42.42',
+                          port=9999)
 
     def test_lookup_node(self):
         response = httmock.response(status_code=200, content={
@@ -103,7 +113,6 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request.return_value = response
 
         self.api_client.lookup_node(
-            ipaddr='42.42.42.42',
             hardware_info=self.hardware_info,
         )
 
@@ -123,7 +132,6 @@ class TestBaseTeethAgent(unittest.TestCase):
                 'id': '0:1:2:3',
             },
         ])
-        self.assertEqual(content['agent_url'], 'http://42.42.42.42:9999')
 
     def test_lookup_node_bad_response_code(self):
         response = httmock.response(status_code=400, content={
@@ -137,7 +145,6 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
-                          ipaddr='42.42.42.42',
                           hardware_info=self.hardware_info,
         )
 
@@ -149,7 +156,6 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
-                          ipaddr='42.42.42.42',
                           hardware_info=self.hardware_info
         )
 
@@ -163,6 +169,5 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
-                          ipaddr='42.42.42.42',
                           hardware_info=self.hardware_info,
         )

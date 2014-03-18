@@ -109,11 +109,12 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class TeethAgent(object):
-    def __init__(self, api_url, listen_address, ipaddr):
+    def __init__(self, api_url, listen_address, ipaddr, port=9999):
         self.api_url = api_url
         self.api_client = overlord_agent_api.APIClient(self.api_url)
         self.listen_address = listen_address
         self.ipaddr = ipaddr
+        self.port = port
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = app.VersionSelectorApplication(self)
@@ -141,9 +142,6 @@ class TeethAgent(object):
 
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
-
-    def get_all_mac_addrs(self):
-        return self.hardware.list_hardware_info()
 
     def get_node_uuid(self):
         return self.node['uuid']
@@ -211,7 +209,6 @@ class TeethAgent(object):
         self.started_at = _time()
         # Get the UUID so we can heartbeat to Ironic
         self.node = self.api_client.lookup_node(
-            ipaddr=self.ipaddr,
             hardware_info=self.hardware.list_hardware_info(),
         )
         self.heartbeater.start()
