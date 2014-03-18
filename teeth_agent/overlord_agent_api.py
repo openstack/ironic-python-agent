@@ -69,16 +69,13 @@ class APIClient(object):
         except Exception:
             raise errors.HeartbeatError('Invalid Heartbeat-Before header')
 
-    def lookup_node(self, mac_addrs, ipaddr, hardware_info, mode,
-                          version):
+    def lookup_node(self, ipaddr, hardware_info):
         path = '/{api_version}/drivers/teeth/lookup'.format(
-            api_version=self.api_version)
+            api_version=self.api_version
+        )
         data = {
-            'mac_addresses': mac_addrs,
             'agent_url': self._get_agent_url(ipaddr),
             'hardware': hardware_info,
-            'mode': mode,
-            'version': version,
         }
 
         try:
@@ -99,7 +96,7 @@ class APIClient(object):
         if 'node' not in content or 'uuid' not in content['node']:
             raise errors.LookupNodeError('Got invalid data from the API: '
                                             '{0}'.format(content))
-        return content
+        return content['node']
 
     def _get_agent_url(self, ipaddr):
         return "http://{0}:9999".format(ipaddr)

@@ -123,8 +123,7 @@ class TeethAgent(object):
         self.command_lock = threading.Lock()
         self.log = log.getLogger(__name__)
         self.started_at = None
-        self.configuration = None
-        self.content = None
+        self.node = None
 
     def get_mode_name(self):
         if self.mode_implementation:
@@ -147,7 +146,7 @@ class TeethAgent(object):
         return self.hardware.list_hardware_info()
 
     def get_node_uuid(self):
-        return self.content['node']['uuid']
+        return self.node['uuid']
 
     def list_command_results(self):
         return self.command_results.values()
@@ -211,13 +210,9 @@ class TeethAgent(object):
         """Run the Teeth Agent."""
         self.started_at = _time()
         # Get the UUID so we can heartbeat to Ironic
-        mac_addresses = self.get_all_mac_addrs()
-        self.configuration = self.api_client.lookup_node(
-            mac_addresses,
+        self.node = self.api_client.lookup_node(
             ipaddr=self.ipaddr,
             hardware_info=self.hardware.list_hardware_info(),
-            mode=self.get_mode_name(),
-            version=self.version,
         )
         self.heartbeater.start()
         wsgi = simple_server.make_server(

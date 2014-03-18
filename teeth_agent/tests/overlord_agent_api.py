@@ -103,11 +103,8 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request.return_value = response
 
         self.api_client.lookup_node(
-            mac_addrs=['aa:bb:cc:dd:ee:ff', '42:42:42:42:42:42'],
             ipaddr='42.42.42.42',
             hardware_info=self.hardware_info,
-            version='15',
-            mode='STANDBY',
         )
 
         request_args = self.api_client.session.request.call_args[0]
@@ -116,8 +113,6 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
-        self.assertEqual(content['mode'], 'STANDBY')
-        self.assertEqual(content['version'], '15')
         self.assertEqual(content['hardware'], [
             {
                 'type': 'mac_address',
@@ -142,12 +137,8 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
-                          mac_addrs=['aa:bb:cc:dd:ee:ff',
-                                      '42:42:42:42:42:42'],
                           ipaddr='42.42.42.42',
                           hardware_info=self.hardware_info,
-                          version='15',
-                          mode='STANDBY',
         )
 
     def test_lookup_node_bad_response_data(self):
@@ -158,12 +149,8 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
-                          mac_addrs=['aa:bb:cc:dd:ee:ff',
-                                      '42:42:42:42:42:42'],
                           ipaddr='42.42.42.42',
-                          hardware_info=self.hardware_info,
-                          version='15',
-                          mode='STANDBY',
+                          hardware_info=self.hardware_info
         )
 
     def test_lookup_node_bad_response_body(self):
@@ -176,10 +163,6 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
-                          mac_addrs=['aa:bb:cc:dd:ee:ff',
-                                      '42:42:42:42:42:42'],
                           ipaddr='42.42.42.42',
                           hardware_info=self.hardware_info,
-                          version='15',
-                          mode='STANDBY',
         )
