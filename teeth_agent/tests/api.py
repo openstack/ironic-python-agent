@@ -14,60 +14,167 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import json
 import mock
 import time
 import unittest
 
-from werkzeug import test
-from werkzeug import wrappers
-
+import pecan
+import pecan.testing
 
 from teeth_agent import agent
-from teeth_agent.api import app
 from teeth_agent import base
 
 
+PATH_PREFIX = '/v1'
+
+
 class TestTeethAPI(unittest.TestCase):
-    def _get_env_builder(self, method, path, data=None, query=None):
-        if data is not None:
-            data = json.dumps(data)
 
-        return test.EnvironBuilder(method=method,
-                                   path=path,
-                                   data=data,
-                                   content_type='application/json',
-                                   query_string=query)
+    def setUp(self):
+        super(TestTeethAPI, self).setUp()
+        self.mock_agent = mock.MagicMock()
+        self.app = self._make_app(self.mock_agent)
 
-    def _make_request(self, api, method, path, data=None, query=None):
-        client = test.Client(api, wrappers.BaseResponse)
-        return client.open(self._get_env_builder(method, path, data, query))
+        def reset_pecan():
+            pecan.set_config({}, overwrite=True)
+
+        self.addCleanup(reset_pecan)
+
+    def _make_app(self, enable_acl=False):
+        self.config = {
+            'app': {
+                'root': 'teeth_agent.api.controllers.root.RootController',
+                'modules': ['teeth_agent.api'],
+                'static_root': '',
+                'debug': True,
+            },
+        }
+
+        return pecan.testing.load_test_app(config=self.config,
+                                           agent=self.mock_agent)
+
+    def _request_json(self, path, params, expect_errors=False, headers=None,
+                      method="post", extra_environ=None, status=None,
+                      path_prefix=PATH_PREFIX):
+        """Sends simulated HTTP request to Pecan test app.
+
+        :param path: url path of target service
+        :param params: content for wsgi.input of request
+        :param expect_errors: Boolean value; whether an error is expected based
+                              on request
+        :param headers: a dictionary of headers to send along with the request
+        :param method: Request method type. Appropriate method function call
+                       should be used rather than passing attribute in.
+        :param extra_environ: a dictionary of environ variables to send along
+                              with the request
+        :param status: expected status code of response
+        :param path_prefix: prefix of the url path
+        """
+        full_path = path_prefix + path
+        print('%s: %s %s' % (method.upper(), full_path, params))
+        response = getattr(self.app, "%s_json" % method)(
+            str(full_path),
+            params=params,
+            headers=headers,
+            status=status,
+            extra_environ=extra_environ,
+            expect_errors=expect_errors
+        )
+        print('GOT:%s' % response)
+        return response
+
+    def put_json(self, path, params, expect_errors=False, headers=None,
+                 extra_environ=None, status=None):
+        """Sends simulated HTTP PUT request to Pecan test app.
+
+        :param path: url path of target service
+        :param params: content for wsgi.input of request
+        :param expect_errors: Boolean value; whether an error is expected based
+                              on request
+        :param headers: a dictionary of headers to send along with the request
+        :param extra_environ: a dictionary of environ variables to send along
+                              with the request
+        :param status: expected status code of response
+        """
+        return self._request_json(path=path, params=params,
+                                  expect_errors=expect_errors,
+                                  headers=headers, extra_environ=extra_environ,
+                                  status=status, method="put")
+
+    def post_json(self, path, params, expect_errors=False, headers=None,
+                  extra_environ=None, status=None):
+        """Sends simulated HTTP POST request to Pecan test app.
+
+        :param path: url path of target service
+        :param params: content for wsgi.input of request
+        :param expect_errors: Boolean value; whether an error is expected based
+                              on request
+        :param headers: a dictionary of headers to send along with the request
+        :param extra_environ: a dictionary of environ variables to send along
+                              with the request
+        :param status: expected status code of response
+        """
+        return self._request_json(path=path, params=params,
+                                  expect_errors=expect_errors,
+                                  headers=headers, extra_environ=extra_environ,
+                                  status=status, method="post")
+
+    def get_json(self, path, expect_errors=False, headers=None,
+                 extra_environ=None, q=[], path_prefix=PATH_PREFIX, **params):
+        """Sends simulated HTTP GET request to Pecan test app.
+
+        :param path: url path of target service
+        :param expect_errors: Boolean value;whether an error is expected based
+                              on request
+        :param headers: a dictionary of headers to send along with the request
+        :param extra_environ: a dictionary of environ variables to send along
+                              with the request
+        :param q: list of queries consisting of: field, value, op, and type
+                  keys
+        :param path_prefix: prefix of the url path
+        :param params: content for wsgi.input of request
+        """
+        full_path = path_prefix + path
+        query_params = {'q.field': [],
+                        'q.value': [],
+                        'q.op': [],
+                        }
+        for query in q:
+            for name in ['field', 'op', 'value']:
+                query_params['q.%s' % name].append(query.get(name, ''))
+        all_params = {}
+        all_params.update(params)
+        if q:
+            all_params.update(query_params)
+        print('GET: %s %r' % (full_path, all_params))
+        response = self.app.get(full_path,
+                                params=all_params,
+                                headers=headers,
+                                extra_environ=extra_environ,
+                                expect_errors=expect_errors)
+        print('GOT:%s' % response)
+        return response
 
     def test_root(self):
-        mock_agent = mock.MagicMock()
-        api_server = app.setup_app(mock_agent)
-
-        response = self._make_request(api_server, 'GET', '/')
-        self.assertEqual(response.status, '200 OK')
+        response = self.get_json('/', path_prefix='')
+        data = response.json
+        self.assertEqual(data['name'], 'OpenStack Ironic Python Agent API')
 
     def test_v1_root(self):
-        mock_agent = mock.MagicMock()
-        api_server = app.setup_app(mock_agent)
-
-        response = self._make_request(api_server, 'GET', '/v1')
-        self.assertEqual(response.status, '200 OK')
+        response = self.get_json('/v1', path_prefix='')
+        data = response.json
+        self.assertTrue('status' in data.keys())
+        self.assertTrue('commands' in data.keys())
 
     def test_get_agent_status(self):
         status = agent.TeethAgentStatus('TEST_MODE', time.time(), 'v72ac9')
-        mock_agent = mock.MagicMock()
-        mock_agent.get_status.return_value = status
-        api_server = app.setup_app(mock_agent)
+        self.mock_agent.get_status.return_value = status
 
-        response = self._make_request(api_server, 'GET', '/v1/status')
-        mock_agent.get_status.assert_called_once_with()
+        response = self.get_json('/status')
+        self.mock_agent.get_status.assert_called_once_with()
 
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
+        data = response.json
         self.assertEqual(data['mode'], status.mode)
         self.assertEqual(data['started_at'], status.started_at)
         self.assertEqual(data['version'], status.version)
@@ -83,71 +190,55 @@ class TestTeethAPI(unittest.TestCase):
                                         True,
                                         {'test': 'result'})
 
-        mock_agent = mock.MagicMock()
-        mock_agent.execute_command.return_value = result
-        api_server = app.setup_app(mock_agent)
+        self.mock_agent.execute_command.return_value = result
 
-        response = self._make_request(api_server,
-                                      'POST',
-                                      '/v1/commands/',
-                                      data=command)
+        response = self.post_json('/commands', command)
+        self.assertEqual(response.status_code, 200)
 
-        self.assertEqual(mock_agent.execute_command.call_count, 1)
-        args, kwargs = mock_agent.execute_command.call_args
+        self.assertEqual(self.mock_agent.execute_command.call_count, 1)
+        args, kwargs = self.mock_agent.execute_command.call_args
         self.assertEqual(args, ('do_things',))
         self.assertEqual(kwargs, {'key': 'value'})
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
         expected_result = result.serialize()
+        data = response.json
         self.assertEqual(data, expected_result)
 
     def test_execute_agent_command_validation(self):
-        mock_agent = mock.MagicMock()
-        api_server = app.setup_app(mock_agent)
-
         invalid_command = {}
-        response = self._make_request(api_server,
-                                      'POST',
-                                      '/v1/commands',
-                                      data=invalid_command)
+        response = self.post_json('/commands',
+                                  invalid_command,
+                                  expect_errors=True)
         self.assertEqual(response.status_code, 400)
-        data = json.loads(response.data)
+        data = response.json
         msg = 'Invalid input for field/attribute name.'
         self.assertTrue(msg in data['faultstring'])
         msg = 'Mandatory field missing'
         self.assertTrue(msg in data['faultstring'])
 
     def test_execute_agent_command_params_validation(self):
-        mock_agent = mock.MagicMock()
-        api_server = app.setup_app(mock_agent)
-
         invalid_command = {'name': 'do_things', 'params': []}
-        response = self._make_request(api_server,
-                                      'POST',
-                                      '/v1/commands',
-                                      data=invalid_command)
+        response = self.post_json('/commands',
+                                  invalid_command,
+                                  expect_errors=True)
         self.assertEqual(response.status_code, 400)
-        data = json.loads(response.data)
+        data = response.json
         # this message is actually much longer, but I'm ok with this
         msg = 'Invalid input for field/attribute params.'
         self.assertTrue(msg in data['faultstring'])
 
     def test_list_command_results(self):
-        self.maxDiff = 10000
         cmd_result = base.SyncCommandResult(u'do_things',
                                             {u'key': u'value'},
                                             True,
                                             {u'test': u'result'})
 
-        mock_agent = mock.create_autospec(agent.TeethAgent)
-        mock_agent.list_command_results.return_value = [
+        self.mock_agent.list_command_results.return_value = [
             cmd_result,
         ]
 
-        api_server = app.setup_app(mock_agent)
-        response = self._make_request(api_server, 'GET', '/v1/commands')
+        response = self.get_json('/commands')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.data), {
+        self.assertEqual(response.json, {
             u'commands': [
                 cmd_result.serialize(),
             ],
@@ -158,16 +249,11 @@ class TestTeethAPI(unittest.TestCase):
                                             {'key': 'value'},
                                             True,
                                             {'test': 'result'})
-
         serialized_cmd_result = cmd_result.serialize()
 
-        mock_agent = mock.create_autospec(agent.TeethAgent)
-        mock_agent.get_command_result.return_value = cmd_result
+        self.mock_agent.get_command_result.return_value = cmd_result
 
-        api_server = app.setup_app(mock_agent)
-        response = self._make_request(api_server,
-                                      'GET',
-                                      '/v1/commands/abc123')
+        response = self.get_json('/commands/abc123')
         self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
+        data = response.json
         self.assertEqual(data, serialized_cmd_result)

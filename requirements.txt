@@ -1,8 +1,7 @@
-Werkzeug==0.9.4
 requests==2.0.0
 stevedore==0.14
 wsgiref>=0.1.2
-pecan>=0.4.5
+-e git+https://github.com/jimrollenhagen/pecan@7c8db9bca2daf33a4616f0308db75a0c0d55d015#egg=pecan
 WSME>=0.6
 six>=1.5.2
 oslo.config==1.2.1
