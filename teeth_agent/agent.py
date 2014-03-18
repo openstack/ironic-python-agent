@@ -212,7 +212,7 @@ class TeethAgent(object):
         self.started_at = _time()
         # Get the UUID so we can heartbeat to Ironic
         mac_addresses = self.get_all_mac_addrs()
-        self.configuration = self.api_client.get_configuration(
+        self.configuration = self.api_client.lookup_node(
             mac_addresses,
             ipaddr=self.ipaddr,
             hardware_info=self.hardware.list_hardware_info(),

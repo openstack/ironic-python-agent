@@ -69,7 +69,7 @@ class APIClient(object):
         except Exception:
             raise errors.HeartbeatError('Invalid Heartbeat-Before header')
 
-    def get_configuration(self, mac_addrs, ipaddr, hardware_info, mode,
+    def lookup_node(self, mac_addrs, ipaddr, hardware_info, mode,
                           version):
         path = '/{api_version}/drivers/teeth/lookup'.format(
             api_version=self.api_version)

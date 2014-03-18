@@ -92,7 +92,7 @@ class TestBaseTeethAgent(unittest.TestCase):
                           self.api_client.heartbeat,
                           uuid='fake-uuid')
 
-    def test_get_configuration(self):
+    def test_lookup_node(self):
         response = httmock.response(status_code=200, content={
             'node': {
                 'uuid': 'fake-uuid'
@@ -102,7 +102,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.api_client.get_configuration(
+        self.api_client.lookup_node(
             mac_addrs=['aa:bb:cc:dd:ee:ff', '42:42:42:42:42:42'],
             ipaddr='42.42.42.42',
             hardware_info=self.hardware_info,
@@ -130,7 +130,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         ])
         self.assertEqual(content['agent_url'], 'http://42.42.42.42:9999')
 
-    def test_get_configuration_bad_response_code(self):
+    def test_lookup_node_bad_response_code(self):
         response = httmock.response(status_code=400, content={
             'node': {
                 'uuid': 'fake-uuid'
@@ -141,7 +141,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request.return_value = response
 
         self.assertRaises(errors.ConfigurationError,
-                          self.api_client.get_configuration,
+                          self.api_client.lookup_node,
                           mac_addrs=['aa:bb:cc:dd:ee:ff',
                                       '42:42:42:42:42:42'],
                           ipaddr='42.42.42.42',
@@ -150,14 +150,14 @@ class TestBaseTeethAgent(unittest.TestCase):
                           mode='STANDBY',
         )
 
-    def test_get_configuration_bad_response_data(self):
+    def test_lookup_node_bad_response_data(self):
         response = httmock.response(status_code=200, content='a')
 
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
         self.assertRaises(errors.ConfigurationError,
-                          self.api_client.get_configuration,
+                          self.api_client.lookup_node,
                           mac_addrs=['aa:bb:cc:dd:ee:ff',
                                       '42:42:42:42:42:42'],
                           ipaddr='42.42.42.42',
@@ -166,7 +166,7 @@ class TestBaseTeethAgent(unittest.TestCase):
                           mode='STANDBY',
         )
 
-    def test_get_configuration_bad_response_body(self):
+    def test_lookup_node_bad_response_body(self):
         response = httmock.response(status_code=200, content={
             'node_node': 'also_not_node'
         })
@@ -175,7 +175,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request.return_value = response
 
         self.assertRaises(errors.ConfigurationError,
-                          self.api_client.get_configuration,
+                          self.api_client.lookup_node,
                           mac_addrs=['aa:bb:cc:dd:ee:ff',
                                       '42:42:42:42:42:42'],
                           ipaddr='42.42.42.42',
