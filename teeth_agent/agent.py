@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import collections
 import random
 import threading
 import time
@@ -30,6 +29,7 @@ from teeth_agent import errors
 from teeth_agent import hardware
 from teeth_agent.openstack.common import log
 from teeth_agent import overlord_agent_api
+from teeth_agent import utils
 
 
 def _time():
@@ -45,7 +45,7 @@ class TeethAgentStatus(encoding.Serializable):
 
     def serialize(self):
         """Turn the status into a dict."""
-        return collections.OrderedDict([
+        return utils.get_ordereddict([
             ('mode', self.mode),
             ('started_at', self.started_at),
             ('version', self.version),
@@ -119,7 +119,7 @@ class TeethAgent(object):
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = app.VersionSelectorApplication(self)
-        self.command_results = collections.OrderedDict()
+        self.command_results = utils.get_ordereddict()
         self.heartbeater = TeethAgentHeartbeater(self)
         self.hardware = hardware.get_manager()
         self.command_lock = threading.Lock()
@@ -167,10 +167,10 @@ class TeethAgent(object):
                 self.mode_implementation = _load_mode_implementation(mode_name)
             except Exception:
                 raise errors.InvalidCommandError(
-                    'Unknown mode: {}'.format(mode_name))
+                    'Unknown mode: {0}'.format(mode_name))
         elif self.get_mode_name().lower() != mode_name:
             raise errors.InvalidCommandError(
-                'Agent is already in {} mode'.format(self.get_mode_name()))
+                'Agent is already in {0} mode'.format(self.get_mode_name()))
 
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""

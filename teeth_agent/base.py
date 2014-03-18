@@ -77,7 +77,7 @@ class AsyncCommandResult(BaseCommandResult):
         self.execute_method = execute_method
         self.command_state_lock = threading.Lock()
 
-        thread_name = 'agent-command-{}'.format(self.id)
+        thread_name = 'agent-command-{0}'.format(self.id)
         self.execution_thread = threading.Thread(target=self.run,
                                                  name=thread_name)
 
@@ -124,7 +124,7 @@ class BaseAgentMode(object):
     def execute(self, command_name, **kwargs):
         if command_name not in self.command_map:
             raise errors.InvalidCommandError(
-                'Unknown command: {}'.format(command_name))
+                'Unknown command: {0}'.format(command_name))
 
         result = self.command_map[command_name](command_name, **kwargs)
 

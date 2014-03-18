@@ -17,12 +17,12 @@ limitations under the License.
 from __future__ import unicode_literals
 
 import base64
-import collections
 import json
 import mock
 import unittest
 
 from teeth_agent import configdrive
+from teeth_agent import utils
 
 
 class ConfigDriveWriterTestCase(unittest.TestCase):
@@ -68,7 +68,7 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
         for k, v in metadata.iteritems():
             self.writer.add_metadata(k, v)
-        files = collections.OrderedDict([
+        files = utils.get_ordereddict([
             ('/etc/conf0', 'contents0'),
             ('/etc/conf1', 'contents1'),
         ])
@@ -118,7 +118,7 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
     @mock.patch('__builtin__.open', autospec=True)
     def test_write_configdrive(self, open_mock, makedirs_mock):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
-        files = collections.OrderedDict([
+        files = utils.get_ordereddict([
             ('/etc/conf0', base64.b64encode('contents0')),
             ('/etc/conf1', base64.b64encode('contents1')),
         ])
