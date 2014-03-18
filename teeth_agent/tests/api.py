@@ -35,10 +35,8 @@ class TestTeethAPI(unittest.TestCase):
         self.mock_agent = mock.MagicMock()
         self.app = self._make_app(self.mock_agent)
 
-        def reset_pecan():
-            pecan.set_config({}, overwrite=True)
-
-        self.addCleanup(reset_pecan)
+    def tearDown(self):
+        pecan.set_config({}, overwrite=True)
 
     def _make_app(self, enable_acl=False):
         self.config = {
