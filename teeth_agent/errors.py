@@ -110,13 +110,15 @@ class HeartbeatError(OverlordAPIError):
         super(HeartbeatError, self).__init__(details)
 
 
-class ConfigurationError(OverlordAPIError):
-    """Error raised when the configuration lookup to the agent API fails."""
+class LookupNodeError(OverlordAPIError):
+    """Error raised when the node configuration lookup to the Ironic API
+    fails.
+    """
 
     message = 'Error getting configuration from Ironic.'
 
     def __init__(self, details):
-        super(ConfigurationError, self).__init__(details)
+        super(LookupNodeError, self).__init__(details)
 
 
 class ImageDownloadError(RESTError):

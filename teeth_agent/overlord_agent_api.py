@@ -84,20 +84,20 @@ class APIClient(object):
         try:
             response = self._request('POST', path, data=data)
         except Exception as e:
-            raise errors.ConfigurationError(str(e))
+            raise errors.LookupNodeError(str(e))
 
         if response.status_code != requests.codes.OK:
             msg = 'Invalid status code: {0}'.format(response.status_code)
-            raise errors.ConfigurationError(msg)
+            raise errors.LookupNodeError(msg)
 
         try:
             content = json.loads(response.content)
         except Exception as e:
-            raise errors.ConfigurationError('Error decoding response: '
+            raise errors.LookupNodeError('Error decoding response: '
                                             + str(e))
 
         if 'node' not in content or 'uuid' not in content['node']:
-            raise errors.ConfigurationError('Got invalid data from the API: '
+            raise errors.LookupNodeError('Got invalid data from the API: '
                                             '{0}'.format(content))
         return content
 

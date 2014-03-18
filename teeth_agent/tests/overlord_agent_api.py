@@ -140,7 +140,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.assertRaises(errors.ConfigurationError,
+        self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
                           mac_addrs=['aa:bb:cc:dd:ee:ff',
                                       '42:42:42:42:42:42'],
@@ -156,7 +156,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.assertRaises(errors.ConfigurationError,
+        self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
                           mac_addrs=['aa:bb:cc:dd:ee:ff',
                                       '42:42:42:42:42:42'],
@@ -174,7 +174,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.assertRaises(errors.ConfigurationError,
+        self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
                           mac_addrs=['aa:bb:cc:dd:ee:ff',
                                       '42:42:42:42:42:42'],
