@@ -15,7 +15,7 @@ if [[ -e "${OUTPUT_FILE}" ]]; then
 fi
 
 # Build the docker image
-cd ../../teeth-agent
+cd ../../ironic-python-agent
 docker build -t oemdocker .
 cd -
 

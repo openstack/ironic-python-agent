@@ -1,4 +1,4 @@
-teeth-agent images
+ironic-python-agent images
 ==================
 
-coreos - Builds a CoreOS Ramdisk and Kernel suitable for running teeth-agent
+coreos - Builds a CoreOS Ramdisk and Kernel suitable for running ironic-python-agent
