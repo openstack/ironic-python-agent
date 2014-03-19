@@ -35,7 +35,7 @@ def get_pecan_config():
     return pecan.configuration.conf_from_file(filename)
 
 
-def setup_app(agent, pecan_config=None, extra_hooks=None):
+def setup_app(pecan_config=None, extra_hooks=None, agent=None):
     app_hooks = [AgentHook(agent)]
 
     if not pecan_config:
@@ -57,7 +57,7 @@ def setup_app(agent, pecan_config=None, extra_hooks=None):
 class VersionSelectorApplication(object):
     def __init__(self, agent):
         pc = get_pecan_config()
-        self.v1 = setup_app(agent, pecan_config=pc)
+        self.v1 = setup_app(pecan_config=pc, agent=agent)
 
     def __call__(self, environ, start_response):
         return self.v1(environ, start_response)

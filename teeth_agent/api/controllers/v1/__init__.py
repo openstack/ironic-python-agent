@@ -74,7 +74,7 @@ class V1(base.APIBase):
                                 bookmark=True,
                                 type='text/html')
         ]
-        v1.command = [
+        v1.commands = [
             link.Link.make_link('self',
                                 pecan.request.host_url,
                                 'commands',
