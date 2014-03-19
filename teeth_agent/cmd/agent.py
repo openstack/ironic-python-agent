@@ -31,7 +31,7 @@ def run():
     parser.add_argument('--listen-host',
                         default='0.0.0.0',
                         type=str,
-                        help=('The IP address to listen on.'))
+                        help='The IP address to listen on.')
 
     parser.add_argument('--listen-port',
                         default=9999,
@@ -40,16 +40,13 @@ def run():
     parser.add_argument('--advertise-host',
                         default='0.0.0.0',
                         type=str,
-                        help=('The port to tell Ironic to reply and send '
-                              'commands to. This is different than '
-                              'listen-host because Docker will have a '
-                              'different internal IP than the host IP that '
-                              'Ironic will be communicating with.'))
+                        help='The port to tell Ironic to reply and send '
+                             'commands to.')
     parser.add_argument('--advertise-port',
                         default=9999,
                         type=int,
-                        help=('The port to tell Ironic to reply and send '
-                              'commands to.'))
+                        help='The port to tell Ironic to reply and send '
+                             'commands to.')
     args = parser.parse_args()
     agent.build_agent(api_url=args.api_url,
                       advertise_host=args.advertise_host,
