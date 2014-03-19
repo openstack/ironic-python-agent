@@ -120,8 +120,8 @@ class TestBaseAgent(unittest.TestCase):
     def setUp(self):
         self.encoder = encoding.RESTJSONEncoder(indent=4)
         self.agent = agent.TeethAgent('https://fake_api.example.org:8081/',
-                                      ('localhost', 9999),
-                                      '192.168.1.1')
+                                      ('203.0.113.1', 9990),
+                                      ('192.0.2.1', 9999))
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
@@ -162,9 +162,10 @@ class TestBaseAgent(unittest.TestCase):
         wsgi_server.start.side_effect = KeyboardInterrupt()
 
         self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
         self.agent.run()
 
-        listen_addr = ('localhost', 9999)
+        listen_addr = ('192.0.2.1', 9999)
         wsgi_server_cls.assert_called_once_with(
             listen_addr[0],
             listen_addr[1],

@@ -31,19 +31,25 @@ def run():
     parser.add_argument('--listen-host',
                         default='0.0.0.0',
                         type=str,
-                        help=('The IP address to listen on.'))
+                        help='The IP address to listen on.')
 
     parser.add_argument('--listen-port',
                         default=9999,
                         type=int,
                         help='The port to listen on')
-
-    parser.add_argument('--ipaddr',
-                        required=True,
-                        help='The external IP address to advertise to ironic')
-
+    parser.add_argument('--advertise-host',
+                        default='0.0.0.0',
+                        type=str,
+                        help='The host to tell Ironic to reply and send '
+                             'commands to.')
+    parser.add_argument('--advertise-port',
+                        default=9999,
+                        type=int,
+                        help='The port to tell Ironic to reply and send '
+                             'commands to.')
     args = parser.parse_args()
     agent.build_agent(args.api_url,
+                      args.advertise_host,
+                      args.advertise_port,
                       args.listen_host,
-                      args.listen_port,
-                      args.ipaddr).run()
+                      args.listen_port).run()

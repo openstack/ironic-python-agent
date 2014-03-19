@@ -46,17 +46,16 @@ class APIClient(object):
                                     headers=request_headers,
                                     data=data)
 
-    def heartbeat(self, hardware_info, mode, version):
-        path = '/{api_version}/agents'.format(api_version=self.api_version)
-
+    def heartbeat(self, uuid, advertise_address):
+        path = '/{api_version}/nodes/{uuid}/vendor_passthru/heartbeat'.format(
+            api_version=self.api_version,
+            uuid=uuid
+        )
         data = {
-            'hardware': hardware_info,
-            'mode': mode,
-            'version': version,
+            'agent_url': self._get_agent_url(advertise_address)
         }
-
         try:
-            response = self._request('PUT', path, data=data)
+            response = self._request('POST', path, data=data)
         except Exception as e:
             raise errors.HeartbeatError(str(e))
 
@@ -71,18 +70,36 @@ class APIClient(object):
         except Exception:
             raise errors.HeartbeatError('Invalid Heartbeat-Before header')
 
-    def get_configuration(self, mac_addr):
-        path = '/{api_version}/agents/{mac_addr}/configuration'.format(
-            api_version=self.api_version,
-            mac_addr=mac_addr)
+    def lookup_node(self, hardware_info):
+        path = '/{api_version}/drivers/teeth/lookup'.format(
+            api_version=self.api_version
+        )
+        # This hardware won't be saved on the node currently, because of how
+        # driver_vendor_passthru is implemented (no node saving).
+        data = {
+            'hardware': hardware_info,
+        }
 
-        response = self._request('GET', path)
+        try:
+            response = self._request('POST', path, data=data)
+        except Exception as e:
+            raise errors.LookupNodeError(str(e))
 
         if response.status_code != requests.codes.OK:
             msg = 'Invalid status code: {0}'.format(response.status_code)
-            raise errors.OverlordAPIError(msg)
+            raise errors.LookupNodeError(msg)
 
         try:
-            return json.loads(response.content)
+            content = json.loads(response.content)
         except Exception as e:
-            raise errors.OverlordAPIError('Error decoding response: ' + str(e))
+            raise errors.LookupNodeError('Error decoding response: '
+                                            + str(e))
+
+        if 'node' not in content or 'uuid' not in content['node']:
+            raise errors.LookupNodeError('Got invalid data from the API: '
+                                            '{0}'.format(content))
+        return content['node']
+
+    def _get_agent_url(self, advertise_address):
+        return 'http://{0}:{1}'.format(advertise_address[0],
+                                       advertise_address[1])

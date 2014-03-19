@@ -110,6 +110,17 @@ class HeartbeatError(OverlordAPIError):
         super(HeartbeatError, self).__init__(details)
 
 
+class LookupNodeError(OverlordAPIError):
+    """Error raised when the node configuration lookup to the Ironic API
+    fails.
+    """
+
+    message = 'Error getting configuration from Ironic.'
+
+    def __init__(self, details):
+        super(LookupNodeError, self).__init__(details)
+
+
 class ImageDownloadError(RESTError):
     """Error raised when an image cannot be downloaded."""
 

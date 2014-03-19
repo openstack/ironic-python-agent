@@ -91,9 +91,9 @@ class TeethAgentHeartbeater(threading.Thread):
     def do_heartbeat(self):
         try:
             deadline = self.api.heartbeat(
-                hardware_info=self.hardware.list_hardware_info(),
-                version=self.agent.version,
-                mode=self.agent.get_mode_name())
+                uuid=self.agent.get_node_uuid(),
+                advertise_address=self.agent.advertise_address
+            )
             self.error_delay = self.initial_delay
             self.log.info('heartbeat successful')
         except Exception:
@@ -112,10 +112,11 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class TeethAgent(object):
-    def __init__(self, api_url, listen_address, ipaddr):
+    def __init__(self, api_url, advertise_address, listen_address):
         self.api_url = api_url
+        self.api_client = overlord_agent_api.APIClient(self.api_url)
         self.listen_address = listen_address
-        self.ipaddr = ipaddr
+        self.advertise_address = advertise_address
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = app.VersionSelectorApplication(self)
@@ -125,6 +126,7 @@ class TeethAgent(object):
         self.command_lock = threading.Lock()
         self.log = log.getLogger(__name__)
         self.started_at = None
+        self.node = None
 
     def get_mode_name(self):
         if self.mode_implementation:
@@ -142,6 +144,11 @@ class TeethAgent(object):
 
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
+
+    def get_node_uuid(self):
+        if 'uuid' not in self.node:
+            errors.HeartbeatError('Tried to heartbeat without node UUID.')
+        return self.node['uuid']
 
     def list_command_results(self):
         return self.command_results.values()
@@ -204,6 +211,10 @@ class TeethAgent(object):
     def run(self):
         """Run the Teeth Agent."""
         self.started_at = _time()
+        # Get the UUID so we can heartbeat to Ironic
+        self.node = self.api_client.lookup_node(
+            hardware_info=self.hardware.list_hardware_info(),
+        )
         self.heartbeater.start()
         wsgi = simple_server.make_server(
             self.listen_address[0],
@@ -229,5 +240,12 @@ def _load_mode_implementation(mode_name):
     return mgr.driver
 
 
-def build_agent(api_url, listen_host, listen_port, ipaddr):
-    return TeethAgent(api_url, (listen_host, listen_port), ipaddr)
+def build_agent(api_url,
+                advertise_host,
+                advertise_port,
+                listen_host,
+                listen_port):
+
+    return TeethAgent(api_url,
+                      (advertise_host, advertise_port),
+                      (listen_host, listen_port))
