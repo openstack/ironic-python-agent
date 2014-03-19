@@ -15,9 +15,11 @@ limitations under the License.
 """
 
 import base64
+
+from ironic_python_agent import utils
+
 import json
 import os
-from teeth_agent import utils
 
 
 class ConfigDriveWriter(object):

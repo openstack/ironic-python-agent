@@ -37,7 +37,7 @@ genisoimage \
  -allow-lowercase \
  -allow-multidot \
  -l \
- -publisher "teeth" \
+ -publisher "ironic" \
  -J \
  -r \
  -V 'config-2' \

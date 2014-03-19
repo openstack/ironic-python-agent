@@ -17,8 +17,8 @@ limitations under the License.
 import mock
 import unittest
 
-from teeth_agent import errors
-from teeth_agent import standby
+from ironic_python_agent import errors
+from ironic_python_agent import standby
 
 
 class TestStandbyMode(unittest.TestCase):
@@ -177,7 +177,7 @@ class TestStandbyMode(unittest.TestCase):
                           standby._download_image,
                           image_info)
 
-    @mock.patch('teeth_agent.standby._verify_image', autospec=True)
+    @mock.patch('ironic_python_agent.standby._verify_image', autospec=True)
     @mock.patch('__builtin__.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_download_image_verify_fails(self, requests_mock, open_mock,
@@ -218,9 +218,9 @@ class TestStandbyMode(unittest.TestCase):
         self.assertFalse(verified)
         self.assertEqual(md5_mock.call_count, 1)
 
-    @mock.patch('teeth_agent.hardware.get_manager', autospec=True)
-    @mock.patch('teeth_agent.standby._write_image', autospec=True)
-    @mock.patch('teeth_agent.standby._download_image', autospec=True)
+    @mock.patch('ironic_python_agent.hardware.get_manager', autospec=True)
+    @mock.patch('ironic_python_agent.standby._write_image', autospec=True)
+    @mock.patch('ironic_python_agent.standby._download_image', autospec=True)
     def test_cache_image(self, download_mock, write_mock, hardware_mock):
         image_info = self._build_fake_image_info()
         download_mock.return_value = None
@@ -236,13 +236,15 @@ class TestStandbyMode(unittest.TestCase):
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertEqual(None, async_result.command_result)
 
-    @mock.patch('teeth_agent.standby._copy_configdrive_to_disk', autospec=True)
-    @mock.patch('teeth_agent.standby.configdrive.write_configdrive',
+    @mock.patch('ironic_python_agent.standby._copy_configdrive_to_disk',
                 autospec=True)
-    @mock.patch('teeth_agent.hardware.get_manager', autospec=True)
-    @mock.patch('teeth_agent.standby._write_image', autospec=True)
-    @mock.patch('teeth_agent.standby._download_image', autospec=True)
-    @mock.patch('teeth_agent.standby._configdrive_location', autospec=True)
+    @mock.patch('ironic_python_agent.standby.configdrive.write_configdrive',
+                autospec=True)
+    @mock.patch('ironic_python_agent.hardware.get_manager', autospec=True)
+    @mock.patch('ironic_python_agent.standby._write_image', autospec=True)
+    @mock.patch('ironic_python_agent.standby._download_image', autospec=True)
+    @mock.patch('ironic_python_agent.standby._configdrive_location',
+                autospec=True)
     def test_prepare_image(self,
                            location_mock,
                            download_mock,

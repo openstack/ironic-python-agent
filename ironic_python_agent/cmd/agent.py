@@ -16,17 +16,17 @@ limitations under the License.
 
 import argparse
 
-from teeth_agent import agent
+from ironic_python_agent import agent
 
 
 def run():
     parser = argparse.ArgumentParser(
         description=('An agent that handles decomissioning and provisioning'
-                     ' on behalf of teeth-overlord.'))
+                     ' on behalf of Ironic.'))
 
     parser.add_argument('--api-url',
                         required=True,
-                        help='URL of the Teeth agent API')
+                        help='URL of the Ironic API')
 
     parser.add_argument('--listen-host',
                         default='0.0.0.0',

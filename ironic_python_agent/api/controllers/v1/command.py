@@ -18,7 +18,7 @@ from pecan import rest
 from wsme import types
 from wsmeext import pecan as wsme_pecan
 
-from teeth_agent.api.controllers.v1 import base
+from ironic_python_agent.api.controllers.v1 import base
 
 
 class CommandResult(base.APIBase):

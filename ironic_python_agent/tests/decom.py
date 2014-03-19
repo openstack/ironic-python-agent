@@ -16,7 +16,7 @@ limitations under the License.
 
 import unittest
 
-from teeth_agent import decom
+from ironic_python_agent import decom
 
 
 class TestDecomMode(unittest.TestCase):

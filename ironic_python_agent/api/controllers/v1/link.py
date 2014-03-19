@@ -15,7 +15,7 @@
 
 from wsme import types as wtypes
 
-from teeth_agent.api.controllers.v1 import base
+from ironic_python_agent.api.controllers.v1 import base
 
 
 class Link(base.APIBase):

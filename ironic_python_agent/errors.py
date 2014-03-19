@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from teeth_agent import encoding
-from teeth_agent import utils
+from ironic_python_agent import encoding
+from ironic_python_agent import utils
 
 
 class RESTError(Exception, encoding.Serializable):
-    """Base class for errors generated in teeth."""
+    """Base class for errors generated in ironic-python-client."""
     message = 'An error occurred'
     details = 'An unexpected error occurred. Please try back later.'
     status_code = 500
@@ -91,17 +91,17 @@ class RequestedObjectNotFoundError(NotFound):
         self.details = details
 
 
-class OverlordAPIError(RESTError):
+class IronicAPIError(RESTError):
     """Error raised when a call to the agent API fails."""
 
-    message = 'Error in call to teeth-agent-api.'
+    message = 'Error in call to ironic-api.'
 
     def __init__(self, details):
-        super(OverlordAPIError, self).__init__(details)
+        super(IronicAPIError, self).__init__(details)
         self.details = details
 
 
-class HeartbeatError(OverlordAPIError):
+class HeartbeatError(IronicAPIError):
     """Error raised when a heartbeat to the agent API fails."""
 
     message = 'Error heartbeating to agent API.'
@@ -110,7 +110,7 @@ class HeartbeatError(OverlordAPIError):
         super(HeartbeatError, self).__init__(details)
 
 
-class LookupNodeError(OverlordAPIError):
+class LookupNodeError(IronicAPIError):
     """Error raised when the node configuration lookup to the Ironic API
     fails.
     """

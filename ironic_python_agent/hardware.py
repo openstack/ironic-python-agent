@@ -20,9 +20,9 @@ import subprocess
 
 import stevedore
 
-from teeth_agent import encoding
-from teeth_agent.openstack.common import log
-from teeth_agent import utils
+from ironic_python_agent import encoding
+from ironic_python_agent.openstack.common import log
+from ironic_python_agent import utils
 
 _global_manager = None
 
@@ -30,9 +30,9 @@ _global_manager = None
 class HardwareSupport(object):
     """These are just guidelines to suggest values that might be returned by
     calls to `evaluate_hardware_support`. No HardwareManager in mainline
-    teeth-agent will ever offer a value greater than `MAINLINE`. Service
-    Providers should feel free to return values greater than SERVICE_PROVIDER
-    to distinguish between additional levels of support.
+    ironic-python-agent will ever offer a value greater than `MAINLINE`.
+    Service Providers should feel free to return values greater than
+    SERVICE_PROVIDER to distinguish between additional levels of support.
     """
     NONE = 0
     GENERIC = 1
@@ -164,7 +164,7 @@ def get_manager():
     if not _global_manager:
         LOG = log.getLogger()
         extension_manager = stevedore.ExtensionManager(
-            namespace='teeth_agent.hardware_managers',
+            namespace='ironic_python_agent.hardware_managers',
             invoke_on_load=True)
 
         # There will always be at least one extension available (the

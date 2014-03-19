@@ -18,8 +18,8 @@ import json
 
 import requests
 
-from teeth_agent import encoding
-from teeth_agent import errors
+from ironic_python_agent import encoding
+from ironic_python_agent import errors
 
 
 class APIClient(object):

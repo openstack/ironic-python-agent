@@ -22,10 +22,10 @@ from pecan import rest
 from wsme import types as wtypes
 import wsmeext.pecan as wsme_pecan
 
-from teeth_agent.api.controllers.v1 import base
-from teeth_agent.api.controllers.v1 import command
-from teeth_agent.api.controllers.v1 import link
-from teeth_agent.api.controllers.v1 import status
+from ironic_python_agent.api.controllers.v1 import base
+from ironic_python_agent.api.controllers.v1 import command
+from ironic_python_agent.api.controllers.v1 import link
+from ironic_python_agent.api.controllers.v1 import status
 
 
 class MediaType(base.APIBase):

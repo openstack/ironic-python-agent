@@ -18,18 +18,18 @@ import random
 import threading
 import time
 
+from ironic_python_agent.api import app
+from ironic_python_agent import base
+from ironic_python_agent import encoding
+from ironic_python_agent import errors
+from ironic_python_agent import hardware
+from ironic_python_agent import ironic_api_client
+from ironic_python_agent.openstack.common import log
+from ironic_python_agent import utils
+
 import pkg_resources
 from stevedore import driver
 from wsgiref import simple_server
-
-from teeth_agent.api import app
-from teeth_agent import base
-from teeth_agent import encoding
-from teeth_agent import errors
-from teeth_agent import hardware
-from teeth_agent.openstack.common import log
-from teeth_agent import overlord_agent_api
-from teeth_agent import utils
 
 
 def _time():
@@ -37,7 +37,7 @@ def _time():
     return time.time()
 
 
-class TeethAgentStatus(encoding.Serializable):
+class IronicPythonAgentStatus(encoding.Serializable):
     def __init__(self, mode, started_at, version):
         self.mode = mode
         self.started_at = started_at
@@ -52,7 +52,7 @@ class TeethAgentStatus(encoding.Serializable):
         ])
 
 
-class TeethAgentHeartbeater(threading.Thread):
+class IronicPythonAgentHeartbeater(threading.Thread):
     # If we could wait at most N seconds between heartbeats (or in case of an
     # error) we will instead wait r x N seconds, where r is a random value
     # between these multipliers.
@@ -67,10 +67,10 @@ class TeethAgentHeartbeater(threading.Thread):
     backoff_factor = 2.7
 
     def __init__(self, agent):
-        super(TeethAgentHeartbeater, self).__init__()
+        super(IronicPythonAgentHeartbeater, self).__init__()
         self.agent = agent
         self.hardware = hardware.get_manager()
-        self.api = overlord_agent_api.APIClient(agent.api_url)
+        self.api = ironic_api_client.APIClient(agent.api_url)
         self.log = log.getLogger(__name__)
         self.stop_event = threading.Event()
         self.error_delay = self.initial_delay
@@ -111,17 +111,18 @@ class TeethAgentHeartbeater(threading.Thread):
         return self.join()
 
 
-class TeethAgent(object):
+class IronicPythonAgent(object):
     def __init__(self, api_url, advertise_address, listen_address):
         self.api_url = api_url
-        self.api_client = overlord_agent_api.APIClient(self.api_url)
+        self.api_client = ironic_api_client.APIClient(self.api_url)
         self.listen_address = listen_address
         self.advertise_address = advertise_address
         self.mode_implementation = None
-        self.version = pkg_resources.get_distribution('teeth-agent').version
+        self.version = pkg_resources.get_distribution('ironic-python-agent')\
+            .version
         self.api = app.VersionSelectorApplication(self)
         self.command_results = utils.get_ordereddict()
-        self.heartbeater = TeethAgentHeartbeater(self)
+        self.heartbeater = IronicPythonAgentHeartbeater(self)
         self.hardware = hardware.get_manager()
         self.command_lock = threading.Lock()
         self.log = log.getLogger(__name__)
@@ -136,7 +137,7 @@ class TeethAgent(object):
 
     def get_status(self):
         """Retrieve a serializable status."""
-        return TeethAgentStatus(
+        return IronicPythonAgentStatus(
             mode=self.get_mode_name(),
             started_at=self.started_at,
             version=self.version
@@ -209,7 +210,7 @@ class TeethAgent(object):
             return result
 
     def run(self):
-        """Run the Teeth Agent."""
+        """Run the Ironic Python Agent."""
         self.started_at = _time()
         # Get the UUID so we can heartbeat to Ironic
         self.node = self.api_client.lookup_node(
@@ -232,7 +233,7 @@ class TeethAgent(object):
 
 def _load_mode_implementation(mode_name):
     mgr = driver.DriverManager(
-        namespace='teeth_agent.modes',
+        namespace='ironic_python_agent.modes',
         name=mode_name.lower(),
         invoke_on_load=True,
         invoke_args=[],
@@ -246,6 +247,6 @@ def build_agent(api_url,
                 listen_host,
                 listen_port):
 
-    return TeethAgent(api_url,
-                      (advertise_host, advertise_port),
-                      (listen_host, listen_port))
+    return IronicPythonAgent(api_url,
+                             (advertise_host, advertise_port),
+                             (listen_host, listen_port))

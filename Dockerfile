@@ -1,5 +1,7 @@
 FROM jayofdoom/docker-ubuntu-14.04
 
+#TODO(pcsforeducation) ask Jay what we can change here
+
 # The add is before the RUN to ensure we get the latest version of packages
 # Docker will cache RUN commands, but because the SHA1 of the dir will be
 # different it will not cache this layer

@@ -17,7 +17,7 @@ limitations under the License.
 import pecan
 from pecan import hooks
 
-from teeth_agent.api import config
+from ironic_python_agent.api import config
 
 
 class AgentHook(hooks.PecanHook):

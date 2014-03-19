@@ -17,7 +17,7 @@ limitations under the License.
 import mock
 import unittest
 
-from teeth_agent import hardware
+from ironic_python_agent import hardware
 
 
 class TestGenericHardwareManager(unittest.TestCase):

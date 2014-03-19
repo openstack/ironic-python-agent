@@ -41,10 +41,10 @@ from oslo.config import cfg
 import six
 from six import moves
 
-from teeth_agent.openstack.common.gettextutils import _
-from teeth_agent.openstack.common import importutils
-from teeth_agent.openstack.common import jsonutils
-from teeth_agent.openstack.common import local
+from ironic_python_agent.openstack.common.gettextutils import _
+from ironic_python_agent.openstack.common import importutils
+from ironic_python_agent.openstack.common import jsonutils
+from ironic_python_agent.openstack.common import local
 
 
 _DEFAULT_LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -537,7 +537,7 @@ def _setup_logging_from_conf(project, version):
 
     if CONF.publish_errors:
         handler = importutils.import_object(
-            "teeth_agent.openstack.common.log_handler.PublishErrorsHandler",
+            "ironic_python_agent.openstack.common.log_handler.PublishErrorsHandler",
             logging.ERROR)
         log_root.addHandler(handler)
 

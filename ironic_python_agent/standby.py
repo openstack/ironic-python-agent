@@ -20,12 +20,12 @@ import requests
 import subprocess
 import time
 
-from teeth_agent import base
-from teeth_agent import configdrive
-from teeth_agent import decorators
-from teeth_agent import errors
-from teeth_agent import hardware
-from teeth_agent.openstack.common import log
+from ironic_python_agent import base
+from ironic_python_agent import configdrive
+from ironic_python_agent import decorators
+from ironic_python_agent import errors
+from ironic_python_agent import hardware
+from ironic_python_agent.openstack.common import log
 
 LOG = log.getLogger(__name__)
 

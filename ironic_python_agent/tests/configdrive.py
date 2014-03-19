@@ -21,8 +21,8 @@ import json
 import mock
 import unittest
 
-from teeth_agent import configdrive
-from teeth_agent import utils
+from ironic_python_agent import configdrive
+from ironic_python_agent import utils
 
 
 class ConfigDriveWriterTestCase(unittest.TestCase):
@@ -45,7 +45,7 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
     def test_write_no_files(self, open_mock, makedirs_mock):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
         json_metadata = json.dumps(metadata)
-        metadata_path = '/lol/teeth/latest/meta_data.json'
+        metadata_path = '/lol/ironic/latest/meta_data.json'
         for k, v in metadata.iteritems():
             self.writer.add_metadata(k, v)
 
@@ -53,12 +53,12 @@ class ConfigDriveWriterTestCase(unittest.TestCase):
         open_mock.return_value.__exit__ = mock.Mock()
         write_mock = open_mock.return_value.write
 
-        self.writer.write('/lol', prefix='teeth', version='latest')
+        self.writer.write('/lol', prefix='ironic', version='latest')
         open_mock.assert_called_once_with(metadata_path, 'wb')
         write_mock.assert_called_once_with(json_metadata)
         makedirs_calls = [
-            mock.call('/lol/teeth/latest'),
-            mock.call('/lol/teeth/content')
+            mock.call('/lol/ironic/latest'),
+            mock.call('/lol/ironic/content')
         ]
         self.assertEqual(makedirs_calls, makedirs_mock.call_args_list)
 

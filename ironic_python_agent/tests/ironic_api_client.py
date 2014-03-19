@@ -20,16 +20,16 @@ import mock
 import time
 import unittest
 
-from teeth_agent import errors
-from teeth_agent import hardware
-from teeth_agent import overlord_agent_api
+from ironic_python_agent import errors
+from ironic_python_agent import hardware
+from ironic_python_agent import ironic_api_client
 
-API_URL = 'http://agent-api.overlord.example.org/'
+API_URL = 'http://agent-api.ironic.example.org/'
 
 
-class TestBaseTeethAgent(unittest.TestCase):
+class TestBaseIronicPythonAgent(unittest.TestCase):
     def setUp(self):
-        self.api_client = overlord_agent_api.APIClient(API_URL)
+        self.api_client = ironic_api_client.APIClient(API_URL)
         self.hardware_info = [
             hardware.HardwareInfo(hardware.HardwareType.MAC_ADDRESS,
                                   'aa:bb:cc:dd:ee:ff'),

@@ -18,16 +18,15 @@ import json
 import time
 import unittest
 
+from ironic_python_agent import agent
+from ironic_python_agent import base
+from ironic_python_agent import encoding
+from ironic_python_agent import errors
+from ironic_python_agent import hardware
+
 import mock
 import pkg_resources
 from wsgiref import simple_server
-
-
-from teeth_agent import agent
-from teeth_agent import base
-from teeth_agent import encoding
-from teeth_agent import errors
-from teeth_agent import hardware
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
 
@@ -47,13 +46,13 @@ class FakeMode(base.BaseAgentMode):
 class TestHeartbeater(unittest.TestCase):
     def setUp(self):
         self.mock_agent = mock.Mock()
-        self.heartbeater = agent.TeethAgentHeartbeater(self.mock_agent)
+        self.heartbeater = agent.IronicPythonAgentHeartbeater(self.mock_agent)
         self.heartbeater.api = mock.Mock()
         self.heartbeater.hardware = mock.create_autospec(
             hardware.HardwareManager)
         self.heartbeater.stop_event = mock.Mock()
 
-    @mock.patch('teeth_agent.agent._time')
+    @mock.patch('ironic_python_agent.agent._time')
     @mock.patch('random.uniform')
     def test_heartbeat(self, mocked_uniform, mocked_time):
         time_responses = []
@@ -119,9 +118,10 @@ class TestHeartbeater(unittest.TestCase):
 class TestBaseAgent(unittest.TestCase):
     def setUp(self):
         self.encoder = encoding.RESTJSONEncoder(indent=4)
-        self.agent = agent.TeethAgent('https://fake_api.example.org:8081/',
-                                      ('203.0.113.1', 9990),
-                                      ('192.0.2.1', 9999))
+        self.agent = agent.IronicPythonAgent('https://fake_api.example.'
+                                             'org:8081/',
+                                             ('203.0.113.1', 9990),
+                                             ('192.0.2.1', 9999))
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
@@ -136,10 +136,11 @@ class TestBaseAgent(unittest.TestCase):
         self.agent.started_at = started_at
 
         status = self.agent.get_status()
-        self.assertTrue(isinstance(status, agent.TeethAgentStatus))
+        self.assertTrue(isinstance(status, agent.IronicPythonAgentStatus))
         self.assertEqual(status.started_at, started_at)
         self.assertEqual(status.version,
-                         pkg_resources.get_distribution('teeth-agent').version)
+                         pkg_resources.get_distribution('ironic-python-agent')
+                         .version)
 
     def test_execute_command(self):
         do_something_impl = mock.Mock()

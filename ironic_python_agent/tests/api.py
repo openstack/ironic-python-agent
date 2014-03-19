@@ -21,17 +21,17 @@ import unittest
 import pecan
 import pecan.testing
 
-from teeth_agent import agent
-from teeth_agent import base
+from ironic_python_agent import agent
+from ironic_python_agent import base
 
 
 PATH_PREFIX = '/v1'
 
 
-class TestTeethAPI(unittest.TestCase):
+class TestIronicAPI(unittest.TestCase):
 
     def setUp(self):
-        super(TestTeethAPI, self).setUp()
+        super(TestIronicAPI, self).setUp()
         self.mock_agent = mock.MagicMock()
         self.app = self._make_app(self.mock_agent)
 
@@ -41,8 +41,9 @@ class TestTeethAPI(unittest.TestCase):
     def _make_app(self, enable_acl=False):
         self.config = {
             'app': {
-                'root': 'teeth_agent.api.controllers.root.RootController',
-                'modules': ['teeth_agent.api'],
+                'root': 'ironic_python_agent.api.controllers.root.'
+                        'RootController',
+                'modules': ['ironic_python_agent.api'],
                 'static_root': '',
                 'debug': True,
             },
@@ -165,7 +166,9 @@ class TestTeethAPI(unittest.TestCase):
         self.assertTrue('commands' in data.keys())
 
     def test_get_agent_status(self):
-        status = agent.TeethAgentStatus('TEST_MODE', time.time(), 'v72ac9')
+        status = agent.IronicPythonAgentStatus('TEST_MODE',
+                                               time.time(),
+                                               'v72ac9')
         self.mock_agent.get_status.return_value = status
 
         response = self.get_json('/status')

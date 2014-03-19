@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from teeth_agent import base
+from ironic_python_agent import base
 
 
 class DecomMode(base.BaseAgentMode):

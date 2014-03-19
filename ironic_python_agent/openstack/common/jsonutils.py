@@ -40,9 +40,9 @@ import json
 import six
 import six.moves.xmlrpc_client as xmlrpclib
 
-from teeth_agent.openstack.common import gettextutils
-from teeth_agent.openstack.common import importutils
-from teeth_agent.openstack.common import timeutils
+from ironic_python_agent.openstack.common import gettextutils
+from ironic_python_agent.openstack.common import importutils
+from ironic_python_agent.openstack.common import timeutils
 
 netaddr = importutils.try_import("netaddr")
 

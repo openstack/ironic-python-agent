@@ -15,7 +15,7 @@ limitations under the License.
 """
 import functools
 
-from teeth_agent import base
+from ironic_python_agent import base
 
 
 def async_command(validator=None):

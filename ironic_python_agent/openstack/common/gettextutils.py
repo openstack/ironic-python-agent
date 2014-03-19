@@ -19,7 +19,7 @@ gettext for openstack-common modules.
 
 Usual usage in an openstack.common module:
 
-    from teeth_agent.openstack.common.gettextutils import _
+    from ironic_python_agent.openstack.common.gettextutils import _
 """
 
 import copy
@@ -32,15 +32,15 @@ import os
 from babel import localedata
 import six
 
-_localedir = os.environ.get('teeth_agent'.upper() + '_LOCALEDIR')
-_t = gettext.translation('teeth_agent', localedir=_localedir, fallback=True)
+_localedir = os.environ.get('ironic_python_agent'.upper() + '_LOCALEDIR')
+_t = gettext.translation('ironic_python_agent', localedir=_localedir, fallback=True)
 
 # We use separate translation catalogs for each log level, so set up a
 # mapping between the log level name and the translator. The domain
 # for the log level is project_name + "-log-" + log_level so messages
 # for each level end up in their own catalog.
 _t_log_levels = dict(
-    (level, gettext.translation('teeth_agent' + '-log-' + level,
+    (level, gettext.translation('ironic_python_agent' + '-log-' + level,
                                 localedir=_localedir,
                                 fallback=True))
     for level in ['info', 'warning', 'error', 'critical']
@@ -64,7 +64,7 @@ def enable_lazy():
 
 def _(msg):
     if USE_LAZY:
-        return Message(msg, domain='teeth_agent')
+        return Message(msg, domain='ironic_python_agent')
     else:
         if six.PY3:
             return _t.gettext(msg)
@@ -75,7 +75,7 @@ def _log_translation(msg, level):
     """Build a single translation of a log message
     """
     if USE_LAZY:
-        return Message(msg, domain='teeth_agent' + '-log-' + level)
+        return Message(msg, domain='ironic_python_agent' + '-log-' + level)
     else:
         translator = _t_log_levels[level]
         if six.PY3:
@@ -152,7 +152,7 @@ class Message(six.text_type):
     """
 
     def __new__(cls, msgid, msgtext=None, params=None,
-                domain='teeth_agent', *args):
+                domain='ironic_python_agent', *args):
         """Create a new Message object.
 
         In order for translation to work gettext requires a message ID, this

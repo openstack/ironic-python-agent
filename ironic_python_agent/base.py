@@ -18,9 +18,9 @@ import threading
 import uuid
 
 
-from teeth_agent import encoding
-from teeth_agent import errors
-from teeth_agent.openstack.common import log
+from ironic_python_agent import encoding
+from ironic_python_agent import errors
+from ironic_python_agent.openstack.common import log
 
 
 class AgentCommandStatus(object):

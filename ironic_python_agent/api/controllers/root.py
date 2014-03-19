@@ -18,9 +18,9 @@ from pecan import rest
 from wsme import types as wtypes
 import wsmeext.pecan as wsme_pecan
 
-from teeth_agent.api.controllers import v1
-from teeth_agent.api.controllers.v1 import base
-from teeth_agent.api.controllers.v1 import link
+from ironic_python_agent.api.controllers import v1
+from ironic_python_agent.api.controllers.v1 import base
+from ironic_python_agent.api.controllers.v1 import link
 
 
 class Version(base.APIBase):

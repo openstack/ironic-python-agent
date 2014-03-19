@@ -24,8 +24,8 @@ server = {
 # Pecan Application Configurations
 # See https://pecan.readthedocs.org/en/latest/configuration.html#application-configuration # noqa
 app = {
-    'root': 'teeth_agent.api.controllers.root.RootController',
-    'modules': ['teeth_agent.api'],
+    'root': 'ironic_python_agent.api.controllers.root.RootController',
+    'modules': ['ironic_python_agent.api'],
     'static_root': '%(confdir)s/public',
     'debug': False,
     'enable_acl': True,
