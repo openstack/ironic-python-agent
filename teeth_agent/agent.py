@@ -90,7 +90,10 @@ class TeethAgentHeartbeater(threading.Thread):
 
     def do_heartbeat(self):
         try:
-            deadline = self.api.heartbeat(uuid=self.agent.get_node_uuid())
+            deadline = self.api.heartbeat(
+                uuid=self.agent.get_node_uuid(),
+                advertise_address=self.agent.advertise_address
+            )
             self.error_delay = self.initial_delay
             self.log.info('heartbeat successful')
         except Exception:
@@ -109,10 +112,11 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class TeethAgent(object):
-    def __init__(self, api_url, listen_address):
+    def __init__(self, api_url, advertise_address, listen_address):
         self.api_url = api_url
         self.api_client = overlord_agent_api.APIClient(self.api_url)
         self.listen_address = listen_address
+        self.advertise_address = advertise_address
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = app.VersionSelectorApplication(self)
@@ -142,6 +146,8 @@ class TeethAgent(object):
         return self.hardware.get_primary_mac_address()
 
     def get_node_uuid(self):
+        if 'uuid' not in self.node:
+            errors.HeartbeatError('Tried to heartbeat without node UUID.')
         return self.node['uuid']
 
     def list_command_results(self):
@@ -234,5 +240,12 @@ def _load_mode_implementation(mode_name):
     return mgr.driver
 
 
-def build_agent(api_url, listen_host, listen_port):
-    return TeethAgent(api_url, (listen_host, listen_port))
+def build_agent(api_url,
+                advertise_host,
+                advertise_port,
+                listen_host,
+                listen_port):
+
+    return TeethAgent(api_url=api_url,
+                      advertise_address=(advertise_host, advertise_port),
+                      listen_address=(listen_host, listen_port))

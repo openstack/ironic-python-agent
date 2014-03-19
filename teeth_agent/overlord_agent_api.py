@@ -46,13 +46,13 @@ class APIClient(object):
                                     headers=request_headers,
                                     data=data)
 
-    def heartbeat(self, uuid, listen_address):
+    def heartbeat(self, uuid, advertise_address):
         path = '/{api_version}/nodes/{uuid}/vendor_passthru/heartbeat'.format(
             api_version=self.api_version,
             uuid=uuid
         )
         data = {
-            'agent_url': self._get_agent_url(listen_address)
+            'agent_url': self._get_agent_url(advertise_address)
         }
         try:
             response = self._request('POST', path, data=data)
@@ -74,6 +74,8 @@ class APIClient(object):
         path = '/{api_version}/drivers/teeth/lookup'.format(
             api_version=self.api_version
         )
+        # This hardware won't be saved on the node currently, because of how
+        # driver_vendor_passthru is implemented (no node saving).
         data = {
             'hardware': hardware_info,
         }
@@ -98,5 +100,6 @@ class APIClient(object):
                                             '{0}'.format(content))
         return content['node']
 
-    def _get_agent_url(self, listen_address):
-        return "http://{0}:{1}".format(listen_address[0], listen_address[1])
+    def _get_agent_url(self, advertise_address):
+        return 'http://{0}:{1}'.format(advertise_address[0],
+                                       advertise_address[1])

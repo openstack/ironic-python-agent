@@ -32,9 +32,9 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client = overlord_agent_api.APIClient(API_URL)
         self.hardware_info = [
             hardware.HardwareInfo(hardware.HardwareType.MAC_ADDRESS,
-                                  'a:b:c:d'),
+                                  'aa:bb:cc:dd:ee:ff'),
             hardware.HardwareInfo(hardware.HardwareType.MAC_ADDRESS,
-                                  '0:1:2:3'),
+                                  'ff:ee:dd:cc:bb:aa'),
         ]
 
     def test_successful_heartbeat(self):
@@ -47,16 +47,17 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request.return_value = response
 
         heartbeat_before = self.api_client.heartbeat(
-            uuid='fake-uuid',
-            listen_address=('42.42.42.42', '9999')
+            uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+            advertise_address=('42.42.42.42', '9999')
         )
 
         self.assertEqual(heartbeat_before, expected_heartbeat_before)
 
+        heartbeat_path = 'v1/nodes/deadbeef-dabb-ad00-b105-f00d00bab10c/' \
+                       'vendor_passthru/heartbeat'
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'POST')
-        self.assertEqual(request_args[1], API_URL + 'v1/nodes/fake-uuid/vendor'
-                                                    '_passthru/heartbeat')
+        self.assertEqual(request_args[1], API_URL + heartbeat_path)
 
     def test_heartbeat_requests_exception(self):
         self.api_client.session.request = mock.Mock()
@@ -64,8 +65,8 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          uuid='fake-uuid',
-                          listen_address=('42.42.42.42', '9999'))
+                          uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+                          advertise_address=('42.42.42.42', '9999'))
 
     def test_heartbeat_invalid_status_code(self):
         response = httmock.response(status_code=404)
@@ -74,8 +75,8 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          uuid='fake-uuid',
-                          listen_address=('42.42.42.42', '9999'))
+                          uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+                          advertise_address=('42.42.42.42', '9999'))
 
     def test_heartbeat_missing_heartbeat_before_header(self):
         response = httmock.response(status_code=204)
@@ -84,8 +85,8 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          uuid='fake-uuid',
-                          listen_address=('42.42.42.42', '9999'))
+                          uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+                          advertise_address=('42.42.42.42', '9999'))
 
     def test_heartbeat_invalid_heartbeat_before_header(self):
         response = httmock.response(status_code=204, headers={
@@ -96,13 +97,13 @@ class TestBaseTeethAgent(unittest.TestCase):
 
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
-                          uuid='fake-uuid',
-                          listen_address=('42.42.42.42', '9999'))
+                          uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+                          advertise_address=('42.42.42.42', '9999'))
 
     def test_lookup_node(self):
         response = httmock.response(status_code=200, content={
             'node': {
-                'uuid': 'fake-uuid'
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             }
         })
 
@@ -122,18 +123,18 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.assertEqual(content['hardware'], [
             {
                 'type': 'mac_address',
-                'id': 'a:b:c:d',
+                'id': 'aa:bb:cc:dd:ee:ff',
             },
             {
                 'type': 'mac_address',
-                'id': '0:1:2:3',
+                'id': 'ff:ee:dd:cc:bb:aa',
             },
         ])
 
     def test_lookup_node_bad_response_code(self):
         response = httmock.response(status_code=400, content={
             'node': {
-                'uuid': 'fake-uuid'
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             }
         })
 
