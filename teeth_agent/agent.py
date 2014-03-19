@@ -246,6 +246,6 @@ def build_agent(api_url,
                 listen_host,
                 listen_port):
 
-    return TeethAgent(api_url=api_url,
-                      advertise_address=(advertise_host, advertise_port),
-                      listen_address=(listen_host, listen_port))
+    return TeethAgent(api_url,
+                      (advertise_host, advertise_port),
+                      (listen_host, listen_port))

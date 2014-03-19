@@ -40,7 +40,7 @@ def run():
     parser.add_argument('--advertise-host',
                         default='0.0.0.0',
                         type=str,
-                        help='The port to tell Ironic to reply and send '
+                        help='The host to tell Ironic to reply and send '
                              'commands to.')
     parser.add_argument('--advertise-port',
                         default=9999,
@@ -48,8 +48,8 @@ def run():
                         help='The port to tell Ironic to reply and send '
                              'commands to.')
     args = parser.parse_args()
-    agent.build_agent(api_url=args.api_url,
-                      advertise_host=args.advertise_host,
-                      advertise_port=args.advertise_port,
-                      listen_host=args.listen_host,
-                      listen_port=args.listen_port).run()
+    agent.build_agent(args.api_url,
+                      args.advertise_host,
+                      args.advertise_port,
+                      args.listen_host,
+                      args.listen_port).run()
