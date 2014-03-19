@@ -38,17 +38,7 @@ def run():
                         type=int,
                         help='The port to listen on')
 
-    parser.add_argument('--ipaddr',
-                        required=True,
-                        help='The external IP address to advertise to ironic')
-
-    parser.add_argument('--port',
-                        required=False,
-                        help='The external port the agent is listening on')
-
     args = parser.parse_args()
     agent.build_agent(args.api_url,
                       args.listen_host,
-                      args.listen_port,
-                      args.ipaddr,
-                      args.port).run()
+                      args.listen_port).run()

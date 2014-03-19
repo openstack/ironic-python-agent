@@ -46,9 +46,10 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        heartbeat_before = self.api_client.heartbeat(uuid='fake-uuid',
-                                                     ipaddr='42.42.42.42',
-                                                     port=9999)
+        heartbeat_before = self.api_client.heartbeat(
+            uuid='fake-uuid',
+            listen_address=('42.42.42.42', '9999')
+        )
 
         self.assertEqual(heartbeat_before, expected_heartbeat_before)
 
@@ -64,8 +65,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
                           uuid='fake-uuid',
-                          ipaddr='42.42.42.42',
-                          port=9999)
+                          listen_address=('42.42.42.42', '9999'))
 
     def test_heartbeat_invalid_status_code(self):
         response = httmock.response(status_code=404)
@@ -75,8 +75,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
                           uuid='fake-uuid',
-                          ipaddr='42.42.42.42',
-                          port=9999)
+                          listen_address=('42.42.42.42', '9999'))
 
     def test_heartbeat_missing_heartbeat_before_header(self):
         response = httmock.response(status_code=204)
@@ -86,8 +85,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
                           uuid='fake-uuid',
-                          ipaddr='42.42.42.42',
-                          port=9999)
+                          listen_address=('42.42.42.42', '9999'))
 
     def test_heartbeat_invalid_heartbeat_before_header(self):
         response = httmock.response(status_code=204, headers={
@@ -99,8 +97,7 @@ class TestBaseTeethAgent(unittest.TestCase):
         self.assertRaises(errors.HeartbeatError,
                           self.api_client.heartbeat,
                           uuid='fake-uuid',
-                          ipaddr='42.42.42.42',
-                          port=9999)
+                          listen_address=('42.42.42.42', '9999'))
 
     def test_lookup_node(self):
         response = httmock.response(status_code=200, content={

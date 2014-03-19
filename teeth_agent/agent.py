@@ -109,12 +109,10 @@ class TeethAgentHeartbeater(threading.Thread):
 
 
 class TeethAgent(object):
-    def __init__(self, api_url, listen_address, ipaddr, port=9999):
+    def __init__(self, api_url, listen_address):
         self.api_url = api_url
         self.api_client = overlord_agent_api.APIClient(self.api_url)
         self.listen_address = listen_address
-        self.ipaddr = ipaddr
-        self.port = port
         self.mode_implementation = None
         self.version = pkg_resources.get_distribution('teeth-agent').version
         self.api = app.VersionSelectorApplication(self)
@@ -236,5 +234,5 @@ def _load_mode_implementation(mode_name):
     return mgr.driver
 
 
-def build_agent(api_url, listen_host, listen_port, ipaddr):
-    return TeethAgent(api_url, (listen_host, listen_port), ipaddr)
+def build_agent(api_url, listen_host, listen_port):
+    return TeethAgent(api_url, (listen_host, listen_port))

@@ -46,13 +46,13 @@ class APIClient(object):
                                     headers=request_headers,
                                     data=data)
 
-    def heartbeat(self, uuid, ipaddr, port):
+    def heartbeat(self, uuid, listen_address):
         path = '/{api_version}/nodes/{uuid}/vendor_passthru/heartbeat'.format(
             api_version=self.api_version,
             uuid=uuid
         )
         data = {
-            'agent_url': self._get_agent_url(ipaddr, port)
+            'agent_url': self._get_agent_url(listen_address)
         }
         try:
             response = self._request('POST', path, data=data)
@@ -98,5 +98,5 @@ class APIClient(object):
                                             '{0}'.format(content))
         return content['node']
 
-    def _get_agent_url(self, ipaddr, port):
-        return "http://{0}:{1}".format(ipaddr, port)
+    def _get_agent_url(self, listen_address):
+        return "http://{0}:{1}".format(listen_address[0], listen_address[1])
