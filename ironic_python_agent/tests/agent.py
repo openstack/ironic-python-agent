@@ -112,8 +112,7 @@ class TestHeartbeater(unittest.TestCase):
 
         # Validate expectations
         self.assertEqual(expected_stop_event_calls,
-                         self.heartbeater.stop_event.wait.call_args_list,
-                         )
+                         self.heartbeater.stop_event.wait.call_args_list)
         self.assertEqual(self.heartbeater.error_delay, 2.7)
 
 
