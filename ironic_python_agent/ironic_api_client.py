@@ -96,9 +96,11 @@ class APIClient(object):
                                             + str(e))
 
         if 'node' not in content or 'uuid' not in content['node']:
-            raise errors.LookupNodeError('Got invalid data from the API: '
-                                            '{0}'.format(content))
-        return content['node']
+            raise errors.LookupNodeError('Got invalid node data from the API:'
+                                         ' {0}'.format(content))
+        if 'heartbeat_timeout' not in content:
+            raise errors.LookupNodeError('Got invalid')
+        return content
 
     def _get_agent_url(self, advertise_address):
         return 'http://{0}:{1}'.format(advertise_address[0],

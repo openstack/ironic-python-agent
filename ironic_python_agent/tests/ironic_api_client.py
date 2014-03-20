@@ -104,7 +104,8 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
         response = httmock.response(status_code=200, content={
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
-            }
+            },
+            'heartbeat_timeout': 300
         })
 
         self.api_client.session.request = mock.Mock()
@@ -144,10 +145,12 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
                           hardware_info=self.hardware_info,
-        )
+                          )
 
     def test_lookup_node_bad_response_data(self):
-        response = httmock.response(status_code=200, content='a')
+        response = httmock.response(status_code=200, content={
+            'heartbeat_timeout': 300
+        })
 
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
@@ -155,7 +158,22 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
                           hardware_info=self.hardware_info
-        )
+                          )
+
+    def test_lookup_node_no_heartbeat_timeout(self):
+        response = httmock.response(status_code=200, content={
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            }
+        })
+
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaises(errors.LookupNodeError,
+                          self.api_client.lookup_node,
+                          hardware_info=self.hardware_info
+                          )
 
     def test_lookup_node_bad_response_body(self):
         response = httmock.response(status_code=200, content={
