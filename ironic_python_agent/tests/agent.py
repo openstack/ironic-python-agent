@@ -18,15 +18,15 @@ import json
 import time
 import unittest
 
+import mock
+import pkg_resources
+from wsgiref import simple_server
+
 from ironic_python_agent import agent
 from ironic_python_agent import base
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
-
-import mock
-import pkg_resources
-from wsgiref import simple_server
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
 

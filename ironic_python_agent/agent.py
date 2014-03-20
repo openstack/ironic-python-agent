@@ -18,6 +18,10 @@ import random
 import threading
 import time
 
+import pkg_resources
+from stevedore import driver
+from wsgiref import simple_server
+
 from ironic_python_agent.api import app
 from ironic_python_agent import base
 from ironic_python_agent import encoding
@@ -26,10 +30,6 @@ from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
 from ironic_python_agent.openstack.common import log
 from ironic_python_agent import utils
-
-import pkg_resources
-from stevedore import driver
-from wsgiref import simple_server
 
 
 def _time():
