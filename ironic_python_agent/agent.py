@@ -81,16 +81,16 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         interval = 0
 
         while not self.stop_event.wait(interval):
-            next_heartbeat_by = self.do_heartbeat()
+            self.do_heartbeat()
             interval_multiplier = random.uniform(self.min_jitter_multiplier,
                                                  self.max_jitter_multiplier)
-            interval = (next_heartbeat_by - _time()) * interval_multiplier
+            interval = self.agent.heartbeat_timeout * interval_multiplier
             log_msg = 'sleeping before next heartbeat, interval: {0}'
             self.log.info(log_msg.format(interval))
 
     def do_heartbeat(self):
         try:
-            deadline = self.api.heartbeat(
+            self.api.heartbeat(
                 uuid=self.agent.get_node_uuid(),
                 advertise_address=self.agent.advertise_address
             )
@@ -98,12 +98,8 @@ class IronicPythonAgentHeartbeater(threading.Thread):
             self.log.info('heartbeat successful')
         except Exception:
             self.log.exception('error sending heartbeat')
-            deadline = _time() + self.error_delay
             self.error_delay = min(self.error_delay * self.backoff_factor,
                                    self.max_delay)
-            pass
-
-        return deadline
 
     def stop(self):
         self.log.info('stopping heartbeater')
@@ -123,6 +119,7 @@ class IronicPythonAgent(object):
         self.api = app.VersionSelectorApplication(self)
         self.command_results = utils.get_ordereddict()
         self.heartbeater = IronicPythonAgentHeartbeater(self)
+        self.heartbeat_timeout = None
         self.hardware = hardware.get_manager()
         self.command_lock = threading.Lock()
         self.log = log.getLogger(__name__)
@@ -213,9 +210,13 @@ class IronicPythonAgent(object):
         """Run the Ironic Python Agent."""
         self.started_at = _time()
         # Get the UUID so we can heartbeat to Ironic
-        self.node = self.api_client.lookup_node(
-            hardware_info=self.hardware.list_hardware_info(),
+        content = self.api_client.lookup_node(
+            hardware_info=self.hardware.list_hardware_info()
         )
+        if 'node' not in content or 'heartbeat_timeout' not in content:
+            raise LookupError('Lookup return needs node and heartbeat_timeout')
+        self.node = content['node']
+        self.heartbeat_timeout = content['heartbeat_timeout']
         self.heartbeater.start()
         wsgi = simple_server.make_server(
             self.listen_address[0],
