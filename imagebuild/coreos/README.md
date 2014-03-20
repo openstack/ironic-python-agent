@@ -1,6 +1,6 @@
-# teeth-agent CoreOS Image builder.
+# ironic-python-agent CoreOS Image builder.
 
-Builds a CoreOS image suitable for running the teeth-agent on a server.
+Builds a CoreOS image suitable for running the ironic-python-agent on a server.
 
 # Requirements
 

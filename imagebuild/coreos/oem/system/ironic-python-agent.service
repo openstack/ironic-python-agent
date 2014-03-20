@@ -1,0 +1,6 @@
+[Service]
+ExecStart=/usr/bin/docker run -p 9999:9999 -privileged=true -v=/sys:/mnt/sys oemdocker /usr/local/bin/ironic-python-agent --ipaddr="`ip a | grep '10\.' | sed -e 's/inet \(10\.[0-9\.]\+\).*/\1/'`"
+Restart=always
+
+[Install]
+WantedBy=oem.target

@@ -28,4 +28,4 @@ done
 docker load < container.tar.gz
 
 systemctl enable --runtime /usr/share/oem/system/*
-systemctl start teeth-agent.service
+systemctl start ironic-python-agent.service

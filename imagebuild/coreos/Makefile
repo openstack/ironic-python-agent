@@ -8,7 +8,7 @@ coreos:
 	./coreos-oem-inject.py oem UPLOAD
 
 clean:
-	rm -rf teeth-agent
+	rm -rf ironic-python-agent
 	rm -f oem/container.tar.gz
 	rm -f UPLOAD/coreos_production_pxe_image-oem.cpio.gz
 	rm -f UPLOAD/coreos_production_pxe.vmlinuz
