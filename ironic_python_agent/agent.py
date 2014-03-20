@@ -82,7 +82,6 @@ class IronicPythonAgentHeartbeater(threading.Thread):
 
         while not self.stop_event.wait(interval):
             self.do_heartbeat()
-            # next_heartbeat_by = _time() + self.agent.heartbeat_timeout
             interval_multiplier = random.uniform(self.min_jitter_multiplier,
                                                  self.max_jitter_multiplier)
             interval = self.agent.heartbeat_timeout * interval_multiplier
