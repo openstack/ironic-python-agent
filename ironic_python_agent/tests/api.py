@@ -166,8 +166,7 @@ class TestIronicAPI(unittest.TestCase):
         self.assertTrue('commands' in data.keys())
 
     def test_get_agent_status(self):
-        status = agent.IronicPythonAgentStatus('TEST_MODE',
-                                               time.time(),
+        status = agent.IronicPythonAgentStatus(time.time(),
                                                'v72ac9')
         self.mock_agent.get_status.return_value = status
 
@@ -176,7 +175,6 @@ class TestIronicAPI(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         data = response.json
-        self.assertEqual(data['mode'], status.mode)
         self.assertEqual(data['started_at'], status.started_at)
         self.assertEqual(data['version'], status.version)
 

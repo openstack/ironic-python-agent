@@ -153,9 +153,9 @@ def _validate_image_info(image_info=None, **kwargs):
             'element.')
 
 
-class StandbyMode(base.BaseAgentMode):
+class StandbyExtension(base.BaseAgentExtension):
     def __init__(self):
-        super(StandbyMode, self).__init__('STANDBY')
+        super(StandbyExtension, self).__init__('STANDBY')
         self.command_map['cache_image'] = self.cache_image
         self.command_map['prepare_image'] = self.prepare_image
         self.command_map['run_image'] = self.run_image

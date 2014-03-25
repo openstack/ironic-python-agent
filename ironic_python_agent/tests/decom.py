@@ -19,9 +19,9 @@ import unittest
 from ironic_python_agent import decom
 
 
-class TestDecomMode(unittest.TestCase):
+class TestDecomExtension(unittest.TestCase):
     def setUp(self):
-        self.agent_mode = decom.DecomMode()
+        self.agent_extension = decom.DecomExtension()
 
-    def test_decom_mode(self):
-        self.assertEqual(self.agent_mode.name, 'DECOM')
+    def test_decom_extension(self):
+        self.assertEqual(self.agent_extension.name, 'DECOM')

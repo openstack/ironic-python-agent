@@ -22,14 +22,13 @@ from ironic_python_agent.api.controllers.v1 import base
 
 
 class AgentStatus(base.APIBase):
-    mode = types.text
     started_at = base.MultiType(float)
     version = types.text
 
     @classmethod
     def from_agent_status(cls, status):
         instance = cls()
-        for field in ('mode', 'started_at', 'version'):
+        for field in ('started_at', 'version'):
             setattr(instance, field, getattr(status, field))
         return instance
 

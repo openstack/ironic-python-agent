@@ -19,7 +19,7 @@ import threading
 import time
 
 import pkg_resources
-from stevedore import driver
+from stevedore import extension
 from wsgiref import simple_server
 
 from ironic_python_agent.api import app
@@ -38,15 +38,13 @@ def _time():
 
 
 class IronicPythonAgentStatus(encoding.Serializable):
-    def __init__(self, mode, started_at, version):
-        self.mode = mode
+    def __init__(self, started_at, version):
         self.started_at = started_at
         self.version = version
 
     def serialize(self):
         """Turn the status into a dict."""
         return utils.get_ordereddict([
-            ('mode', self.mode),
             ('started_at', self.started_at),
             ('version', self.version),
         ])
@@ -113,7 +111,6 @@ class IronicPythonAgent(object):
         self.api_client = ironic_api_client.APIClient(self.api_url)
         self.listen_address = listen_address
         self.advertise_address = advertise_address
-        self.mode_implementation = None
         self.version = pkg_resources.get_distribution('ironic-python-agent')\
             .version
         self.api = app.VersionSelectorApplication(self)
@@ -125,17 +122,15 @@ class IronicPythonAgent(object):
         self.log = log.getLogger(__name__)
         self.started_at = None
         self.node = None
-
-    def get_mode_name(self):
-        if self.mode_implementation:
-            return self.mode_implementation.name
-        else:
-            return 'NONE'
+        self.ext_mgr = extension.ExtensionManager(
+            namespace='ironic_python_agent.extensions',
+            invoke_on_load=True,
+            propagate_map_exceptions=True,
+        )
 
     def get_status(self):
         """Retrieve a serializable status."""
         return IronicPythonAgentStatus(
-            mode=self.get_mode_name(),
             started_at=self.started_at,
             version=self.version
         )
@@ -162,26 +157,14 @@ class IronicPythonAgent(object):
         command_parts = command_name.split('.', 1)
         if len(command_parts) != 2:
             raise errors.InvalidCommandError(
-                'Command name must be of the form <mode>.<name>')
+                'Command name must be of the form <extension>.<name>')
 
         return (command_parts[0], command_parts[1])
-
-    def _verify_mode(self, mode_name, command_name):
-        if not self.mode_implementation:
-            try:
-                self.mode_implementation = _load_mode_implementation(mode_name)
-            except Exception:
-                raise errors.InvalidCommandError(
-                    'Unknown mode: {0}'.format(mode_name))
-        elif self.get_mode_name().lower() != mode_name:
-            raise errors.InvalidCommandError(
-                'Agent is already in {0} mode'.format(self.get_mode_name()))
 
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
         with self.command_lock:
-            mode_part, command_part = self._split_command(command_name)
-            self._verify_mode(mode_part, command_part)
+            extension_part, command_part = self._split_command(command_name)
 
             if len(self.command_results) > 0:
                 last_command = self.command_results.values()[-1]
@@ -189,8 +172,12 @@ class IronicPythonAgent(object):
                     raise errors.CommandExecutionError('agent is busy')
 
             try:
-                result = self.mode_implementation.execute(command_part,
-                                                          **kwargs)
+                ext = self.ext_mgr[extension_part].obj
+                result = ext.execute(command_part, **kwargs)
+            except KeyError:
+                # Extension Not found
+                raise errors.RequestedObjectNotFoundError('Extension',
+                                                          extension_part)
             except errors.InvalidContentError as e:
                 # Any command may raise a InvalidContentError which will be
                 # returned to the caller directly.
@@ -230,16 +217,6 @@ class IronicPythonAgent(object):
             self.log.exception('shutting down')
 
         self.heartbeater.stop()
-
-
-def _load_mode_implementation(mode_name):
-    mgr = driver.DriverManager(
-        namespace='ironic_python_agent.modes',
-        name=mode_name.lower(),
-        invoke_on_load=True,
-        invoke_args=[],
-    )
-    return mgr.driver
 
 
 def build_agent(api_url,

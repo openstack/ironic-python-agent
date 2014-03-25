@@ -21,12 +21,12 @@ from ironic_python_agent import errors
 from ironic_python_agent import standby
 
 
-class TestStandbyMode(unittest.TestCase):
+class TestStandbyExtension(unittest.TestCase):
     def setUp(self):
-        self.agent_mode = standby.StandbyMode()
+        self.agent_extension = standby.StandbyExtension()
 
-    def test_standby_mode(self):
-        self.assertEqual(self.agent_mode.name, 'STANDBY')
+    def test_standby_extension(self):
+        self.assertEqual(self.agent_extension.name, 'STANDBY')
 
     def _build_fake_image_info(self):
         return {
@@ -84,14 +84,14 @@ class TestStandbyMode(unittest.TestCase):
                           invalid_info)
 
     def test_cache_image_success(self):
-        result = self.agent_mode.cache_image(
+        result = self.agent_extension.cache_image(
             'cache_image',
             image_info=self._build_fake_image_info())
         result.join()
 
     def test_cache_image_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent_mode.cache_image,
+                          self.agent_extension.cache_image,
                           'cache_image',
                           image_info={'foo': 'bar'})
 
@@ -227,12 +227,13 @@ class TestStandbyMode(unittest.TestCase):
         write_mock.return_value = None
         manager_mock = hardware_mock.return_value
         manager_mock.get_os_install_device.return_value = 'manager'
-        async_result = self.agent_mode.cache_image('cache_image',
+        async_result = self.agent_extension.cache_image('cache_image',
                                                    image_info=image_info)
         async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        self.assertEqual(self.agent_mode.cached_image_id, image_info['id'])
+        self.assertEqual(self.agent_extension.cached_image_id,
+                         image_info['id'])
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertEqual(None, async_result.command_result)
 
@@ -261,7 +262,7 @@ class TestStandbyMode(unittest.TestCase):
         configdrive_mock.return_value = None
         configdrive_copy_mock.return_value = None
 
-        async_result = self.agent_mode.prepare_image('prepare_image',
+        async_result = self.agent_extension.prepare_image('prepare_image',
                                                      image_info=image_info,
                                                      metadata={},
                                                      files=[])
@@ -280,7 +281,7 @@ class TestStandbyMode(unittest.TestCase):
         configdrive_mock.reset_mock()
         configdrive_copy_mock.reset_mock()
         # image is now cached, make sure download/write doesn't happen
-        async_result = self.agent_mode.prepare_image('prepare_image',
+        async_result = self.agent_extension.prepare_image('prepare_image',
                                                      image_info=image_info,
                                                      metadata={},
                                                      files=[])
@@ -300,14 +301,14 @@ class TestStandbyMode(unittest.TestCase):
         command = ['/bin/bash', script]
         call_mock.return_value = 0
 
-        success_result = self.agent_mode.run_image('run_image')
+        success_result = self.agent_extension.run_image('run_image')
         success_result.join()
         call_mock.assert_called_once_with(command)
 
         call_mock.reset_mock()
         call_mock.return_value = 1
 
-        failed_result = self.agent_mode.run_image('run_image')
+        failed_result = self.agent_extension.run_image('run_image')
         failed_result.join()
 
         call_mock.assert_called_once_with(command)

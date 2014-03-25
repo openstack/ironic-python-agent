@@ -20,6 +20,7 @@ import unittest
 
 import mock
 import pkg_resources
+from stevedore import extension
 from wsgiref import simple_server
 
 from ironic_python_agent import agent
@@ -38,9 +39,9 @@ def foo_execute(*args, **kwargs):
         return 'command execution succeeded'
 
 
-class FakeMode(base.BaseAgentMode):
+class FakeExtension(base.BaseAgentExtension):
     def __init__(self):
-        super(FakeMode, self).__init__('FAKE')
+        super(FakeExtension, self).__init__('FAKE')
 
 
 class TestHeartbeater(unittest.TestCase):
@@ -145,9 +146,12 @@ class TestBaseAgent(unittest.TestCase):
 
     def test_execute_command(self):
         do_something_impl = mock.Mock()
-        self.agent.mode_implementation = FakeMode()
-        command_map = self.agent.mode_implementation.command_map
-        command_map['do_something'] = do_something_impl
+        fake_extension = FakeExtension()
+        fake_extension.command_map['do_something'] = do_something_impl
+        self.agent.ext_mgr = extension.ExtensionManager.\
+            make_test_instance([extension.Extension('fake', None,
+                                                    FakeExtension,
+                                                    fake_extension)])
 
         self.agent.execute_command('fake.do_something', foo='bar')
         do_something_impl.assert_called_once_with('do_something', foo='bar')
@@ -156,6 +160,12 @@ class TestBaseAgent(unittest.TestCase):
         self.assertRaises(errors.InvalidCommandError,
                           self.agent.execute_command,
                           'do_something',
+                          foo='bar')
+
+    def test_execute_unknown_command(self):
+        self.assertRaises(errors.RequestedObjectNotFoundError,
+                          self.agent.execute_command,
+                          'fake.do_something',
                           foo='bar')
 
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)

@@ -114,9 +114,9 @@ class AsyncCommandResult(BaseCommandResult):
                 self.command_status = AgentCommandStatus.FAILED
 
 
-class BaseAgentMode(object):
+class BaseAgentExtension(object):
     def __init__(self, name):
-        super(BaseAgentMode, self).__init__()
+        super(BaseAgentExtension, self).__init__()
         self.log = log.getLogger(__name__)
         self.name = name
         self.command_map = {}

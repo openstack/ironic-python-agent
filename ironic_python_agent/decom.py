@@ -17,6 +17,6 @@ limitations under the License.
 from ironic_python_agent import base
 
 
-class DecomMode(base.BaseAgentMode):
+class DecomExtension(base.BaseAgentExtension):
     def __init__(self):
-        super(DecomMode, self).__init__('DECOM')
+        super(DecomExtension, self).__init__('DECOM')
