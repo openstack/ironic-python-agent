@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import httmock
 import json
 import mock
 import time
@@ -23,8 +22,18 @@ import unittest
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
+from ironic_python_agent.openstack.common import loopingcall
+
 
 API_URL = 'http://agent-api.ironic.example.org/'
+
+
+class FakeResponse(object):
+    def __init__(self, content=None, status_code=200, headers=None):
+        content = content or {}
+        self.content = json.dumps(content)
+        self.status_code = status_code
+        self.headers = headers or {}
 
 
 class TestBaseIronicPythonAgent(unittest.TestCase):
@@ -39,7 +48,7 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
 
     def test_successful_heartbeat(self):
         expected_heartbeat_before = time.time() + 120
-        response = httmock.response(status_code=204, headers={
+        response = FakeResponse(status_code=204, headers={
             'Heartbeat-Before': expected_heartbeat_before,
         })
 
@@ -69,7 +78,7 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
                           advertise_address=('192.0.2.1', '9999'))
 
     def test_heartbeat_invalid_status_code(self):
-        response = httmock.response(status_code=404)
+        response = FakeResponse(status_code=404)
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
@@ -79,7 +88,7 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
                           advertise_address=('192.0.2.1', '9999'))
 
     def test_heartbeat_missing_heartbeat_before_header(self):
-        response = httmock.response(status_code=204)
+        response = FakeResponse(status_code=204)
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
@@ -89,7 +98,7 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
                           advertise_address=('192.0.2.1', '9999'))
 
     def test_heartbeat_invalid_heartbeat_before_header(self):
-        response = httmock.response(status_code=204, headers={
+        response = FakeResponse(status_code=204, headers={
             'Heartbeat-Before': 'tomorrow',
         })
         self.api_client.session.request = mock.Mock()
@@ -100,8 +109,47 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
                           uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
                           advertise_address=('192.0.2.1', '9999'))
 
-    def test_lookup_node(self):
-        response = httmock.response(status_code=200, content={
+    @mock.patch('eventlet.greenthread.sleep')
+    def test_lookup_node(self, sleep_mock):
+        content = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'heartbeat_timeout': 300
+        }
+        response = FakeResponse(status_code=200, content={
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'heartbeat_timeout': 300
+        })
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+        returned_content = self.api_client.lookup_node(
+            hardware_info=self.hardware_info,
+            timeout=300,
+            starting_interval=1)
+
+        self.assertEqual(content, returned_content)
+
+    @mock.patch('eventlet.greenthread.sleep')
+    def test_lookup_node_exception(self, sleep_mock):
+        bad_response = FakeResponse(status_code=500, content={
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'heartbeat_timeout': 300
+        })
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = bad_response
+        self.assertRaises(errors.LookupNodeError,
+                          self.api_client.lookup_node,
+                          hardware_info=self.hardware_info,
+                          timeout=300,
+                          starting_interval=1)
+
+    def test_do_lookup(self):
+        response = FakeResponse(status_code=200, content={
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             },
@@ -111,12 +159,16 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.api_client.lookup_node(hardware_info=self.hardware_info)
+        self.assertRaises(loopingcall.LoopingCallDone,
+                          self.api_client._do_lookup,
+                          hardware_info=self.hardware_info,
+                          timeout=300,
+                          intervals=[2])
 
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'POST')
         self.assertEqual(request_args[1],
-                API_URL + 'v1/drivers/teeth/vendor_passthru/lookup')
+                         API_URL + 'v1/drivers/teeth/vendor_passthru/lookup')
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
@@ -131,8 +183,8 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
             },
         ])
 
-    def test_lookup_node_bad_response_code(self):
-        response = httmock.response(status_code=400, content={
+    def test_do_lookup_bad_response_code(self):
+        response = FakeResponse(status_code=400, content={
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             }
@@ -141,24 +193,32 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.assertRaises(errors.LookupNodeError,
-                          self.api_client.lookup_node,
-                          hardware_info=self.hardware_info)
+        total_time = [0]
+        interval = self.api_client._do_lookup(self.hardware_info,
+                                              timeout=300,
+                                              total_time=total_time,
+                                              intervals=[2])
+        self.assertEqual(4, interval)
+        self.assertEqual(4, total_time[0])
 
-    def test_lookup_node_bad_response_data(self):
-        response = httmock.response(status_code=200, content={
+    def test_do_lookup_bad_response_data(self):
+        response = FakeResponse(status_code=200, content={
             'heartbeat_timeout': 300
         })
 
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.assertRaises(errors.LookupNodeError,
-                          self.api_client.lookup_node,
-                          hardware_info=self.hardware_info)
+        total_time = [0]
+        interval = self.api_client._do_lookup(self.hardware_info,
+                                              timeout=300,
+                                              total_time=total_time,
+                                              intervals=[2])
+        self.assertEqual(4, interval)
+        self.assertEqual(4, total_time[0])
 
-    def test_lookup_node_no_heartbeat_timeout(self):
-        response = httmock.response(status_code=200, content={
+    def test_do_lookup_no_heartbeat_timeout(self):
+        response = FakeResponse(status_code=200, content={
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             }
@@ -167,18 +227,47 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.assertRaises(errors.LookupNodeError,
-                          self.api_client.lookup_node,
-                          hardware_info=self.hardware_info)
+        total_time = [0]
+        interval = self.api_client._do_lookup(self.hardware_info,
+                                              timeout=300,
+                                              total_time=total_time,
+                                              intervals=[2])
+        self.assertEqual(4, interval)
+        self.assertEqual(4, total_time[0])
 
-    def test_lookup_node_bad_response_body(self):
-        response = httmock.response(status_code=200, content={
+    def test_do_lookup_bad_response_body(self):
+        response = FakeResponse(status_code=200, content={
             'node_node': 'also_not_node'
         })
 
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
+        total_time = [0]
+        interval = self.api_client._do_lookup(self.hardware_info,
+                                              timeout=300,
+                                              total_time=total_time,
+                                              intervals=[2])
+        self.assertEqual(4, interval)
+        self.assertEqual(4, total_time[0])
+
+    @mock.patch('eventlet.greenthread.sleep')
+    def test_lookup_node_exponential_backoff(self, sleep_mock):
+        bad_response = FakeResponse(status_code=500, content={
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'heartbeat_timeout': 300
+        })
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = bad_response
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
-                          hardware_info=self.hardware_info)
+                          hardware_info=self.hardware_info,
+                          timeout=300,
+                          starting_interval=1)
+        # 254 seconds before timeout
+        expected_times = [mock.call(2), mock.call(4), mock.call(8),
+                          mock.call(16), mock.call(32), mock.call(64),
+                          mock.call(128)]
+        self.assertEqual(expected_times, sleep_mock.call_args_list)

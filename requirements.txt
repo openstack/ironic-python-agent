@@ -7,3 +7,5 @@ six>=1.5.2
 oslo.config==1.2.1
 Babel==1.3
 iso8601==0.1.10
+eventlet>=0.13.0
+

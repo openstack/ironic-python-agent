@@ -47,9 +47,24 @@ def run():
                         type=int,
                         help='The port to tell Ironic to reply and send '
                              'commands to.')
+    parser.add_argument('--lookup-timeout',
+                        default=300,
+                        type=int,
+                        help='The amount of time to retry the initial lookup '
+                             'call to Ironic. After the timeout, the agent '
+                             'will exit with a non-zero exit code.')
+    parser.add_argument('--lookup-interval',
+                        default=1,
+                        type=int,
+                        help='The initial interval for retries on the initial '
+                             'lookup call to Ironic. The interval will be '
+                             'doubled after each failure until timeout is '
+                             'exceeded.')
     args = parser.parse_args()
     agent.build_agent(args.api_url,
                       args.advertise_host,
                       args.advertise_port,
                       args.listen_host,
-                      args.listen_port).run()
+                      args.listen_port,
+                      args.lookup_timeout,
+                      args.lookup_interval).run()
