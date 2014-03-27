@@ -128,7 +128,7 @@ class GenericHardwareManager(HardwareManager):
     def _list_block_devices(self):
         report = self._cmd(['blockdev', '--report'])[0]
         lines = report.split('\n')
-        lines = [line.split() for line in lines if line is not '']
+        lines = [line.split() for line in lines if line != '']
         startsec_idx = lines[0].index('StartSec')
         device_idx = lines[0].index('Device')
         size_idx = lines[0].index('Size')
