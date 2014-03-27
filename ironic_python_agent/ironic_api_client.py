@@ -71,7 +71,7 @@ class APIClient(object):
             raise errors.HeartbeatError('Invalid Heartbeat-Before header')
 
     def lookup_node(self, hardware_info):
-        path = '/{api_version}/drivers/teeth/lookup'.format(
+        path = '/{api_version}/drivers/teeth/vendor_passthru/lookup'.format(
             api_version=self.api_version
         )
         # This hardware won't be saved on the node currently, because of how

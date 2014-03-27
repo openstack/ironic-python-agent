@@ -115,7 +115,8 @@ class TestBaseIronicPythonAgent(unittest.TestCase):
 
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'POST')
-        self.assertEqual(request_args[1], API_URL + 'v1/drivers/teeth/lookup')
+        self.assertEqual(request_args[1],
+                API_URL + 'v1/drivers/teeth/vendor_passthru/lookup')
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
