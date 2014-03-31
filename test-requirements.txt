@@ -5,4 +5,3 @@ mock>=1.0
 testrepository>=0.0.18
 testtools>=0.9.34
 python-subunit>=0.0.18
-httmock

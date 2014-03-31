@@ -123,7 +123,9 @@ class TestBaseAgent(unittest.TestCase):
         self.agent = agent.IronicPythonAgent('https://fake_api.example.'
                                              'org:8081/',
                                              ('203.0.113.1', 9990),
-                                             ('192.0.2.1', 9999))
+                                             ('192.0.2.1', 9999),
+                                             lookup_timeout=300,
+                                             lookup_interval=1)
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to

@@ -15,11 +15,12 @@ limitations under the License.
 """
 
 import json
-
 import requests
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
+from ironic_python_agent.openstack.common import log
+from ironic_python_agent.openstack.common import loopingcall
 
 
 class APIClient(object):
@@ -29,6 +30,7 @@ class APIClient(object):
         self.api_url = api_url.rstrip('/')
         self.session = requests.Session()
         self.encoder = encoding.RESTJSONEncoder()
+        self.log = log.getLogger(__name__)
 
     def _request(self, method, path, data=None):
         request_url = '{api_url}{path}'.format(api_url=self.api_url, path=path)
@@ -70,38 +72,86 @@ class APIClient(object):
         except Exception:
             raise errors.HeartbeatError('Invalid Heartbeat-Before header')
 
-    def lookup_node(self, hardware_info):
+    def lookup_node(self, hardware_info, timeout, starting_interval):
+        timer = loopingcall.DynamicLoopingCall(
+            self._do_lookup,
+            hardware_info=hardware_info,
+            intervals=[starting_interval],
+            total_time=[0],
+            timeout=timeout)
+        node_content = timer.start().wait()
+
+        # True is returned on timeout
+        if node_content is True:
+            raise errors.LookupNodeError('Could not look up node info. Check '
+                                         'logs for details.')
+        return node_content
+
+    def _do_lookup(self, hardware_info, timeout, intervals=[1],
+                   total_time=[0]):
+        """The actual call to lookup a node. Should be called inside
+        loopingcall.DynamicLoopingCall.
+
+        intervals and total_time are mutable so it can be changed by each run
+        in the looping call and accessed/changed on the next run.
+        """
+        def next_interval(timeout, intervals=[], total_time=[]):
+            """Function to calculate what the next interval should be. Uses
+            exponential backoff and raises an exception (that won't
+            be caught by do_lookup) to kill the looping call if it goes too
+            long
+            """
+            new_interval = intervals[-1] * 2
+            if total_time[0] + new_interval > timeout:
+                # No retvalue signifies error
+                raise loopingcall.LoopingCallDone()
+
+            total_time[0] += new_interval
+            intervals.append(new_interval)
+            return new_interval
+
         path = '/{api_version}/drivers/teeth/vendor_passthru/lookup'.format(
             api_version=self.api_version
         )
-        # This hardware won't be saved on the node currently, because of how
-        # driver_vendor_passthru is implemented (no node saving).
+        # This hardware won't be saved on the node currently, because of
+        # how driver_vendor_passthru is implemented (no node saving).
         data = {
-            'hardware': hardware_info,
+            'hardware': hardware_info
         }
 
+        # Make the POST, make sure we get back normal data/status codes and
+        # content
         try:
             response = self._request('POST', path, data=data)
         except Exception as e:
-            raise errors.LookupNodeError(str(e))
+            self.log.warning('POST failed: %s' % str(e))
+            return next_interval(timeout, intervals, total_time)
 
         if response.status_code != requests.codes.OK:
-            msg = 'Invalid status code: {0}'.format(response.status_code)
-            raise errors.LookupNodeError(msg)
+            self.log.warning('Invalid status code: %s' %
+                             response.status_code)
+
+            return next_interval(timeout, intervals, total_time)
 
         try:
             content = json.loads(response.content)
         except Exception as e:
-            raise errors.LookupNodeError('Error decoding response: '
-                                            + str(e))
+            self.log.warning('Error decoding response: %s' % str(e))
+            return next_interval(timeout, intervals, total_time)
 
+        # Check for valid response data
         if 'node' not in content or 'uuid' not in content['node']:
-            raise errors.LookupNodeError('Got invalid node data from the API:'
-                                         '%s' % content)
+            self.log.warning('Got invalid node data from the API: %s' %
+                             content)
+            return next_interval(timeout, intervals, total_time)
+
         if 'heartbeat_timeout' not in content:
-            raise errors.LookupNodeError('Got invalid heartbeat from the API:'
-                                         '%s' % content)
-        return content
+            self.log.warning('Got invalid heartbeat from the API: %s' %
+                             content)
+            return next_interval(timeout, intervals, total_time)
+
+        # Got valid content
+        raise loopingcall.LoopingCallDone(retvalue=content)
 
     def _get_agent_url(self, advertise_address):
         return 'http://{0}:{1}'.format(advertise_address[0],

@@ -106,7 +106,8 @@ class IronicPythonAgentHeartbeater(threading.Thread):
 
 
 class IronicPythonAgent(object):
-    def __init__(self, api_url, advertise_address, listen_address):
+    def __init__(self, api_url, advertise_address, listen_address,
+                 lookup_timeout, lookup_interval):
         self.api_url = api_url
         self.api_client = ironic_api_client.APIClient(self.api_url)
         self.listen_address = listen_address
@@ -127,6 +128,9 @@ class IronicPythonAgent(object):
             invoke_on_load=True,
             propagate_map_exceptions=True,
         )
+        # lookup timeout in seconds
+        self.lookup_timeout = lookup_timeout
+        self.lookup_interval = lookup_interval
 
     def get_status(self):
         """Retrieve a serializable status."""
@@ -195,13 +199,14 @@ class IronicPythonAgent(object):
 
     def run(self):
         """Run the Ironic Python Agent."""
+        # Get the UUID so we can heartbeat to Ironic. Raises LookupNodeError
+        # if there is an issue (uncaught, restart agent)
         self.started_at = _time()
-        # Get the UUID so we can heartbeat to Ironic
         content = self.api_client.lookup_node(
-            hardware_info=self.hardware.list_hardware_info()
-        )
-        if 'node' not in content or 'heartbeat_timeout' not in content:
-            raise LookupError('Lookup return needs node and heartbeat_timeout')
+                hardware_info=self.hardware.list_hardware_info(),
+                timeout=self.lookup_timeout,
+                starting_interval=self.lookup_interval)
+
         self.node = content['node']
         self.heartbeat_timeout = content['heartbeat_timeout']
         self.heartbeater.start()
@@ -223,8 +228,12 @@ def build_agent(api_url,
                 advertise_host,
                 advertise_port,
                 listen_host,
-                listen_port):
+                listen_port,
+                lookup_timeout,
+                lookup_interval):
 
     return IronicPythonAgent(api_url,
                              (advertise_host, advertise_port),
-                             (listen_host, listen_port))
+                             (listen_host, listen_port),
+                             lookup_timeout,
+                             lookup_interval)
