@@ -25,6 +25,7 @@ from wsgiref import simple_server
 
 from ironic_python_agent import agent
 from ironic_python_agent import base
+from ironic_python_agent.cmd import agent as agent_cmd
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
@@ -241,3 +242,24 @@ class TestBaseAgent(unittest.TestCase):
             str(EXPECTED_ERROR))
 
         self.assertEqualEncoded(result, expected_result)
+
+
+class TestAgentCmd(unittest.TestCase):
+    @mock.patch('__builtin__.open')
+    def test__get_kernel_params_fail(self, open_mock):
+        open_mock.side_effect = Exception
+        params = agent_cmd._get_kernel_params()
+        self.assertEqual(params, {})
+
+    @mock.patch('__builtin__.open')
+    def test__get_kernel_params(self, open_mock):
+        kernel_line = 'api-url=http://localhost:9999 baz foo=bar\n'
+        open_mock.return_value.__enter__ = lambda s: s
+        open_mock.return_value.__exit__ = mock.Mock()
+        read_mock = open_mock.return_value.read
+        read_mock.return_value = kernel_line
+
+        params = agent_cmd._get_kernel_params()
+        self.assertEqual(params['api-url'], 'http://localhost:9999')
+        self.assertEqual(params['foo'], 'bar')
+        self.assertFalse('baz' in params)

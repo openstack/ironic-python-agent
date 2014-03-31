@@ -17,51 +17,84 @@ limitations under the License.
 import argparse
 
 from ironic_python_agent import agent
+from ironic_python_agent.openstack.common import log
+
+
+LOG = log.getLogger()
+
+
+def _get_kernel_params():
+    try:
+        with open('/proc/cmdline') as f:
+            cmdline = f.read()
+    except Exception as e:
+        LOG.exception('Could not read /proc/cmdline: {e}'.format(e=e))
+        return {}
+
+    options = cmdline.split()
+    params = {}
+    for option in options:
+        if '=' not in option:
+            continue
+        k, v = option.split('=', 1)
+        params[k] = v
+
+    return params
 
 
 def run():
+    kparams = _get_kernel_params()
+
     parser = argparse.ArgumentParser(
         description=('An agent that handles decomissioning and provisioning'
                      ' on behalf of Ironic.'))
 
-    parser.add_argument('--api-url',
-                        required=True,
-                        help='URL of the Ironic API')
+    api_url = kparams.get('ipa-api-url')
+    if api_url is None:
+        parser.add_argument('--api-url',
+                            required=True,
+                            help='URL of the Ironic API')
 
     parser.add_argument('--listen-host',
-                        default='0.0.0.0',
+                        default=kparams.get('ipa-listen-host', '0.0.0.0'),
                         type=str,
                         help='The IP address to listen on.')
 
     parser.add_argument('--listen-port',
-                        default=9999,
+                        default=int(kparams.get('ipa-listen-port', 9999)),
                         type=int,
                         help='The port to listen on')
+
     parser.add_argument('--advertise-host',
-                        default='0.0.0.0',
+                        default=kparams.get('ipa-advertise-host', '0.0.0.0'),
                         type=str,
                         help='The host to tell Ironic to reply and send '
                              'commands to.')
+
     parser.add_argument('--advertise-port',
-                        default=9999,
+                        default=int(kparams.get('ipa-advertise-port', 9999)),
                         type=int,
                         help='The port to tell Ironic to reply and send '
                              'commands to.')
+
     parser.add_argument('--lookup-timeout',
-                        default=300,
+                        default=int(kparams.get('ipa-lookup-timeout', 300)),
                         type=int,
                         help='The amount of time to retry the initial lookup '
                              'call to Ironic. After the timeout, the agent '
                              'will exit with a non-zero exit code.')
+
     parser.add_argument('--lookup-interval',
-                        default=1,
+                        default=int(kparams.get('ipa-lookup-timeout', 1)),
                         type=int,
                         help='The initial interval for retries on the initial '
                              'lookup call to Ironic. The interval will be '
                              'doubled after each failure until timeout is '
                              'exceeded.')
+
     args = parser.parse_args()
-    agent.build_agent(args.api_url,
+
+    agent.build_agent(api_url or args.api_url,
                       args.advertise_host,
                       args.advertise_port,
                       args.listen_host,
