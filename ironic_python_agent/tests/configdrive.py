@@ -18,15 +18,17 @@ from __future__ import unicode_literals
 
 import base64
 import json
+
 import mock
-import unittest
+from oslotest import base as test_base
 
 from ironic_python_agent import configdrive
 from ironic_python_agent import utils
 
 
-class ConfigDriveWriterTestCase(unittest.TestCase):
+class ConfigDriveWriterTestCase(test_base.BaseTestCase):
     def setUp(self):
+        super(ConfigDriveWriterTestCase, self).setUp()
         self.writer = configdrive.ConfigDriveWriter()
         self.maxDiff = None
 

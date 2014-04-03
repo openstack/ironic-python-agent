@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import mock
 import time
-import unittest
 
+import mock
+from oslotest import base as test_base
 import pecan
 import pecan.testing
 
@@ -28,7 +28,7 @@ from ironic_python_agent import base
 PATH_PREFIX = '/v1'
 
 
-class TestIronicAPI(unittest.TestCase):
+class TestIronicAPI(test_base.BaseTestCase):
 
     def setUp(self):
         super(TestIronicAPI, self).setUp()
@@ -36,6 +36,7 @@ class TestIronicAPI(unittest.TestCase):
         self.app = self._make_app(self.mock_agent)
 
     def tearDown(self):
+        super(TestIronicAPI, self).tearDown()
         pecan.set_config({}, overwrite=True)
 
     def _make_app(self, enable_acl=False):

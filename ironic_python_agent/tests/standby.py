@@ -15,14 +15,15 @@ limitations under the License.
 """
 
 import mock
-import unittest
+from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent import standby
 
 
-class TestStandbyExtension(unittest.TestCase):
+class TestStandbyExtension(test_base.BaseTestCase):
     def setUp(self):
+        super(TestStandbyExtension, self).setUp()
         self.agent_extension = standby.StandbyExtension()
 
     def test_standby_extension(self):

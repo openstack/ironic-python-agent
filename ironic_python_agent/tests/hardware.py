@@ -15,13 +15,14 @@ limitations under the License.
 """
 
 import mock
-import unittest
+from oslotest import base as test_base
 
 from ironic_python_agent import hardware
 
 
-class TestGenericHardwareManager(unittest.TestCase):
+class TestGenericHardwareManager(test_base.BaseTestCase):
     def setUp(self):
+        super(TestGenericHardwareManager, self).setUp()
         self.hardware = hardware.GenericHardwareManager()
 
     @mock.patch('os.listdir')

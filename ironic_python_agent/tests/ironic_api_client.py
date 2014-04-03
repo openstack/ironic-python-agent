@@ -15,15 +15,15 @@ limitations under the License.
 """
 
 import json
-import mock
 import time
-import unittest
+
+import mock
+from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
 from ironic_python_agent.openstack.common import loopingcall
-
 
 API_URL = 'http://agent-api.ironic.example.org/'
 
@@ -36,8 +36,9 @@ class FakeResponse(object):
         self.headers = headers or {}
 
 
-class TestBaseIronicPythonAgent(unittest.TestCase):
+class TestBaseIronicPythonAgent(test_base.BaseTestCase):
     def setUp(self):
+        super(TestBaseIronicPythonAgent, self).setUp()
         self.api_client = ironic_api_client.APIClient(API_URL)
         self.hardware_info = [
             hardware.HardwareInfo(hardware.HardwareType.MAC_ADDRESS,

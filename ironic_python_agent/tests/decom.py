@@ -13,14 +13,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-import unittest
+from oslotest import base as test_base
 
 from ironic_python_agent import decom
 
 
-class TestDecomExtension(unittest.TestCase):
+class TestDecomExtension(test_base.BaseTestCase):
     def setUp(self):
+        super(TestDecomExtension, self).setUp()
         self.agent_extension = decom.DecomExtension()
 
     def test_decom_extension(self):

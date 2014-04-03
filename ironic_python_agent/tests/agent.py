@@ -16,9 +16,9 @@ limitations under the License.
 
 import json
 import time
-import unittest
 
 import mock
+from oslotest import base as test_base
 import pkg_resources
 from stevedore import extension
 from wsgiref import simple_server
@@ -45,8 +45,9 @@ class FakeExtension(base.BaseAgentExtension):
         super(FakeExtension, self).__init__('FAKE')
 
 
-class TestHeartbeater(unittest.TestCase):
+class TestHeartbeater(test_base.BaseTestCase):
     def setUp(self):
+        super(TestHeartbeater, self).setUp()
         self.mock_agent = mock.Mock()
         self.heartbeater = agent.IronicPythonAgentHeartbeater(self.mock_agent)
         self.heartbeater.api = mock.Mock()
@@ -118,8 +119,9 @@ class TestHeartbeater(unittest.TestCase):
         self.assertEqual(self.heartbeater.error_delay, 2.7)
 
 
-class TestBaseAgent(unittest.TestCase):
+class TestBaseAgent(test_base.BaseTestCase):
     def setUp(self):
+        super(TestBaseAgent, self).setUp()
         self.encoder = encoding.RESTJSONEncoder(indent=4)
         self.agent = agent.IronicPythonAgent('https://fake_api.example.'
                                              'org:8081/',
@@ -244,9 +246,10 @@ class TestBaseAgent(unittest.TestCase):
         self.assertEqualEncoded(result, expected_result)
 
 
-class TestAgentCmd(unittest.TestCase):
+class TestAgentCmd(test_base.BaseTestCase):
+    @mock.patch('ironic_python_agent.openstack.common.log.getLogger')
     @mock.patch('__builtin__.open')
-    def test__get_kernel_params_fail(self, open_mock):
+    def test__get_kernel_params_fail(self, logger_mock, open_mock):
         open_mock.side_effect = Exception
         params = agent_cmd._get_kernel_params()
         self.assertEqual(params, {})
@@ -258,7 +261,6 @@ class TestAgentCmd(unittest.TestCase):
         open_mock.return_value.__exit__ = mock.Mock()
         read_mock = open_mock.return_value.read
         read_mock.return_value = kernel_line
-
         params = agent_cmd._get_kernel_params()
         self.assertEqual(params['api-url'], 'http://localhost:9999')
         self.assertEqual(params['foo'], 'bar')
