@@ -13,8 +13,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 import collections
 import ordereddict
+
+from ironic_python_agent.openstack.common import gettextutils as gtu
+from ironic_python_agent.openstack.common import log as logging
+from ironic_python_agent.openstack.common import processutils
+
+LOG = logging.getLogger(__name__)
 
 
 def get_ordereddict(*args, **kwargs):
@@ -23,3 +30,13 @@ def get_ordereddict(*args, **kwargs):
         return collections.OrderedDict(*args, **kwargs)
     except AttributeError:
         return ordereddict.OrderedDict(*args, **kwargs)
+
+
+def execute(*cmd, **kwargs):
+    """Convenience wrapper around oslo's execute() method."""
+    result = processutils.execute(*cmd, **kwargs)
+    LOG.debug(gtu._('Execution completed, command line is "%s"'),
+              ' '.join(cmd))
+    LOG.debug(gtu._('Command stdout is: "%s"') % result[0])
+    LOG.debug(gtu._('Command stderr is: "%s"') % result[1])
+    return result
