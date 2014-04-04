@@ -89,8 +89,8 @@ class AsyncCommandResult(BaseCommandResult):
         self.execution_thread.start()
         return self
 
-    def join(self):
-        self.execution_thread.join()
+    def join(self, timeout=None):
+        self.execution_thread.join(timeout)
         return self
 
     def is_done(self):
