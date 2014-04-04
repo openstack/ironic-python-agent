@@ -15,7 +15,6 @@ limitations under the License.
 """
 
 import collections
-import ordereddict
 
 from ironic_python_agent.openstack.common import gettextutils as gtu
 from ironic_python_agent.openstack.common import log as logging
@@ -29,6 +28,7 @@ def get_ordereddict(*args, **kwargs):
     try:
         return collections.OrderedDict(*args, **kwargs)
     except AttributeError:
+        import ordereddict
         return ordereddict.OrderedDict(*args, **kwargs)
 
 

@@ -21,9 +21,15 @@ import json
 
 import mock
 from oslotest import base as test_base
+import six
 
 from ironic_python_agent import configdrive
 from ironic_python_agent import utils
+
+if six.PY2:
+    OPEN_FUNCTION_NAME = '__builtin__.open'
+else:
+    OPEN_FUNCTION_NAME = 'builtins.open'
 
 
 class ConfigDriveWriterTestCase(test_base.BaseTestCase):
@@ -43,12 +49,12 @@ class ConfigDriveWriterTestCase(test_base.BaseTestCase):
         self.assertEqual(files, {'/etc/filename': 'contents'})
 
     @mock.patch('os.makedirs', autospec=True)
-    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     def test_write_no_files(self, open_mock, makedirs_mock):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
         json_metadata = json.dumps(metadata)
         metadata_path = '/lol/ironic/latest/meta_data.json'
-        for k, v in metadata.iteritems():
+        for k, v in metadata.items():
             self.writer.add_metadata(k, v)
 
         open_mock.return_value.__enter__ = lambda s: s
@@ -65,16 +71,16 @@ class ConfigDriveWriterTestCase(test_base.BaseTestCase):
         self.assertEqual(makedirs_calls, makedirs_mock.call_args_list)
 
     @mock.patch('os.makedirs', autospec=True)
-    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     def test_write_with_files(self, open_mock, makedirs_mock):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
-        for k, v in metadata.iteritems():
+        for k, v in metadata.items():
             self.writer.add_metadata(k, v)
         files = utils.get_ordereddict([
             ('/etc/conf0', 'contents0'),
             ('/etc/conf1', 'contents1'),
         ])
-        for path, contents in files.iteritems():
+        for path, contents in files.items():
             self.writer.add_file(path, contents)
 
         open_mock.return_value.__enter__ = lambda s: s
@@ -117,12 +123,12 @@ class ConfigDriveWriterTestCase(test_base.BaseTestCase):
         self.assertEqual(makedirs_calls, makedirs_mock.call_args_list)
 
     @mock.patch('os.makedirs', autospec=True)
-    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     def test_write_configdrive(self, open_mock, makedirs_mock):
         metadata = {'admin_pass': 'password', 'hostname': 'test'}
         files = utils.get_ordereddict([
-            ('/etc/conf0', base64.b64encode('contents0')),
-            ('/etc/conf1', base64.b64encode('contents1')),
+            ('/etc/conf0', base64.b64encode(b'contents0')),
+            ('/etc/conf1', base64.b64encode(b'contents1')),
         ])
         metadata['files'] = [
             {'content_path': '/content/0000', 'path': '/etc/conf0'},
@@ -148,10 +154,10 @@ class ConfigDriveWriterTestCase(test_base.BaseTestCase):
 
         open_calls = [
             mock.call('/lol/openstack/content/0000', 'wb'),
-            mock.call().write('contents0'),
+            mock.call().write(b'contents0'),
             mock.call().__exit__(None, None, None),
             mock.call('/lol/openstack/content/0001', 'wb'),
-            mock.call().write('contents1'),
+            mock.call().write(b'contents1'),
             mock.call().__exit__(None, None, None),
             mock.call('/lol/openstack/latest/meta_data.json', 'wb'),
             # already checked

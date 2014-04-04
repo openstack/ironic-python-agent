@@ -20,6 +20,7 @@ import time
 import mock
 from oslotest import base as test_base
 import pkg_resources
+import six
 from stevedore import extension
 from wsgiref import simple_server
 
@@ -31,6 +32,11 @@ from ironic_python_agent import errors
 from ironic_python_agent import hardware
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
+
+if six.PY2:
+    OPEN_FUNCTION_NAME = '__builtin__.open'
+else:
+    OPEN_FUNCTION_NAME = 'builtins.open'
 
 
 def foo_execute(*args, **kwargs):
@@ -248,13 +254,13 @@ class TestBaseAgent(test_base.BaseTestCase):
 
 class TestAgentCmd(test_base.BaseTestCase):
     @mock.patch('ironic_python_agent.openstack.common.log.getLogger')
-    @mock.patch('__builtin__.open')
+    @mock.patch(OPEN_FUNCTION_NAME)
     def test__get_kernel_params_fail(self, logger_mock, open_mock):
         open_mock.side_effect = Exception
         params = agent_cmd._get_kernel_params()
         self.assertEqual(params, {})
 
-    @mock.patch('__builtin__.open')
+    @mock.patch(OPEN_FUNCTION_NAME)
     def test__get_kernel_params(self, open_mock):
         kernel_line = 'api-url=http://localhost:9999 baz foo=bar\n'
         open_mock.return_value.__enter__ = lambda s: s

@@ -17,6 +17,7 @@ limitations under the License.
 import threading
 import uuid
 
+import six
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
@@ -31,7 +32,7 @@ class AgentCommandStatus(object):
 
 class BaseCommandResult(encoding.Serializable):
     def __init__(self, command_name, command_params):
-        self.id = unicode(uuid.uuid4())
+        self.id = six.text_type(uuid.uuid4())
         self.command_name = command_name
         self.command_params = command_params
         self.command_status = AgentCommandStatus.RUNNING

@@ -38,13 +38,13 @@ class ConfigDriveWriter(object):
         os.makedirs(os.path.join(location, prefix, 'content'))
 
         metadata = {}
-        for k, v in self.metadata.iteritems():
+        for k, v in self.metadata.items():
             metadata[k] = v
 
         if self.files:
             metadata['files'] = []
         filenumber = 0
-        for filepath, contents in self.files.iteritems():
+        for filepath, contents in self.files.items():
             content_path = '/content/{0:04}'.format(filenumber)
             file_info = {
                 'content_path': content_path,
@@ -72,10 +72,10 @@ def write_configdrive(location, metadata, files, prefix='openstack',
     """
     writer = ConfigDriveWriter()
 
-    for k, v in metadata.iteritems():
+    for k, v in metadata.items():
         writer.add_metadata(k, v)
 
-    for path, b64_contents in files.iteritems():
+    for path, b64_contents in files.items():
         contents = base64.b64decode(b64_contents)
         writer.add_file(path, contents)
 

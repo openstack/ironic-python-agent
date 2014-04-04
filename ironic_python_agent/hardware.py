@@ -15,9 +15,11 @@ limitations under the License.
 """
 
 import abc
+import functools
 import os
 import subprocess
 
+import six
 import stevedore
 
 from ironic_python_agent import encoding
@@ -169,7 +171,15 @@ def get_manager():
 
         # There will always be at least one extension available (the
         # GenericHardwareManager).
-        preferred_extension = sorted(extension_manager, _compare_extensions)[0]
+        if six.PY2:
+            preferred_extension = sorted(
+                    extension_manager,
+                    _compare_extensions)[0]
+        else:
+            preferred_extension = sorted(
+                    extension_manager,
+                    key=functools.cmp_to_key(_compare_extensions))[0]
+
         preferred_manager = preferred_extension.obj
 
         if preferred_manager.evaluate_hardware_support() <= 0:

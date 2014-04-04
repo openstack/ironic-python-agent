@@ -19,6 +19,7 @@ import threading
 import time
 
 import pkg_resources
+import six
 from stevedore import extension
 from wsgiref import simple_server
 
@@ -148,7 +149,7 @@ class IronicPythonAgent(object):
         return self.node['uuid']
 
     def list_command_results(self):
-        return self.command_results.values()
+        return list(self.command_results.values())
 
     def get_command_result(self, result_id):
         try:
@@ -171,7 +172,7 @@ class IronicPythonAgent(object):
             extension_part, command_part = self._split_command(command_name)
 
             if len(self.command_results) > 0:
-                last_command = self.command_results.values()[-1]
+                last_command = list(self.command_results.values())[-1]
                 if not last_command.is_done():
                     raise errors.CommandExecutionError('agent is busy')
 
@@ -192,7 +193,7 @@ class IronicPythonAgent(object):
                 result = base.SyncCommandResult(command_name,
                                                 kwargs,
                                                 False,
-                                                unicode(e))
+                                                six.text_type(e))
 
             self.command_results[result.id] = result
             return result

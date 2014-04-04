@@ -118,7 +118,7 @@ def _download_image(image_info):
 
 def _verify_image(image_info, image_location):
     hashes = image_info['hashes']
-    for k, v in hashes.iteritems():
+    for k, v in hashes.items():
         algo = getattr(hashlib, k, None)
         if algo is None:
             continue

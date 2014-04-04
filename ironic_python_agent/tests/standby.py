@@ -16,9 +16,15 @@ limitations under the License.
 
 import mock
 from oslotest import base as test_base
+import six
 
 from ironic_python_agent import errors
 from ironic_python_agent import standby
+
+if six.PY2:
+    OPEN_FUNCTION_NAME = '__builtin__.open'
+else:
+    OPEN_FUNCTION_NAME = 'builtins.open'
 
 
 class TestStandbyExtension(test_base.BaseTestCase):
@@ -101,7 +107,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         location = standby._image_location(image_info)
         self.assertEqual(location, '/tmp/fake_id')
 
-    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('subprocess.call', autospec=True)
     def test_write_image(self, call_mock, open_mock):
         image_info = self._build_fake_image_info()
@@ -124,7 +130,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         call_mock.assert_called_once_with(command)
 
-    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('subprocess.call', autospec=True)
     def test_copy_configdrive_to_disk(self, call_mock, open_mock):
         device = '/dev/sda'
@@ -147,7 +153,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         call_mock.assert_called_once_with(command)
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_download_image(self, requests_mock, open_mock, md5_mock):
         image_info = self._build_fake_image_info()
@@ -159,7 +165,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         read_mock = open_mock.return_value.read
         read_mock.return_value = 'content'
         hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['hashes'].values()[0]
+        hexdigest_mock.return_value = list(image_info['hashes'].values())[0]
 
         standby._download_image(image_info)
         requests_mock.assert_called_once_with(image_info['urls'][0],
@@ -179,7 +185,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           image_info)
 
     @mock.patch('ironic_python_agent.standby._verify_image', autospec=True)
-    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_download_image_verify_fails(self, requests_mock, open_mock,
                                          verify_mock):
@@ -191,7 +197,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           standby._download_image,
                           image_info)
 
-    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('hashlib.sha1', autospec=True)
     @mock.patch('hashlib.md5', autospec=True)
     def test_verify_image_success(self, md5_mock, sha1_mock, open_mock):
@@ -208,7 +214,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         # make sure we only check one hash, even though both are valid
         self.assertEqual(md5_mock.call_count + sha1_mock.call_count, 1)
 
-    @mock.patch('__builtin__.open', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('hashlib.md5', autospec=True)
     def test_verify_image_failure(self, md5_mock, open_mock):
         image_info = self._build_fake_image_info()

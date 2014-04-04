@@ -16,8 +16,14 @@ limitations under the License.
 
 import mock
 from oslotest import base as test_base
+import six
 
 from ironic_python_agent import hardware
+
+if six.PY2:
+    OPEN_FUNCTION_NAME = '__builtin__.open'
+else:
+    OPEN_FUNCTION_NAME = 'builtins.open'
 
 
 class TestGenericHardwareManager(test_base.BaseTestCase):
@@ -27,7 +33,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
     @mock.patch('os.listdir')
     @mock.patch('os.path.exists')
-    @mock.patch('__builtin__.open')
+    @mock.patch(OPEN_FUNCTION_NAME)
     def test_list_network_interfaces(self,
                                      mocked_open,
                                      mocked_exists,
