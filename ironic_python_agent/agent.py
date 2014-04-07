@@ -158,18 +158,10 @@ class IronicPythonAgent(object):
             raise errors.RequestedObjectNotFoundError('Command Result',
                                                       result_id)
 
-    def _split_command(self, command_name):
-        command_parts = command_name.split('.', 1)
-        if len(command_parts) != 2:
-            raise errors.InvalidCommandError(
-                'Command name must be of the form <extension>.<name>')
-
-        return (command_parts[0], command_parts[1])
-
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
         with self.command_lock:
-            extension_part, command_part = self._split_command(command_name)
+            extension_part, command_part = utils.split_command(command_name)
 
             if len(self.command_results) > 0:
                 last_command = list(self.command_results.values())[-1]
