@@ -15,12 +15,17 @@ limitations under the License.
 """
 
 import json
+
 import requests
 
+from ironic_python_agent import backoff
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.openstack.common import log
 from ironic_python_agent.openstack.common import loopingcall
+
+
+LOG = log.getLogger(__name__)
 
 
 class APIClient(object):
@@ -73,43 +78,21 @@ class APIClient(object):
             raise errors.HeartbeatError('Invalid Heartbeat-Before header')
 
     def lookup_node(self, hardware_info, timeout, starting_interval):
-        timer = loopingcall.DynamicLoopingCall(
+        timer = backoff.BackOffLoopingCall(
             self._do_lookup,
-            hardware_info=hardware_info,
-            intervals=[starting_interval],
-            total_time=[0],
-            timeout=timeout)
-        node_content = timer.start().wait()
-
-        # True is returned on timeout
-        if node_content is True:
+            hardware_info=hardware_info)
+        try:
+            node_content = timer.start(starting_interval=starting_interval,
+                                       timeout=timeout).wait()
+        except backoff.LoopingCallTimeOut:
             raise errors.LookupNodeError('Could not look up node info. Check '
                                          'logs for details.')
         return node_content
 
-    def _do_lookup(self, hardware_info, timeout, intervals=[1],
-                   total_time=[0]):
+    def _do_lookup(self, hardware_info):
         """The actual call to lookup a node. Should be called inside
-        loopingcall.DynamicLoopingCall.
-
-        intervals and total_time are mutable so it can be changed by each run
-        in the looping call and accessed/changed on the next run.
+        loopingcall.BackOffLoopingCall.
         """
-        def next_interval(timeout, intervals=[], total_time=[]):
-            """Function to calculate what the next interval should be. Uses
-            exponential backoff and raises an exception (that won't
-            be caught by do_lookup) to kill the looping call if it goes too
-            long
-            """
-            new_interval = intervals[-1] * 2
-            if total_time[0] + new_interval > timeout:
-                # No retvalue signifies error
-                raise loopingcall.LoopingCallDone()
-
-            total_time[0] += new_interval
-            intervals.append(new_interval)
-            return new_interval
-
         path = '/{api_version}/drivers/teeth/vendor_passthru/lookup'.format(
             api_version=self.api_version
         )
@@ -125,30 +108,28 @@ class APIClient(object):
             response = self._request('POST', path, data=data)
         except Exception as e:
             self.log.warning('POST failed: %s' % str(e))
-            return next_interval(timeout, intervals, total_time)
+            return False
 
         if response.status_code != requests.codes.OK:
-            self.log.warning('Invalid status code: %s' %
-                             response.status_code)
-
-            return next_interval(timeout, intervals, total_time)
+            self.log.warning('Invalid status code: %s' % response.status_code)
+            return False
 
         try:
             content = json.loads(response.content)
         except Exception as e:
             self.log.warning('Error decoding response: %s' % str(e))
-            return next_interval(timeout, intervals, total_time)
+            return False
 
         # Check for valid response data
         if 'node' not in content or 'uuid' not in content['node']:
             self.log.warning('Got invalid node data from the API: %s' %
                              content)
-            return next_interval(timeout, intervals, total_time)
+            return False
 
         if 'heartbeat_timeout' not in content:
             self.log.warning('Got invalid heartbeat from the API: %s' %
                              content)
-            return next_interval(timeout, intervals, total_time)
+            return False
 
         # Got valid content
         raise loopingcall.LoopingCallDone(retvalue=content)
