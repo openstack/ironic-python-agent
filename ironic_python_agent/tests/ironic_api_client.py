@@ -173,7 +173,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
-        self.assertEqual(content['hardware'], [
+        self.assertEqual(content['version'], self.api_client.payload_version)
+        self.assertEqual(content['inventory'], [
             {
                 'type': 'mac_address',
                 'id': 'aa:bb:cc:dd:ee:ff',

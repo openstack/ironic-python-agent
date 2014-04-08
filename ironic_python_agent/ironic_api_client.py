@@ -25,6 +25,7 @@ from ironic_python_agent.openstack.common import loopingcall
 
 class APIClient(object):
     api_version = 'v1'
+    payload_version = '1'
 
     def __init__(self, api_url):
         self.api_url = api_url.rstrip('/')
@@ -116,7 +117,8 @@ class APIClient(object):
         # This hardware won't be saved on the node currently, because of
         # how driver_vendor_passthru is implemented (no node saving).
         data = {
-            'hardware': hardware_info
+            'version': self.payload_version,
+            'inventory': hardware_info
         }
 
         # Make the POST, make sure we get back normal data/status codes and
