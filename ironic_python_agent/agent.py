@@ -17,7 +17,6 @@ import threading
 import time
 
 import pkg_resources
-import six
 from stevedore import extension
 from wsgiref import simple_server
 
@@ -104,9 +103,10 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         return self.join()
 
 
-class IronicPythonAgent(object):
+class IronicPythonAgent(base.ExecuteCommandMixin):
     def __init__(self, api_url, advertise_address, listen_address,
                  lookup_timeout, lookup_interval):
+        super(IronicPythonAgent, self).__init__()
         self.api_url = api_url
         self.api_client = ironic_api_client.APIClient(self.api_url)
         self.listen_address = listen_address
@@ -114,22 +114,22 @@ class IronicPythonAgent(object):
         self.version = pkg_resources.get_distribution('ironic-python-agent')\
             .version
         self.api = app.VersionSelectorApplication(self)
-        self.command_results = utils.get_ordereddict()
         self.heartbeater = IronicPythonAgentHeartbeater(self)
         self.heartbeat_timeout = None
         self.hardware = hardware.get_manager()
-        self.command_lock = threading.Lock()
         self.log = log.getLogger(__name__)
         self.started_at = None
         self.node = None
-        self.ext_mgr = extension.ExtensionManager(
+        # lookup timeout in seconds
+        self.lookup_timeout = lookup_timeout
+        self.lookup_interval = lookup_interval
+
+    def get_extension_manager(self):
+        return extension.ExtensionManager(
             namespace='ironic_python_agent.extensions',
             invoke_on_load=True,
             propagate_map_exceptions=True,
         )
-        # lookup timeout in seconds
-        self.lookup_timeout = lookup_timeout
-        self.lookup_interval = lookup_interval
 
     def get_status(self):
         """Retrieve a serializable status."""
@@ -155,38 +155,6 @@ class IronicPythonAgent(object):
         except KeyError:
             raise errors.RequestedObjectNotFoundError('Command Result',
                                                       result_id)
-
-    def execute_command(self, command_name, **kwargs):
-        """Execute an agent command."""
-        with self.command_lock:
-            extension_part, command_part = utils.split_command(command_name)
-
-            if len(self.command_results) > 0:
-                last_command = list(self.command_results.values())[-1]
-                if not last_command.is_done():
-                    raise errors.CommandExecutionError('agent is busy')
-
-            try:
-                ext = self.ext_mgr[extension_part].obj
-                result = ext.execute(command_part, **kwargs)
-            except KeyError:
-                # Extension Not found
-                raise errors.RequestedObjectNotFoundError('Extension',
-                                                          extension_part)
-            except errors.InvalidContentError as e:
-                # Any command may raise a InvalidContentError which will be
-                # returned to the caller directly.
-                raise e
-            except Exception as e:
-                # Other errors are considered command execution errors, and are
-                # recorded as an
-                result = base.SyncCommandResult(command_name,
-                                                kwargs,
-                                                False,
-                                                six.text_type(e))
-
-            self.command_results[result.id] = result
-            return result
 
     def run(self):
         """Run the Ironic Python Agent."""

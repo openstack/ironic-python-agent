@@ -20,6 +20,7 @@ import six
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.openstack.common import log
+from ironic_python_agent import utils
 
 
 class AgentCommandStatus(object):
@@ -134,3 +135,60 @@ class BaseAgentExtension(object):
             result = SyncCommandResult(command_name, kwargs, True, result)
 
         return result
+
+    def check_cmd_presence(self, ext_obj, ext, cmd):
+        if not (hasattr(ext_obj, 'execute') and hasattr(ext_obj, 'command_map')
+                and cmd in ext_obj.command_map):
+            raise errors.InvalidCommandParamsError(
+                "Extension {0} doesn't provide {1} method".format(ext, cmd))
+
+
+class ExecuteCommandMixin(object):
+    def __init__(self):
+        self.command_lock = threading.Lock()
+        self.command_results = utils.get_ordereddict()
+        self.ext_mgr = self.get_extension_manager()
+
+    def get_extension_manager(self):
+        raise NotImplementedError(
+            'get_extension_manager should be implemented in successor class')
+
+    def split_command(self, command_name):
+        command_parts = command_name.split('.', 1)
+        if len(command_parts) != 2:
+            raise errors.InvalidCommandError(
+                'Command name must be of the form <extension>.<name>')
+
+        return (command_parts[0], command_parts[1])
+
+    def execute_command(self, command_name, **kwargs):
+        """Execute an agent command."""
+        with self.command_lock:
+            extension_part, command_part = self.split_command(command_name)
+
+            if len(self.command_results) > 0:
+                last_command = list(self.command_results.values())[-1]
+                if not last_command.is_done():
+                    raise errors.CommandExecutionError('agent is busy')
+
+            try:
+                ext = self.ext_mgr[extension_part].obj
+                result = ext.execute(command_part, **kwargs)
+            except KeyError:
+                # Extension Not found
+                raise errors.RequestedObjectNotFoundError('Extension',
+                                                          extension_part)
+            except errors.InvalidContentError as e:
+                # Any command may raise a InvalidContentError which will be
+                # returned to the caller directly.
+                raise e
+            except Exception as e:
+                # Other errors are considered command execution errors, and are
+                # recorded as an
+                result = SyncCommandResult(command_name,
+                                           kwargs,
+                                           False,
+                                           six.text_type(e))
+
+            self.command_results[result.id] = result
+            return result

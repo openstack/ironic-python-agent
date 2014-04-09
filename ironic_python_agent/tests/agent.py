@@ -19,7 +19,6 @@ import mock
 from oslotest import base as test_base
 import pkg_resources
 import six
-from stevedore import extension
 from wsgiref import simple_server
 
 from ironic_python_agent import agent
@@ -152,30 +151,6 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertEqual(status.version,
                          pkg_resources.get_distribution('ironic-python-agent')
                          .version)
-
-    def test_execute_command(self):
-        do_something_impl = mock.Mock()
-        fake_extension = FakeExtension()
-        fake_extension.command_map['do_something'] = do_something_impl
-        self.agent.ext_mgr = extension.ExtensionManager.\
-            make_test_instance([extension.Extension('fake', None,
-                                                    FakeExtension,
-                                                    fake_extension)])
-
-        self.agent.execute_command('fake.do_something', foo='bar')
-        do_something_impl.assert_called_once_with('do_something', foo='bar')
-
-    def test_execute_invalid_command(self):
-        self.assertRaises(errors.InvalidCommandError,
-                          self.agent.execute_command,
-                          'do_something',
-                          foo='bar')
-
-    def test_execute_unknown_command(self):
-        self.assertRaises(errors.RequestedObjectNotFoundError,
-                          self.agent.execute_command,
-                          'fake.do_something',
-                          foo='bar')
 
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')

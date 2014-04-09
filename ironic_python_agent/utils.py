@@ -38,14 +38,3 @@ def execute(*cmd, **kwargs):
     LOG.debug(gtu._('Command stdout is: "%s"') % result[0])
     LOG.debug(gtu._('Command stderr is: "%s"') % result[1])
     return result
-
-
-def split_command(command_name):
-    command_parts = command_name.split('.', 1)
-    if len(command_parts) != 2:
-        #NOTE(agordeev): fix to avoid import looping
-        from ironic_python_agent import errors
-        raise errors.InvalidCommandError(
-            'Command name must be of the form <extension>.<name>')
-
-    return (command_parts[0], command_parts[1])
