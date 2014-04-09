@@ -90,10 +90,17 @@ def run():
                              'doubled after each failure until timeout is '
                              'exceeded.')
 
+    parser.add_argument('--driver-name',
+                        default=kparams.get('ipa-driver-name',
+                                            'agent_ipmitool'),
+                        type=str,
+                        help='The Ironic driver in use for this node')
+
     args = parser.parse_args()
 
     agent.IronicPythonAgent(api_url or args.api_url,
                             (args.advertise_host, args.advertise_port),
                             (args.listen_host, args.listen_port),
                             args.lookup_timeout,
-                            args.lookup_interval).run()
+                            args.lookup_interval,
+                            args.driver_name).run()

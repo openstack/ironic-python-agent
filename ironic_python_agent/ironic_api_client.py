@@ -30,8 +30,9 @@ class APIClient(object):
     api_version = 'v1'
     payload_version = '2'
 
-    def __init__(self, api_url):
+    def __init__(self, api_url, driver_name):
         self.api_url = api_url.rstrip('/')
+        self.driver_name = driver_name
         self.session = requests.Session()
         self.encoder = encoding.RESTJSONEncoder()
         self.log = log.getLogger(__name__)
@@ -92,8 +93,9 @@ class APIClient(object):
         """The actual call to lookup a node. Should be called inside
         loopingcall.BackOffLoopingCall.
         """
-        path = '/{api_version}/drivers/teeth/vendor_passthru/lookup'.format(
-            api_version=self.api_version
+        path = '/{api_version}/drivers/{driver}/vendor_passthru/lookup'.format(
+            api_version=self.api_version,
+            driver=self.driver_name
         )
         # This hardware won't be saved on the node currently, because of
         # how driver_vendor_passthru is implemented (no node saving).
