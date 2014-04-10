@@ -65,16 +65,100 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                                '--report',
                                                check_exit_code=[0])
 
-    def test_list_hardwre_info(self):
+    @mock.patch('psutil.cpu_count')
+    @mock.patch(OPEN_FUNCTION_NAME)
+    def test_get_cpus(self, mocked_open, mocked_cpucount):
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.return_value = (
+            'processor       : 0\n'
+            'vendor_id       : GenuineIntel\n'
+            'cpu family      : 6\n'
+            'model           : 58\n'
+            'model name      : Intel(R) Core(TM) i7-3720QM CPU @ 2.60GHz\n'
+            'stepping        : 9\n'
+            'microcode       : 0x15\n'
+            'cpu MHz         : 2594.685\n'
+            'cache size      : 6144 KB\n'
+            'fpu             : yes\n'
+            'fpu_exception   : yes\n'
+            'cpuid level     : 13\n'
+            'wp              : yes\n'
+            'flags           : fpu vme de pse tsc msr pae mce cx8 apic sep '
+            'mtrr pge mca cmov pat pse36 clflush dts mmx fxsr sse sse2 ss '
+            'syscall nx rdtscp lm constant_tsc arch_perfmon pebs bts nopl '
+            'xtopology tsc_reliable nonstop_tsc aperfmperf eagerfpu pni '
+            'pclmulqdq ssse3 cx16 pcid sse4_1 sse4_2 x2apic popcnt aes xsave '
+            'avx f16c rdrand hypervisor lahf_lm ida arat epb xsaveopt pln pts '
+            'dtherm fsgsbase smep\n'
+            'bogomips        : 5189.37\n'
+            'clflush size    : 64\n'
+            'cache_alignment : 64\n'
+            'address sizes   : 40 bits physical, 48 bits virtual\n'
+            'power management:\n'
+            '\n'
+            'processor       : 1\n'
+            'vendor_id       : GenuineIntel\n'
+            'cpu family      : 6\n'
+            'model           : 58\n'
+            'model name      : Intel(R) Core(TM) i7-3720QM CPU @ 2.60GHz\n'
+            'stepping        : 9\n'
+            'microcode       : 0x15\n'
+            'cpu MHz         : 2594.685\n'
+            'cache size      : 6144 KB\n'
+            'fpu             : yes\n'
+            'fpu_exception   : yes\n'
+            'cpuid level     : 13\n'
+            'wp              : yes\n'
+            'flags           : fpu vme de pse tsc msr pae mce cx8 apic sep '
+            'mtrr pge mca cmov pat pse36 clflush dts mmx fxsr sse sse2 ss '
+            'syscall nx rdtscp lm constant_tsc arch_perfmon pebs bts nopl '
+            'xtopology tsc_reliable nonstop_tsc aperfmperf eagerfpu pni '
+            'pclmulqdq ssse3 cx16 pcid sse4_1 sse4_2 x2apic popcnt aes xsave '
+            'avx f16c rdrand hypervisor lahf_lm ida arat epb xsaveopt pln pts '
+            'dtherm fsgsbase smep\n'
+            'bogomips        : 5189.37\n'
+            'clflush size    : 64\n'
+            'cache_alignment : 64\n'
+            'address sizes   : 40 bits physical, 48 bits virtual\n'
+            'power management:\n'
+        )
+
+        mocked_cpucount.return_value = 2
+
+        cpus = self.hardware.get_cpus()
+        self.assertEqual(cpus.model_name,
+                         'Intel(R) Core(TM) i7-3720QM CPU @ 2.60GHz')
+        self.assertEqual(cpus.frequency, '2594.685')
+        self.assertEqual(cpus.count, 2)
+
+    def test_list_hardware_info(self):
         self.hardware.list_network_interfaces = mock.Mock()
         self.hardware.list_network_interfaces.return_value = [
             hardware.NetworkInterface('eth0', '00:0c:29:8c:11:b1'),
             hardware.NetworkInterface('eth1', '00:0c:29:8c:11:b2'),
         ]
 
+        self.hardware.get_cpus = mock.Mock()
+        self.hardware.get_cpus.return_value = hardware.CPU(
+            'Awesome CPU x14 9001',
+            9001,
+            14)
+
+        self.hardware.get_memory = mock.Mock()
+        self.hardware.get_memory.return_value = hardware.Memory(1017012)
+
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.return_value = [
+            hardware.BlockDevice('/dev/sdj', 1073741824),
+            hardware.BlockDevice('/dev/hdaa', 65535),
+        ]
+
         hardware_info = self.hardware.list_hardware_info()
-        self.assertEqual(len(hardware_info), 2)
-        self.assertEqual(hardware_info[0].type, 'mac_address')
-        self.assertEqual(hardware_info[1].type, 'mac_address')
-        self.assertEqual(hardware_info[0].id, '00:0c:29:8c:11:b1')
-        self.assertEqual(hardware_info[1].id, '00:0c:29:8c:11:b2')
+        self.assertEqual(hardware_info['memory'], self.hardware.get_memory())
+        self.assertEqual(hardware_info['cpu'], self.hardware.get_cpus())
+        self.assertEqual(hardware_info['disks'],
+                         self.hardware.list_block_devices())
+        self.assertEqual(hardware_info['interfaces'],
+                         self.hardware.list_network_interfaces())

@@ -30,7 +30,7 @@ LOG = log.getLogger(__name__)
 
 class APIClient(object):
     api_version = 'v1'
-    payload_version = '1'
+    payload_version = '2'
 
     def __init__(self, api_url):
         self.api_url = api_url.rstrip('/')
