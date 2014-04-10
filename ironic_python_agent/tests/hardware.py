@@ -19,6 +19,7 @@ from oslotest import base as test_base
 import six
 
 from ironic_python_agent import hardware
+from ironic_python_agent import utils
 
 if six.PY2:
     OPEN_FUNCTION_NAME = '__builtin__.open'
@@ -49,9 +50,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual(interfaces[0].name, 'eth0')
         self.assertEqual(interfaces[0].mac_address, '00:0c:29:8c:11:b1')
 
-    def test_get_os_install_device(self):
-        self.hardware._cmd = mock.Mock()
-        self.hardware._cmd.return_value = (
+    @mock.patch.object(utils, 'execute')
+    def test_get_os_install_device(self, mocked_execute):
+        mocked_execute.return_value = (
             'RO    RA   SSZ   BSZ   StartSec            Size   Device\n'
             'rw   256   512  4096          0    249578283616   /dev/sda\n'
             'rw   256   512  4096       2048      8587837440   /dev/sda1\n'
@@ -60,7 +61,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'rw   256   512  4096          0    249578283616   /dev/sdc\n', '')
 
         self.assertEqual(self.hardware.get_os_install_device(), '/dev/sdb')
-        self.hardware._cmd.assert_called_once_with(['blockdev', '--report'])
+        mocked_execute.assert_called_once_with('blockdev',
+                                               '--report',
+                                               check_exit_code=[0])
 
     def test_list_hardwre_info(self):
         self.hardware.list_network_interfaces = mock.Mock()

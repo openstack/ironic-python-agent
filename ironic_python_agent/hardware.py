@@ -17,7 +17,6 @@ limitations under the License.
 import abc
 import functools
 import os
-import subprocess
 
 import six
 import stevedore
@@ -124,12 +123,9 @@ class GenericHardwareManager(HardwareManager):
                 for name in iface_names
                 if self._is_device(name)]
 
-    def _cmd(self, command):
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
-        return process.communicate()
-
     def _list_block_devices(self):
-        report = self._cmd(['blockdev', '--report'])[0]
+        report = utils.execute('blockdev', '--report',
+                               check_exit_code=[0])[0]
         lines = report.split('\n')
         lines = [line.split() for line in lines if line != '']
         startsec_idx = lines[0].index('StartSec')
