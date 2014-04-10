@@ -108,8 +108,9 @@ class GenericHardwareManager(HardwareManager):
     def _get_interface_info(self, interface_name):
         addr_path = '{0}/class/net/{1}/address'.format(self.sys_path,
                                                      interface_name)
-        addr_file = open(addr_path, 'r')
-        mac_addr = addr_file.read().strip()
+        with open(addr_path) as addr_file:
+            mac_addr = addr_file.read().strip()
+
         return NetworkInterface(interface_name, mac_addr)
 
     def _is_device(self, interface_name):

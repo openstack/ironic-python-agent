@@ -40,7 +40,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                      mocked_listdir):
         mocked_listdir.return_value = ['lo', 'eth0']
         mocked_exists.side_effect = [False, True]
-        mocked_open.return_value.read.return_value = '00:0c:29:8c:11:b1\n'
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.return_value = '00:0c:29:8c:11:b1\n'
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(len(interfaces), 1)
         self.assertEqual(interfaces[0].name, 'eth0')
