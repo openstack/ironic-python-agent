@@ -36,16 +36,14 @@ class TestStandbyExtension(test_base.BaseTestCase):
             'urls': [
                 'http://example.org',
             ],
-            'hashes': {
-                'md5': 'abc123',
-            },
+            'checksum': 'abc123'
         }
 
     def test_validate_image_info_success(self):
         standby._validate_image_info(None, self._build_fake_image_info())
 
     def test_validate_image_info_missing_field(self):
-        for field in ['id', 'urls', 'hashes']:
+        for field in ['id', 'urls', 'checksum']:
             invalid_info = self._build_fake_image_info()
             del invalid_info[field]
 
@@ -69,17 +67,17 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           standby._validate_image_info,
                           invalid_info)
 
-    def test_validate_image_info_invalid_hashes(self):
+    def test_validate_image_info_invalid_checksum(self):
         invalid_info = self._build_fake_image_info()
-        invalid_info['hashes'] = 'this_is_not_a_dict'
+        invalid_info['checksum'] = {'not': 'a string'}
 
         self.assertRaises(errors.InvalidCommandParamsError,
                           standby._validate_image_info,
                           invalid_info)
 
-    def test_validate_image_info_empty_hashes(self):
+    def test_validate_image_info_empty_checksum(self):
         invalid_info = self._build_fake_image_info()
-        invalid_info['hashes'] = {}
+        invalid_info['checksum'] = ''
 
         self.assertRaises(errors.InvalidCommandParamsError,
                           standby._validate_image_info,
@@ -103,49 +101,70 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual(location, '/tmp/fake_id')
 
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
-    @mock.patch('subprocess.call', autospec=True)
-    def test_write_image(self, call_mock, open_mock):
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_write_image(self, execute_mock, open_mock):
         image_info = self._build_fake_image_info()
         device = '/dev/sda'
         location = standby._image_location(image_info)
         script = standby._path_to_script('shell/write_image.sh')
         command = ['/bin/bash', script, location, device]
-        call_mock.return_value = 0
+        execute_mock.return_value = 0
 
         standby._write_image(image_info, device)
-        call_mock.assert_called_once_with(command)
+        execute_mock.assert_called_once_with(*command)
 
-        call_mock.reset_mock()
-        call_mock.return_value = 1
+        execute_mock.reset_mock()
+        execute_mock.return_value = 1
 
         self.assertRaises(errors.ImageWriteError,
                           standby._write_image,
                           image_info,
                           device)
 
-        call_mock.assert_called_once_with(command)
+        execute_mock.assert_called_once_with(*command)
 
+    @mock.patch('gzip.GzipFile', autospec=True)
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
-    @mock.patch('subprocess.call', autospec=True)
-    def test_copy_configdrive_to_disk(self, call_mock, open_mock):
+    @mock.patch('base64.b64decode', autospec=True)
+    def test_write_configdrive_to_file(self, b64_mock, open_mock, gzip_mock):
+        open_mock.return_value.__enter__ = lambda s: s
+        open_mock.return_value.__exit__ = mock.Mock()
+        write_mock = open_mock.return_value.write
+        gzip_read_mock = gzip_mock.return_value.read
+        gzip_read_mock.return_value = 'ungzipped'
+        b64_mock.return_value = 'configdrive_data'
+        filename = standby._configdrive_location()
+
+        standby._write_configdrive_to_file('b64data', filename)
+        open_mock.assert_called_once_with(filename, 'wb')
+        gzip_read_mock.assert_called_once_with()
+        write_mock.assert_called_once_with('ungzipped')
+
+    @mock.patch(('ironic_python_agent.extensions.standby.'
+                 '_write_configdrive_to_file'),
+                autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_write_configdrive_to_partition(self, execute_mock, open_mock,
+                                            configdrive_mock):
         device = '/dev/sda'
-        configdrive = 'configdrive'
+        configdrive = standby._configdrive_location()
         script = standby._path_to_script('shell/copy_configdrive_to_disk.sh')
         command = ['/bin/bash', script, configdrive, device]
-        call_mock.return_value = 0
+        execute_mock.return_value = 0
 
-        standby._copy_configdrive_to_disk(configdrive, device)
-        call_mock.assert_called_once_with(command)
+        standby._write_configdrive_to_partition(configdrive, device)
+        execute_mock.assert_called_once_with(*command)
 
-        call_mock.reset_mock()
-        call_mock.return_value = 1
+        execute_mock.reset_mock()
+        execute_mock.return_value = 1
 
         self.assertRaises(errors.ConfigDriveWriteError,
-                          standby._copy_configdrive_to_disk,
+                          standby._write_configdrive_to_partition,
                           configdrive,
                           device)
 
-        call_mock.assert_called_once_with(command)
+        execute_mock.assert_called_once_with(*command)
 
     @mock.patch('hashlib.md5', autospec=True)
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
@@ -160,7 +179,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         read_mock = open_mock.return_value.read
         read_mock.return_value = 'content'
         hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = list(image_info['hashes'].values())[0]
+        hexdigest_mock.return_value = image_info['checksum']
 
         standby._download_image(image_info)
         requests_mock.assert_called_once_with(image_info['urls'][0],
@@ -194,21 +213,16 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           image_info)
 
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
-    @mock.patch('hashlib.sha1', autospec=True)
     @mock.patch('hashlib.md5', autospec=True)
-    def test_verify_image_success(self, md5_mock, sha1_mock, open_mock):
+    def test_verify_image_success(self, md5_mock, open_mock):
         image_info = self._build_fake_image_info()
-        image_info['hashes']['sha1'] = image_info['hashes']['md5']
         hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['hashes']['md5']
-        hexdigest_mock = sha1_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['hashes']['sha1']
+        hexdigest_mock.return_value = image_info['checksum']
         image_location = '/foo/bar'
 
         verified = standby._verify_image(image_info, image_location)
         self.assertTrue(verified)
-        # make sure we only check one hash, even though both are valid
-        self.assertEqual(md5_mock.call_count + sha1_mock.call_count, 1)
+        self.assertEqual(1, md5_mock.call_count)
 
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('hashlib.md5', autospec=True)
@@ -243,10 +257,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual(None, async_result.command_result)
 
     @mock.patch(('ironic_python_agent.extensions.standby.'
-                 '_copy_configdrive_to_disk'),
-                autospec=True)
-    @mock.patch(('ironic_python_agent.extensions.standby.configdrive.'
-                 'write_configdrive'),
+                 '_write_configdrive_to_partition'),
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.get_manager', autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._write_image',
@@ -260,65 +271,60 @@ class TestStandbyExtension(test_base.BaseTestCase):
                            download_mock,
                            write_mock,
                            hardware_mock,
-                           configdrive_mock,
                            configdrive_copy_mock):
         image_info = self._build_fake_image_info()
-        location_mock.return_value = 'THE CLOUD'
+        location_mock.return_value = '/tmp/configdrive'
         download_mock.return_value = None
         write_mock.return_value = None
         manager_mock = hardware_mock.return_value
         manager_mock.get_os_install_device.return_value = 'manager'
-        configdrive_mock.return_value = None
         configdrive_copy_mock.return_value = None
 
         async_result = self.agent_extension.prepare_image('prepare_image',
-                                                     image_info=image_info,
-                                                     metadata={},
-                                                     files=[])
+                image_info=image_info,
+                configdrive='configdrive_data')
         async_result.join()
 
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        configdrive_mock.assert_called_once_with('THE CLOUD', {}, [])
-        configdrive_copy_mock.assert_called_once_with('THE CLOUD', 'manager')
+        configdrive_copy_mock.assert_called_once_with('configdrive_data',
+                                                      'manager')
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertEqual(None, async_result.command_result)
 
         download_mock.reset_mock()
         write_mock.reset_mock()
-        configdrive_mock.reset_mock()
         configdrive_copy_mock.reset_mock()
         # image is now cached, make sure download/write doesn't happen
         async_result = self.agent_extension.prepare_image('prepare_image',
-                                                     image_info=image_info,
-                                                     metadata={},
-                                                     files=[])
+                image_info=image_info,
+                configdrive='configdrive_data')
         async_result.join()
 
         self.assertEqual(download_mock.call_count, 0)
         self.assertEqual(write_mock.call_count, 0)
-        configdrive_mock.assert_called_once_with('THE CLOUD', {}, [])
-        configdrive_copy_mock.assert_called_once_with('THE CLOUD', 'manager')
+        configdrive_copy_mock.assert_called_once_with('configdrive_data',
+                                                      'manager')
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertEqual(None, async_result.command_result)
 
-    @mock.patch('subprocess.call', autospec=True)
-    def test_run_image(self, call_mock):
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_run_image(self, execute_mock):
         script = standby._path_to_script('shell/reboot.sh')
         command = ['/bin/bash', script]
-        call_mock.return_value = 0
+        execute_mock.return_value = 0
 
         success_result = self.agent_extension.run_image('run_image')
         success_result.join()
-        call_mock.assert_called_once_with(command)
+        execute_mock.assert_called_once_with(*command)
 
-        call_mock.reset_mock()
-        call_mock.return_value = 1
+        execute_mock.reset_mock()
+        execute_mock.return_value = 1
 
         failed_result = self.agent_extension.run_image('run_image')
         failed_result.join()
 
-        call_mock.assert_called_once_with(command)
+        execute_mock.assert_called_once_with(*command)
         self.assertEqual('FAILED', failed_result.command_status)

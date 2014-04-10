@@ -18,7 +18,8 @@ from ironic_python_agent import agent
 from ironic_python_agent.openstack.common import log
 
 
-LOG = log.getLogger()
+log.setup('ironic-python-agent')
+LOG = log.getLogger(__name__)
 
 
 def _get_kernel_params():
