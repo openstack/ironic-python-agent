@@ -180,7 +180,8 @@ class TestBaseAgent(test_base.BaseTestCase):
                           foo='bar')
 
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    def test_run(self, wsgi_server_cls):
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
+    def test_run(self, mocked_list_hardware, wsgi_server_cls):
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
 
