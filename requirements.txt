@@ -1,7 +1,7 @@
 requests>=1.1
 stevedore>=0.14
 ordereddict
--e git+https://github.com/jimrollenhagen/pecan@7c8db9bca2daf33a4616f0308db75a0c0d55d015#egg=pecan
+pecan==0.5.0
 WSME>=0.6
 six>=1.5.2
 eventlet>=0.13.0
