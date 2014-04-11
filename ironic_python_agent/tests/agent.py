@@ -22,10 +22,10 @@ import six
 from wsgiref import simple_server
 
 from ironic_python_agent import agent
-from ironic_python_agent import base
 from ironic_python_agent.cmd import agent as agent_cmd
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
+from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 
 EXPECTED_ERROR = RuntimeError('command execution failed')

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import threading
 import uuid
 
@@ -192,3 +193,27 @@ class ExecuteCommandMixin(object):
 
             self.command_results[result.id] = result
             return result
+
+
+def async_command(validator=None):
+    """Will run the command in an AsyncCommandResult in its own thread.
+    command_name is set based on the func name and command_params will
+    be whatever args/kwargs you pass into the decorated command.
+    """
+    def async_decorator(func):
+        @functools.wraps(func)
+        def wrapper(self, command_name, **command_params):
+            # Run a validator before passing everything off to async.
+            # validators should raise exceptions or return silently.
+            if validator:
+                validator(self, **command_params)
+
+            # bind self to func so that AsyncCommandResult doesn't need to
+            # know about the mode
+            bound_func = functools.partial(func, self)
+
+            return AsyncCommandResult(command_name,
+                                      command_params,
+                                      bound_func).start()
+        return wrapper
+    return async_decorator

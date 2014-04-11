@@ -16,8 +16,8 @@ import mock
 from oslotest import base as test_base
 from stevedore import extension
 
-from ironic_python_agent import base
 from ironic_python_agent import errors
+from ironic_python_agent.extensions import base
 
 
 class FakeExtension(base.BaseAgentExtension):

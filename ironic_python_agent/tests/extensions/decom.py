@@ -14,7 +14,7 @@
 
 from oslotest import base as test_base
 
-from ironic_python_agent import decom
+from ironic_python_agent.extensions import decom
 
 
 class TestDecomExtension(test_base.BaseTestCase):

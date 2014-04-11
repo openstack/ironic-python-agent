@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ironic_python_agent import base
+from ironic_python_agent.extensions import base
 
 
 class DecomExtension(base.BaseAgentExtension):

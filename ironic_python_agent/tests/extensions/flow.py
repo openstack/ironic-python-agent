@@ -19,10 +19,9 @@ from oslotest import base as test_base
 from stevedore import enabled
 from stevedore import extension
 
-from ironic_python_agent import base
-from ironic_python_agent import decorators
 from ironic_python_agent import errors
-from ironic_python_agent import flow
+from ironic_python_agent.extensions import base
+from ironic_python_agent.extensions import flow
 
 
 FLOW_INFO = [
@@ -42,7 +41,7 @@ class FakeExtension(base.BaseAgentExtension):
         self.command_map['sleep'] = self.sleep
         self.command_map['sync_sleep'] = self.sync_sleep
 
-    @decorators.async_command()
+    @base.async_command()
     def sleep(self, command_name, sleep_info=None):
         time.sleep(sleep_info['time'])
 

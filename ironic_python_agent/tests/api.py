@@ -20,7 +20,7 @@ import pecan
 import pecan.testing
 
 from ironic_python_agent import agent
-from ironic_python_agent import base
+from ironic_python_agent.extensions import base
 
 
 PATH_PREFIX = '/v1'

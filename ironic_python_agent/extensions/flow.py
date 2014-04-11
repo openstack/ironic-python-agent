@@ -14,9 +14,8 @@
 
 from stevedore import enabled
 
-from ironic_python_agent import base
-from ironic_python_agent import decorators
 from ironic_python_agent import errors
+from ironic_python_agent.extensions import base
 from ironic_python_agent.openstack.common import log
 
 LOG = log.getLogger(__name__)
@@ -51,7 +50,7 @@ class FlowExtension(base.BaseAgentExtension, base.ExecuteCommandMixin):
             propagate_map_exceptions=True,
         )
 
-    @decorators.async_command(_validate_exts)
+    @base.async_command(_validate_exts)
     def start_flow(self, command_name, flow=None):
         for task in flow:
             for method, params in task.items():
