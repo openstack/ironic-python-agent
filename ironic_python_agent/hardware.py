@@ -73,6 +73,7 @@ class NetworkInterface(object):
         self.switch_chassis_descr = None
 
 
+@six.add_metaclass(abc.ABCMeta)
 class HardwareManager(object):
     @abc.abstractmethod
     def evaluate_hardware_support(cls):
