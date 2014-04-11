@@ -41,12 +41,18 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
     def setUp(self):
         super(TestBaseIronicPythonAgent, self).setUp()
         self.api_client = ironic_api_client.APIClient(API_URL)
-        self.hardware_info = [
-            hardware.HardwareInfo(hardware.HardwareType.MAC_ADDRESS,
-                                  'aa:bb:cc:dd:ee:ff'),
-            hardware.HardwareInfo(hardware.HardwareType.MAC_ADDRESS,
-                                  'ff:ee:dd:cc:bb:aa'),
-        ]
+        self.hardware_info = {
+            'interfaces': [
+                hardware.NetworkInterface('eth0', '00:0c:29:8c:11:b1'),
+                hardware.NetworkInterface('eth1', '00:0c:29:8c:11:b2'),
+            ],
+            'cpu': hardware.CPU('Awesome Jay CPU x10 9001', '9001', '10'),
+            'disks': [
+                hardware.BlockDevice('/dev/sdj', '9001'),
+                hardware.BlockDevice('/dev/hdj', '9002'),
+            ],
+            'memory': hardware.Memory('8675309'),
+        }
 
     def test_successful_heartbeat(self):
         expected_heartbeat_before = time.time() + 120
@@ -65,7 +71,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.assertEqual(heartbeat_before, expected_heartbeat_before)
 
         heartbeat_path = 'v1/nodes/deadbeef-dabb-ad00-b105-f00d00bab10c/' \
-                       'vendor_passthru/heartbeat'
+                         'vendor_passthru/heartbeat'
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'POST')
         self.assertEqual(request_args[1], API_URL + heartbeat_path)
@@ -162,16 +168,40 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
         self.assertEqual(content['version'], self.api_client.payload_version)
-        self.assertEqual(content['inventory'], [
-            {
-                'type': 'mac_address',
-                'id': 'aa:bb:cc:dd:ee:ff',
+        self.assertEqual(content['inventory'], {
+            u'interfaces': [
+                {
+                    u'mac_address': u'00:0c:29:8c:11:b1',
+                    u'name': u'eth0',
+                    u'switch_chassis_descr': None,
+                    u'switch_port_descr': None
+                },
+                {
+                    u'mac_address': u'00:0c:29:8c:11:b2',
+                    u'name': u'eth1',
+                    u'switch_chassis_descr': None,
+                    'switch_port_descr': None
+                }
+            ],
+            u'cpu': {
+                u'model_name': u'Awesome Jay CPU x10 9001',
+                u'frequency': u'9001',
+                u'count': u'10',
             },
-            {
-                'type': 'mac_address',
-                'id': 'ff:ee:dd:cc:bb:aa',
+            u'disks': [
+                {
+                    u'name': u'/dev/sdj',
+                    u'size': u'9001',
+                },
+                {
+                    u'name': u'/dev/hdj',
+                    u'size': u'9002',
+                },
+            ],
+            u'memory': {
+                u'total': u'8675309',
             },
-        ])
+        })
 
     def test_do_lookup_bad_response_code(self):
         response = FakeResponse(status_code=400, content={

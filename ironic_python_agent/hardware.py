@@ -18,6 +18,7 @@ import abc
 import functools
 import os
 
+import psutil
 import six
 import stevedore
 
@@ -45,32 +46,57 @@ class HardwareType(object):
     MAC_ADDRESS = 'mac_address'
 
 
-class HardwareInfo(encoding.Serializable):
-    def __init__(self, type, id):
-        self.type = type
-        self.id = id
+class BlockDevice(encoding.Serializable):
+    def __init__(self, name, size):
+        self.name = name
+        self.size = size
 
     def serialize(self):
         return utils.get_ordereddict([
-            ('type', self.type),
-            ('id', self.id),
+            ('name', self.name),
+            ('size', self.size),
         ])
 
 
-class BlockDevice(object):
-    def __init__(self, name, size, start_sector):
-        self.name = name
-        self.size = size
-        self.start_sector = start_sector
-
-
-class NetworkInterface(object):
+class NetworkInterface(encoding.Serializable):
     def __init__(self, name, mac_addr):
         self.name = name
         self.mac_address = mac_addr
         # TODO(russellhaering): Pull these from LLDP
         self.switch_port_descr = None
         self.switch_chassis_descr = None
+
+    def serialize(self):
+        return utils.get_ordereddict([
+            ('name', self.name),
+            ('mac_address', self.mac_address),
+            ('switch_port_descr', self.switch_port_descr),
+            ('switch_chassis_descr', self.switch_port_descr),
+        ])
+
+
+class CPU(encoding.Serializable):
+    def __init__(self, model_name, frequency, count):
+        self.model_name = model_name
+        self.frequency = frequency
+        self.count = count
+
+    def serialize(self):
+        return utils.get_ordereddict([
+            ('model_name', self.model_name),
+            ('frequency', self.frequency),
+            ('count', self.count),
+        ])
+
+
+class Memory(encoding.Serializable):
+    def __init__(self, total):
+        self.total = total
+
+    def serialize(self):
+        return utils.get_ordereddict([
+            ('total', self.total),
+        ])
 
 
 class HardwareManager(object):
@@ -87,10 +113,11 @@ class HardwareManager(object):
         pass
 
     def list_hardware_info(self):
-        hardware_info = []
-        for interface in self.list_network_interfaces():
-            hardware_info.append(HardwareInfo(HardwareType.MAC_ADDRESS,
-                                              interface.mac_address))
+        hardware_info = {}
+        hardware_info['interfaces'] = self.list_network_interfaces()
+        hardware_info['cpu'] = self.get_cpus()
+        hardware_info['disks'] = self.list_block_devices()
+        hardware_info['memory'] = self.get_memory()
         return hardware_info
 
 
@@ -123,7 +150,26 @@ class GenericHardwareManager(HardwareManager):
                 for name in iface_names
                 if self._is_device(name)]
 
-    def _list_block_devices(self):
+    def get_cpus(self):
+        model = None
+        freq = None
+        with open('/proc/cpuinfo') as f:
+            lines = f.read()
+            for line in lines.split('\n'):
+                if model and freq:
+                    break
+                if not model and line.startswith('model name'):
+                    model = line.split(':')[1].strip()
+                if not freq and line.startswith('cpu MHz'):
+                    freq = line.split(':')[1].strip()
+
+        return CPU(model, freq, psutil.cpu_count())
+
+    def get_memory(self):
+        # psutil returns a long, force it to an int
+        return Memory(int(psutil.phymem_usage().total))
+
+    def list_block_devices(self):
         report = utils.execute('blockdev', '--report',
                                check_exit_code=[0])[0]
         lines = report.split('\n')
@@ -131,20 +177,17 @@ class GenericHardwareManager(HardwareManager):
         startsec_idx = lines[0].index('StartSec')
         device_idx = lines[0].index('Device')
         size_idx = lines[0].index('Size')
+        # If a device doesn't start at sector 0, assume it is a partition
         return [BlockDevice(line[device_idx],
-                            int(line[size_idx]),
-                            int(line[startsec_idx]))
+                            int(line[size_idx]))
                 for line
-                in lines[1:]]
+                in lines[1:] if int(line[startsec_idx]) == 0]
 
     def get_os_install_device(self):
-        # Assume anything with a start sector other than 0, is a partition
-        block_devices = [device for device in self._list_block_devices()
-                         if device.start_sector == 0]
-
         # Find the first device larger than 4GB, assume it is the OS disk
         # TODO(russellhaering): This isn't a valid assumption in all cases,
         #                       is there a more reasonable default behavior?
+        block_devices = self.list_block_devices()
         block_devices.sort(key=lambda device: device.size)
         for device in block_devices:
             if device.size >= (4 * pow(1024, 3)):
