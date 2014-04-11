@@ -20,6 +20,7 @@ import time
 import mock
 from oslotest import base as test_base
 
+from ironic_python_agent import backoff
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
@@ -111,21 +112,16 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           advertise_address=('192.0.2.1', '9999'))
 
     @mock.patch('eventlet.greenthread.sleep')
-    def test_lookup_node(self, sleep_mock):
+    @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup')
+    def test_lookup_node(self, lookup_mock, sleep_mock):
         content = {
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             },
             'heartbeat_timeout': 300
         }
-        response = FakeResponse(status_code=200, content={
-            'node': {
-                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
-            },
-            'heartbeat_timeout': 300
-        })
-        self.api_client.session.request = mock.Mock()
-        self.api_client.session.request.return_value = response
+        lookup_mock.side_effect = loopingcall.LoopingCallDone(
+            retvalue=content)
         returned_content = self.api_client.lookup_node(
             hardware_info=self.hardware_info,
             timeout=300,
@@ -134,15 +130,9 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.assertEqual(content, returned_content)
 
     @mock.patch('eventlet.greenthread.sleep')
-    def test_lookup_node_exception(self, sleep_mock):
-        bad_response = FakeResponse(status_code=500, content={
-            'node': {
-                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
-            },
-            'heartbeat_timeout': 300
-        })
-        self.api_client.session.request = mock.Mock()
-        self.api_client.session.request.return_value = bad_response
+    @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup')
+    def test_lookup_timeout(self, lookup_mock, sleep_mock):
+        lookup_mock.side_effect = backoff.LoopingCallTimeOut()
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
                           hardware_info=self.hardware_info,
@@ -162,9 +152,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
         self.assertRaises(loopingcall.LoopingCallDone,
                           self.api_client._do_lookup,
-                          hardware_info=self.hardware_info,
-                          timeout=300,
-                          intervals=[2])
+                          hardware_info=self.hardware_info)
 
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'POST')
@@ -195,13 +183,9 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        total_time = [0]
-        interval = self.api_client._do_lookup(self.hardware_info,
-                                              timeout=300,
-                                              total_time=total_time,
-                                              intervals=[2])
-        self.assertEqual(4, interval)
-        self.assertEqual(4, total_time[0])
+        error = self.api_client._do_lookup(self.hardware_info)
+
+        self.assertFalse(error)
 
     def test_do_lookup_bad_response_data(self):
         response = FakeResponse(status_code=200, content={
@@ -211,13 +195,9 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        total_time = [0]
-        interval = self.api_client._do_lookup(self.hardware_info,
-                                              timeout=300,
-                                              total_time=total_time,
-                                              intervals=[2])
-        self.assertEqual(4, interval)
-        self.assertEqual(4, total_time[0])
+        error = self.api_client._do_lookup(self.hardware_info)
+
+        self.assertFalse(error)
 
     def test_do_lookup_no_heartbeat_timeout(self):
         response = FakeResponse(status_code=200, content={
@@ -229,13 +209,9 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        total_time = [0]
-        interval = self.api_client._do_lookup(self.hardware_info,
-                                              timeout=300,
-                                              total_time=total_time,
-                                              intervals=[2])
-        self.assertEqual(4, interval)
-        self.assertEqual(4, total_time[0])
+        error = self.api_client._do_lookup(self.hardware_info)
+
+        self.assertFalse(error)
 
     def test_do_lookup_bad_response_body(self):
         response = FakeResponse(status_code=200, content={
@@ -245,31 +221,6 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        total_time = [0]
-        interval = self.api_client._do_lookup(self.hardware_info,
-                                              timeout=300,
-                                              total_time=total_time,
-                                              intervals=[2])
-        self.assertEqual(4, interval)
-        self.assertEqual(4, total_time[0])
+        error = self.api_client._do_lookup(self.hardware_info)
 
-    @mock.patch('eventlet.greenthread.sleep')
-    def test_lookup_node_exponential_backoff(self, sleep_mock):
-        bad_response = FakeResponse(status_code=500, content={
-            'node': {
-                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
-            },
-            'heartbeat_timeout': 300
-        })
-        self.api_client.session.request = mock.Mock()
-        self.api_client.session.request.return_value = bad_response
-        self.assertRaises(errors.LookupNodeError,
-                          self.api_client.lookup_node,
-                          hardware_info=self.hardware_info,
-                          timeout=300,
-                          starting_interval=1)
-        # 254 seconds before timeout
-        expected_times = [mock.call(2), mock.call(4), mock.call(8),
-                          mock.call(16), mock.call(32), mock.call(64),
-                          mock.call(128)]
-        self.assertEqual(expected_times, sleep_mock.call_args_list)
+        self.assertFalse(error)
