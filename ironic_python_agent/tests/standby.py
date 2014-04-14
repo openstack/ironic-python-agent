@@ -45,7 +45,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         }
 
     def test_validate_image_info_success(self):
-        standby._validate_image_info(self._build_fake_image_info())
+        standby._validate_image_info(None, self._build_fake_image_info())
 
     def test_validate_image_info_missing_field(self):
         for field in ['id', 'urls', 'hashes']:

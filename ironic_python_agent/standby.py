@@ -133,7 +133,7 @@ def _verify_image(image_info, image_location):
     return False
 
 
-def _validate_image_info(image_info=None, **kwargs):
+def _validate_image_info(ext, image_info=None, **kwargs):
     image_info = image_info or {}
 
     for field in ['id', 'urls', 'hashes']:

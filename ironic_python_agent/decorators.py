@@ -28,7 +28,7 @@ def async_command(validator=None):
             # Run a validator before passing everything off to async.
             # validators should raise exceptions or return silently.
             if validator:
-                validator(**command_params)
+                validator(self, **command_params)
 
             # bind self to func so that AsyncCommandResult doesn't need to
             # know about the mode
