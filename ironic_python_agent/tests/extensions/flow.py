@@ -45,6 +45,7 @@ class FakeExtension(base.BaseAgentExtension):
     def sleep(self, command_name, sleep_info=None):
         time.sleep(sleep_info['time'])
 
+    @base.sync_command()
     def sync_sleep(self, command_name, sleep_info=None):
         time.sleep(sleep_info['time'])
 

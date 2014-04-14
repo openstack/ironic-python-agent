@@ -20,9 +20,33 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 
 
+def _fake_validator(ext, **kwargs):
+    if not kwargs.get('is_valid', True):
+        raise errors.InvalidCommandParamsError('error')
+
+
+class ExecutionError(errors.RESTError):
+    def __init__(self):
+        super(ExecutionError, self).__init__('failed')
+
+
 class FakeExtension(base.BaseAgentExtension):
     def __init__(self):
         super(FakeExtension, self).__init__('FAKE')
+        self.command_map['fake_async_command'] = self.fake_async_command
+        self.command_map['fake_sync_command'] = self.fake_sync_command
+
+    @base.async_command(_fake_validator)
+    def fake_async_command(self, command_name, is_valid=False, param=None):
+        if param == 'v2':
+            raise ExecutionError()
+        return param
+
+    @base.sync_command(_fake_validator)
+    def fake_sync_command(self, command_name, is_valid=False, param=None):
+        if param == 'v2':
+            raise ExecutionError()
+        return param
 
 
 class FakeAgent(base.ExecuteCommandMixin):
@@ -90,3 +114,59 @@ class TestExecuteCommandMixin(test_base.BaseTestCase):
         self.assertEqual(result.command_status,
                          base.AgentCommandStatus.FAILED)
         self.assertEqual(result.command_error, msg)
+
+
+class TestExtensionDecorators(test_base.BaseTestCase):
+    def setUp(self):
+        super(TestExtensionDecorators, self).setUp()
+        self.extension = FakeExtension()
+
+    def test_async_command_success(self):
+        result = self.extension.execute('fake_async_command', param='v1')
+        self.assertIsInstance(result, base.AsyncCommandResult)
+        result.join()
+        self.assertEqual('fake_async_command', result.command_name)
+        self.assertEqual({'param': 'v1'}, result.command_params)
+        self.assertEqual(base.AgentCommandStatus.SUCCEEDED,
+                         result.command_status)
+        self.assertEqual(None, result.command_error)
+        self.assertEqual('v1', result.command_result)
+
+    def test_async_command_validation_failure(self):
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.extension.execute,
+                          'fake_async_command',
+                          is_valid=False)
+
+    def test_async_command_execution_failure(self):
+        result = self.extension.execute('fake_async_command', param='v2')
+        self.assertIsInstance(result, base.AsyncCommandResult)
+        result.join()
+        self.assertEqual('fake_async_command', result.command_name)
+        self.assertEqual({'param': 'v2'}, result.command_params)
+        self.assertEqual(base.AgentCommandStatus.FAILED,
+                         result.command_status)
+        self.assertIsInstance(result.command_error, ExecutionError)
+        self.assertEqual(None, result.command_result)
+
+    def test_sync_command_success(self):
+        result = self.extension.execute('fake_sync_command', param='v1')
+        self.assertIsInstance(result, base.SyncCommandResult)
+        self.assertEqual('fake_sync_command', result.command_name)
+        self.assertEqual({'param': 'v1'}, result.command_params)
+        self.assertEqual(base.AgentCommandStatus.SUCCEEDED,
+                         result.command_status)
+        self.assertEqual(None, result.command_error)
+        self.assertEqual('v1', result.command_result)
+
+    def test_sync_command_validation_failure(self):
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.extension.execute,
+                          'fake_sync_command',
+                          is_valid=False)
+
+    def test_sync_command_execution_failure(self):
+        self.assertRaises(ExecutionError,
+                          self.extension.execute,
+                          'fake_sync_command',
+                          param='v2')

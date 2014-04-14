@@ -127,15 +127,7 @@ class BaseAgentExtension(object):
             raise errors.InvalidCommandError(
                 'Unknown command: {0}'.format(command_name))
 
-        result = self.command_map[command_name](command_name, **kwargs)
-
-        # In order to enable extremely succinct synchronous commands, we allow
-        # them to return a value directly, and we'll handle wrapping it up in a
-        # SyncCommandResult
-        if not isinstance(result, BaseCommandResult):
-            result = SyncCommandResult(command_name, kwargs, True, result)
-
-        return result
+        return self.command_map[command_name](command_name, **kwargs)
 
     def check_cmd_presence(self, ext_obj, ext, cmd):
         if not (hasattr(ext_obj, 'execute') and hasattr(ext_obj, 'command_map')
@@ -217,3 +209,27 @@ def async_command(validator=None):
                                       bound_func).start()
         return wrapper
     return async_decorator
+
+
+def sync_command(validator=None):
+    """Decorate a method in order to wrap up its return value in a
+    SyncCommandResult. For consistency with @async_command() can also accept a
+    validator which will be used to validate input, although a synchronous
+    command can also choose to implement validation inline.
+    """
+    def sync_decorator(func):
+        @functools.wraps(func)
+        def wrapper(self, command_name, **command_params):
+            # Run a validator before passing everything off to async.
+            # validators should raise exceptions or return silently.
+            if validator:
+                validator(self, **command_params)
+
+            result = func(self, command_name, **command_params)
+            return SyncCommandResult(command_name,
+                                     command_params,
+                                     True,
+                                     result)
+
+        return wrapper
+    return sync_decorator
