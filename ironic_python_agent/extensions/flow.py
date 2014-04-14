@@ -51,7 +51,7 @@ class FlowExtension(base.BaseAgentExtension, base.ExecuteCommandMixin):
         )
 
     @base.async_command(_validate_exts)
-    def start_flow(self, command_name, flow=None):
+    def start_flow(self, flow=None):
         for task in flow:
             for method, params in task.items():
                 LOG.info("Executing method %s for now" % method)

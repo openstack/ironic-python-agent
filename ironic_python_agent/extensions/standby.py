@@ -160,7 +160,7 @@ class StandbyExtension(base.BaseAgentExtension):
         self.cached_image_id = None
 
     @base.async_command(_validate_image_info)
-    def cache_image(self, command_name, image_info=None, force=False):
+    def cache_image(self, image_info=None, force=False):
         device = hardware.get_manager().get_os_install_device()
 
         if self.cached_image_id != image_info['id'] or force:
@@ -170,7 +170,6 @@ class StandbyExtension(base.BaseAgentExtension):
 
     @base.async_command(_validate_image_info)
     def prepare_image(self,
-                      command_name,
                       image_info=None,
                       metadata=None,
                       files=None):
@@ -188,7 +187,7 @@ class StandbyExtension(base.BaseAgentExtension):
         _copy_configdrive_to_disk(location, device)
 
     @base.async_command()
-    def run_image(self, command_name):
+    def run_image(self):
         script = _path_to_script('shell/reboot.sh')
         LOG.info('Rebooting system')
         command = ['/bin/bash', script]
