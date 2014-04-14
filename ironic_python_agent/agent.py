@@ -66,7 +66,8 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         super(IronicPythonAgentHeartbeater, self).__init__()
         self.agent = agent
         self.hardware = hardware.get_manager()
-        self.api = ironic_api_client.APIClient(agent.api_url)
+        self.api = ironic_api_client.APIClient(agent.api_url,
+                                               agent.driver_name)
         self.log = log.getLogger(__name__)
         self.stop_event = threading.Event()
         self.error_delay = self.initial_delay
@@ -105,10 +106,12 @@ class IronicPythonAgentHeartbeater(threading.Thread):
 
 class IronicPythonAgent(base.ExecuteCommandMixin):
     def __init__(self, api_url, advertise_address, listen_address,
-                 lookup_timeout, lookup_interval):
+                 lookup_timeout, lookup_interval, driver_name):
         super(IronicPythonAgent, self).__init__()
         self.api_url = api_url
-        self.api_client = ironic_api_client.APIClient(self.api_url)
+        self.driver_name = driver_name
+        self.api_client = ironic_api_client.APIClient(self.api_url,
+                                                      self.driver_name)
         self.listen_address = listen_address
         self.advertise_address = advertise_address
         self.version = pkg_resources.get_distribution('ironic-python-agent')\

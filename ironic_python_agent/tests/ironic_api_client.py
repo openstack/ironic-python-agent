@@ -25,6 +25,7 @@ from ironic_python_agent import ironic_api_client
 from ironic_python_agent.openstack.common import loopingcall
 
 API_URL = 'http://agent-api.ironic.example.org/'
+DRIVER = 'agent_ipmitool'
 
 
 class FakeResponse(object):
@@ -38,7 +39,7 @@ class FakeResponse(object):
 class TestBaseIronicPythonAgent(test_base.BaseTestCase):
     def setUp(self):
         super(TestBaseIronicPythonAgent, self).setUp()
-        self.api_client = ironic_api_client.APIClient(API_URL)
+        self.api_client = ironic_api_client.APIClient(API_URL, DRIVER)
         self.hardware_info = {
             'interfaces': [
                 hardware.NetworkInterface('eth0', '00:0c:29:8c:11:b1'),
@@ -158,10 +159,11 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           self.api_client._do_lookup,
                           hardware_info=self.hardware_info)
 
+        url = '{api_url}v1/drivers/{driver}/vendor_passthru/lookup'.format(
+                api_url=API_URL, driver=DRIVER)
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'POST')
-        self.assertEqual(request_args[1],
-                         API_URL + 'v1/drivers/teeth/vendor_passthru/lookup')
+        self.assertEqual(request_args[1], url)
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
