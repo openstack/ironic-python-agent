@@ -181,18 +181,3 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             self.log.exception('shutting down')
 
         self.heartbeater.stop()
-
-
-def build_agent(api_url,
-                advertise_host,
-                advertise_port,
-                listen_host,
-                listen_port,
-                lookup_timeout,
-                lookup_interval):
-
-    return IronicPythonAgent(api_url,
-                             (advertise_host, advertise_port),
-                             (listen_host, listen_port),
-                             lookup_timeout,
-                             lookup_interval)
