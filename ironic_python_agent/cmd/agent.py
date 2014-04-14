@@ -92,10 +92,8 @@ def run():
 
     args = parser.parse_args()
 
-    agent.build_agent(api_url or args.api_url,
-                      args.advertise_host,
-                      args.advertise_port,
-                      args.listen_host,
-                      args.listen_port,
-                      args.lookup_timeout,
-                      args.lookup_interval).run()
+    agent.IronicPythonAgent(api_url or args.api_url,
+                            (args.advertise_host, args.advertise_port),
+                            (args.listen_host, args.listen_port),
+                            args.lookup_timeout,
+                            args.lookup_interval).run()
