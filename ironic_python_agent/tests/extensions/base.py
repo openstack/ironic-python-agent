@@ -37,13 +37,13 @@ class FakeExtension(base.BaseAgentExtension):
         self.command_map['fake_sync_command'] = self.fake_sync_command
 
     @base.async_command(_fake_validator)
-    def fake_async_command(self, command_name, is_valid=False, param=None):
+    def fake_async_command(self, is_valid=False, param=None):
         if param == 'v2':
             raise ExecutionError()
         return param
 
     @base.sync_command(_fake_validator)
-    def fake_sync_command(self, command_name, is_valid=False, param=None):
+    def fake_sync_command(self, is_valid=False, param=None):
         if param == 'v2':
             raise ExecutionError()
         return param

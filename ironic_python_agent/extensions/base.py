@@ -100,8 +100,7 @@ class AsyncCommandResult(BaseCommandResult):
 
     def run(self):
         try:
-            result = self.execute_method(self.command_name,
-                                         **self.command_params)
+            result = self.execute_method(**self.command_params)
             with self.command_state_lock:
                 self.command_result = result
                 self.command_status = AgentCommandStatus.SUCCEEDED
@@ -225,7 +224,7 @@ def sync_command(validator=None):
             if validator:
                 validator(self, **command_params)
 
-            result = func(self, command_name, **command_params)
+            result = func(self, **command_params)
             return SyncCommandResult(command_name,
                                      command_params,
                                      True,

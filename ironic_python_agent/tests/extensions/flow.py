@@ -42,11 +42,11 @@ class FakeExtension(base.BaseAgentExtension):
         self.command_map['sync_sleep'] = self.sync_sleep
 
     @base.async_command()
-    def sleep(self, command_name, sleep_info=None):
+    def sleep(self, sleep_info=None):
         time.sleep(sleep_info['time'])
 
     @base.sync_command()
-    def sync_sleep(self, command_name, sleep_info=None):
+    def sync_sleep(self, sleep_info=None):
         time.sleep(sleep_info['time'])
 
 
