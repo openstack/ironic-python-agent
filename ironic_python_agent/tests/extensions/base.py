@@ -32,7 +32,7 @@ class ExecutionError(errors.RESTError):
 
 class FakeExtension(base.BaseAgentExtension):
     def __init__(self):
-        super(FakeExtension, self).__init__('FAKE')
+        super(FakeExtension, self).__init__()
         self.command_map['fake_async_command'] = self.fake_async_command
         self.command_map['fake_sync_command'] = self.fake_sync_command
 

@@ -39,7 +39,7 @@ def _validate_exts(ext, flow=None):
 
 class FlowExtension(base.BaseAgentExtension, base.ExecuteCommandMixin):
     def __init__(self):
-        super(FlowExtension, self).__init__('FLOW')
+        super(FlowExtension, self).__init__()
         self.command_map['start_flow'] = self.start_flow
 
     def get_extension_manager(self):

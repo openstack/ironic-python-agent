@@ -116,10 +116,9 @@ class AsyncCommandResult(BaseCommandResult):
 
 
 class BaseAgentExtension(object):
-    def __init__(self, name):
+    def __init__(self):
         super(BaseAgentExtension, self).__init__()
         self.log = log.getLogger(__name__)
-        self.name = name
         self.command_map = {}
 
     def execute(self, command_name, **kwargs):

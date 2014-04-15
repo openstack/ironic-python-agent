@@ -30,9 +30,6 @@ class TestStandbyExtension(test_base.BaseTestCase):
         super(TestStandbyExtension, self).setUp()
         self.agent_extension = standby.StandbyExtension()
 
-    def test_standby_extension(self):
-        self.assertEqual(self.agent_extension.name, 'STANDBY')
-
     def _build_fake_image_info(self):
         return {
             'id': 'fake_id',

@@ -152,7 +152,7 @@ def _validate_image_info(ext, image_info=None, **kwargs):
 
 class StandbyExtension(base.BaseAgentExtension):
     def __init__(self):
-        super(StandbyExtension, self).__init__('STANDBY')
+        super(StandbyExtension, self).__init__()
         self.command_map['cache_image'] = self.cache_image
         self.command_map['prepare_image'] = self.prepare_image
         self.command_map['run_image'] = self.run_image
