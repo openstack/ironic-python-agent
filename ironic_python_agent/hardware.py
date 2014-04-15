@@ -97,6 +97,7 @@ class Memory(encoding.Serializable):
         ])
 
 
+@six.add_metaclass(abc.ABCMeta)
 class HardwareManager(object):
     @abc.abstractmethod
     def evaluate_hardware_support(cls):
