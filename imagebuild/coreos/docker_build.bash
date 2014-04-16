@@ -23,4 +23,7 @@ cd -
 # TODO: Investigate running a container and using "export" to flatten the
 #       image to shrink the CoreOS fs size. This will also require run.sh to
 #       use docker import instead of docker load as well.
-docker save oemdocker | gzip > ${OUTPUT_FILE}
+docker run oemdocker echo PICKME
+CONTAINER=`docker ps -a |grep PICKME|awk '{print $1}'|head -n1`
+echo $CONTAINER
+docker export $CONTAINER | gzip > ${OUTPUT_FILE}

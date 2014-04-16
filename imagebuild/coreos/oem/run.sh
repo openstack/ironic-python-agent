@@ -24,8 +24,7 @@ while [ ! -e /var/run/docker.sock ]; do
   sleep 1;
 done
 
-# TODO: Use docker import (and export the image) to shrink image size
-docker load < container.tar.gz
+docker import - oemdocker:latest < container.tar.gz
 
 systemctl enable --runtime /usr/share/oem/system/*
 systemctl start ironic-python-agent.service
