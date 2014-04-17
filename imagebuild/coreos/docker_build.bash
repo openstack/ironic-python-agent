@@ -19,11 +19,14 @@ cd ../../
 docker build -t oemdocker .
 cd -
 
+# Create a UUID to identify the build
+CONTAINER_UUID=`uuidgen`
+
 # Export the oemdocker repository to a tarball so it can be embedded in CoreOS
 # TODO: Investigate running a container and using "export" to flatten the
 #       image to shrink the CoreOS fs size. This will also require run.sh to
 #       use docker import instead of docker load as well.
-docker run oemdocker echo PICKME
-CONTAINER=`docker ps -a |grep PICKME|awk '{print $1}'|head -n1`
+docker run oemdocker echo $CONTAINER_UUID
+CONTAINER=`docker ps -a --no-trunc |grep $CONTAINER_UUID|awk '{print $1}'|head -n1`
 echo $CONTAINER
 docker export $CONTAINER | gzip > ${OUTPUT_FILE}
