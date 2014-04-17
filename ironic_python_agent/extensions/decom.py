@@ -17,4 +17,4 @@ from ironic_python_agent.extensions import base
 
 class DecomExtension(base.BaseAgentExtension):
     def __init__(self):
-        super(DecomExtension, self).__init__('DECOM')
+        super(DecomExtension, self).__init__()

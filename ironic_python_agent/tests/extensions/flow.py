@@ -37,7 +37,7 @@ FLOW_INFO = [
 
 class FakeExtension(base.BaseAgentExtension):
     def __init__(self):
-        super(FakeExtension, self).__init__('FAKE')
+        super(FakeExtension, self).__init__()
         self.command_map['sleep'] = self.sleep
         self.command_map['sync_sleep'] = self.sync_sleep
 
@@ -58,9 +58,6 @@ class TestFlowExtension(test_base.BaseTestCase):
             make_test_instance([extension.Extension('fake', None,
                                                     FakeExtension,
                                                     FakeExtension())])
-
-    def test_flow_extension(self):
-        self.assertEqual(self.agent_extension.name, 'FLOW')
 
     @mock.patch('time.sleep', autospec=True)
     def test_sleep_flow_success(self, sleep_mock):

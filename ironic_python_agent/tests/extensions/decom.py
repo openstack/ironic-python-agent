@@ -21,6 +21,3 @@ class TestDecomExtension(test_base.BaseTestCase):
     def setUp(self):
         super(TestDecomExtension, self).setUp()
         self.agent_extension = decom.DecomExtension()
-
-    def test_decom_extension(self):
-        self.assertEqual(self.agent_extension.name, 'DECOM')
