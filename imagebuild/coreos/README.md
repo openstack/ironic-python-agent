@@ -11,7 +11,7 @@ Run the following locally or from a virtualenv to install the python requirement
 pip install -r requirements.txt
 ``` 
 
-# Instructions
+# Build Instructions
 
 To create a docker repository and embed it into a CoreOS pxe image:
 ```
@@ -31,3 +31,28 @@ oem/authorized_keys with the keys you need added before building the image.
 ```
 make coreos
 ```
+
+# Booting the agent with this image
+
+To boot the image, it should be booted via PXE. Here's an example ipxe 
+configuration (replace my-web-server with the IP/hostname of the http server
+hosting your image):
+
+```
+#!ipxe
+
+dhcp
+kernel http://my-web-server/coreos_production_pxe.vmlinuz root=squashfs: state=tmpfs:
+initrd http://my-web-server/coreos_production_pxe_image-oem.cpio.gz
+boot
+```
+
+You can either embed a configuration file into the image, or set configuration
+options via the kernel command line. Values most people will need are:
+
+  - `ipa-api-url=http://ironic-api-server:6385`
+  - `ipa-advertise-host=ip-of-server-running-agent`
+
+But any config value supported in the agent can be given to the agent via the
+kernel command line, which allows the use of the same agent image across
+environments because it contains no state.
