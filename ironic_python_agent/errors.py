@@ -151,6 +151,17 @@ class ImageWriteError(RESTError):
         self.details = self.details.format(device, exit_code)
 
 
+class ConfigDriveTooLargeError(RESTError):
+    """Error raised when a configdrive is larger than the partition."""
+    message = 'Configdrive is too large for intended partition.'
+
+    def __init__(self, filename, filesize):
+        details = ('Configdrive at {0} has size {1}, which is larger than '
+                   'the intended partition.').format(filename, filesize)
+        super(ConfigDriveTooLargeError, self).__init__(details)
+        self.details = details
+
+
 class ConfigDriveWriteError(RESTError):
     """Error raised when a configdrive directory cannot be written to a
     device.

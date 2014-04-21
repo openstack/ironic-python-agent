@@ -72,6 +72,11 @@ def _write_configdrive_to_partition(configdrive, device):
     filename = _configdrive_location()
     _write_configdrive_to_file(configdrive, filename)
 
+    # check configdrive size before writing it
+    filesize = os.stat(filename).st_size
+    if filesize > (64 * 1024 * 1024):
+        raise errors.ConfigDriveTooLargeError(filename, filesize)
+
     starttime = time.time()
     script = _path_to_script('shell/copy_configdrive_to_disk.sh')
     command = ['/bin/bash', script, filename, device]
