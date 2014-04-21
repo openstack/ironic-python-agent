@@ -177,7 +177,7 @@ class TestIronicAPI(test_base.BaseTestCase):
         self.assertEqual(data['started_at'], status.started_at)
         self.assertEqual(data['version'], status.version)
 
-    def test_execute_agent_command_success(self):
+    def test_execute_agent_command_success_no_wait(self):
         command = {
             'name': 'do_things',
             'params': {'key': 'value'},
@@ -190,9 +190,64 @@ class TestIronicAPI(test_base.BaseTestCase):
 
         self.mock_agent.execute_command.return_value = result
 
-        response = self.post_json('/commands', command)
+        with mock.patch.object(result, 'join') as join_mock:
+            response = self.post_json('/commands', command)
+            self.assertFalse(join_mock.called)
+
         self.assertEqual(response.status_code, 200)
 
+        self.assertEqual(self.mock_agent.execute_command.call_count, 1)
+        args, kwargs = self.mock_agent.execute_command.call_args
+        self.assertEqual(args, ('do_things',))
+        self.assertEqual(kwargs, {'key': 'value'})
+        expected_result = result.serialize()
+        data = response.json
+        self.assertEqual(data, expected_result)
+
+    def test_execute_agent_command_success_with_true_wait(self):
+        command = {
+            'name': 'do_things',
+            'params': {'key': 'value'},
+        }
+
+        result = base.SyncCommandResult(command['name'],
+                                        command['params'],
+                                        True,
+                                        {'test': 'result'})
+
+        self.mock_agent.execute_command.return_value = result
+
+        with mock.patch.object(result, 'join') as join_mock:
+            response = self.post_json('/commands?wait=true', command)
+            join_mock.assert_called_once_with()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.mock_agent.execute_command.call_count, 1)
+        args, kwargs = self.mock_agent.execute_command.call_args
+        self.assertEqual(args, ('do_things',))
+        self.assertEqual(kwargs, {'key': 'value'})
+        expected_result = result.serialize()
+        data = response.json
+        self.assertEqual(data, expected_result)
+
+    def test_execute_agent_command_success_with_false_wait(self):
+        command = {
+            'name': 'do_things',
+            'params': {'key': 'value'},
+        }
+
+        result = base.SyncCommandResult(command['name'],
+                                        command['params'],
+                                        True,
+                                        {'test': 'result'})
+
+        self.mock_agent.execute_command.return_value = result
+
+        with mock.patch.object(result, 'join') as join_mock:
+            response = self.post_json('/commands?wait=false', command)
+            self.assertFalse(join_mock.called)
+
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(self.mock_agent.execute_command.call_count, 1)
         args, kwargs = self.mock_agent.execute_command.call_args
         self.assertEqual(args, ('do_things',))

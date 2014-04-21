@@ -65,7 +65,7 @@ class CommandController(rest.RestController):
         return CommandResultList.from_results(results)
 
     @wsme_pecan.wsexpose(CommandResult, types.text, types.text)
-    def get_one(self, result_id, wait=False):
+    def get_one(self, result_id, wait=None):
         agent = pecan.request.agent
         result = agent.get_command_result(result_id)
 
@@ -74,8 +74,8 @@ class CommandController(rest.RestController):
 
         return CommandResult.from_result(result)
 
-    @wsme_pecan.wsexpose(CommandResult, body=Command)
-    def post(self, wait=False, command=None):
+    @wsme_pecan.wsexpose(CommandResult, types.text, body=Command)
+    def post(self, wait=None, command=None):
         # the POST body is always the last arg,
         # so command must be a kwarg here
         if command is None:
