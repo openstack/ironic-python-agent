@@ -66,7 +66,7 @@ class APIClient(object):
         except Exception as e:
             raise errors.HeartbeatError(str(e))
 
-        if response.status_code != requests.codes.NO_CONTENT:
+        if response.status_code != requests.codes.ACCEPTED:
             msg = 'Invalid status code: {0}'.format(response.status_code)
             raise errors.HeartbeatError(msg)
 
