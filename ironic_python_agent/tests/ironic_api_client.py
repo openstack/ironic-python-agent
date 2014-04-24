@@ -55,7 +55,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
     def test_successful_heartbeat(self):
         expected_heartbeat_before = time.time() + 120
-        response = FakeResponse(status_code=204, headers={
+        response = FakeResponse(status_code=202, headers={
             'Heartbeat-Before': expected_heartbeat_before,
         })
 
@@ -95,7 +95,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           advertise_address=('192.0.2.1', '9999'))
 
     def test_heartbeat_missing_heartbeat_before_header(self):
-        response = FakeResponse(status_code=204)
+        response = FakeResponse(status_code=202)
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
@@ -105,7 +105,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           advertise_address=('192.0.2.1', '9999'))
 
     def test_heartbeat_invalid_heartbeat_before_header(self):
-        response = FakeResponse(status_code=204, headers={
+        response = FakeResponse(status_code=202, headers={
             'Heartbeat-Before': 'tomorrow',
         })
         self.api_client.session.request = mock.Mock()
