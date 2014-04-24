@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
+import gzip
 import hashlib
 import os
 import requests
-import subprocess
+import six
+import StringIO
 import time
 
-from ironic_python_agent import configdrive
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent.openstack.common import log
+from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)
 
@@ -47,7 +50,7 @@ def _write_image(image_info, device):
     script = _path_to_script('shell/write_image.sh')
     command = ['/bin/bash', script, image, device]
     LOG.info('Writing image with command: {0}'.format(' '.join(command)))
-    exit_code = subprocess.call(command)
+    exit_code = utils.execute(*command)
     if exit_code != 0:
         raise errors.ImageWriteError(exit_code, device)
     totaltime = time.time() - starttime
@@ -55,20 +58,33 @@ def _write_image(image_info, device):
              image, device, totaltime))
 
 
-def _copy_configdrive_to_disk(configdrive_dir, device):
+def _write_configdrive_to_file(configdrive, filename):
+    LOG.debug('Writing configdrive to {0}'.format(filename))
+    # configdrive data is base64'd, decode it first
+    data = StringIO.StringIO(base64.b64decode(configdrive))
+    gunzipped = gzip.GzipFile('configdrive', 'rb', 9, data)
+    with open(filename, 'wb') as f:
+        f.write(gunzipped.read())
+    gunzipped.close()
+
+
+def _write_configdrive_to_partition(configdrive, device):
+    filename = _configdrive_location()
+    _write_configdrive_to_file(configdrive, filename)
+
     starttime = time.time()
     script = _path_to_script('shell/copy_configdrive_to_disk.sh')
-    command = ['/bin/bash', script, configdrive_dir, device]
+    command = ['/bin/bash', script, filename, device]
     LOG.info('copying configdrive to disk with command {0}'.format(
              ' '.join(command)))
-    exit_code = subprocess.call(command)
+    exit_code = utils.execute(*command)
 
     if exit_code != 0:
         raise errors.ConfigDriveWriteError(exit_code, device)
 
     totaltime = time.time() - starttime
     LOG.info('configdrive copied from {0} to {1} in {2} seconds'.format(
-             configdrive_dir,
+             configdrive,
              device,
              totaltime))
 
@@ -114,28 +130,22 @@ def _download_image(image_info):
 
 
 def _verify_image(image_info, image_location):
-    hashes = image_info['hashes']
-    for k, v in hashes.items():
-        algo = getattr(hashlib, k, None)
-        if algo is None:
-            continue
-        log_msg = 'Verifying image at {0} with algorithm {1} against hash {2}'
-        LOG.debug(log_msg.format(image_location, k, v))
-        hash_ = algo(open(image_location).read()).hexdigest()
-        if hash_ == v:
-            return True
-        else:
-            log_msg = ('Image verification failed. Location: {0};'
-                       'algorithm: {1}; image hash: {2};'
-                       'verification hash: {3}')
-            LOG.warning(log_msg.format(image_location, k, hash_, v))
+    checksum = image_info['checksum']
+    log_msg = 'Verifying image at {0} against MD5 checksum {1}'
+    LOG.debug(log_msg.format(image_location, checksum))
+    hash_ = hashlib.md5(open(image_location).read()).hexdigest()
+    if hash_ == checksum:
+        return True
+    log_msg = ('Image verification failed. Location: {0};'
+               'image hash: {1}; verification hash: {2}')
+    LOG.warning(log_msg.format(image_location, checksum, hash_))
     return False
 
 
 def _validate_image_info(ext, image_info=None, **kwargs):
     image_info = image_info or {}
 
-    for field in ['id', 'urls', 'hashes']:
+    for field in ['id', 'urls', 'checksum']:
         if field not in image_info:
             msg = 'Image is missing \'{0}\' field.'.format(field)
             raise errors.InvalidCommandParamsError(msg)
@@ -144,10 +154,10 @@ def _validate_image_info(ext, image_info=None, **kwargs):
         raise errors.InvalidCommandParamsError(
             'Image \'urls\' must be a list with at least one element.')
 
-    if type(image_info['hashes']) != dict or not image_info['hashes']:
+    if (not isinstance(image_info['checksum'], six.string_types)
+            or not image_info['checksum']):
         raise errors.InvalidCommandParamsError(
-            'Image \'hashes\' must be a dictionary with at least one '
-            'element.')
+            'Image \'checksum\' must be a non-empty string.')
 
 
 class StandbyExtension(base.BaseAgentExtension):
@@ -171,9 +181,7 @@ class StandbyExtension(base.BaseAgentExtension):
     @base.async_command(_validate_image_info)
     def prepare_image(self,
                       image_info=None,
-                      metadata=None,
-                      files=None):
-        location = _configdrive_location()
+                      configdrive=None):
         device = hardware.get_manager().get_os_install_device()
 
         # don't write image again if already cached
@@ -182,9 +190,7 @@ class StandbyExtension(base.BaseAgentExtension):
             _write_image(image_info, device)
             self.cached_image_id = image_info['id']
 
-        LOG.debug('Writing configdrive to {0}'.format(location))
-        configdrive.write_configdrive(location, metadata, files)
-        _copy_configdrive_to_disk(location, device)
+        _write_configdrive_to_partition(configdrive, device)
 
     @base.async_command()
     def run_image(self):
@@ -192,6 +198,6 @@ class StandbyExtension(base.BaseAgentExtension):
         LOG.info('Rebooting system')
         command = ['/bin/bash', script]
         # this should never return if successful
-        exit_code = subprocess.call(command)
+        exit_code = utils.execute(*command)
         if exit_code != 0:
             raise errors.SystemRebootError(exit_code)
