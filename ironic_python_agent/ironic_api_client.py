@@ -112,7 +112,7 @@ class APIClient(object):
             self.log.warning('POST failed: %s' % str(e))
             return False
 
-        if response.status_code != requests.codes.OK:
+        if response.status_code != requests.codes.ACCEPTED:
             self.log.warning('Invalid status code: %s' % response.status_code)
             return False
 
