@@ -145,7 +145,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           starting_interval=1)
 
     def test_do_lookup(self):
-        response = FakeResponse(status_code=202, content={
+        response = FakeResponse(status_code=200, content={
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             },
@@ -218,7 +218,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.assertFalse(error)
 
     def test_do_lookup_bad_response_data(self):
-        response = FakeResponse(status_code=202, content={
+        response = FakeResponse(status_code=200, content={
             'heartbeat_timeout': 300
         })
 
@@ -230,7 +230,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.assertFalse(error)
 
     def test_do_lookup_no_heartbeat_timeout(self):
-        response = FakeResponse(status_code=202, content={
+        response = FakeResponse(status_code=200, content={
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             }
@@ -244,7 +244,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.assertFalse(error)
 
     def test_do_lookup_bad_response_body(self):
-        response = FakeResponse(status_code=202, content={
+        response = FakeResponse(status_code=200, content={
             'node_node': 'also_not_node'
         })
 
