@@ -1,6 +1,7 @@
 [Service]
-ExecStart=/usr/bin/docker run -p 9999:9999 -privileged=true -v=/sys:/mnt/sys oemdocker /usr/local/bin/ironic-python-agent
+ExecStart=/usr/bin/systemd-nspawn -D /media/state/ironic-python-agent --share-system --capability=all --machine=ironic_python_agent --bind=/dev:/dev --bind=/dev/pts:/dev/pts --bind=/usr/share/oem:/mnt --user=root --keep-unit /usr/local/bin/ironic-python-agent
 Restart=always
+RestartSec=30s
 
 [Install]
 WantedBy=oem.target

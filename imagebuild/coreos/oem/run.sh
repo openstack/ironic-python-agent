@@ -20,13 +20,8 @@ fi
 
 chown -R core:core /home/core/.ssh/
 
-# We have to wait until docker is started to proceed
-# In a perfect world I'd use inotifywait, but that doesn't exist on coreos
-while [ ! -e /var/run/docker.sock ]; do
-  sleep 1;
-done
-
-docker import - oemdocker:latest < container.tar.gz
+mkdir -p /media/state/ironic-python-agent
+tar -x -C /media/state/ironic-python-agent -f container.tar.gz
 
 systemctl enable --runtime /usr/share/oem/system/*
 systemctl start ironic-python-agent.service
