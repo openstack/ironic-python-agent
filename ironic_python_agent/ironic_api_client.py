@@ -70,13 +70,6 @@ class APIClient(object):
             msg = 'Invalid status code: {0}'.format(response.status_code)
             raise errors.HeartbeatError(msg)
 
-        try:
-            return float(response.headers['Heartbeat-Before'])
-        except KeyError:
-            raise errors.HeartbeatError('Missing Heartbeat-Before header')
-        except Exception:
-            raise errors.HeartbeatError('Invalid Heartbeat-Before header')
-
     def lookup_node(self, hardware_info, timeout, starting_interval):
         timer = backoff.BackOffLoopingCall(
             self._do_lookup,
