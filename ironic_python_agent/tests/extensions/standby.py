@@ -140,18 +140,20 @@ class TestStandbyExtension(test_base.BaseTestCase):
         gzip_read_mock.assert_called_once_with()
         write_mock.assert_called_once_with('ungzipped')
 
+    @mock.patch('os.stat', autospec=True)
     @mock.patch(('ironic_python_agent.extensions.standby.'
                  '_write_configdrive_to_file'),
                 autospec=True)
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_write_configdrive_to_partition(self, execute_mock, open_mock,
-                                            configdrive_mock):
+                                            configdrive_mock, stat_mock):
         device = '/dev/sda'
         configdrive = standby._configdrive_location()
         script = standby._path_to_script('shell/copy_configdrive_to_disk.sh')
         command = ['/bin/bash', script, configdrive, device]
         execute_mock.return_value = 0
+        stat_mock.return_value.st_size = 5
 
         standby._write_configdrive_to_partition(configdrive, device)
         execute_mock.assert_called_once_with(*command)
@@ -165,6 +167,23 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           device)
 
         execute_mock.assert_called_once_with(*command)
+
+    @mock.patch('os.stat', autospec=True)
+    @mock.patch(('ironic_python_agent.extensions.standby.'
+                 '_write_configdrive_to_file'),
+                autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_write_configdrive_too_large(self, execute_mock, open_mock,
+                                         configdrive_mock, stat_mock):
+        device = '/dev/sda'
+        configdrive = standby._configdrive_location()
+        stat_mock.return_value.st_size = 65 * 1024 * 1024
+
+        self.assertRaises(errors.ConfigDriveTooLargeError,
+                          standby._write_configdrive_to_partition,
+                          configdrive,
+                          device)
 
     @mock.patch('hashlib.md5', autospec=True)
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
