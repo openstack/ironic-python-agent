@@ -19,6 +19,7 @@ import mock
 from oslotest import base as test_base
 import pkg_resources
 import six
+from stevedore import extension
 from wsgiref import simple_server
 
 from ironic_python_agent import agent
@@ -45,7 +46,7 @@ def foo_execute(*args, **kwargs):
 
 class FakeExtension(base.BaseAgentExtension):
     def __init__(self):
-        super(FakeExtension, self).__init__('FAKE')
+        super(FakeExtension, self).__init__()
 
 
 class TestHeartbeater(test_base.BaseTestCase):
@@ -123,9 +124,16 @@ class TestHeartbeater(test_base.BaseTestCase):
 
 
 class TestBaseAgent(test_base.BaseTestCase):
-    def setUp(self):
+
+    @mock.patch.object(agent.IronicPythonAgent, 'get_extension_manager')
+    def setUp(self, fake_ext_mgr):
         super(TestBaseAgent, self).setUp()
         self.encoder = encoding.RESTJSONEncoder(indent=4)
+
+        fake_ext_mgr.return_value = extension.ExtensionManager.\
+            make_test_instance([extension.Extension('fake', None,
+                                                    FakeExtension,
+                                                    FakeExtension())])
         self.agent = agent.IronicPythonAgent('https://fake_api.example.'
                                              'org:8081/',
                                              ('203.0.113.1', 9990),
