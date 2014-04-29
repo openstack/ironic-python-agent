@@ -40,7 +40,7 @@ def _image_location(image_info):
 
 def _path_to_script(script):
     cwd = os.path.dirname(os.path.realpath(__file__))
-    return os.path.join(cwd, script)
+    return os.path.join(cwd, '..', script)
 
 
 def _write_image(image_info, device):

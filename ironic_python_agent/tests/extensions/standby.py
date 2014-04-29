@@ -347,3 +347,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         execute_mock.assert_called_once_with(*command)
         self.assertEqual('FAILED', failed_result.command_status)
+
+    def test_path_to_script(self):
+        script = standby._path_to_script('shell/reboot.sh')
+        self.assertTrue(script.endswith('extensions/../shell/reboot.sh'))
