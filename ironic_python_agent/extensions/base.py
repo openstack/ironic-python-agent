@@ -31,6 +31,9 @@ class AgentCommandStatus(object):
 
 
 class BaseCommandResult(encoding.Serializable):
+    serializable_fields = ('id', 'command_name', 'command_params',
+                           'command_status', 'command_error', 'command_result')
+
     def __init__(self, command_name, command_params):
         self.id = six.text_type(uuid.uuid4())
         self.command_name = command_name
@@ -38,16 +41,6 @@ class BaseCommandResult(encoding.Serializable):
         self.command_status = AgentCommandStatus.RUNNING
         self.command_error = None
         self.command_result = None
-
-    def serialize(self):
-        return dict((
-            (u'id', self.id),
-            (u'command_name', self.command_name),
-            (u'command_params', self.command_params),
-            (u'command_status', self.command_status),
-            (u'command_error', self.command_error),
-            (u'command_result', self.command_result),
-        ))
 
     def is_done(self):
         return self.command_status != AgentCommandStatus.RUNNING

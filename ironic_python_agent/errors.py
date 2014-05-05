@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from ironic_python_agent import encoding
-from ironic_python_agent import utils
 
 
 class RESTError(Exception, encoding.Serializable):
@@ -21,15 +20,12 @@ class RESTError(Exception, encoding.Serializable):
     message = 'An error occurred'
     details = 'An unexpected error occurred. Please try back later.'
     status_code = 500
+    serializable_fields = ('type', 'code', 'message', 'details')
 
-    def serialize(self):
-        """Turn a RESTError into a dict."""
-        return utils.get_ordereddict([
-            ('type', self.__class__.__name__),
-            ('code', self.status_code),
-            ('message', self.message),
-            ('details', self.details),
-        ])
+    def __init__(self, *args, **kwargs):
+        super(RESTError, self).__init__(*args, **kwargs)
+        self.type = self.__class__.__name__
+        self.code = self.status_code
 
 
 class InvalidContentError(RESTError):

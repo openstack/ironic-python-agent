@@ -27,7 +27,6 @@ from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
 from ironic_python_agent.openstack.common import log
-from ironic_python_agent import utils
 
 
 def _time():
@@ -36,16 +35,11 @@ def _time():
 
 
 class IronicPythonAgentStatus(encoding.Serializable):
+    serializable_fields = ('started_at', 'version')
+
     def __init__(self, started_at, version):
         self.started_at = started_at
         self.version = version
-
-    def serialize(self):
-        """Turn the status into a dict."""
-        return utils.get_ordereddict([
-            ('started_at', self.started_at),
-            ('version', self.version),
-        ])
 
 
 class IronicPythonAgentHeartbeater(threading.Thread):
