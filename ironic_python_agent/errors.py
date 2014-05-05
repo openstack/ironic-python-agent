@@ -182,3 +182,7 @@ class SystemRebootError(RESTError):
         super(SystemRebootError, self).__init__()
         self.details = 'Reboot script failed with exit code {0}.'
         self.details = self.details.format(exit_code)
+
+
+class ExtensionError(Exception):
+    pass

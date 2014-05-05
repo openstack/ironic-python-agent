@@ -12,18 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from stevedore import enabled
-
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent.openstack.common import log
 
 LOG = log.getLogger(__name__)
-
-
-def _load_extension(ext):
-    disabled_extension_list = ['flow']
-    return ext.name not in disabled_extension_list
 
 
 def _validate_exts(ext, flow=None):
@@ -41,14 +34,6 @@ class FlowExtension(base.BaseAgentExtension, base.ExecuteCommandMixin):
     def __init__(self):
         super(FlowExtension, self).__init__()
         self.command_map['start_flow'] = self.start_flow
-
-    def get_extension_manager(self):
-        return enabled.EnabledExtensionManager(
-            'ironic_python_agent.extensions',
-            _load_extension,
-            invoke_on_load=True,
-            propagate_map_exceptions=True,
-        )
 
     @base.async_command(_validate_exts)
     def start_flow(self, flow=None):

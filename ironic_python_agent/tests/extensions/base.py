@@ -52,9 +52,7 @@ class FakeExtension(base.BaseAgentExtension):
 class FakeAgent(base.ExecuteCommandMixin):
     def __init__(self):
         super(FakeAgent, self).__init__()
-
-    def get_extension_manager(self):
-        return extension.ExtensionManager.make_test_instance(
+        self.ext_mgr = extension.ExtensionManager.make_test_instance(
             [extension.Extension('fake', None, FakeExtension,
                                  FakeExtension())])
 
@@ -88,7 +86,7 @@ class TestExecuteCommandMixin(test_base.BaseTestCase):
 
     def test_execute_command_success(self):
         expected_result = base.SyncCommandResult('fake', None, True, None)
-        fake_ext = self.agent.ext_mgr['fake'].obj
+        fake_ext = self.agent.get_extension('fake')
         fake_ext.execute = mock.Mock()
         fake_ext.execute.return_value = expected_result
         result = self.agent.execute_command('fake.sleep',

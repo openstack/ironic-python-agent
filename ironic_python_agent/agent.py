@@ -102,6 +102,11 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
     def __init__(self, api_url, advertise_address, listen_address,
                  lookup_timeout, lookup_interval, driver_name):
         super(IronicPythonAgent, self).__init__()
+        self.ext_mgr = extension.ExtensionManager(
+            namespace='ironic_python_agent.extensions',
+            invoke_on_load=True,
+            propagate_map_exceptions=True,
+        )
         self.api_url = api_url
         self.driver_name = driver_name
         self.api_client = ironic_api_client.APIClient(self.api_url,
@@ -120,13 +125,6 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         # lookup timeout in seconds
         self.lookup_timeout = lookup_timeout
         self.lookup_interval = lookup_interval
-
-    def get_extension_manager(self):
-        return extension.ExtensionManager(
-            namespace='ironic_python_agent.extensions',
-            invoke_on_load=True,
-            propagate_map_exceptions=True,
-        )
 
     def get_status(self):
         """Retrieve a serializable status."""

@@ -131,11 +131,14 @@ class ExecuteCommandMixin(object):
     def __init__(self):
         self.command_lock = threading.Lock()
         self.command_results = utils.get_ordereddict()
-        self.ext_mgr = self.get_extension_manager()
+        self.ext_mgr = None
 
-    def get_extension_manager(self):
-        raise NotImplementedError(
-            'get_extension_manager should be implemented in successor class')
+    def get_extension(self, extension_name):
+        if self.ext_mgr is None:
+            raise errors.ExtensionError('Extension manager is not initialized')
+        ext = self.ext_mgr[extension_name].obj
+        ext.ext_mgr = self.ext_mgr
+        return ext
 
     def split_command(self, command_name):
         command_parts = command_name.split('.', 1)
@@ -156,7 +159,7 @@ class ExecuteCommandMixin(object):
                     raise errors.CommandExecutionError('agent is busy')
 
             try:
-                ext = self.ext_mgr[extension_part].obj
+                ext = self.get_extension(extension_part)
                 result = ext.execute(command_part, **kwargs)
             except KeyError:
                 # Extension Not found

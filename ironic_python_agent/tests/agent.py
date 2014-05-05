@@ -125,15 +125,10 @@ class TestHeartbeater(test_base.BaseTestCase):
 
 class TestBaseAgent(test_base.BaseTestCase):
 
-    @mock.patch.object(agent.IronicPythonAgent, 'get_extension_manager')
-    def setUp(self, fake_ext_mgr):
+    def setUp(self):
         super(TestBaseAgent, self).setUp()
         self.encoder = encoding.RESTJSONEncoder(indent=4)
 
-        fake_ext_mgr.return_value = extension.ExtensionManager.\
-            make_test_instance([extension.Extension('fake', None,
-                                                    FakeExtension,
-                                                    FakeExtension())])
         self.agent = agent.IronicPythonAgent('https://fake_api.example.'
                                              'org:8081/',
                                              ('203.0.113.1', 9990),
@@ -141,6 +136,10 @@ class TestBaseAgent(test_base.BaseTestCase):
                                              300,
                                              1,
                                              'agent_ipmitool')
+        self.agent.ext_mgr = extension.ExtensionManager.\
+            make_test_instance([extension.Extension('fake', None,
+                                                    FakeExtension,
+                                                    FakeExtension())])
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
