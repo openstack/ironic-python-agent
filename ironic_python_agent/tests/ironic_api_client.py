@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import json
-import time
 
 import mock
 from oslotest import base as test_base
@@ -54,20 +53,15 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         }
 
     def test_successful_heartbeat(self):
-        expected_heartbeat_before = time.time() + 120
-        response = FakeResponse(status_code=202, headers={
-            'Heartbeat-Before': expected_heartbeat_before,
-        })
+        response = FakeResponse(status_code=202)
 
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        heartbeat_before = self.api_client.heartbeat(
+        self.api_client.heartbeat(
             uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
             advertise_address=('192.0.2.1', '9999')
         )
-
-        self.assertEqual(heartbeat_before, expected_heartbeat_before)
 
         heartbeat_path = 'v1/nodes/deadbeef-dabb-ad00-b105-f00d00bab10c/' \
                          'vendor_passthru/heartbeat'
@@ -86,28 +80,6 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
     def test_heartbeat_invalid_status_code(self):
         response = FakeResponse(status_code=404)
-        self.api_client.session.request = mock.Mock()
-        self.api_client.session.request.return_value = response
-
-        self.assertRaises(errors.HeartbeatError,
-                          self.api_client.heartbeat,
-                          uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
-                          advertise_address=('192.0.2.1', '9999'))
-
-    def test_heartbeat_missing_heartbeat_before_header(self):
-        response = FakeResponse(status_code=202)
-        self.api_client.session.request = mock.Mock()
-        self.api_client.session.request.return_value = response
-
-        self.assertRaises(errors.HeartbeatError,
-                          self.api_client.heartbeat,
-                          uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
-                          advertise_address=('192.0.2.1', '9999'))
-
-    def test_heartbeat_invalid_heartbeat_before_header(self):
-        response = FakeResponse(status_code=202, headers={
-            'Heartbeat-Before': 'tomorrow',
-        })
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
