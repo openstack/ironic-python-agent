@@ -171,12 +171,15 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         self.node = content['node']
         self.heartbeat_timeout = content['heartbeat_timeout']
-        self.heartbeater.start()
+
         wsgi = simple_server.make_server(
             self.listen_address[0],
             self.listen_address[1],
             self.api,
             server_class=simple_server.WSGIServer)
+
+        # Don't start heartbeating until the server is listening
+        self.heartbeater.start()
 
         try:
             wsgi.serve_forever()
