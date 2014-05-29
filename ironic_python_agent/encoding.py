@@ -18,9 +18,11 @@ import uuid
 
 class Serializable(object):
     """Base class for things that can be serialized."""
+    serializable_fields = ()
+
     def serialize(self):
         """Turn this object into a dict."""
-        raise NotImplementedError()
+        return dict((f, getattr(self, f)) for f in self.serializable_fields)
 
 
 class RESTJSONEncoder(json.JSONEncoder):

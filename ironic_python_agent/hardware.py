@@ -45,18 +45,17 @@ class HardwareType(object):
 
 
 class BlockDevice(encoding.Serializable):
+    serializable_fields = ('name', 'size')
+
     def __init__(self, name, size):
         self.name = name
         self.size = size
 
-    def serialize(self):
-        return utils.get_ordereddict([
-            ('name', self.name),
-            ('size', self.size),
-        ])
-
 
 class NetworkInterface(encoding.Serializable):
+    serializable_fields = ('name', 'mac_address', 'switch_port_descr',
+                           'switch_chassis_descr')
+
     def __init__(self, name, mac_addr):
         self.name = name
         self.mac_address = mac_addr
@@ -64,37 +63,21 @@ class NetworkInterface(encoding.Serializable):
         self.switch_port_descr = None
         self.switch_chassis_descr = None
 
-    def serialize(self):
-        return utils.get_ordereddict([
-            ('name', self.name),
-            ('mac_address', self.mac_address),
-            ('switch_port_descr', self.switch_port_descr),
-            ('switch_chassis_descr', self.switch_port_descr),
-        ])
-
 
 class CPU(encoding.Serializable):
+    serializable_fields = ('model_name', 'frequency', 'count')
+
     def __init__(self, model_name, frequency, count):
         self.model_name = model_name
         self.frequency = frequency
         self.count = count
 
-    def serialize(self):
-        return utils.get_ordereddict([
-            ('model_name', self.model_name),
-            ('frequency', self.frequency),
-            ('count', self.count),
-        ])
-
 
 class Memory(encoding.Serializable):
+    serializable_fields = ('total', )
+
     def __init__(self, total):
         self.total = total
-
-    def serialize(self):
-        return utils.get_ordereddict([
-            ('total', self.total),
-        ])
 
 
 @six.add_metaclass(abc.ABCMeta)
