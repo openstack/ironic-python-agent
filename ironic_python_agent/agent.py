@@ -70,6 +70,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         # The first heartbeat happens now
         self.log.info('starting heartbeater')
         interval = 0
+        self.agent.set_agent_advertise_addr()
 
         while not self.stop_event.wait(interval):
             self.do_heartbeat()
@@ -100,6 +101,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
 
 class IronicPythonAgent(base.ExecuteCommandMixin):
     def __init__(self, api_url, advertise_address, listen_address,
+                 ip_lookup_attempts, ip_lookup_sleep, network_interface,
                  lookup_timeout, lookup_interval, driver_name):
         super(IronicPythonAgent, self).__init__()
         self.ext_mgr = extension.ExtensionManager(
@@ -125,6 +127,9 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         # lookup timeout in seconds
         self.lookup_timeout = lookup_timeout
         self.lookup_interval = lookup_interval
+        self.ip_lookup_attempts = ip_lookup_attempts
+        self.ip_lookup_sleep = ip_lookup_sleep
+        self.network_interface = network_interface
 
     def get_status(self):
         """Retrieve a serializable status."""
@@ -135,6 +140,45 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
     def get_agent_mac_addr(self):
         return self.hardware.get_primary_mac_address()
+
+    def set_agent_advertise_addr(self):
+        """If agent's advertised IP address is still default (None), try to
+        find a better one.  If the agent's network interface is None, replace
+        that as well.
+        """
+        if self.advertise_address[0] is not None:
+            return
+
+        if self.network_interface is None:
+            ifaces = self.get_agent_network_interfaces()
+        else:
+            ifaces = [self.network_interface]
+
+        attempts = 0
+        while (attempts < self.ip_lookup_attempts):
+            for iface in ifaces:
+                found_ip = self.hardware.get_ipv4_addr(iface)
+                if found_ip is not None:
+                    self.advertise_address = (found_ip,
+                                              self.advertise_address[1])
+                    self.network_interface = iface
+                    return
+            attempts += 1
+            time.sleep(self.ip_lookup_sleep)
+
+        raise errors.LookupAgentIPError('Agent could not find a valid IP '
+                                        'address.')
+
+    def get_agent_network_interfaces(self):
+        iface_list = [iface.serialize()['name'] for iface in
+                self.hardware.list_network_interfaces()]
+        iface_list = [name for name in iface_list if 'lo' not in name]
+
+        if len(iface_list) == 0:
+            raise errors.LookupAgentInterfaceError('Agent could not find a '
+                                                   'valid network interface.')
+        else:
+            return iface_list
 
     def get_node_uuid(self):
         if 'uuid' not in self.node:
