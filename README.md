@@ -1,5 +1,3 @@
 # ironic-python-agent
 
-[![Build Status](https://travis-ci.org/rackerlabs/teeth-agent.png?branch=master)](https://travis-ci.org/rackerlabs/teeth-agent)
-
-An agent for rebuilding and controlling Ironic nodes.
+An agent for rebuilding and controlling Ironic nodes. To contribute, start here: [Openstack: How to contribute](https://wiki.openstack.org/wiki/How_To_Contribute).
