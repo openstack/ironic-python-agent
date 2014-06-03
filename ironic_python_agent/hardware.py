@@ -91,6 +91,18 @@ class HardwareManager(object):
         pass
 
     @abc.abstractmethod
+    def get_cpus(self):
+        pass
+
+    @abc.abstractmethod
+    def list_block_devices(self):
+        pass
+
+    @abc.abstractmethod
+    def get_memory(self):
+        pass
+
+    @abc.abstractmethod
     def get_os_install_device(self):
         pass
 
