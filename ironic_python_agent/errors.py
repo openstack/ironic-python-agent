@@ -184,5 +184,15 @@ class SystemRebootError(RESTError):
         self.details = self.details.format(exit_code)
 
 
+class BlockDeviceEraseError(RESTError):
+    """Error raised when an error occurs erasing a block device."""
+
+    message = 'Error erasing block device'
+
+    def __init__(self, details):
+        super(BlockDeviceEraseError, self).__init__(details)
+        self.details = details
+
+
 class ExtensionError(Exception):
     pass

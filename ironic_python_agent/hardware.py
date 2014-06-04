@@ -21,6 +21,7 @@ import six
 import stevedore
 
 from ironic_python_agent import encoding
+from ironic_python_agent import errors
 from ironic_python_agent.openstack.common import log
 from ironic_python_agent import utils
 
@@ -106,6 +107,42 @@ class HardwareManager(object):
     def get_os_install_device(self):
         pass
 
+    @abc.abstractmethod
+    def erase_block_device(self, block_device):
+        """Attempt to erase a block device.
+
+        Implementations should detect the type of device and erase it in the
+        most appropriate way possible.  Generic implementations should support
+        common erase mechanisms such as ATA secure erase, or multi-pass random
+        writes. Operators with more specific needs should override this method
+        in order to detect and handle "interesting" cases, or delegate to the
+        parent class to handle generic cases.
+
+        For example: operators running ACME MagicStore (TM) cards alongside
+        standard SSDs might check whether the device is a MagicStore and use a
+        proprietary tool to erase that, otherwise call this method on their
+        parent class. Upstream submissions of common functionality are
+        encouraged.
+
+        :param block_device: a BlockDevice indicating a device to be erased.
+        :raises: BlockDeviceEraseError when an error occurs erasing a block
+                 device, or if the block device is not supported.
+
+        """
+        pass
+
+    def erase_devices(self):
+        """Erase any device that holds user data.
+
+        By default this will attempt to erase block devices. This method can be
+        overridden in an implementation-specific hardware manager in order to
+        erase additional hardware, although backwards-compatible upstream
+        submissions are encouraged.
+        """
+        block_devices = self.list_block_devices()
+        for block_device in block_devices:
+            self.erase_block_device(block_device)
+
     def list_hardware_info(self):
         hardware_info = {}
         hardware_info['interfaces'] = self.list_network_interfaces()
@@ -186,6 +223,65 @@ class GenericHardwareManager(HardwareManager):
         for device in block_devices:
             if device.size >= (4 * pow(1024, 3)):
                 return device.name
+
+    def erase_block_device(self, block_device):
+        if self._ata_erase(block_device):
+            return
+
+        # NOTE(russell_h): Support for additional generic erase methods should
+        # be added above this raise, in order of precedence.
+        raise errors.BlockDeviceEraseError(('Unable to erase block device '
+            '{0}: device is unsupported.').format(block_device.name))
+
+    def _get_ata_security_lines(self, block_device):
+        output = utils.execute('hdparm', '-I', block_device.name)[0]
+
+        if '\nSecurity: ' not in output:
+            return []
+
+        # Get all lines after the 'Security: ' line
+        security_and_beyond = output.split('\nSecurity: \n')[1]
+        security_and_beyond_lines = security_and_beyond.split('\n')
+
+        security_lines = []
+        for line in security_and_beyond_lines:
+            if line.startswith('\t'):
+                security_lines.append(line.strip().replace('\t', ' '))
+            else:
+                break
+
+        return security_lines
+
+    def _ata_erase(self, block_device):
+        security_lines = self._get_ata_security_lines(block_device)
+
+        # If secure erase isn't supported return False so erase_block_device
+        # can try another mechanism. Below here, if secure erase is supported
+        # but fails in some way, error out (operators of hardware that supports
+        # secure erase presumably expect this to work).
+        if 'supported' not in security_lines:
+            return False
+
+        if 'enabled' in security_lines:
+            raise errors.BlockDeviceEraseError(('Block device {0} already has '
+                'a security password set').format(block_device.name))
+
+        if 'not frozen' not in security_lines:
+            raise errors.BlockDeviceEraseError(('Block device {0} is frozen '
+                'and cannot be erased').format(block_device.name))
+
+        utils.execute('hdparm', '--user-master', 'u', '--security-set-pass',
+                      'NULL', block_device.name)
+        utils.execute('hdparm', '--user-master', 'u', '--security-erase',
+                      'NULL', block_device.name)
+
+        # Verify that security is now 'not enabled'
+        security_lines = self._get_ata_security_lines(block_device)
+        if 'not enabled' not in security_lines:
+            raise errors.BlockDeviceEraseError(('An unknown error occurred '
+                'erasing block device {0}').format(block_device.name))
+
+        return True
 
 
 def _compare_extensions(ext1, ext2):

@@ -16,6 +16,7 @@ import mock
 from oslotest import base as test_base
 import six
 
+from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import utils
 
@@ -23,6 +24,93 @@ if six.PY2:
     OPEN_FUNCTION_NAME = '__builtin__.open'
 else:
     OPEN_FUNCTION_NAME = 'builtins.open'
+
+
+HDPARM_INFO_TEMPLATE = (
+    '/dev/sda:\n'
+    '\n'
+    'ATA device, with non-removable media\n'
+    '\tModel Number:       7 PIN  SATA FDM\n'
+    '\tSerial Number:      20131210000000000023\n'
+    '\tFirmware Revision:  SVN406\n'
+    '\tTransport:          Serial, ATA8-AST, SATA 1.0a, SATA II Extensions, '
+        'SATA Rev 2.5, SATA Rev 2.6, SATA Rev 3.0\n'
+    'Standards: \n'
+    '\tSupported: 9 8 7 6 5\n'
+    '\tLikely used: 9\n'
+    'Configuration: \n'
+    '\tLogical\t\tmax\tcurrent\n'
+    '\tcylinders\t16383\t16383\n'
+    '\theads\t\t16\t16\n'
+    '\tsectors/track\t63\t63\n'
+    '\t--\n'
+    '\tCHS current addressable sectors:   16514064\n'
+    '\tLBA    user addressable sectors:   60579792\n'
+    '\tLBA48  user addressable sectors:   60579792\n'
+    '\tLogical  Sector size:                   512 bytes\n'
+    '\tPhysical Sector size:                   512 bytes\n'
+    '\tLogical Sector-0 offset:                  0 bytes\n'
+    '\tdevice size with M = 1024*1024:       29579 MBytes\n'
+    '\tdevice size with M = 1000*1000:       31016 MBytes (31 GB)\n'
+    '\tcache/buffer size  = unknown\n'
+    '\tForm Factor: 2.5 inch\n'
+    '\tNominal Media Rotation Rate: Solid State Device\n'
+    'Capabilities: \n'
+    '\tLBA, IORDY(can be disabled)\n'
+    '\tQueue depth: 32\n'
+    '\tStandby timer values: spec\'d by Standard, no device specific '
+        'minimum\n'
+    '\tR/W multiple sector transfer: Max = 1\tCurrent = 1\n'
+    '\tDMA: mdma0 mdma1 mdma2 udma0 udma1 udma2 udma3 udma4 *udma5\n'
+    '\t     Cycle time: min=120ns recommended=120ns\n'
+    '\tPIO: pio0 pio1 pio2 pio3 pio4\n'
+    '\t     Cycle time: no flow control=120ns  IORDY flow '
+        'control=120ns\n'
+    'Commands/features: \n'
+    '\tEnabled\tSupported:\n'
+    '\t   *\tSMART feature set\n'
+    '\t    \tSecurity Mode feature set\n'
+    '\t   *\tPower Management feature set\n'
+    '\t   *\tWrite cache\n'
+    '\t   *\tLook-ahead\n'
+    '\t   *\tHost Protected Area feature set\n'
+    '\t   *\tWRITE_BUFFER command\n'
+    '\t   *\tREAD_BUFFER command\n'
+    '\t   *\tNOP cmd\n'
+    '\t    \tSET_MAX security extension\n'
+    '\t   *\t48-bit Address feature set\n'
+    '\t   *\tDevice Configuration Overlay feature set\n'
+    '\t   *\tMandatory FLUSH_CACHE\n'
+    '\t   *\tFLUSH_CACHE_EXT\n'
+    '\t   *\tWRITE_{DMA|MULTIPLE}_FUA_EXT\n'
+    '\t   *\tWRITE_UNCORRECTABLE_EXT command\n'
+    '\t   *\tGen1 signaling speed (1.5Gb/s)\n'
+    '\t   *\tGen2 signaling speed (3.0Gb/s)\n'
+    '\t   *\tGen3 signaling speed (6.0Gb/s)\n'
+    '\t   *\tNative Command Queueing (NCQ)\n'
+    '\t   *\tHost-initiated interface power management\n'
+    '\t   *\tPhy event counters\n'
+    '\t   *\tDMA Setup Auto-Activate optimization\n'
+    '\t    \tDevice-initiated interface power management\n'
+    '\t   *\tSoftware settings preservation\n'
+    '\t    \tunknown 78[8]\n'
+    '\t   *\tSMART Command Transport (SCT) feature set\n'
+    '\t   *\tSCT Error Recovery Control (AC3)\n'
+    '\t   *\tSCT Features Control (AC4)\n'
+    '\t   *\tSCT Data Tables (AC5)\n'
+    '\t   *\tData Set Management TRIM supported (limit 2 blocks)\n'
+    'Security: \n'
+    '\tMaster password revision code = 65534\n'
+    '\t%(supported)s\n'
+    '\t%(enabled)s\n'
+    '\tnot\tlocked\n'
+    '\t%(frozen)s\n'
+    '\tnot\texpired: security count\n'
+    '\t\tsupported: enhanced erase\n'
+    '\t24min for SECURITY ERASE UNIT. 24min for ENHANCED SECURITY '
+        'ERASE UNIT.\n'
+    'Checksum: correct\n'
+)
 
 
 class TestGenericHardwareManager(test_base.BaseTestCase):
@@ -160,3 +248,120 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                          self.hardware.list_block_devices())
         self.assertEqual(hardware_info['interfaces'],
                          self.hardware.list_network_interfaces())
+
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_ata_success(self, mocked_execute):
+        hdparm_info_fields = {
+            'supported': '\tsupported',
+            'enabled': 'not\tenabled',
+            'frozen': 'not\tfrozen',
+        }
+        mocked_execute.side_effect = [
+            (HDPARM_INFO_TEMPLATE % hdparm_info_fields, ''),
+            ('', ''),
+            ('', ''),
+            (HDPARM_INFO_TEMPLATE % hdparm_info_fields, ''),
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        self.hardware.erase_block_device(block_device)
+        mocked_execute.assert_has_calls([
+            mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('hdparm', '--user-master', 'u', '--security-set-pass',
+                      'NULL', '/dev/sda'),
+            mock.call('hdparm', '--user-master', 'u', '--security-erase',
+                      'NULL', '/dev/sda'),
+            mock.call('hdparm', '-I', '/dev/sda'),
+        ])
+
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_ata_nosecurtiy(self, mocked_execute):
+        hdparm_output = HDPARM_INFO_TEMPLATE.split('\nSecurity:')[0]
+
+        mocked_execute.side_effect = [
+            (hdparm_output, '')
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware.erase_block_device,
+                          block_device)
+
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_ata_not_supported(self, mocked_execute):
+        hdparm_output = HDPARM_INFO_TEMPLATE % {
+            'supported': 'not\tsupported',
+            'enabled': 'not\tenabled',
+            'frozen': 'not\tfrozen',
+        }
+
+        mocked_execute.side_effect = [
+            (hdparm_output, '')
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware.erase_block_device,
+                          block_device)
+
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_ata_security_enabled(self, mocked_execute):
+        hdparm_output = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': '\tenabled',
+            'frozen': 'not\tfrozen',
+        }
+
+        mocked_execute.side_effect = [
+            (hdparm_output, '')
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware.erase_block_device,
+                          block_device)
+
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_ata_frozen(self, mocked_execute):
+        hdparm_output = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': 'not\tenabled',
+            'frozen': '\tfrozen',
+        }
+
+        mocked_execute.side_effect = [
+            (hdparm_output, '')
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware.erase_block_device,
+                          block_device)
+
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_ata_failed(self, mocked_execute):
+        hdparm_output_before = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': 'not\tenabled',
+            'frozen': 'not\tfrozen',
+        }
+
+        # If security mode remains enabled after the erase, it is indiciative
+        # of a failed erase.
+        hdparm_output_after = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': '\tenabled',
+            'frozen': 'not\tfrozen',
+        }
+
+        mocked_execute.side_effect = [
+            (hdparm_output_before, ''),
+            ('', ''),
+            ('', ''),
+            (hdparm_output_after, ''),
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware.erase_block_device,
+                          block_device)
