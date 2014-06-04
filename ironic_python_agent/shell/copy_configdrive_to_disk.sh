@@ -34,15 +34,21 @@ DEVICE="$2"
 [[ -f $CONFIGDRIVE ]] || usage "$CONFIGDRIVE (CONFIGDRIVE) is not a regular file"
 [[ -b $DEVICE ]] || usage "$DEVICE (DEVICE) is not a block device"
 
-# Create small partition at the end of the device
-log "Adding configdrive partition to $DEVICE"
-parted -a optimal -s -- $DEVICE mkpart primary ext2 -64MiB -0
+# Check for preexisting partition for configdrive
+EXISTING_PARTITION=`/sbin/blkid -l -o device $DEVICE -t LABEL=config-2`
+if [[ $? == 0 ]]; then
+  ISO_PARTITION=$EXISTING_PARTITION
+else
+  # Create small partition at the end of the device
+  log "Adding configdrive partition to $DEVICE"
+  parted -a optimal -s -- $DEVICE mkpart primary ext2 -64MiB -0
 
-# Find partition we just created
-# Dump all partitions, ignore empty ones, then get the last partition ID
-ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v ' 0,' | tail -n1 | awk '{print $1}'`
+  # Find partition we just created
+  # Dump all partitions, ignore empty ones, then get the last partition ID
+  ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v ' 0,' | tail -n1 | awk '{print $1}'`
+fi
 
-# This generates the ISO image of the config drive.
+# This writes the ISO image to the config drive.
 log "Writing Configdrive contents in $CONFIGDRIVE to $ISO_PARTITION"
 dd if=$CONFIGDRIVE of=$ISO_PARTITION bs=64K oflag=direct
 
