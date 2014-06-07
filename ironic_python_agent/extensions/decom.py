@@ -13,8 +13,14 @@
 # limitations under the License.
 
 from ironic_python_agent.extensions import base
+from ironic_python_agent import hardware
 
 
 class DecomExtension(base.BaseAgentExtension):
     def __init__(self):
         super(DecomExtension, self).__init__()
+        self.command_map['erase_hardware'] = self.erase_hardware
+
+    @base.async_command()
+    def erase_hardware(self):
+        hardware.get_manager().erase_devices()
