@@ -15,6 +15,7 @@
 import mock
 from oslotest import base as test_base
 import six
+from stevedore import extension
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
@@ -111,6 +112,50 @@ HDPARM_INFO_TEMPLATE = (
         'ERASE UNIT.\n'
     'Checksum: correct\n'
 )
+
+
+class FakeHardwareManager(hardware.GenericHardwareManager):
+    def __init__(self, hardware_support):
+        self._hardware_support = hardware_support
+
+    def evaluate_hardware_support(self):
+        return self._hardware_support
+
+
+class TestHardwareManagerLoading(test_base.BaseTestCase):
+    def setUp(self):
+        super(TestHardwareManagerLoading, self).setUp()
+        # In order to use ExtensionManager.make_test_instance() without
+        # creating a new only-for-test codepath, we instantiate the test
+        # instance outside of the test case in setUp, where we can access
+        # make_test_instance() before it gets mocked. Inside of the test case
+        # we set this as the return value of the mocked constructor, so we can
+        # verify that the constructor is called correctly while still using a
+        # more realistic ExtensionManager
+        fake_ep = mock.Mock()
+        fake_ep.module_name = 'fake'
+        fake_ep.attrs = ['fake attrs']
+        ext1 = extension.Extension('fake_generic0', fake_ep, None,
+            FakeHardwareManager(hardware.HardwareSupport.GENERIC))
+        ext2 = extension.Extension('fake_mainline0', fake_ep, None,
+            FakeHardwareManager(hardware.HardwareSupport.MAINLINE))
+        ext3 = extension.Extension('fake_generic1', fake_ep, None,
+            FakeHardwareManager(hardware.HardwareSupport.GENERIC))
+        self.correct_hw_manager = ext2.obj
+        self.fake_ext_mgr = extension.ExtensionManager.make_test_instance([
+            ext1, ext2, ext3
+        ])
+
+    @mock.patch('stevedore.ExtensionManager')
+    def test_hardware_manager_loading(self, mocked_extension_mgr_constructor):
+        hardware._global_manager = None
+        mocked_extension_mgr_constructor.return_value = self.fake_ext_mgr
+
+        preferred_hw_manager = hardware.get_manager()
+        mocked_extension_mgr_constructor.assert_called_once_with(
+            namespace='ironic_python_agent.hardware_managers',
+            invoke_on_load=True)
+        self.assertEqual(self.correct_hw_manager, preferred_hw_manager)
 
 
 class TestGenericHardwareManager(test_base.BaseTestCase):
