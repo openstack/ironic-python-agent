@@ -133,6 +133,9 @@ class TestBaseAgent(test_base.BaseTestCase):
                                              'org:8081/',
                                              ('203.0.113.1', 9990),
                                              ('192.0.2.1', 9999),
+                                             3,
+                                             10,
+                                             'eth0',
                                              300,
                                              1,
                                              'agent_ipmitool')
@@ -185,6 +188,49 @@ class TestBaseAgent(test_base.BaseTestCase):
         wsgi_server.serve_forever.assert_called_once()
 
         self.agent.heartbeater.start.assert_called_once_with()
+
+    @mock.patch('time.sleep', return_value=None)
+    def test_ipv4_lookup(self, mock_time_sleep):
+        homeless_agent = agent.IronicPythonAgent('https://fake_api.example.'
+                                                 'org:8081/',
+                                                 (None, 9990),
+                                                 ('192.0.2.1', 9999),
+                                                 3,
+                                                 10,
+                                                 None,
+                                                 300,
+                                                 1,
+                                                 'agent_ipmitool')
+
+        homeless_agent.hardware = mock.Mock()
+        mock_list_net = homeless_agent.hardware.list_network_interfaces
+        mock_get_ipv4 = homeless_agent.hardware.get_ipv4_addr
+
+        homeless_agent.heartbeater.stop_event.wait = mock.Mock()
+        homeless_agent.heartbeater.stop_event.wait.return_value = True
+
+        # Can't find network interfaces, and therefore can't find IP
+        mock_list_net.return_value = []
+        mock_get_ipv4.return_value = None
+        self.assertRaises(errors.LookupAgentInterfaceError,
+                          homeless_agent.set_agent_advertise_addr)
+
+        # Can look up network interfaces, but not IP.  Network interface not
+        # set, because no interface yields an IP.
+        mock_ifaces = [hardware.NetworkInterface('eth0', '00:00:00:00:00:00'),
+                       hardware.NetworkInterface('eth1', '00:00:00:00:00:01')]
+        mock_list_net.return_value = mock_ifaces
+
+        self.assertRaises(errors.LookupAgentIPError,
+                          homeless_agent.set_agent_advertise_addr)
+        self.assertEqual(6, mock_get_ipv4.call_count)
+        self.assertEqual(None, homeless_agent.network_interface)
+
+        # First interface eth0 has no IP, second interface eth1 has an IP
+        mock_get_ipv4.side_effect = [None, '1.1.1.1']
+        homeless_agent.heartbeater.run()
+        self.assertEqual(('1.1.1.1', 9990), homeless_agent.advertise_address)
+        self.assertEqual('eth1', homeless_agent.network_interface)
 
     def test_async_command_success(self):
         result = base.AsyncCommandResult('foo_command', {'fail': False},

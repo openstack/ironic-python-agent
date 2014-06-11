@@ -51,7 +51,7 @@ cli_opts = [
                help='The port to listen on'),
 
     cfg.StrOpt('advertise-host',
-                  default=KPARAMS.get('ipa-advertise-host', '0.0.0.0'),
+                  default=KPARAMS.get('ipa-advertise-host', None),
                   help='The host to tell Ironic to reply and send '
                        'commands to.'),
 
@@ -59,6 +59,21 @@ cli_opts = [
                default=int(KPARAMS.get('ipa-advertise-port', 9999)),
                help='The port to tell Ironic to reply and send '
                     'commands to.'),
+
+    cfg.IntOpt('ip-lookup-attempts',
+               default=int(KPARAMS.get('ipa-ip-lookup-attempts', 3)),
+               help='The number of times to try and automatically'
+                    'determine the agent IPv4 address.'),
+
+    cfg.IntOpt('ip-lookup-sleep',
+               default=int(KPARAMS.get('ipa-ip-lookup-timeout', 10)),
+               help='The amaount of time to sleep between attempts'
+                    'to determine IP address.'),
+
+    cfg.StrOpt('network-interface',
+               default=KPARAMS.get('ipa-network-interface', None),
+               help='The interface to use when looking for an IP'
+               'address.'),
 
     cfg.IntOpt('lookup-timeout',
                default=int(KPARAMS.get('ipa-lookup-timeout', 300)),
@@ -88,6 +103,9 @@ def run():
     agent.IronicPythonAgent(CONF.api_url,
                             (CONF.advertise_host, CONF.advertise_port),
                             (CONF.listen_host, CONF.listen_port),
+                            CONF.ip_lookup_attempts,
+                            CONF.ip_lookup_sleep,
+                            CONF.network_interface,
                             CONF.lookup_timeout,
                             CONF.lookup_interval,
                             CONF.driver_name).run()

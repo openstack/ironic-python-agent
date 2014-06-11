@@ -16,6 +16,7 @@ import abc
 import functools
 import os
 
+import netifaces
 import psutil
 import six
 import stevedore
@@ -169,6 +170,14 @@ class GenericHardwareManager(HardwareManager):
             mac_addr = addr_file.read().strip()
 
         return NetworkInterface(interface_name, mac_addr)
+
+    def get_ipv4_addr(self, interface_id):
+        try:
+            addrs = netifaces.ifaddresses(interface_id)
+            return addrs[netifaces.AF_INET][0]['addr']
+        except (ValueError, IndexError):
+            # No default IPv4 address found
+            return None
 
     def _is_device(self, interface_name):
         device_path = '{0}/class/net/{1}/device'.format(self.sys_path,
