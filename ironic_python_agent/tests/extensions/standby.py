@@ -337,7 +337,9 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         success_result = self.agent_extension.run_image('run_image')
         success_result.join()
+
         execute_mock.assert_called_once_with(*command)
+        self.assertEqual('SUCCEEDED', success_result.command_status)
 
         execute_mock.reset_mock()
         execute_mock.return_value = 1
