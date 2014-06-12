@@ -44,7 +44,7 @@ dd if=/dev/zero of=$DEVICE bs=512 count=10
 ## Doing two steps allows us to use dd, which allows us to tweak things like
 ## blocksize and allows use of direct io
 # Converts image to raw
-log "Imaging $IMAGEFILE to RAW format"
+log "Converting $IMAGEFILE to RAW format"
 qemu-img convert -O raw $IMAGEFILE /tmp/image.raw
 
 # Write image onto device
