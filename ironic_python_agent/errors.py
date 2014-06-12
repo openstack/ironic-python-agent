@@ -159,10 +159,11 @@ class ImageWriteError(RESTError):
 
     message = 'Error writing image to device.'
 
-    def __init__(self, exit_code, device):
+    def __init__(self, device, exit_code, stdout, stderr):
         super(ImageWriteError, self).__init__()
-        self.details = 'Writing image to device {0} failed with exit code {1}.'
-        self.details = self.details.format(device, exit_code)
+        self.details = ('Writing image to device {0} failed with exit code '
+                        '{1}. stdout: {2}. stderr: {3}')
+        self.details = self.details.format(device, exit_code, stdout, stderr)
 
 
 class ConfigDriveTooLargeError(RESTError):
@@ -183,10 +184,10 @@ class ConfigDriveWriteError(RESTError):
 
     message = 'Error writing configdrive to device.'
 
-    def __init__(self, exit_code, device):
-        details = 'Writing configdrive to device {0} failed with exit code ' \
-                  '{1}.'
-        details = details.format(device, exit_code)
+    def __init__(self, device, exit_code, stdout, stderr):
+        details = ('Writing configdrive to device {0} failed with exit code '
+                   '{1}. stdout: {2}. stderr: {3}.')
+        details = details.format(device, exit_code, stdout, stderr)
         super(ConfigDriveWriteError, self).__init__(details)
         self.details = details
 
@@ -196,10 +197,11 @@ class SystemRebootError(RESTError):
 
     message = 'Error rebooting system.'
 
-    def __init__(self, exit_code):
+    def __init__(self, exit_code, stdout, stderr):
         super(SystemRebootError, self).__init__()
-        self.details = 'Reboot script failed with exit code {0}.'
-        self.details = self.details.format(exit_code)
+        self.details = ('Reboot script failed with exit code {0}. stdout: '
+                        '{1}. stderr: {2}.')
+        self.details = self.details.format(exit_code, stdout, stderr)
 
 
 class BlockDeviceEraseError(RESTError):
