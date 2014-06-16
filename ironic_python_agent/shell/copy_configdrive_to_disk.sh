@@ -14,10 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
-
 log() {
   echo "`basename $0`: $@"
+}
+
+fail() {
+  log "Error $@"
+  exit 1
 }
 
 usage() {
@@ -37,19 +40,20 @@ DEVICE="$2"
 # Check for preexisting partition for configdrive
 EXISTING_PARTITION=`/sbin/blkid -l -o device $DEVICE -t LABEL=config-2`
 if [[ $? == 0 ]]; then
+  log "Existing configdrive found on ${DEVICE} at ${EXISTING_PARTITION}"
   ISO_PARTITION=$EXISTING_PARTITION
 else
   # Create small partition at the end of the device
   log "Adding configdrive partition to $DEVICE"
-  parted -a optimal -s -- $DEVICE mkpart primary ext2 -64MiB -0
+  parted -a optimal -s -- $DEVICE mkpart primary ext2 -64MiB -0 || fail "creating configdrive on ${DEVICE}"
 
   # Find partition we just created
   # Dump all partitions, ignore empty ones, then get the last partition ID
-  ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v ' 0,' | tail -n1 | awk '{print $1}'`
+  ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v ' 0,' | tail -n1 | awk '{print $1}'` || fail "finding ISO partition created on ${DEVICE}"
 fi
 
 # This writes the ISO image to the config drive.
 log "Writing Configdrive contents in $CONFIGDRIVE to $ISO_PARTITION"
-dd if=$CONFIGDRIVE of=$ISO_PARTITION bs=64K oflag=direct
+dd if=$CONFIGDRIVE of=$ISO_PARTITION bs=64K oflag=direct || fail "writing Configdrive to ${ISO_PARTITION}"
 
 log "${DEVICE} imaged successfully!"
