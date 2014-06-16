@@ -18,6 +18,7 @@ import six
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import standby
+from ironic_python_agent.openstack.common import processutils
 
 if six.PY2:
     OPEN_FUNCTION_NAME = '__builtin__.open'
@@ -108,20 +109,21 @@ class TestStandbyExtension(test_base.BaseTestCase):
         location = standby._image_location(image_info)
         script = standby._path_to_script('shell/write_image.sh')
         command = ['/bin/bash', script, location, device]
-        execute_mock.return_value = 0
+        execute_mock.return_value = ('', '')
 
         standby._write_image(image_info, device)
-        execute_mock.assert_called_once_with(*command)
+        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
 
         execute_mock.reset_mock()
-        execute_mock.return_value = 1
+        execute_mock.return_value = ('', '')
+        execute_mock.side_effect = processutils.ProcessExecutionError
 
         self.assertRaises(errors.ImageWriteError,
                           standby._write_image,
                           image_info,
                           device)
 
-        execute_mock.assert_called_once_with(*command)
+        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
 
     @mock.patch('gzip.GzipFile', autospec=True)
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
@@ -152,21 +154,22 @@ class TestStandbyExtension(test_base.BaseTestCase):
         configdrive = standby._configdrive_location()
         script = standby._path_to_script('shell/copy_configdrive_to_disk.sh')
         command = ['/bin/bash', script, configdrive, device]
-        execute_mock.return_value = 0
+        execute_mock.return_value = ('', '')
         stat_mock.return_value.st_size = 5
 
         standby._write_configdrive_to_partition(configdrive, device)
-        execute_mock.assert_called_once_with(*command)
+        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
 
         execute_mock.reset_mock()
-        execute_mock.return_value = 1
+        execute_mock.return_value = ('', '')
+        execute_mock.side_effect = processutils.ProcessExecutionError
 
         self.assertRaises(errors.ConfigDriveWriteError,
                           standby._write_configdrive_to_partition,
                           configdrive,
                           device)
 
-        execute_mock.assert_called_once_with(*command)
+        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
 
     @mock.patch('os.stat', autospec=True)
     @mock.patch(('ironic_python_agent.extensions.standby.'
@@ -333,21 +336,22 @@ class TestStandbyExtension(test_base.BaseTestCase):
     def test_run_image(self, execute_mock):
         script = standby._path_to_script('shell/reboot.sh')
         command = ['/bin/bash', script]
-        execute_mock.return_value = 0
+        execute_mock.return_value = ('', '')
 
         success_result = self.agent_extension.run_image('run_image')
         success_result.join()
 
-        execute_mock.assert_called_once_with(*command)
+        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
         execute_mock.reset_mock()
-        execute_mock.return_value = 1
+        execute_mock.return_value = ('', '')
+        execute_mock.side_effect = processutils.ProcessExecutionError
 
         failed_result = self.agent_extension.run_image('run_image')
         failed_result.join()
 
-        execute_mock.assert_called_once_with(*command)
+        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
         self.assertEqual('FAILED', failed_result.command_status)
 
     def test_path_to_script(self):
