@@ -85,7 +85,7 @@ class Memory(encoding.Serializable):
 @six.add_metaclass(abc.ABCMeta)
 class HardwareManager(object):
     @abc.abstractmethod
-    def evaluate_hardware_support(cls):
+    def evaluate_hardware_support(self):
         pass
 
     @abc.abstractmethod
@@ -160,7 +160,7 @@ class GenericHardwareManager(HardwareManager):
         if os.path.isdir('/mnt/sys'):
             self.sys_path = '/mnt/sys'
 
-    def evaluate_hardware_support(cls):
+    def evaluate_hardware_support(self):
         return HardwareSupport.GENERIC
 
     def _get_interface_info(self, interface_name):
@@ -296,7 +296,7 @@ class GenericHardwareManager(HardwareManager):
 def _compare_extensions(ext1, ext2):
     mgr1 = ext1.obj
     mgr2 = ext2.obj
-    return mgr1.evaluate_hardware_support() - mgr2.evaluate_hardware_support()
+    return mgr2.evaluate_hardware_support() - mgr1.evaluate_hardware_support()
 
 
 def get_manager():
