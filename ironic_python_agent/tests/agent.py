@@ -53,6 +53,7 @@ class TestHeartbeater(test_base.BaseTestCase):
     def setUp(self):
         super(TestHeartbeater, self).setUp()
         self.mock_agent = mock.Mock()
+        self.mock_agent.api_url = 'https://fake_api.example.org:8081/'
         self.heartbeater = agent.IronicPythonAgentHeartbeater(self.mock_agent)
         self.heartbeater.api = mock.Mock()
         self.heartbeater.hardware = mock.create_autospec(

@@ -33,7 +33,15 @@ class APIClient(object):
     def __init__(self, api_url, driver_name):
         self.api_url = api_url.rstrip('/')
         self.driver_name = driver_name
+
+        # Only keep alive a maximum of 2 connections to the API. More will be
+        # opened if they are needed, but they will be closed immediately after
+        # use.
+        adapter = requests.adapters.HTTPAdapter(pool_connections=2,
+                                                pool_maxsize=2)
         self.session = requests.Session()
+        self.session.mount(self.api_url, adapter)
+
         self.encoder = encoding.RESTJSONEncoder()
         self.log = log.getLogger(__name__)
 
