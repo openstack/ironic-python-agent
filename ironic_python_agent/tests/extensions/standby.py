@@ -269,6 +269,52 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertEqual(None, async_result.command_result)
 
+    @mock.patch('ironic_python_agent.hardware.get_manager', autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._write_image',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._download_image',
+                autospec=True)
+    def test_cache_image_force(self, download_mock, write_mock, hardware_mock):
+        image_info = self._build_fake_image_info()
+        self.agent_extension.cached_image_id = image_info['id']
+        download_mock.return_value = None
+        write_mock.return_value = None
+        manager_mock = hardware_mock.return_value
+        manager_mock.get_os_install_device.return_value = 'manager'
+        async_result = self.agent_extension.cache_image('cache_image',
+                                                        image_info=image_info,
+                                                        force=True)
+        async_result.join()
+        download_mock.assert_called_once_with(image_info)
+        write_mock.assert_called_once_with(image_info, 'manager')
+        self.assertEqual(self.agent_extension.cached_image_id,
+                         image_info['id'])
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertEqual(None, async_result.command_result)
+
+    @mock.patch('ironic_python_agent.hardware.get_manager', autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._write_image',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._download_image',
+                autospec=True)
+    def test_cache_image_cached(self, download_mock, write_mock,
+                                hardware_mock):
+        image_info = self._build_fake_image_info()
+        self.agent_extension.cached_image_id = image_info['id']
+        download_mock.return_value = None
+        write_mock.return_value = None
+        manager_mock = hardware_mock.return_value
+        manager_mock.get_os_install_device.return_value = 'manager'
+        async_result = self.agent_extension.cache_image('cache_image',
+                                                   image_info=image_info)
+        async_result.join()
+        self.assertFalse(download_mock.called)
+        self.assertFalse(write_mock.called)
+        self.assertEqual(self.agent_extension.cached_image_id,
+                         image_info['id'])
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertEqual(None, async_result.command_result)
+
     @mock.patch(('ironic_python_agent.extensions.standby.'
                  '_write_configdrive_to_partition'),
                 autospec=True)
