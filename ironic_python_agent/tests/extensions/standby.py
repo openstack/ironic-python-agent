@@ -84,12 +84,6 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           standby._validate_image_info,
                           invalid_info)
 
-    def test_cache_image_success(self):
-        result = self.agent_extension.cache_image(
-            'cache_image',
-            image_info=self._build_fake_image_info())
-        result.join()
-
     def test_cache_image_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
                           self.agent_extension.cache_image,
