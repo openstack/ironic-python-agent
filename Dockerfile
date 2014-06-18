@@ -21,7 +21,7 @@ RUN pip install -r /tmp/ironic-python-agent/requirements.txt
 # This will succeed because all the dependencies were installed previously
 RUN pip install /tmp/ironic-python-agent
 RUN rm -rf /tmp/ironic-python-agent
-RUN rm -rf rm -rf /var/lib/apt/lists/*
+RUN rm -rf /var/lib/apt/lists/*
 
 RUN apt-get -y purge perl gcc-4.6 gcc python2.7-dev git && \
     apt-get -y autoremove && \
