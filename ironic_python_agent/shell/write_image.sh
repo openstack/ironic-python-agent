@@ -14,9 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This should work with almost any image that uses MBR partitioning and doesn't already
-# have 3 or more partitions.
-
 set -e
 
 log() {
