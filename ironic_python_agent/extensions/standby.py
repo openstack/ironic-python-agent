@@ -54,7 +54,7 @@ def _write_image(image_info, device):
     try:
         stdout, stderr = utils.execute(*command, check_exit_code=[0])
     except processutils.ProcessExecutionError as e:
-        raise errors.ImageWriteError(e.exit_code, device)
+        raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
     totaltime = time.time() - starttime
     LOG.info('Image {0} written to device {1} in {2} seconds'.format(
              image, device, totaltime))
@@ -88,7 +88,10 @@ def _write_configdrive_to_partition(configdrive, device):
     try:
         stdout, stderr = utils.execute(*command, check_exit_code=[0])
     except processutils.ProcessExecutionError as e:
-        raise errors.ConfigDriveWriteError(e.exit_code, device)
+        raise errors.ConfigDriveWriteError(device,
+                                           e.exit_code,
+                                           e.stdout,
+                                           e.stderr)
 
     totaltime = time.time() - starttime
     LOG.info('configdrive copied from {0} to {1} in {2} seconds'.format(
@@ -209,4 +212,4 @@ class StandbyExtension(base.BaseAgentExtension):
         try:
             stdout, stderr = utils.execute(*command, check_exit_code=[0])
         except processutils.ProcessExecutionError as e:
-            raise errors.SystemRebootError(e.exit_code)
+            raise errors.SystemRebootError(e.exit_code, e.stdout, e.stderr)
