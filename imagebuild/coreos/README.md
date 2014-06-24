@@ -27,10 +27,9 @@ boot
 ```
 
 You can either embed a configuration file into the image, or set configuration
-options via the kernel command line. Values most people will need are:
+options via the kernel command line. The only value most people will need is:
 
   - `ipa-api-url=http://ironic-api-server:6385`
-  - `ipa-advertise-host=ip-of-server-running-agent`
 
 But any config value supported in the agent can be given to the agent via the
 kernel command line, which allows the use of the same agent image across
