@@ -372,6 +372,38 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertEqual(None, async_result.command_result)
 
+    @mock.patch(('ironic_python_agent.extensions.standby.'
+                 '_write_configdrive_to_partition'),
+                autospec=True)
+    @mock.patch('ironic_python_agent.hardware.get_manager', autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._write_image',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._download_image',
+                autospec=True)
+    def test_prepare_image_no_configdrive(self,
+                                          download_mock,
+                                          write_mock,
+                                          hardware_mock,
+                                          configdrive_copy_mock):
+        image_info = self._build_fake_image_info()
+        download_mock.return_value = None
+        write_mock.return_value = None
+        manager_mock = hardware_mock.return_value
+        manager_mock.get_os_install_device.return_value = 'manager'
+        configdrive_copy_mock.return_value = None
+
+        async_result = self.agent_extension.prepare_image('prepare_image',
+                image_info=image_info,
+                configdrive=None)
+        async_result.join()
+
+        download_mock.assert_called_once_with(image_info)
+        write_mock.assert_called_once_with(image_info, 'manager')
+
+        self.assertEqual(configdrive_copy_mock.call_count, 0)
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertEqual(None, async_result.command_result)
+
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_run_image(self, execute_mock):
         script = standby._path_to_script('shell/reboot.sh')

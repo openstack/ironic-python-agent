@@ -201,7 +201,8 @@ class StandbyExtension(base.BaseAgentExtension):
             _write_image(image_info, device)
             self.cached_image_id = image_info['id']
 
-        _write_configdrive_to_partition(configdrive, device)
+        if configdrive is not None:
+            _write_configdrive_to_partition(configdrive, device)
 
     @base.async_command()
     def run_image(self):
