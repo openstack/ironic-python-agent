@@ -1,0 +1,52 @@
+#cloud-config
+
+coreos:
+  units:
+    - name: ironic-python-agent-embed-ssh-keys.service
+      command: start
+      content: |
+        [Unit]
+        Description=Migrate embedded SSH keys into core user
+        ConditionFileNotEmpty=/usr/share/oem/authorized_keys
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/update-ssh-keys -a oem /usr/share/oem/authorized_keys
+
+    - name: ironic-python-agent-container-creation.service
+      command: start
+      content: |
+        [Unit]
+        Description=Untar Provided IPA Container
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/mkdir -p /opt/ironic-python-agent
+        ExecStart=/usr/bin/tar -x \
+                               -C /opt/ironic-python-agent \
+                               -f /usr/share/oem/container.tar.gz
+
+    - name: ironic-python-agent.service
+      command: start
+      content: |
+        [Unit]
+        Description=Ironic Python Agent
+        After=ironic-python-agent-container-creation.service
+        Requires=ironic-python-agent-container-creation.service
+
+        [Service]
+        ExecStart=/usr/bin/systemd-nspawn -D /opt/ironic-python-agent \
+                                          --share-system \
+                                          --capability=all \
+                                          --machine=ironic_python_agent \
+                                          --bind=/dev:/dev \
+                                          --bind=/dev/pts:/dev/pts \
+                                          --bind=/usr/share/oem:/mnt \
+                                          --user=root \
+                                          --keep-unit \
+                                          /usr/local/bin/ironic-python-agent
+        Restart=always
+        RestartSec=30s
+

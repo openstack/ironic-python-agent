@@ -8,9 +8,9 @@ import tempfile
 import shutil
 from plumbum import local, cmd
 
-COREOS_VERSION="250.0.0"
+COREOS_VERSION="296.0.0"
 
-COREOS_ARCH="amd64-generic"
+COREOS_ARCH="amd64-usr"
 COREOS_BASE_URL="http://storage.core-os.net/coreos/{}/{}".format(COREOS_ARCH, COREOS_VERSION)
 COREOS_PXE_DIGESTS="coreos_production_pxe_image.cpio.gz.DIGESTS.asc"
 COREOS_PXE_KERNEL="coreos_production_pxe.vmlinuz"
@@ -102,8 +102,8 @@ def main():
         print("Error: {} doesn't exist.".format(oem_dir))
         return
 
-    if not os.path.exists(os.path.join(oem_dir, 'run.sh')):
-        print("Error: {} is missing oem.sh".format(oem_dir))
+    if not os.path.exists(os.path.join(oem_dir, 'cloud-config.yml')):
+        print("Error: {} is missing cloud-config.yml".format(oem_dir))
         return
 
     here = os.path.abspath(os.path.dirname(__file__))
