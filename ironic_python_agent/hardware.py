@@ -175,7 +175,7 @@ class GenericHardwareManager(HardwareManager):
         try:
             addrs = netifaces.ifaddresses(interface_id)
             return addrs[netifaces.AF_INET][0]['addr']
-        except (ValueError, IndexError):
+        except (ValueError, IndexError, KeyError):
             # No default IPv4 address found
             return None
 
