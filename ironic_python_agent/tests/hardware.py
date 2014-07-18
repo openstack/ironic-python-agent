@@ -113,6 +113,18 @@ HDPARM_INFO_TEMPLATE = (
     'Checksum: correct\n'
 )
 
+BLK_DEVICE_TEMPLATE = (
+    'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '
+    'ROTA="0" TYPE="disk"\n'
+    'KNAME="sdb" MODEL="Fastable SD131 7" SIZE="31016853504" '
+    'ROTA="0" TYPE="disk"\n'
+    'KNAME="sdc" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
+    ' ROTA="0" TYPE="disk"\n'
+    'KNAME="sdd" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
+    ' ROTA="0" TYPE="disk"\n'
+    'KNAME="loop0" MODEL="" SIZE="109109248" ROTA="1" TYPE="loop"'
+)
+
 
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
@@ -183,18 +195,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
     @mock.patch.object(utils, 'execute')
     def test_get_os_install_device(self, mocked_execute):
-        mocked_execute.return_value = (
-            'RO    RA   SSZ   BSZ   StartSec            Size   Device\n'
-            'rw   256   512  4096          0    249578283616   /dev/sda\n'
-            'rw   256   512  4096       2048      8587837440   /dev/sda1\n'
-            'rw   256   512  4096  124967424        15728640   /dev/sda2\n'
-            'rw   256   512  4096          0     31016853504   /dev/sdb\n'
-            'rw   256   512  4096          0    249578283616   /dev/sdc\n', '')
-
+        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         self.assertEqual(self.hardware.get_os_install_device(), '/dev/sdb')
-        mocked_execute.assert_called_once_with('blockdev',
-                                               '--report',
-                                               check_exit_code=[0])
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
 
     @mock.patch('psutil.cpu_count')
     @mock.patch(OPEN_FUNCTION_NAME)
@@ -282,8 +286,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         self.hardware.list_block_devices = mock.Mock()
         self.hardware.list_block_devices.return_value = [
-            hardware.BlockDevice('/dev/sdj', 1073741824),
-            hardware.BlockDevice('/dev/hdaa', 65535),
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
         ]
 
         hardware_info = self.hardware.list_hardware_info()
@@ -293,6 +297,36 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                          self.hardware.list_block_devices())
         self.assertEqual(hardware_info['interfaces'],
                          self.hardware.list_network_interfaces())
+
+    @mock.patch.object(utils, 'execute')
+    def test_list_block_device(self, mocked_execute):
+        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+        devices = self.hardware.list_block_devices()
+        expected_devices = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='Fastable SD131 7',
+                                 size=31016853504,
+                                 rotational=False),
+            hardware.BlockDevice(name='/dev/sdc',
+                                 model='NWD-BLP4-1600',
+                                 size=1765517033472,
+                                 rotational=False),
+            hardware.BlockDevice(name='/dev/sdd',
+                                 model='NWD-BLP4-1600',
+                                 size=1765517033472,
+                                 rotational=False)
+        ]
+
+        self.assertEqual(4, len(expected_devices))
+        for expected, device in zip(expected_devices, devices):
+            # Compare all attrs of the objects
+            for attr in ['name', 'model', 'size', 'rotational']:
+                self.assertEqual(getattr(expected, attr),
+                                 getattr(device, attr))
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_success(self, mocked_execute):
@@ -308,7 +342,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             (HDPARM_INFO_TEMPLATE % hdparm_info_fields, ''),
         ]
 
-        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
         self.hardware.erase_block_device(block_device)
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
@@ -327,7 +362,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             (hdparm_output, '')
         ]
 
-        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware.erase_block_device,
                           block_device)
@@ -344,7 +380,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             (hdparm_output, '')
         ]
 
-        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware.erase_block_device,
                           block_device)
@@ -361,7 +398,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             (hdparm_output, '')
         ]
 
-        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware.erase_block_device,
                           block_device)
@@ -378,7 +416,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             (hdparm_output, '')
         ]
 
-        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware.erase_block_device,
                           block_device)
@@ -406,7 +445,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             (hdparm_output_after, ''),
         ]
 
-        block_device = hardware.BlockDevice('/dev/sda', 1073741824)
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware.erase_block_device,
                           block_device)

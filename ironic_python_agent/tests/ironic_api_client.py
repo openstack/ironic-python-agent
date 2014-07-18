@@ -46,8 +46,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
             ],
             'cpu': hardware.CPU('Awesome Jay CPU x10 9001', '9001', '10'),
             'disks': [
-                hardware.BlockDevice('/dev/sdj', '9001'),
-                hardware.BlockDevice('/dev/hdj', '9002'),
+                hardware.BlockDevice('/dev/sdj', 'small', '9001', False),
+                hardware.BlockDevice('/dev/hdj', 'big', '9002', False),
             ],
             'memory': hardware.Memory('8675309'),
         }
@@ -162,13 +162,17 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
             },
             u'disks': [
                 {
+                    u'model': u'small',
                     u'name': u'/dev/sdj',
-                    u'size': u'9001',
+                    u'rotational': False,
+                    u'size': u'9001'
                 },
                 {
+                    u'model': u'big',
                     u'name': u'/dev/hdj',
-                    u'size': u'9002',
-                },
+                    u'rotational': False,
+                    u'size': u'9002'
+                }
             ],
             u'memory': {
                 u'total': u'8675309',

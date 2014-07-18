@@ -15,6 +15,7 @@
 import abc
 import functools
 import os
+import shlex
 
 import netifaces
 import psutil
@@ -47,11 +48,13 @@ class HardwareType(object):
 
 
 class BlockDevice(encoding.Serializable):
-    serializable_fields = ('name', 'size')
+    serializable_fields = ('name', 'model', 'size', 'rotational')
 
-    def __init__(self, name, size):
+    def __init__(self, name, model, size, rotational):
         self.name = name
+        self.model = model
         self.size = size
+        self.rotational = rotational
 
 
 class NetworkInterface(encoding.Serializable):
@@ -210,18 +213,40 @@ class GenericHardwareManager(HardwareManager):
         return Memory(int(psutil.phymem_usage().total))
 
     def list_block_devices(self):
-        report = utils.execute('blockdev', '--report',
+        """List all physical block devices
+
+        The switches we use for lsblk: P for KEY="value" output,
+        b for size output in bytes, d to exclude dependant devices
+        (like md or dm devices), i to ensure ascii characters only,
+        and  o to specify the fields we need
+
+        :return: A list of BlockDevices
+        """
+        report = utils.execute('lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
                                check_exit_code=[0])[0]
         lines = report.split('\n')
-        lines = [line.split() for line in lines if line != '']
-        startsec_idx = lines[0].index('StartSec')
-        device_idx = lines[0].index('Device')
-        size_idx = lines[0].index('Size')
-        # If a device doesn't start at sector 0, assume it is a partition
-        return [BlockDevice(line[device_idx],
-                            int(line[size_idx]))
-                for line
-                in lines[1:] if int(line[startsec_idx]) == 0]
+
+        devices = []
+        for line in lines:
+            device = {}
+            # Split into KEY=VAL pairs
+            vals = shlex.split(line)
+            for key, val in (v.split('=', 1) for v in vals):
+                device[key] = val.strip()
+            # Ignore non disk
+            if device.get('TYPE') != 'disk':
+                continue
+
+            # Ensure all required keys are at least present, even if blank
+            diff = set(['KNAME', 'MODEL', 'SIZE', 'ROTA']) - set(device.keys())
+            if diff:
+                raise errors.BlockDeviceError(
+                    '%s must be returned by lsblk.' % diff)
+            devices.append(BlockDevice(name='/dev/' + device['KNAME'],
+                                       model=device['MODEL'],
+                                       size=int(device['SIZE']),
+                                       rotational=bool(int(device['ROTA']))))
+        return devices
 
     def get_os_install_device(self):
         # Find the first device larger than 4GB, assume it is the OS disk

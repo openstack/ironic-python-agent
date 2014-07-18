@@ -214,5 +214,14 @@ class BlockDeviceEraseError(RESTError):
         self.details = details
 
 
+class BlockDeviceError(RESTError):
+    """Error raised when a block devices causes an unknown error"""
+    message = 'Block device caused unknown error'
+
+    def __init__(self, details):
+        super(BlockDeviceError, self).__init__(details)
+        self.details = details
+
+
 class ExtensionError(Exception):
     pass
