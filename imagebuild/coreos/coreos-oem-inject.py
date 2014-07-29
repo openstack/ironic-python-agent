@@ -8,7 +8,7 @@ import tempfile
 import shutil
 from plumbum import local, cmd
 
-COREOS_VERSION="296.0.0"
+COREOS_VERSION="367.1.0"
 
 COREOS_ARCH="amd64-usr"
 COREOS_BASE_URL="http://storage.core-os.net/coreos/{}/{}".format(COREOS_ARCH, COREOS_VERSION)
