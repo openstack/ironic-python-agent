@@ -193,6 +193,14 @@ class GenericHardwareManager(HardwareManager):
                 for name in iface_names
                 if self._is_device(name)]
 
+    def _get_cpu_count(self):
+        if psutil.version_info[0] == 1:
+            return psutil.NUM_CPUS
+        elif psutil.version_info[0] == 2:
+            return psutil.cpu_count()
+        else:
+            raise AttributeError("Only psutil versions 1 and 2 supported")
+
     def get_cpus(self):
         model = None
         freq = None
@@ -206,11 +214,14 @@ class GenericHardwareManager(HardwareManager):
                 if not freq and line.startswith('cpu MHz'):
                     freq = line.split(':')[1].strip()
 
-        return CPU(model, freq, psutil.cpu_count())
+        return CPU(model, freq, self._get_cpu_count())
 
     def get_memory(self):
-        # psutil returns a long, force it to an int
-        return Memory(int(psutil.phymem_usage().total))
+        # psutil returns a long, so we force it to an int
+        if psutil.version_info[0] == 1:
+            return Memory(int(psutil.TOTAL_PHYMEM))
+        elif psutil.version_info[0] == 2:
+            return Memory(int(psutil.phymem_usage().total))
 
     def list_block_devices(self):
         """List all physical block devices

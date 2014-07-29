@@ -26,7 +26,6 @@ if six.PY2:
 else:
     OPEN_FUNCTION_NAME = 'builtins.open'
 
-
 HDPARM_INFO_TEMPLATE = (
     '/dev/sda:\n'
     '\n'
@@ -200,7 +199,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_execute.assert_called_once_with(
             'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
 
-    @mock.patch('psutil.cpu_count')
+    @mock.patch('ironic_python_agent.hardware.GenericHardwareManager.'
+                '_get_cpu_count')
     @mock.patch(OPEN_FUNCTION_NAME)
     def test_get_cpus(self, mocked_open, mocked_cpucount):
         mocked_open.return_value.__enter__ = lambda s: s
