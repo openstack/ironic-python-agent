@@ -1,4 +1,4 @@
-FROM stackbrew/ubuntu:precise
+FROM stackbrew/ubuntu:trusty
 
 # The add is before the RUN to ensure we get the latest version of packages
 # Docker will cache RUN commands, but because the SHA1 of the dir will be
@@ -24,7 +24,7 @@ RUN pip install /tmp/ironic-python-agent
 RUN rm -rf /tmp/ironic-python-agent
 RUN rm -rf /var/lib/apt/lists/*
 
-RUN apt-get -y purge perl gcc-4.6 gcc python2.7-dev git && \
+RUN apt-get -y purge perl gcc-4.6 gcc python2.7-dev git python3* && \
     apt-get -y autoremove && \
     apt-get clean
 
