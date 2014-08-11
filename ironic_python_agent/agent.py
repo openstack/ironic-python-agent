@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
+import select
 import threading
 import time
 
@@ -72,8 +74,9 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         self.api = ironic_api_client.APIClient(agent.api_url,
                                                agent.driver_name)
         self.log = log.getLogger(__name__)
-        self.stop_event = threading.Event()
         self.error_delay = self.initial_delay
+        self.reader = None
+        self.writer = None
 
     def run(self):
         """Start the heartbeat thread."""
@@ -82,13 +85,27 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         interval = 0
         self.agent.set_agent_advertise_addr()
 
-        while not self.stop_event.wait(interval):
-            self.do_heartbeat()
-            interval_multiplier = random.uniform(self.min_jitter_multiplier,
-                                                 self.max_jitter_multiplier)
-            interval = self.agent.heartbeat_timeout * interval_multiplier
-            log_msg = 'sleeping before next heartbeat, interval: {0}'
-            self.log.info(log_msg.format(interval))
+        self.reader, self.writer = os.pipe()
+        p = select.poll()
+        p.register(self.reader, select.POLLIN)
+        try:
+            while True:
+                if p.poll(interval * 1000):
+                    if os.read(self.reader, 1) == 'a':
+                        break
+
+                self.do_heartbeat()
+                interval_multiplier = random.uniform(
+                    self.min_jitter_multiplier,
+                    self.max_jitter_multiplier)
+                interval = self.agent.heartbeat_timeout * interval_multiplier
+                log_msg = 'sleeping before next heartbeat, interval: {0}'
+                self.log.info(log_msg.format(interval))
+        finally:
+            os.close(self.reader)
+            os.close(self.writer)
+            self.reader = None
+            self.writer = None
 
     def do_heartbeat(self):
         """Send a heartbeat to Ironic."""
@@ -106,9 +123,10 @@ class IronicPythonAgentHeartbeater(threading.Thread):
 
     def stop(self):
         """Stop the heartbeat thread."""
-        self.log.info('stopping heartbeater')
-        self.stop_event.set()
-        return self.join()
+        if self.writer is not None:
+            self.log.info('stopping heartbeater')
+            os.write(self.writer, 'a')
+            return self.join()
 
 
 class IronicPythonAgent(base.ExecuteCommandMixin):

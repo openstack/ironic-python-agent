@@ -64,19 +64,22 @@ class TestHeartbeater(test_base.BaseTestCase):
             hardware.HardwareManager)
         self.heartbeater.stop_event = mock.Mock()
 
+    @mock.patch('os.read')
+    @mock.patch('select.poll')
     @mock.patch('ironic_python_agent.agent._time')
     @mock.patch('random.uniform')
-    def test_heartbeat(self, mocked_uniform, mocked_time):
+    def test_heartbeat(self, mocked_uniform, mocked_time, mock_poll,
+                       mock_read):
         time_responses = []
         uniform_responses = []
         heartbeat_responses = []
-        wait_responses = []
-        expected_stop_event_calls = []
+        poll_responses = []
+        expected_poll_calls = []
 
         # FIRST RUN:
         # initial delay is 0
-        expected_stop_event_calls.append(mock.call(0))
-        wait_responses.append(False)
+        expected_poll_calls.append(mock.call(0))
+        poll_responses.append(False)
         # next heartbeat due at t=100
         heartbeat_responses.append(100)
         # random interval multiplier is 0.5
@@ -86,8 +89,8 @@ class TestHeartbeater(test_base.BaseTestCase):
 
         # SECOND RUN:
         # 50 * .5 = 25
-        expected_stop_event_calls.append(mock.call(25.0))
-        wait_responses.append(False)
+        expected_poll_calls.append(mock.call(1000 * 25.0))
+        poll_responses.append(False)
         # next heartbeat due at t=180
         heartbeat_responses.append(180)
         # random interval multiplier is 0.4
@@ -97,8 +100,8 @@ class TestHeartbeater(test_base.BaseTestCase):
 
         # THIRD RUN:
         # 50 * .4 = 20
-        expected_stop_event_calls.append(mock.call(20.0))
-        wait_responses.append(False)
+        expected_poll_calls.append(mock.call(1000 * 20.0))
+        poll_responses.append(False)
         # this heartbeat attempt fails
         heartbeat_responses.append(Exception('uh oh!'))
         # we check the time to generate a fake deadline, now t=125
@@ -110,21 +113,22 @@ class TestHeartbeater(test_base.BaseTestCase):
 
         # FOURTH RUN:
         # 50 * .5 = 25
-        expected_stop_event_calls.append(mock.call(25))
+        expected_poll_calls.append(mock.call(1000 * 25.0))
         # Stop now
-        wait_responses.append(True)
+        poll_responses.append(True)
+        mock_read.return_value = 'a'
 
         # Hook it up and run it
         mocked_time.side_effect = time_responses
         mocked_uniform.side_effect = uniform_responses
         self.mock_agent.heartbeat_timeout = 50
         self.heartbeater.api.heartbeat.side_effect = heartbeat_responses
-        self.heartbeater.stop_event.wait.side_effect = wait_responses
+        mock_poll.return_value.poll.side_effect = poll_responses
         self.heartbeater.run()
 
         # Validate expectations
-        self.assertEqual(expected_stop_event_calls,
-                         self.heartbeater.stop_event.wait.call_args_list)
+        self.assertEqual(expected_poll_calls,
+                         mock_poll.return_value.poll.call_args_list)
         self.assertEqual(self.heartbeater.error_delay, 2.7)
 
 
@@ -194,8 +198,10 @@ class TestBaseAgent(test_base.BaseTestCase):
 
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch('os.read')
+    @mock.patch('select.poll')
     @mock.patch('time.sleep', return_value=None)
-    def test_ipv4_lookup(self, mock_time_sleep):
+    def test_ipv4_lookup(self, mock_time_sleep, mock_poll, mock_read):
         homeless_agent = agent.IronicPythonAgent('https://fake_api.example.'
                                                  'org:8081/',
                                                  (None, 9990),
@@ -211,8 +217,8 @@ class TestBaseAgent(test_base.BaseTestCase):
         mock_list_net = homeless_agent.hardware.list_network_interfaces
         mock_get_ipv4 = homeless_agent.hardware.get_ipv4_addr
 
-        homeless_agent.heartbeater.stop_event.wait = mock.Mock()
-        homeless_agent.heartbeater.stop_event.wait.return_value = True
+        mock_poll.return_value.poll.return_value = True
+        mock_read.return_value = 'a'
 
         # Can't find network interfaces, and therefore can't find IP
         mock_list_net.return_value = []
