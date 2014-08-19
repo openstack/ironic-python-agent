@@ -223,5 +223,16 @@ class BlockDeviceError(RESTError):
         self.details = details
 
 
+class VirtualMediaBootError(RESTError):
+    """Error raised when booting ironic-python-client from virtual media
+    fails.
+    """
+    message = 'Booting ironic-python-client from virtual media failed.'
+
+    def __init__(self, details):
+        super(RESTError, self).__init__(details)
+        self.details = details
+
+
 class ExtensionError(Exception):
     pass
