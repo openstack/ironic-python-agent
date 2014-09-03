@@ -12,16 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
+import os
+
 from oslo.config import cfg
 
 from ironic_python_agent import agent
+from ironic_python_agent import errors
 from ironic_python_agent.openstack.common import log
+from ironic_python_agent.openstack.common import processutils
+from ironic_python_agent import utils
 
 CONF = cfg.CONF
 
 
-def _get_kernel_params():
-    with open('/proc/cmdline') as f:
+def _read_params_from_file(filepath):
+    """This method takes a filename which has parameters in the form of
+    'key=value' separated by whitespace or newline. Given such a file,
+    it parses the file and returns the parameters in a dictionary format.
+    """
+    with open(filepath) as f:
         cmdline = f.read()
 
     options = cmdline.split()
@@ -33,6 +43,72 @@ def _get_kernel_params():
         params[k] = v
 
     return params
+
+
+def _get_kernel_params():
+    """This method returns the parameters passed to the agent using the
+    kernel commandline and through the virtual media.
+    """
+    params = _read_params_from_file('/proc/cmdline')
+
+    # If the node booted over virtual media, the parameters are passed
+    # in a text file within the virtual media floppy.
+    if params.get('boot_method', None) == 'vmedia':
+        vmedia_params = _get_vmedia_params()
+        params.update(vmedia_params)
+
+    return params
+
+
+def _get_vmedia_device():
+    """This method returns the device filename of the virtual media device
+    by examining the sysfs filesystem within the kernel.
+    """
+    sysfs_device_models = glob.glob("/sys/class/block/*/device/model")
+    vmedia_device_model = "virtual media"
+    for model_file in sysfs_device_models:
+        try:
+            with open(model_file) as model_file_fobj:
+                if vmedia_device_model in model_file_fobj.read().lower():
+                    vmedia_device = model_file.split('/')[4]
+                    return vmedia_device
+        except Exception:
+            pass
+
+
+def _get_vmedia_params():
+    """This method returns the parameters passed to the agent through virtual
+    media floppy.
+    """
+    vmedia_mount_point = "/vmedia_mnt"
+    parameters_file = "parameters.txt"
+
+    vmedia_device = _get_vmedia_device()
+    if not vmedia_device:
+        msg = "Unable to find virtual media device"
+        raise errors.VirtualMediaBootError(msg)
+
+    vmedia_device_file = os.path.join("/dev", vmedia_device)
+    os.mkdir(vmedia_mount_point)
+
+    try:
+        stdout, stderr = utils.execute("mount", vmedia_device_file,
+                                       vmedia_mount_point)
+    except processutils.ProcessExecutionError as e:
+        msg = ("Unable to mount virtual media device %(device)s: %(error)s" %
+              {'device': vmedia_device_file, 'error': e})
+        raise errors.VirtualMediaBootError(msg)
+
+    parameters_file_path = os.path.join(vmedia_mount_point, parameters_file)
+    params = _read_params_from_file(parameters_file_path)
+
+    try:
+        stdout, stderr = utils.execute("umount", vmedia_mount_point)
+    except processutils.ProcessExecutionError as e:
+        pass
+
+    return params
+
 
 KPARAMS = _get_kernel_params()
 
