@@ -50,8 +50,10 @@ Download
 --------
 
 If you don't want to build your own image, you can download a copy of
-ironic-python-agent, embedded into a CoreOS pxe image, at
-http://tarballs.openstack.org/ironic-python-agent/coreos/ipa-coreos.tar.gz
+ironic-python-agent ramdisk and kernel, built using CoreOS, at:
+http://tarballs.openstack.org/ironic-python-agent/coreos/coreos_production_pxe.vmlinuz
+and
+http://tarballs.openstack.org/ironic-python-agent/coreos/coreos_production_pxe-oem.cpio.gz
 
 Build instructions
 ------------------
