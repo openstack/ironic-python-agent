@@ -20,7 +20,10 @@ requirements
 Booting the agent with this image
 =================================
 
-To boot the image, it should be booted via PXE. Here's an example ipxe
+PXE
+---
+
+The image is typically booted via PXE. Here's an example ipxe
 configuration (replace my-web-server with the IP/hostname of the http
 server hosting your image):
 
@@ -43,6 +46,13 @@ But any config value supported in the agent can be given to the agent
 via the kernel command line, which allows the use of the same agent
 image across environments because it contains no state.
 
+Virtual Media
+-------------
+
+Openstack Ironic supports booting IPA via virtual media in the form of
+an ISO image. Please see Ironic documentation for details on running in
+this configuration.
+
 Getting the agent
 =================
 
@@ -53,7 +63,7 @@ If you don't want to build your own image, you can download a copy of
 ironic-python-agent ramdisk and kernel, built using CoreOS, at:
 http://tarballs.openstack.org/ironic-python-agent/coreos/coreos_production_pxe.vmlinuz
 and
-http://tarballs.openstack.org/ironic-python-agent/coreos/coreos_production_pxe-oem.cpio.gz
+http://tarballs.openstack.org/ironic-python-agent/coreos/coreos_production_pxe_image-oem.cpio.gz
 
 Build instructions
 ------------------
