@@ -533,7 +533,6 @@ class StandbyExtension(base.BaseAgentExtension):
         stream_raw_images = image_info.get('stream_raw_images', False)
         # don't write image again if already cached
         if self.cached_image_id != image_info['id']:
-
             if self.cached_image_id is not None:
                 LOG.debug('Already had %s cached, overwriting',
                           self.cached_image_id)
