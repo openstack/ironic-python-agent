@@ -22,11 +22,20 @@ from ironic_python_agent.api.controllers.v1 import base
 
 
 class AgentStatus(base.APIBase):
+    """An object representing an agent instance's status."""
+
     started_at = base.MultiType(float)
     version = types.text
 
     @classmethod
     def from_agent_status(cls, status):
+        """Convert an object representing agent status to an AgentStatus.
+
+        :param status: An :class:`ironic_python_agent.agent.
+                       IronicPythonAgentStatus` object.
+        :returns: An :class:`ironic_python_agent.api.controllers.v1.status.
+                  AgentStatus` object.
+        """
         instance = cls()
         for field in ('started_at', 'version'):
             setattr(instance, field, getattr(status, field))
@@ -38,6 +47,7 @@ class StatusController(rest.RestController):
 
     @wsme_pecan.wsexpose(AgentStatus)
     def get_all(self):
+        """Get current status of the running agent."""
         agent = pecan.request.agent
         status = agent.get_status()
         return AgentStatus.from_agent_status(status)

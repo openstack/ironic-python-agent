@@ -19,6 +19,7 @@ from ironic_python_agent.api import config
 
 
 class AgentHook(hooks.PecanHook):
+    """Hook to attach agent instance to API requests."""
     def __init__(self, agent, *args, **kwargs):
         super(AgentHook, self).__init__(*args, **kwargs)
         self.agent = agent
@@ -28,12 +29,22 @@ class AgentHook(hooks.PecanHook):
 
 
 def get_pecan_config():
-    # Set up the pecan configuration
+    """Set up the pecan configuration.
+
+    :returns: pecan configuration object.
+    """
     filename = config.__file__.replace('.pyc', '.py')
     return pecan.configuration.conf_from_file(filename)
 
 
-def setup_app(pecan_config=None, extra_hooks=None, agent=None):
+def setup_app(pecan_config=None, agent=None):
+    """Set up the API app.
+
+    :param pecan_config: a pecan configuration object.
+    :param agent: an :class:`ironic_python_agent.agent.IronicPythonAgent`
+                  instance.
+    :returns: wsgi app object.
+    """
     app_hooks = [AgentHook(agent)]
 
     if not pecan_config:
@@ -53,6 +64,8 @@ def setup_app(pecan_config=None, extra_hooks=None, agent=None):
 
 
 class VersionSelectorApplication(object):
+    """WSGI application that handles multiple API versions."""
+
     def __init__(self, agent):
         pc = get_pecan_config()
         self.v1 = setup_app(pecan_config=pc, agent=agent)

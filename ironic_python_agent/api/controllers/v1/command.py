@@ -22,6 +22,8 @@ from ironic_python_agent.api.controllers.v1 import base
 
 
 class CommandResult(base.APIBase):
+    """Object representing the result of a given command."""
+
     id = types.text
     command_name = types.text
     command_params = types.DictType(types.text, base.json_type)
@@ -31,6 +33,13 @@ class CommandResult(base.APIBase):
 
     @classmethod
     def from_result(cls, result):
+        """Convert a BaseCommandResult object to a CommandResult object.
+
+        :param result: a :class:`ironic_python_agent.extensions.base.
+                       BaseCommandResult` object.
+        :returns: a :class:`ironic_python_agent.api.controllers.v1.command.
+                  CommandResult` object.
+        """
         instance = cls()
         for field in ('id', 'command_name', 'command_params', 'command_status',
                       'command_error', 'command_result'):
@@ -39,10 +48,18 @@ class CommandResult(base.APIBase):
 
 
 class CommandResultList(base.APIBase):
+    """An object representing a list of CommandResult objects."""
     commands = [CommandResult]
 
     @classmethod
     def from_results(cls, results):
+        """Convert a list of BaseCommandResult objects to a CommandResultList.
+
+        :param results: a list of :class:`ironic_python_agent.extensions.base.
+                       BaseCommandResult` objects.
+        :returns: a :class:`ironic_python_agent.api.controllers.v1.command.
+                  CommandResultList` object.
+        """
         instance = cls()
         instance.commands = [CommandResult.from_result(result)
                              for result in results]
@@ -50,7 +67,7 @@ class CommandResultList(base.APIBase):
 
 
 class Command(base.APIBase):
-    """A command representation."""
+    """A representation of a command."""
     name = types.wsattr(types.text, mandatory=True)
     params = types.wsattr(base.MultiType(dict), mandatory=True)
 
@@ -60,12 +77,20 @@ class CommandController(rest.RestController):
 
     @wsme_pecan.wsexpose(CommandResultList)
     def get_all(self):
+        """Get all command results."""
         agent = pecan.request.agent
         results = agent.list_command_results()
         return CommandResultList.from_results(results)
 
     @wsme_pecan.wsexpose(CommandResult, types.text, types.text)
     def get_one(self, result_id, wait=None):
+        """Get a command result by ID.
+
+        :param result_id: the ID of the result to get.
+        :param wait: if 'true', block until the command completes.
+        :returns: a :class:`ironic_python_agent.api.controller.v1.command.
+                  CommandResult` object.
+        """
         agent = pecan.request.agent
         result = agent.get_command_result(result_id)
 
@@ -76,6 +101,14 @@ class CommandController(rest.RestController):
 
     @wsme_pecan.wsexpose(CommandResult, types.text, body=Command)
     def post(self, wait=None, command=None):
+        """Post a command for the agent to run.
+
+        :param wait: if 'true', block until the command completes.
+        :param command: the command to execute. If None, an InvalidCommandError
+                        will be returned.
+        :returns: a :class:`ironic_python_agent.api.controller.v1.command.
+                  CommandResult` object.
+        """
         # the POST body is always the last arg,
         # so command must be a kwarg here
         if command is None:
