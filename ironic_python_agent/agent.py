@@ -181,8 +181,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             return iface_list
 
     def get_node_uuid(self):
-        if 'uuid' not in self.node:
-            errors.HeartbeatError('Tried to heartbeat without node UUID.')
+        if self.node is None or 'uuid' not in self.node:
+            raise errors.UnknownNodeError()
         return self.node['uuid']
 
     def list_command_results(self):

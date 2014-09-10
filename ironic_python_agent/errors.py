@@ -236,3 +236,14 @@ class VirtualMediaBootError(RESTError):
 
 class ExtensionError(Exception):
     pass
+
+
+class UnknownNodeError(Exception):
+    """Error raised when the agent is not associated with an Ironic node."""
+
+    message = 'Agent is not associated with an Ironic node.'
+
+    def __init__(self, message=None):
+        if message is not None:
+            self.message = message
+        super(UnknownNodeError, self).__init__(self.message)

@@ -284,6 +284,19 @@ class TestBaseAgent(test_base.BaseTestCase):
 
         self.assertEqualEncoded(result, expected_result)
 
+    def test_get_node_uuid(self):
+        self.agent.node = {'uuid': 'fake-node'}
+        self.assertEqual('fake-node', self.agent.get_node_uuid())
+
+    def test_get_node_uuid_unassociated(self):
+        self.assertRaises(errors.UnknownNodeError,
+                          self.agent.get_node_uuid)
+
+    def test_get_node_uuid_invalid_node(self):
+        self.agent.node = {}
+        self.assertRaises(errors.UnknownNodeError,
+                          self.agent.get_node_uuid)
+
 
 class TestAgentCmd(test_base.BaseTestCase):
     @mock.patch('ironic_python_agent.openstack.common.log.getLogger')
