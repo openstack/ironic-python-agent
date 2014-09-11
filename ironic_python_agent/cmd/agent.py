@@ -27,9 +27,11 @@ CONF = cfg.CONF
 
 
 def _read_params_from_file(filepath):
-    """This method takes a filename which has parameters in the form of
-    'key=value' separated by whitespace or newline. Given such a file,
-    it parses the file and returns the parameters in a dictionary format.
+    """Extract key=value pairs from a file.
+
+    :param filepath: path to a file containing key=value pairs separated by
+                     whitespace or newlines.
+    :returns: a dictionary representing the content of the file
     """
     with open(filepath) as f:
         cmdline = f.read()
@@ -46,8 +48,16 @@ def _read_params_from_file(filepath):
 
 
 def _get_kernel_params():
-    """This method returns the parameters passed to the agent using the
-    kernel commandline and through the virtual media.
+    """Gets parameters passed to the agent via kernel cmdline or vmedia.
+
+    Parameters can be passed using either the kernel commandline or through
+    virtual media. If boot_method is vmedia, merge params provided via vmedia
+    with those read from the kernel command line.
+
+    Although it should never happen, if a variable is both set by vmedia and
+    kernel command line, the setting in vmedia will take precedence.
+
+    :returns: a dict of potential configuration parameters for the agent
     """
     params = _read_params_from_file('/proc/cmdline')
 
@@ -61,8 +71,9 @@ def _get_kernel_params():
 
 
 def _get_vmedia_device():
-    """This method returns the device filename of the virtual media device
-    by examining the sysfs filesystem within the kernel.
+    """Finds the device filename of the virtual media device using sysfs.
+
+    :returns: a string containing the filename of the virtual media device
     """
     sysfs_device_models = glob.glob("/sys/class/block/*/device/model")
     vmedia_device_model = "virtual media"
@@ -79,6 +90,9 @@ def _get_vmedia_device():
 def _get_vmedia_params():
     """This method returns the parameters passed to the agent through virtual
     media floppy.
+
+    :returns: a partial dict of potential agent configuration parameters
+    :raises: VirtualMediaBootError when it cannot find the virtual media device
     """
     vmedia_mount_point = "/vmedia_mnt"
     parameters_file = "parameters.txt"
