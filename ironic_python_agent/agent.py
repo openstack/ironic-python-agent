@@ -156,13 +156,6 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             version=self.version
         )
 
-    def get_agent_mac_addr(self):
-        """Get the primary MAC address for the node the agent is running on.
-
-        :returns: String containing the MAC address.
-        """
-        return self.hardware.get_primary_mac_address()
-
     def set_agent_advertise_addr(self):
         """Set advertised IP address for the agent, if not already set.
 
