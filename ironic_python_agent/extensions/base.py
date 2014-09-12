@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import inspect
 import threading
 import uuid
 
@@ -111,14 +112,18 @@ class BaseAgentExtension(object):
     def __init__(self):
         super(BaseAgentExtension, self).__init__()
         self.log = log.getLogger(__name__)
-        self.command_map = {}
+        self.command_map = dict(
+            (v.command_name, v)
+            for k, v in inspect.getmembers(self)
+            if hasattr(v, 'command_name')
+        )
 
     def execute(self, command_name, **kwargs):
-        if command_name not in self.command_map:
+        cmd = self.command_map.get(command_name)
+        if cmd is None:
             raise errors.InvalidCommandError(
                 'Unknown command: {0}'.format(command_name))
-
-        return self.command_map[command_name](command_name, **kwargs)
+        return cmd(**kwargs)
 
     def check_cmd_presence(self, ext_obj, ext, cmd):
         if not (hasattr(ext_obj, 'execute') and hasattr(ext_obj, 'command_map')
@@ -181,14 +186,16 @@ class ExecuteCommandMixin(object):
             return result
 
 
-def async_command(validator=None):
+def async_command(command_name, validator=None):
     """Will run the command in an AsyncCommandResult in its own thread.
     command_name is set based on the func name and command_params will
     be whatever args/kwargs you pass into the decorated command.
     """
     def async_decorator(func):
+        func.command_name = command_name
+
         @functools.wraps(func)
-        def wrapper(self, command_name, **command_params):
+        def wrapper(self, **command_params):
             # Run a validator before passing everything off to async.
             # validators should raise exceptions or return silently.
             if validator:
@@ -205,15 +212,17 @@ def async_command(validator=None):
     return async_decorator
 
 
-def sync_command(validator=None):
+def sync_command(command_name, validator=None):
     """Decorate a method in order to wrap up its return value in a
     SyncCommandResult. For consistency with @async_command() can also accept a
     validator which will be used to validate input, although a synchronous
     command can also choose to implement validation inline.
     """
     def sync_decorator(func):
+        func.command_name = command_name
+
         @functools.wraps(func)
-        def wrapper(self, command_name, **command_params):
+        def wrapper(self, **command_params):
             # Run a validator before passing everything off to async.
             # validators should raise exceptions or return silently.
             if validator:

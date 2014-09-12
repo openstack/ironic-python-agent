@@ -36,16 +36,11 @@ FLOW_INFO = [
 
 
 class FakeExtension(base.BaseAgentExtension):
-    def __init__(self):
-        super(FakeExtension, self).__init__()
-        self.command_map['sleep'] = self.sleep
-        self.command_map['sync_sleep'] = self.sync_sleep
-
-    @base.async_command()
+    @base.async_command('sleep')
     def sleep(self, sleep_info=None):
         time.sleep(sleep_info['time'])
 
-    @base.sync_command()
+    @base.sync_command('sync_sleep')
     def sync_sleep(self, sleep_info=None):
         time.sleep(sleep_info['time'])
 
@@ -61,7 +56,7 @@ class TestFlowExtension(test_base.BaseTestCase):
 
     @mock.patch('time.sleep', autospec=True)
     def test_sleep_flow_success(self, sleep_mock):
-        result = self.agent_extension.start_flow('start_flow', flow=FLOW_INFO)
+        result = self.agent_extension.start_flow(flow=FLOW_INFO)
         result.join()
         sleep_calls = [mock.call(i) for i in range(1, 8)]
         sleep_mock.assert_has_calls(sleep_calls)
@@ -69,7 +64,7 @@ class TestFlowExtension(test_base.BaseTestCase):
     @mock.patch('time.sleep', autospec=True)
     def test_sleep_flow_failed(self, sleep_mock):
         sleep_mock.side_effect = errors.RESTError()
-        result = self.agent_extension.start_flow('start_flow', flow=FLOW_INFO)
+        result = self.agent_extension.start_flow(flow=FLOW_INFO)
         result.join()
         self.assertEqual(base.AgentCommandStatus.FAILED, result.command_status)
         self.assertTrue(isinstance(result.command_error,
@@ -78,8 +73,7 @@ class TestFlowExtension(test_base.BaseTestCase):
     @mock.patch('time.sleep', autospec=True)
     def test_sleep_flow_failed_on_second_command(self, sleep_mock):
         sleep_mock.side_effect = [None, Exception('foo'), None, None]
-        result = self.agent_extension.start_flow('start_flow',
-                                                 flow=FLOW_INFO[:4])
+        result = self.agent_extension.start_flow(flow=FLOW_INFO[:4])
         result.join()
         self.assertEqual(base.AgentCommandStatus.FAILED, result.command_status)
         self.assertTrue(isinstance(result.command_error,

@@ -87,7 +87,6 @@ class TestStandbyExtension(test_base.BaseTestCase):
     def test_cache_image_invalid_image_list(self):
         self.assertRaises(errors.InvalidCommandParamsError,
                           self.agent_extension.cache_image,
-                          'cache_image',
                           image_info={'foo': 'bar'})
 
     def test_image_location(self):
@@ -262,8 +261,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write_mock.return_value = None
         manager_mock = hardware_mock.return_value
         manager_mock.get_os_install_device.return_value = 'manager'
-        async_result = self.agent_extension.cache_image('cache_image',
-                                                   image_info=image_info)
+        async_result = self.agent_extension.cache_image(image_info=image_info)
         async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
@@ -284,9 +282,9 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write_mock.return_value = None
         manager_mock = hardware_mock.return_value
         manager_mock.get_os_install_device.return_value = 'manager'
-        async_result = self.agent_extension.cache_image('cache_image',
-                                                        image_info=image_info,
-                                                        force=True)
+        async_result = self.agent_extension.cache_image(
+            image_info=image_info, force=True
+        )
         async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
@@ -308,8 +306,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write_mock.return_value = None
         manager_mock = hardware_mock.return_value
         manager_mock.get_os_install_device.return_value = 'manager'
-        async_result = self.agent_extension.cache_image('cache_image',
-                                                   image_info=image_info)
+        async_result = self.agent_extension.cache_image(image_info=image_info)
         async_result.join()
         self.assertFalse(download_mock.called)
         self.assertFalse(write_mock.called)
@@ -342,9 +339,10 @@ class TestStandbyExtension(test_base.BaseTestCase):
         manager_mock.get_os_install_device.return_value = 'manager'
         configdrive_copy_mock.return_value = None
 
-        async_result = self.agent_extension.prepare_image('prepare_image',
-                image_info=image_info,
-                configdrive='configdrive_data')
+        async_result = self.agent_extension.prepare_image(
+            image_info=image_info,
+            configdrive='configdrive_data'
+        )
         async_result.join()
 
         download_mock.assert_called_once_with(image_info)
@@ -359,9 +357,10 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write_mock.reset_mock()
         configdrive_copy_mock.reset_mock()
         # image is now cached, make sure download/write doesn't happen
-        async_result = self.agent_extension.prepare_image('prepare_image',
-                image_info=image_info,
-                configdrive='configdrive_data')
+        async_result = self.agent_extension.prepare_image(
+            image_info=image_info,
+            configdrive='configdrive_data'
+        )
         async_result.join()
 
         self.assertEqual(download_mock.call_count, 0)
@@ -392,9 +391,10 @@ class TestStandbyExtension(test_base.BaseTestCase):
         manager_mock.get_os_install_device.return_value = 'manager'
         configdrive_copy_mock.return_value = None
 
-        async_result = self.agent_extension.prepare_image('prepare_image',
-                image_info=image_info,
-                configdrive=None)
+        async_result = self.agent_extension.prepare_image(
+            image_info=image_info,
+            configdrive=None
+        )
         async_result.join()
 
         download_mock.assert_called_once_with(image_info)
@@ -410,7 +410,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         command = ['/bin/bash', script]
         execute_mock.return_value = ('', '')
 
-        success_result = self.agent_extension.run_image('run_image')
+        success_result = self.agent_extension.run_image()
         success_result.join()
 
         execute_mock.assert_called_once_with(*command, check_exit_code=[0])
@@ -420,7 +420,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         execute_mock.return_value = ('', '')
         execute_mock.side_effect = processutils.ProcessExecutionError
 
-        failed_result = self.agent_extension.run_image('run_image')
+        failed_result = self.agent_extension.run_image()
         failed_result.join()
 
         execute_mock.assert_called_once_with(*command, check_exit_code=[0])

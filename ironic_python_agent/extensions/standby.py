@@ -174,13 +174,10 @@ def _validate_image_info(ext, image_info=None, **kwargs):
 class StandbyExtension(base.BaseAgentExtension):
     def __init__(self):
         super(StandbyExtension, self).__init__()
-        self.command_map['cache_image'] = self.cache_image
-        self.command_map['prepare_image'] = self.prepare_image
-        self.command_map['run_image'] = self.run_image
 
         self.cached_image_id = None
 
-    @base.async_command(_validate_image_info)
+    @base.async_command('cache_image', _validate_image_info)
     def cache_image(self, image_info=None, force=False):
         device = hardware.get_manager().get_os_install_device()
 
@@ -189,7 +186,7 @@ class StandbyExtension(base.BaseAgentExtension):
             _write_image(image_info, device)
             self.cached_image_id = image_info['id']
 
-    @base.async_command(_validate_image_info)
+    @base.async_command('prepare_image', _validate_image_info)
     def prepare_image(self,
                       image_info=None,
                       configdrive=None):
@@ -204,7 +201,7 @@ class StandbyExtension(base.BaseAgentExtension):
         if configdrive is not None:
             _write_configdrive_to_partition(configdrive, device)
 
-    @base.async_command()
+    @base.async_command('run_image')
     def run_image(self):
         script = _path_to_script('shell/reboot.sh')
         LOG.info('Rebooting system')

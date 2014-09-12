@@ -31,11 +31,7 @@ def _validate_exts(ext, flow=None):
 
 
 class FlowExtension(base.BaseAgentExtension, base.ExecuteCommandMixin):
-    def __init__(self):
-        super(FlowExtension, self).__init__()
-        self.command_map['start_flow'] = self.start_flow
-
-    @base.async_command(_validate_exts)
+    @base.async_command('start_flow', _validate_exts)
     def start_flow(self, flow=None):
         for task in flow:
             for method, params in task.items():

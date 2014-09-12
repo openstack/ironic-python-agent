@@ -31,22 +31,25 @@ class ExecutionError(errors.RESTError):
 
 
 class FakeExtension(base.BaseAgentExtension):
-    def __init__(self):
-        super(FakeExtension, self).__init__()
-        self.command_map['fake_async_command'] = self.fake_async_command
-        self.command_map['fake_sync_command'] = self.fake_sync_command
-
-    @base.async_command(_fake_validator)
+    @base.async_command('fake_async_command', _fake_validator)
     def fake_async_command(self, is_valid=False, param=None):
         if param == 'v2':
             raise ExecutionError()
         return param
 
-    @base.sync_command(_fake_validator)
+    @base.sync_command('fake_sync_command', _fake_validator)
     def fake_sync_command(self, is_valid=False, param=None):
         if param == 'v2':
             raise ExecutionError()
         return param
+
+    @base.async_command('other_async_name')
+    def second_async_command(self):
+        pass
+
+    @base.sync_command('other_sync_name')
+    def second_sync_command(self):
+        pass
 
 
 class FakeAgent(base.ExecuteCommandMixin):
@@ -70,7 +73,7 @@ class TestExecuteCommandMixin(test_base.BaseTestCase):
             [extension.Extension('fake', None, FakeExtension, fake_extension)])
 
         self.agent.execute_command('fake.do_something', foo='bar')
-        do_something_impl.assert_called_once_with('do_something', foo='bar')
+        do_something_impl.assert_called_once_with(foo='bar')
 
     def test_execute_invalid_command(self):
         self.assertRaises(errors.InvalidCommandError,
@@ -147,6 +150,11 @@ class TestExtensionDecorators(test_base.BaseTestCase):
         self.assertIsInstance(result.command_error, ExecutionError)
         self.assertEqual(None, result.command_result)
 
+    def test_async_command_name(self):
+        self.assertEqual(
+            'other_async_name',
+            self.extension.second_async_command.command_name)
+
     def test_sync_command_success(self):
         result = self.extension.execute('fake_sync_command', param='v1')
         self.assertIsInstance(result, base.SyncCommandResult)
@@ -168,3 +176,17 @@ class TestExtensionDecorators(test_base.BaseTestCase):
                           self.extension.execute,
                           'fake_sync_command',
                           param='v2')
+
+    def test_sync_command_name(self):
+        self.assertEqual(
+            'other_sync_name',
+            self.extension.second_sync_command.command_name)
+
+    def test_command_map(self):
+        expected_map = {
+            'fake_async_command': self.extension.fake_async_command,
+            'fake_sync_command': self.extension.fake_sync_command,
+            'other_async_name': self.extension.second_async_command,
+            'other_sync_name': self.extension.second_sync_command,
+        }
+        self.assertEqual(expected_map, self.extension.command_map)
