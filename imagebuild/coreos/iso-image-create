@@ -1,0 +1,142 @@
+#!/bin/bash
+#
+# Copyright 2012 Hewlett-Packard Development Company, L.P.
+# All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License. You may obtain
+# a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+# This script generates iso image from the given kernel and ramdisk
+
+SCRIPTNAME=`basename $0`
+TMP_BUILD_DIR="/tmp/$SCRIPTNAME.$$"
+QEMU_IMG="/usr/bin/qemu-img"
+MKISOFS="/usr/bin/mkisofs"
+
+
+function show_options() {
+
+    echo "Usage: ${SCRIPTNAME} [options]"
+    echo
+    echo "Options:"
+
+    echo "    -o output filename "
+    echo "    -i initrd "
+    echo "    -k kernel "
+}
+
+function cleanup() {
+
+    v_print "Cleaning up.."
+    rm -rf $TMP_BUILD_DIR
+}
+
+function err_print() {
+    echo "ERROR: $@" 1>&2;
+}
+
+function v_print() {
+
+    echo "$*"
+}
+
+
+# Parse command line options
+ARGS=`getopt -o "o:i:k:" -l "output,initrd,kernel:" \
+      -n "$SCRIPTNAME" -- "$@"`
+if [ $? -ne 0 ];
+then
+        exit 1
+fi
+
+eval set -- "$ARGS"
+
+while true ; do
+    case "$1" in
+        -o) OUTPUT_FILENAME=$2; shift 2 ;;
+        -i) INITRD=$2; shift 2 ;;
+        -k) KERNEL=$2; shift 2 ;;
+        # *)  show_options ; exit 1 ;;
+        --) shift; break ;;
+    esac
+done
+
+# Verify whether kernel, initrd, and the image file is present
+if [ -z "$OUTPUT_FILENAME" ]; then
+    err_print "Output filename not provided."
+    show_options
+    exit 1
+fi
+
+if [ -z "$INITRD" ]; then
+    err_print "Initrd not provided."
+    show_options
+    exit 1
+fi
+
+if [ -z "$KERNEL" ]; then
+    err_print "Kernel not provided."
+    show_options
+    exit 1
+fi
+
+# Create a temporary build directory for holiding the contents of iso
+TMP_IMAGE_DIR="$TMP_BUILD_DIR/image"
+v_print "Creating temporary directory $TMP_IMAGE_DIR"
+mkdir -p "$TMP_IMAGE_DIR"
+
+# Copy isolinux bin to the isolinux directory
+mkdir -p "$TMP_IMAGE_DIR/isolinux"
+v_print "Copying isolinux.bin"
+cp /usr/lib/syslinux/isolinux.bin "$TMP_IMAGE_DIR/isolinux"
+
+# Copy initrd, kernel
+v_print "Copying kernel to $TMP_IMAGE_DIR/vmlinuz"
+cp $KERNEL "$TMP_IMAGE_DIR/vmlinuz"
+if [ $? -ne 0 ]; then
+    err_print "Failed to copy $KERNEL to $TMP_IMAGE_DIR"
+    cleanup
+    exit 1
+fi
+
+v_print "Copying initrd to $TMP_IMAGE_DIR/initrd"
+cp $INITRD "$TMP_IMAGE_DIR/initrd"
+if [ $? -ne 0 ]; then
+    err_print "Failed to copy $INITRD to $TMP_IMAGE_DIR"
+    cleanup
+    exit 1
+fi
+
+# Generate isolinux.cfg for default booting
+v_print "Generating isolinux.cfg"
+echo "\
+DEFAULT install
+LABEL install
+    menu label "Install image"
+    kernel /vmlinuz
+    append initrd=/initrd boot_method=vmedia --
+TIMEOUT 5
+PROMPT 0 " > "$TMP_IMAGE_DIR/isolinux/isolinux.cfg"
+
+# Convert relative path output filename to absolute path
+echo $OUTPUT_FILENAME | grep -q '^/'
+if [ $? -ne 0 ]; then
+    OUTPUT_FILENAME="$PWD/$OUTPUT_FILENAME"
+fi
+
+# Create the ISO
+v_print "Generating the ISO"
+cd $TMP_IMAGE_DIR && $MKISOFS -r -V "INSTALL_IMAGE" -cache-inodes -J -l -b isolinux/isolinux.bin  -no-emul-boot -boot-load-size 4 -boot-info-table -o $OUTPUT_FILENAME .
+
+# Cleanup
+cleanup
+
