@@ -1,24 +1,40 @@
 #!/usr/bin/env python
 
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
 import os
-import sys
-import time
-import requests
-import tempfile
 import shutil
-from plumbum import local, cmd
+import subprocess
+import sys
+import tempfile
+import time
 
-COREOS_VERSION="367.1.0"
+import requests
 
-COREOS_ARCH="amd64-usr"
-COREOS_BASE_URL="http://storage.core-os.net/coreos/{}/{}".format(COREOS_ARCH, COREOS_VERSION)
-COREOS_PXE_DIGESTS="coreos_production_pxe_image.cpio.gz.DIGESTS.asc"
-COREOS_PXE_KERNEL="coreos_production_pxe.vmlinuz"
-COREOS_PXE_IMAGE="coreos_production_pxe_image.cpio.gz"
-COREOS_PXE_IMAGE_URL = "{}/{}".format(COREOS_BASE_URL, COREOS_PXE_IMAGE)
-COREOS_PXE_KERNEL_URL = "{}/{}".format(COREOS_BASE_URL, COREOS_PXE_KERNEL)
-COREOS_PXE_DIGESTS_URL = "{}/{}".format(COREOS_BASE_URL, COREOS_PXE_DIGESTS)
+COREOS_VERSION = "367.1.0"
 
+COREOS_ARCH = "amd64-usr"
+COREOS_BASE_URL = ("http://storage.core-os.net/coreos/{arch}/{ver}"
+                   .format(arch=COREOS_ARCH, ver=COREOS_VERSION))
+COREOS_PXE_DIGESTS = "coreos_production_pxe_image.cpio.gz.DIGESTS.asc"
+COREOS_PXE_KERNEL = "coreos_production_pxe.vmlinuz"
+COREOS_PXE_IMAGE = "coreos_production_pxe_image.cpio.gz"
+COREOS_PXE_IMAGE_URL = "{url}/{img}".format(url=COREOS_BASE_URL,
+                                            img=COREOS_PXE_IMAGE)
+COREOS_PXE_KERNEL_URL = "{url}/{kernel}".format(url=COREOS_BASE_URL,
+                                                kernel=COREOS_PXE_KERNEL)
+COREOS_PXE_DIGESTS_URL = "{url}/{digests}".format(url=COREOS_BASE_URL,
+                                                  digests=COREOS_PXE_DIGESTS)
 
 
 def get_etag(cache_name):
@@ -30,13 +46,15 @@ def get_etag(cache_name):
     etag.strip()
     return etag
 
+
 def save_etag(cache_name, etag):
     etag_file = "{}.etag".format(cache_name)
     with open(etag_file, 'w+b') as fp:
         fp.write(etag)
 
+
 def cache_file(cache_name, remote_url):
-    print("{} <- {}".format(cache_name, remote_url))
+    print("{cname} <- {url}".format(cname=cache_name, url=remote_url))
     etag = get_etag(cache_name)
     headers = {}
     if etag:
@@ -50,49 +68,46 @@ def cache_file(cache_name, remote_url):
         return
 
     if r.status_code != 200:
-        raise RuntimeError('Failed to download {}, got HTTP {} Status Code.'.format(remote_url, r.status_code))
+        raise RuntimeError('Failed to download {url}, got HTTP {code} Status '
+                           'Code.'.format(url=remote_url, code=r.status_code))
 
     with open(cache_name, 'w+b') as fp:
         fp.write(r.content)
 
-    print("{} bytes in {} seconds".format(len(r.content), time.time() - start))
+    print("{length} bytes in {timespan} seconds"
+          .format(length=len(r.content), timespan=time.time() - start))
     save_etag(cache_name, r.headers['etag'])
+
 
 def inject_oem(archive, oem_dir, output_file):
     d = tempfile.mkdtemp(prefix="oem-inject")
     try:
-        with local.cwd(d):
-            dest_oem_dir = os.path.join(d, 'usr', 'share', 'oem')
-            uz = cmd.gunzip["-c", archive]
-            extract = cmd.cpio["-iv"]
-            chain = uz | extract
-            print chain
-            chain()
+        dest_oem_dir = os.path.join(d, 'usr', 'share', 'oem')
+        cmd_chain = 'gunzip -c {} | cpio -iv'.format(archive)
+        execute(cmd_chain, shell=True, cwd=d)
 
-            shutil.copytree(oem_dir, dest_oem_dir)
+        shutil.copytree(oem_dir, dest_oem_dir)
 
-            find = cmd.find['.', '-depth', '-print']
-            cpio = cmd.cpio['-o', '-H', 'newc']
-            gz = cmd.gzip
-            chain = find | cmd.sort | cpio | gz > output_file
-            print chain
-            chain()
+        cmd_chain = 'find . -depth -print | sort | cpio -o -H newc | ' \
+                    'gzip > {}'.format(output_file)
+        execute(cmd_chain, shell=True, cwd=d)
     finally:
         shutil.rmtree(d)
     return output_file
 
+
 def validate_digests(digests, target, hash_type='sha1'):
-    with local.cwd(os.path.dirname(digests)):
-        gethashes = cmd.grep['-i', '-A1', '^# {} HASH$'.format(hash_type), digests]
-        forthis = cmd.grep[os.path.basename(target)]
-        viasum = local[hash_type + "sum"]['-c', '/dev/stdin']
-        chain = gethashes | forthis | viasum
-        print chain
-        chain()
+    cmd_chain = 'grep -i -A1 "^# {htype} HASH$" {digests} | grep {tgt} | ' \
+                '{htype}sum -c /dev/stdin'.format(htype=hash_type,
+                                                  digests=digests,
+                                                  tgt=os.path.basename(target))
+    execute(cmd_chain, shell=True, cwd=os.path.dirname(digests))
+
 
 def main():
     if len(sys.argv) != 3:
-        print("usage: {} [oem-directory-to-inject] [output-directory]".format(os.path.basename(__file__)))
+        print("usage: {} [oem-directory-to-inject] [output-directory]"
+              .format(os.path.basename(__file__)))
         return
 
     oem_dir = os.path.abspath(os.path.expanduser(sys.argv[1]))
@@ -129,9 +144,11 @@ def main():
         os.makedirs(output_dir)
 
     output_kernel = os.path.join(output_dir, os.path.basename(kernel))
-    output_cpio = os.path.join(output_dir, os.path.basename(orig_cpio).replace('.cpio.gz', '-oem.cpio.gz'))
+    output_cpio = os.path.join(output_dir,
+        os.path.basename(orig_cpio).replace('.cpio.gz', '-oem.cpio.gz'))
     inject_oem(orig_cpio, oem_dir, output_cpio)
     shutil.copy(kernel, output_kernel)
+
 
 def gpg_verify_file(ascfile):
     d = tempfile.mkdtemp(prefix="oem-gpg-validate")
@@ -139,32 +156,26 @@ def gpg_verify_file(ascfile):
         tmpring = os.path.join(d, 'tmp.gpg')
         key = os.path.join(d, 'coreos.key')
         with open(key, 'w+b') as fp:
-            fp.write(gpg_key())
+            fp.write(GPG_KEY)
 
-        i = cmd.gpg['--batch',
-                '--no-default-keyring',
-                '--keyring',
-                tmpring,
-                '--import',
-                key]
-        print(i)
-        i()
+        execute(['gpg', '--batch', '--no-default-keyring',
+                 '--keyring', tmpring, '--import', key])
 
-        r = cmd.gpg['--batch',
-                '--no-default-keyring',
-                '--keyring',
-                tmpring,
-                '--verify',
-                ascfile]
-        print(r)
-        r()
+        execute(['gpg', '--batch', '--no-default-keyring',
+                 '--keyring', tmpring, '--verify', ascfile])
 
     finally:
         shutil.rmtree(d)
 
-def gpg_key():
-    GPG_LONG_ID="50E0885593D2DCB4"
-    GPG_KEY="""-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+def execute(cmd, shell=False, cwd=None):
+    popen_obj = subprocess.Popen(cmd, shell=shell, cwd=cwd)
+    popen_obj.communicate()
+    if popen_obj.returncode != 0:
+        raise subprocess.CalledProcessError(returncode=popen_obj.returncode,
+                                            cmd=cmd)
+
+GPG_KEY = """-----BEGIN PGP PUBLIC KEY BLOCK-----
     Version: GnuPG v2.0.20 (GNU/Linux)
 
     mQINBFIqVhQBEADjC7oxg5N9Xqmqqrac70EHITgjEXZfGm7Q50fuQlqDoeNWY+sN
@@ -240,7 +251,6 @@ def gpg_key():
     =4Qn0
     -----END PGP PUBLIC KEY BLOCK-----
     """
-    return GPG_KEY
 
 if __name__ == "__main__":
     main()
