@@ -35,6 +35,8 @@ def _time():
 
 
 class IronicPythonAgentStatus(encoding.Serializable):
+    """Represents the status of an agent."""
+
     serializable_fields = ('started_at', 'version')
 
     def __init__(self, started_at, version):
@@ -43,6 +45,8 @@ class IronicPythonAgentStatus(encoding.Serializable):
 
 
 class IronicPythonAgentHeartbeater(threading.Thread):
+    """Thread that periodically heartbeats to Ironic."""
+
     # If we could wait at most N seconds between heartbeats (or in case of an
     # error) we will instead wait r x N seconds, where r is a random value
     # between these multipliers.
@@ -57,6 +61,11 @@ class IronicPythonAgentHeartbeater(threading.Thread):
     backoff_factor = 2.7
 
     def __init__(self, agent):
+        """Initialize the heartbeat thread.
+
+        :param agent: an :class:`ironic_python_agent.agent.IronicPythonAgent`
+                      instance.
+        """
         super(IronicPythonAgentHeartbeater, self).__init__()
         self.agent = agent
         self.hardware = hardware.get_manager()
@@ -67,7 +76,8 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         self.error_delay = self.initial_delay
 
     def run(self):
-        # The first heartbeat happens now
+        """Start the heartbeat thread."""
+        # The first heartbeat happens immediately
         self.log.info('starting heartbeater')
         interval = 0
         self.agent.set_agent_advertise_addr()
@@ -81,6 +91,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
             self.log.info(log_msg.format(interval))
 
     def do_heartbeat(self):
+        """Send a heartbeat to Ironic."""
         try:
             self.api.heartbeat(
                 uuid=self.agent.get_node_uuid(),
@@ -94,12 +105,15 @@ class IronicPythonAgentHeartbeater(threading.Thread):
                                    self.max_delay)
 
     def stop(self):
+        """Stop the heartbeat thread."""
         self.log.info('stopping heartbeater')
         self.stop_event.set()
         return self.join()
 
 
 class IronicPythonAgent(base.ExecuteCommandMixin):
+    """Class for base agent functionality."""
+
     def __init__(self, api_url, advertise_address, listen_address,
                  ip_lookup_attempts, ip_lookup_sleep, network_interface,
                  lookup_timeout, lookup_interval, driver_name):
@@ -132,19 +146,33 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.network_interface = network_interface
 
     def get_status(self):
-        """Retrieve a serializable status."""
+        """Retrieve a serializable status.
+
+        :returns: a :class:`ironic_python_agent.agent.IronicPythonAgent`
+                  instance describing the agent's status.
+        """
         return IronicPythonAgentStatus(
             started_at=self.started_at,
             version=self.version
         )
 
     def get_agent_mac_addr(self):
+        """Get the primary MAC address for the node the agent is running on.
+
+        :returns: String containing the MAC address.
+        """
         return self.hardware.get_primary_mac_address()
 
     def set_agent_advertise_addr(self):
-        """If agent's advertised IP address is still default (None), try to
+        """Set advertised IP address for the agent, if not already set.
+
+        If agent's advertised IP address is still default (None), try to
         find a better one.  If the agent's network interface is None, replace
         that as well.
+
+        :raises: LookupAgentInterfaceError if a valid network interface cannot
+                 be found.
+        :raises: LookupAgentIPError if an IP address could not be found
         """
         if self.advertise_address[0] is not None:
             return
@@ -170,6 +198,14 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                                         'address.')
 
     def get_agent_network_interfaces(self):
+        """Get a list of all network interfaces available.
+
+        Excludes loopback connections.
+
+        :returns: list of network interfaces available.
+        :raises: LookupAgentInterfaceError if a valid interface could not
+                 be found.
+        """
         iface_list = [iface.serialize()['name'] for iface in
                 self.hardware.list_network_interfaces()]
         iface_list = [name for name in iface_list if 'lo' not in name]
@@ -181,14 +217,34 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             return iface_list
 
     def get_node_uuid(self):
+        """Get UUID for Ironic node.
+
+        If the agent has not yet heartbeated to Ironic, it will not have
+        the UUID and this will raise an exception.
+
+        :returns: A string containing the UUID for the Ironic node.
+        :raises: UnknownNodeError if UUID is unknown.
+        """
         if self.node is None or 'uuid' not in self.node:
             raise errors.UnknownNodeError()
         return self.node['uuid']
 
     def list_command_results(self):
+        """Get a list of command results.
+
+        :returns: list of :class:`ironic_python_agent.extensions.base.
+                  BaseCommandResult` objects.
+        """
         return list(self.command_results.values())
 
     def get_command_result(self, result_id):
+        """Get a specific command result by ID.
+
+        :returns: a :class:`ironic_python_agent.extensions.base.
+                  BaseCommandResult` object.
+        :raises: RequestedObjectNotFoundError if command with the given ID
+                 is not found.
+        """
         try:
             return self.command_results[result_id]
         except KeyError:
