@@ -91,3 +91,8 @@ the image.
 
     make coreos
 
+To create a CoreOS ISO image to boot with virtual media:
+
+::
+
+    make iso
