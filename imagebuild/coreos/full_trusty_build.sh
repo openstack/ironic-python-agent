@@ -3,8 +3,8 @@
 # From a base-trusty node, this should build a CoreOS IPA image
 # suitable for use in testing or production.
 #
-sudo apt-get update
-sudo apt-get install -y docker.io
+sudo -E apt-get update
+sudo -E apt-get install -y docker.io
 
 imagebuild/coreos/build_coreos_image.sh
 
