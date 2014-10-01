@@ -121,6 +121,9 @@ class IronicPythonAgentHeartbeater(threading.Thread):
             self.error_delay = min(self.error_delay * self.backoff_factor,
                                    self.max_delay)
 
+    def force_heartbeat(self):
+        os.write(self.writer, 'b')
+
     def stop(self):
         """Stop the heartbeat thread."""
         if self.writer is not None:
@@ -140,6 +143,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             namespace='ironic_python_agent.extensions',
             invoke_on_load=True,
             propagate_map_exceptions=True,
+            invoke_kwds={'agent': self},
         )
         self.api_url = api_url
         self.driver_name = driver_name
@@ -261,6 +265,9 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         except KeyError:
             raise errors.RequestedObjectNotFoundError('Command Result',
                                                       result_id)
+
+    def force_heartbeat(self):
+        self.heartbeater.force_heartbeat()
 
     def run(self):
         """Run the Ironic Python Agent."""

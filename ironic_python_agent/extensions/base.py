@@ -67,8 +67,10 @@ class AsyncCommandResult(BaseCommandResult):
 
     :param execute_method: a callable to be executed asynchronously
     """
-    def __init__(self, command_name, command_params, execute_method):
+    def __init__(self, command_name, command_params, execute_method,
+                 agent=None):
         super(AsyncCommandResult, self).__init__(command_name, command_params)
+        self.agent = agent
         self.execute_method = execute_method
         self.command_state_lock = threading.Lock()
 
@@ -98,7 +100,6 @@ class AsyncCommandResult(BaseCommandResult):
             with self.command_state_lock:
                 self.command_result = result
                 self.command_status = AgentCommandStatus.SUCCEEDED
-
         except Exception as e:
             if not isinstance(e, errors.RESTError):
                 e = errors.CommandExecutionError(str(e))
@@ -106,11 +107,15 @@ class AsyncCommandResult(BaseCommandResult):
             with self.command_state_lock:
                 self.command_error = e
                 self.command_status = AgentCommandStatus.FAILED
+        finally:
+            if self.agent:
+                self.agent.force_heartbeat()
 
 
 class BaseAgentExtension(object):
-    def __init__(self):
+    def __init__(self, agent=None):
         super(BaseAgentExtension, self).__init__()
+        self.agent = agent
         self.log = log.getLogger(__name__)
         self.command_map = dict(
             (v.command_name, v)
@@ -207,7 +212,8 @@ def async_command(command_name, validator=None):
 
             return AsyncCommandResult(command_name,
                                       command_params,
-                                      bound_func).start()
+                                      bound_func,
+                                      agent=self.agent).start()
         return wrapper
     return async_decorator
 

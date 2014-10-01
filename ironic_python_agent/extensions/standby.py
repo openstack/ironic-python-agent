@@ -172,8 +172,8 @@ def _validate_image_info(ext, image_info=None, **kwargs):
 
 
 class StandbyExtension(base.BaseAgentExtension):
-    def __init__(self):
-        super(StandbyExtension, self).__init__()
+    def __init__(self, agent=None):
+        super(StandbyExtension, self).__init__(agent=agent)
 
         self.cached_image_id = None
 

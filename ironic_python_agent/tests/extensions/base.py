@@ -120,10 +120,25 @@ class TestExecuteCommandMixin(test_base.BaseTestCase):
 class TestExtensionDecorators(test_base.BaseTestCase):
     def setUp(self):
         super(TestExtensionDecorators, self).setUp()
-        self.extension = FakeExtension()
+        self.agent = FakeAgent()
+        self.agent.force_heartbeat = mock.Mock()
+        self.extension = FakeExtension(agent=self.agent)
 
     def test_async_command_success(self):
         result = self.extension.execute('fake_async_command', param='v1')
+        self.assertIsInstance(result, base.AsyncCommandResult)
+        result.join()
+        self.assertEqual('fake_async_command', result.command_name)
+        self.assertEqual({'param': 'v1'}, result.command_params)
+        self.assertEqual(base.AgentCommandStatus.SUCCEEDED,
+                         result.command_status)
+        self.assertEqual(None, result.command_error)
+        self.assertEqual('v1', result.command_result)
+        self.agent.force_heartbeat.assert_called_once_with()
+
+    def test_async_command_success_without_agent(self):
+        extension = FakeExtension(agent=None)
+        result = extension.execute('fake_async_command', param='v1')
         self.assertIsInstance(result, base.AsyncCommandResult)
         result.join()
         self.assertEqual('fake_async_command', result.command_name)
@@ -138,6 +153,8 @@ class TestExtensionDecorators(test_base.BaseTestCase):
                           self.extension.execute,
                           'fake_async_command',
                           is_valid=False)
+        # validation is synchronous, no need to force a heartbeat
+        self.assertEqual(0, self.agent.force_heartbeat.call_count)
 
     def test_async_command_execution_failure(self):
         result = self.extension.execute('fake_async_command', param='v2')
@@ -149,6 +166,7 @@ class TestExtensionDecorators(test_base.BaseTestCase):
                          result.command_status)
         self.assertIsInstance(result.command_error, ExecutionError)
         self.assertEqual(None, result.command_result)
+        self.agent.force_heartbeat.assert_called_once_with()
 
     def test_async_command_name(self):
         self.assertEqual(
@@ -164,18 +182,24 @@ class TestExtensionDecorators(test_base.BaseTestCase):
                          result.command_status)
         self.assertEqual(None, result.command_error)
         self.assertEqual('v1', result.command_result)
+        # no need to force heartbeat on a sync command
+        self.assertEqual(0, self.agent.force_heartbeat.call_count)
 
     def test_sync_command_validation_failure(self):
         self.assertRaises(errors.InvalidCommandParamsError,
                           self.extension.execute,
                           'fake_sync_command',
                           is_valid=False)
+        # validation is synchronous, no need to force a heartbeat
+        self.assertEqual(0, self.agent.force_heartbeat.call_count)
 
     def test_sync_command_execution_failure(self):
         self.assertRaises(ExecutionError,
                           self.extension.execute,
                           'fake_sync_command',
                           param='v2')
+        # no need to force heartbeat on a sync command
+        self.assertEqual(0, self.agent.force_heartbeat.call_count)
 
     def test_sync_command_name(self):
         self.assertEqual(

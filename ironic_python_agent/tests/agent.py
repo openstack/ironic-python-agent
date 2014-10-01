@@ -49,8 +49,7 @@ def foo_execute(*args, **kwargs):
 
 
 class FakeExtension(base.BaseAgentExtension):
-    def __init__(self):
-        super(FakeExtension, self).__init__()
+    pass
 
 
 class TestHeartbeater(test_base.BaseTestCase):
