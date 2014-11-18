@@ -18,7 +18,7 @@
 if [[ -x /usr/bin/docker.io ]]; then
     sudo -E ln -sf /usr/bin/docker.io /usr/local/bin/docker
 fi
-cd imagebuild/coreos
 sudo -E pip install -r requirements.txt
+cd imagebuild/coreos
 sudo -E make clean
 sudo -E make
