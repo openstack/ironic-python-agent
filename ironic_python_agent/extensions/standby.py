@@ -60,6 +60,16 @@ def _write_image(image_info, device):
              image, device, totaltime))
 
 
+def _configdrive_is_url(configdrive):
+    return (configdrive.startswith('http://')
+            or configdrive.startswith('https://'))
+
+
+def _download_configdrive_to_file(configdrive, filename):
+    content = requests.get(configdrive).content
+    _write_configdrive_to_file(content, filename)
+
+
 def _write_configdrive_to_file(configdrive, filename):
     LOG.debug('Writing configdrive to {0}'.format(filename))
     # configdrive data is base64'd, decode it first
@@ -72,7 +82,10 @@ def _write_configdrive_to_file(configdrive, filename):
 
 def _write_configdrive_to_partition(configdrive, device):
     filename = _configdrive_location()
-    _write_configdrive_to_file(configdrive, filename)
+    if _configdrive_is_url(configdrive):
+        _download_configdrive_to_file(configdrive, filename)
+    else:
+        _write_configdrive_to_file(configdrive, filename)
 
     # check configdrive size before writing it
     filesize = os.stat(filename).st_size

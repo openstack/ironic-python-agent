@@ -118,6 +118,21 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         execute_mock.assert_called_once_with(*command, check_exit_code=[0])
 
+    def test_configdrive_is_url(self):
+        self.assertTrue(standby._configdrive_is_url('http://some/url'))
+        self.assertTrue(standby._configdrive_is_url('https://some/url'))
+        self.assertFalse(standby._configdrive_is_url('ftp://some/url'))
+        self.assertFalse(standby._configdrive_is_url('binary-blob'))
+
+    @mock.patch.object(standby, '_write_configdrive_to_file')
+    @mock.patch('requests.get', autospec=True)
+    def test_download_configdrive_to_file(self, get_mock, write_mock):
+        url = 'http://swift/configdrive'
+        get_mock.return_value.content = 'data'
+        standby._download_configdrive_to_file(url, 'filename')
+        get_mock.assert_called_once_with(url)
+        write_mock.assert_called_once_with('data', 'filename')
+
     @mock.patch('gzip.GzipFile', autospec=True)
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('base64.b64decode', autospec=True)
