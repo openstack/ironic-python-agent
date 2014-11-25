@@ -26,16 +26,25 @@ from ironic_python_agent import utils
 
 
 class AgentCommandStatus(object):
+    """Mapping of agent command statuses."""
     RUNNING = u'RUNNING'
     SUCCEEDED = u'SUCCEEDED'
     FAILED = u'FAILED'
 
 
 class BaseCommandResult(encoding.Serializable):
+    """Base class for command result."""
+
     serializable_fields = ('id', 'command_name', 'command_params',
                            'command_status', 'command_error', 'command_result')
 
     def __init__(self, command_name, command_params):
+        """Construct an instance of BaseCommandResult.
+
+        :param command_name: name of command executed
+        :param command_params: parameters passed to command
+        """
+
         self.id = six.text_type(uuid.uuid4())
         self.command_name = command_name
         self.command_params = command_params
@@ -44,14 +53,29 @@ class BaseCommandResult(encoding.Serializable):
         self.command_result = None
 
     def is_done(self):
+        """Checks to see if command is still RUNNING.
+
+        :returns: True if command is done, False if still RUNNING
+        """
         return self.command_status != AgentCommandStatus.RUNNING
 
     def join(self):
+        """:returns: result of completed command."""
         return self
 
 
 class SyncCommandResult(BaseCommandResult):
+    """A result from a command that executes synchronously."""
+
     def __init__(self, command_name, command_params, success, result_or_error):
+        """Construct an instance of SyncCommandResult.
+
+        :param command_name: name of command executed
+        :param command_params: parameters passed to command
+        :param success: True indicates success, False indicates failure
+        :param result_or_error: Contains the result (or error) from the command
+        """
+
         super(SyncCommandResult, self).__init__(command_name,
                                                 command_params)
         if success:
@@ -63,12 +87,17 @@ class SyncCommandResult(BaseCommandResult):
 
 
 class AsyncCommandResult(BaseCommandResult):
-    """A command that executes asynchronously in the background.
+    """A command that executes asynchronously in the background."""
 
-    :param execute_method: a callable to be executed asynchronously
-    """
     def __init__(self, command_name, command_params, execute_method,
                  agent=None):
+        """Construct an instance of AsyncCommandResult.
+
+        :param command_name: name of command to execute
+        :param command_params: parameters passed to command
+        :param execute_method: a callable to be executed asynchronously
+        :param agent: Optional: an instance of IronicPythonAgent
+        """
         super(AsyncCommandResult, self).__init__(command_name, command_params)
         self.agent = agent
         self.execute_method = execute_method
@@ -79,22 +108,37 @@ class AsyncCommandResult(BaseCommandResult):
                                                  name=thread_name)
 
     def serialize(self):
+        """Serializes the AsyncCommandResult into a dict.
+
+        :returns: dict containing serializable fields in AsyncCommandResult
+        """
         with self.command_state_lock:
             return super(AsyncCommandResult, self).serialize()
 
     def start(self):
+        """Begin background execution of command."""
         self.execution_thread.start()
         return self
 
     def join(self, timeout=None):
+        """Block until command has completed, and return result.
+
+        :param timeout: float indicating max seconds to wait for command
+                        to complete. Defaults to None.
+        """
         self.execution_thread.join(timeout)
         return self
 
     def is_done(self):
+        """Checks to see if command is still RUNNING.
+
+        :returns: True if command is done, False if still RUNNING
+        """
         with self.command_state_lock:
             return super(AsyncCommandResult, self).is_done()
 
     def run(self):
+        """Run a command."""
         try:
             result = self.execute_method(**self.command_params)
             with self.command_state_lock:
