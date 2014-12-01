@@ -21,11 +21,12 @@ import six
 import StringIO
 import time
 
+from oslo_concurrency import processutils
+
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent.openstack.common import log
-from ironic_python_agent.openstack.common import processutils
 from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)

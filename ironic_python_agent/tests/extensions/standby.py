@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import mock
+from oslo_concurrency import processutils
 from oslotest import base as test_base
 import six
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import standby
-from ironic_python_agent.openstack.common import processutils
 
 if six.PY2:
     OPEN_FUNCTION_NAME = '__builtin__.open'

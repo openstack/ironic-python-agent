@@ -18,6 +18,7 @@ import os
 import time
 
 import mock
+from oslo_concurrency import processutils
 from oslotest import base as test_base
 import pkg_resources
 import six
@@ -30,7 +31,6 @@ from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
-from ironic_python_agent.openstack.common import processutils
 from ironic_python_agent import utils
 
 EXPECTED_ERROR = RuntimeError('command execution failed')

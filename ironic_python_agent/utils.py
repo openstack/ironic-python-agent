@@ -14,9 +14,10 @@
 
 import collections
 
-from ironic_python_agent.openstack.common import gettextutils as gtu
+from oslo_concurrency import processutils
+
+from ironic_python_agent.openstack.common import _i18n as gtu
 from ironic_python_agent.openstack.common import log as logging
-from ironic_python_agent.openstack.common import processutils
 
 LOG = logging.getLogger(__name__)
 

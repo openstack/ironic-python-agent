@@ -17,7 +17,8 @@ import os
 import tempfile
 import testtools
 
-from ironic_python_agent.openstack.common import processutils
+from oslo_concurrency import processutils
+
 from ironic_python_agent import utils
 
 

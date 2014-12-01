@@ -16,11 +16,11 @@ import glob
 import os
 
 from oslo.config import cfg
+from oslo_concurrency import processutils
 
 from ironic_python_agent import agent
 from ironic_python_agent import errors
 from ironic_python_agent.openstack.common import log
-from ironic_python_agent.openstack.common import processutils
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
