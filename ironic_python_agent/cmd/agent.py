@@ -127,59 +127,70 @@ def _get_vmedia_params():
 KPARAMS = _get_kernel_params()
 
 cli_opts = [
-    cfg.StrOpt('api-url',
+    cfg.StrOpt('api_url',
                   required=('ipa-api-url' not in KPARAMS),
                   default=KPARAMS.get('ipa-api-url'),
+                  deprecated_name='api-url',
                   help='URL of the Ironic API'),
 
-    cfg.StrOpt('listen-host',
+    cfg.StrOpt('listen_host',
                   default=KPARAMS.get('ipa-listen-host', '0.0.0.0'),
+                  deprecated_name='listen-host',
                   help='The IP address to listen on.'),
 
-    cfg.IntOpt('listen-port',
+    cfg.IntOpt('listen_port',
                default=int(KPARAMS.get('ipa-listen-port', 9999)),
+               deprecated_name='listen-port',
                help='The port to listen on'),
 
-    cfg.StrOpt('advertise-host',
+    cfg.StrOpt('advertise_host',
                   default=KPARAMS.get('ipa-advertise-host', None),
+                  deprecated_name='advertise_host',
                   help='The host to tell Ironic to reply and send '
                        'commands to.'),
 
-    cfg.IntOpt('advertise-port',
+    cfg.IntOpt('advertise_port',
                default=int(KPARAMS.get('ipa-advertise-port', 9999)),
+               deprecated_name='advertise-port',
                help='The port to tell Ironic to reply and send '
                     'commands to.'),
 
-    cfg.IntOpt('ip-lookup-attempts',
+    cfg.IntOpt('ip_lookup_attempts',
                default=int(KPARAMS.get('ipa-ip-lookup-attempts', 3)),
+               deprecated_name='ip-lookup-attempts',
                help='The number of times to try and automatically'
                     'determine the agent IPv4 address.'),
 
-    cfg.IntOpt('ip-lookup-sleep',
+    cfg.IntOpt('ip_lookup_sleep',
                default=int(KPARAMS.get('ipa-ip-lookup-timeout', 10)),
+               deprecated_name='ip-lookup-sleep',
                help='The amaount of time to sleep between attempts'
                     'to determine IP address.'),
 
-    cfg.StrOpt('network-interface',
+    cfg.StrOpt('network_interface',
                default=KPARAMS.get('ipa-network-interface', None),
+               deprecated_name='network-interface',
                help='The interface to use when looking for an IP'
                'address.'),
 
-    cfg.IntOpt('lookup-timeout',
+    cfg.IntOpt('lookup_timeout',
                default=int(KPARAMS.get('ipa-lookup-timeout', 300)),
+               deprecated_name='lookup-timeout',
                help='The amount of time to retry the initial lookup '
                     'call to Ironic. After the timeout, the agent '
                     'will exit with a non-zero exit code.'),
 
-    cfg.IntOpt('lookup-interval',
+    cfg.IntOpt('lookup_interval',
                default=int(KPARAMS.get('ipa-lookup-timeout', 1)),
+               deprecated_name='lookup-interval',
                help='The initial interval for retries on the initial '
                     'lookup call to Ironic. The interval will be '
                     'doubled after each failure until timeout is '
                     'exceeded.'),
 
-    cfg.StrOpt('driver-name',
+    cfg.StrOpt('driver_name',
                   default=KPARAMS.get('ipa-driver-name', 'agent_ipmitool'),
+                  deprecated_name='driver-name',
                   help='The Ironic driver in use for this node')
 ]
 
