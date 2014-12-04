@@ -326,17 +326,17 @@ class TestAgentCmd(test_base.BaseTestCase):
         self.assertFalse('baz' in params)
 
     @mock.patch.object(agent_cmd, '_read_params_from_file')
-    def test__get_kernel_params_kernel_cmdline(self, read_params_mock):
+    def test__get_agent_params_kernel_cmdline(self, read_params_mock):
 
         expected_params = {'a': 'b'}
         read_params_mock.return_value = expected_params
-        returned_params = agent_cmd._get_kernel_params()
+        returned_params = agent_cmd._get_agent_params()
         read_params_mock.assert_called_once_with('/proc/cmdline')
         self.assertEqual(expected_params, returned_params)
 
     @mock.patch.object(agent_cmd, '_get_vmedia_params')
     @mock.patch.object(agent_cmd, '_read_params_from_file')
-    def test__get_kernel_params_vmedia(self, read_params_mock,
+    def test__get_agent_params_vmedia(self, read_params_mock,
                                        get_vmedia_params_mock):
 
         kernel_params = {'boot_method': 'vmedia'}
@@ -346,7 +346,7 @@ class TestAgentCmd(test_base.BaseTestCase):
         read_params_mock.return_value = kernel_params
         get_vmedia_params_mock.return_value = vmedia_params
 
-        returned_params = agent_cmd._get_kernel_params()
+        returned_params = agent_cmd._get_agent_params()
         read_params_mock.assert_called_once_with('/proc/cmdline')
         self.assertEqual(expected_params, returned_params)
 
