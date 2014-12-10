@@ -108,7 +108,7 @@ def _write_configdrive_to_partition(configdrive, device):
 
     totaltime = time.time() - starttime
     LOG.info('configdrive copied from {0} to {1} in {2} seconds'.format(
-             configdrive,
+             filename,
              device,
              totaltime))
 
