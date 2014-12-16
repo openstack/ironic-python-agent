@@ -68,7 +68,7 @@ class RawPromiscuousSockets(object):
                 ifr.ifr_flags |= IFF_PROMISC
                 fcntl.ioctl(sock.fileno(), SIOCSIFFLAGS, ifr)  # S for Set
                 # Bind the socket so it can be used
-                LOG.debug('Binding interface %(interface) for protocol '
+                LOG.debug('Binding interface %(interface)s for protocol '
                           '%(proto)s: %s', {'interface': interface_name,
                                             'proto': self.protocol})
                 sock.bind((interface_name, self.protocol))
