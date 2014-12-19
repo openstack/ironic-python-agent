@@ -247,3 +247,43 @@ class UnknownNodeError(Exception):
         if message is not None:
             self.message = message
         super(UnknownNodeError, self).__init__(self.message)
+
+
+class HardwareManagerNotFound(Exception):
+    """Error raised when no valid HardwareManager can be found."""
+
+    message = 'No valid HardwareManager found.'
+
+    def __init__(self, message=None):
+        if message is not None:
+            self.message = message
+        super(HardwareManagerNotFound, self).__init__(self.message)
+
+
+class HardwareManagerMethodNotFound(RESTError):
+    """Error raised when all HardwareManagers fail to handle a method."""
+
+    msg = 'No HardwareManager found to handle method'
+    message = msg + '.'
+
+    def __init__(self, method=None):
+        if method is not None:
+            self.details = (self.msg + ': "{0}".').format(method)
+        else:
+            self.details = self.message
+        super(HardwareManagerMethodNotFound, self).__init__(self.details)
+
+
+class IncompatibleHardwareMethodError(RESTError):
+    """Error raised when HardwareManager method is incompatible with node
+    hardware.
+    """
+
+    message = 'HardwareManager method is not compatible with hardware.'
+
+    def __init__(self, details=None):
+        if details is not None:
+            self.details = details
+        else:
+            self.details = self.message
+        super(IncompatibleHardwareMethodError, self).__init__(self.details)

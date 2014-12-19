@@ -193,7 +193,7 @@ class StandbyExtension(base.BaseAgentExtension):
 
     @base.async_command('cache_image', _validate_image_info)
     def cache_image(self, image_info=None, force=False):
-        device = hardware.get_manager().get_os_install_device()
+        device = hardware.dispatch_to_managers('get_os_install_device')
 
         if self.cached_image_id != image_info['id'] or force:
             _download_image(image_info)
@@ -204,7 +204,7 @@ class StandbyExtension(base.BaseAgentExtension):
     def prepare_image(self,
                       image_info=None,
                       configdrive=None):
-        device = hardware.get_manager().get_os_install_device()
+        device = hardware.dispatch_to_managers('get_os_install_device')
 
         # don't write image again if already cached
         if self.cached_image_id != image_info['id']:

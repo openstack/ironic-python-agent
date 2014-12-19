@@ -19,4 +19,4 @@ from ironic_python_agent import hardware
 class DecomExtension(base.BaseAgentExtension):
     @base.async_command('erase_hardware')
     def erase_hardware(self):
-        hardware.get_manager().erase_devices()
+        hardware.dispatch_to_managers('erase_devices')

@@ -201,7 +201,15 @@ class TestBaseAgent(test_base.BaseTestCase):
     @mock.patch('os.read')
     @mock.patch('select.poll')
     @mock.patch('time.sleep', return_value=None)
-    def test_ipv4_lookup(self, mock_time_sleep, mock_poll, mock_read):
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'list_network_interfaces')
+    @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr')
+    def test_ipv4_lookup(self,
+                         mock_get_ipv4,
+                         mock_list_net,
+                         mock_time_sleep,
+                         mock_poll,
+                         mock_read):
         homeless_agent = agent.IronicPythonAgent('https://fake_api.example.'
                                                  'org:8081/',
                                                  (None, 9990),
@@ -213,10 +221,6 @@ class TestBaseAgent(test_base.BaseTestCase):
                                                  1,
                                                  'agent_ipmitool',
                                                  False)
-
-        homeless_agent.hardware = mock.Mock()
-        mock_list_net = homeless_agent.hardware.list_network_interfaces
-        mock_get_ipv4 = homeless_agent.hardware.get_ipv4_addr
 
         mock_poll.return_value.poll.return_value = True
         mock_read.return_value = 'a'

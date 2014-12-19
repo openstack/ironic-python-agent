@@ -157,17 +157,6 @@ class TestHardwareManagerLoading(test_base.BaseTestCase):
             ext1, ext2, ext3
         ])
 
-    @mock.patch('stevedore.ExtensionManager')
-    def test_hardware_manager_loading(self, mocked_extension_mgr_constructor):
-        hardware._global_manager = None
-        mocked_extension_mgr_constructor.return_value = self.fake_ext_mgr
-
-        preferred_hw_manager = hardware.get_manager()
-        mocked_extension_mgr_constructor.assert_called_once_with(
-            namespace='ironic_python_agent.hardware_managers',
-            invoke_on_load=True)
-        self.assertEqual(self.correct_hw_manager, preferred_hw_manager)
-
 
 class TestGenericHardwareManager(test_base.BaseTestCase):
     def setUp(self):
@@ -355,7 +344,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         ])
 
     @mock.patch.object(utils, 'execute')
-    def test_erase_block_device_ata_nosecurtiy(self, mocked_execute):
+    def test_erase_block_device_ata_nosecurity(self, mocked_execute):
         hdparm_output = HDPARM_INFO_TEMPLATE.split('\nSecurity:')[0]
 
         mocked_execute.side_effect = [
@@ -364,7 +353,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.assertRaises(errors.BlockDeviceEraseError,
+        self.assertRaises(errors.IncompatibleHardwareMethodError,
                           self.hardware.erase_block_device,
                           block_device)
 
@@ -382,7 +371,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.assertRaises(errors.BlockDeviceEraseError,
+        self.assertRaises(errors.IncompatibleHardwareMethodError,
                           self.hardware.erase_block_device,
                           block_device)
 
