@@ -160,9 +160,6 @@ class GenericHardwareManager(HardwareManager):
     def __init__(self):
         self.sys_path = '/sys'
 
-        if os.path.isdir('/mnt/sys'):
-            self.sys_path = '/mnt/sys'
-
     def evaluate_hardware_support(self):
         return HardwareSupport.GENERIC
 
