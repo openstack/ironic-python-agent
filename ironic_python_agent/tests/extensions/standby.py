@@ -196,25 +196,24 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           configdrive,
                           device)
 
-    @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
-    @mock.patch('requests.get', autospec=True)
+    @mock.patch('hashlib.md5')
+    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('requests.get')
     def test_download_image(self, requests_mock, open_mock, md5_mock):
         image_info = self._build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
         response.iter_content.return_value = ['some', 'content']
-        open_mock.return_value.__enter__ = lambda s: s
-        open_mock.return_value.__exit__ = mock.Mock()
-        read_mock = open_mock.return_value.read
-        read_mock.return_value = 'content'
+        file_mock = mock.Mock(spec=file)
+        open_mock.return_value.__enter__.return_value = file_mock
+        file_mock.read.return_value = None
         hexdigest_mock = md5_mock.return_value.hexdigest
         hexdigest_mock.return_value = image_info['checksum']
 
         standby._download_image(image_info)
         requests_mock.assert_called_once_with(image_info['urls'][0],
                                               stream=True)
-        write = open_mock.return_value.write
+        write = file_mock.write
         write.assert_any_call('some')
         write.assert_any_call('content')
         self.assertEqual(write.call_count, 2)
@@ -242,23 +241,29 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           standby._download_image,
                           image_info)
 
-    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('hashlib.md5')
     def test_verify_image_success(self, md5_mock, open_mock):
         image_info = self._build_fake_image_info()
         hexdigest_mock = md5_mock.return_value.hexdigest
         hexdigest_mock.return_value = image_info['checksum']
+        file_mock = mock.Mock(spec=file)
+        file_mock.read.return_value = None
+        open_mock.return_value.__enter__.return_value = file_mock
         image_location = '/foo/bar'
 
         verified = standby._verify_image(image_info, image_location)
         self.assertTrue(verified)
         self.assertEqual(1, md5_mock.call_count)
 
-    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('hashlib.md5')
     def test_verify_image_failure(self, md5_mock, open_mock):
         image_info = self._build_fake_image_info()
         md5_mock.return_value.hexdigest.return_value = 'wrong hash'
+        file_mock = mock.Mock(spec=file)
+        file_mock.read.return_value = None
+        open_mock.return_value.__enter__.return_value = file_mock
         image_location = '/foo/bar'
 
         verified = standby._verify_image(image_info, image_location)

@@ -31,6 +31,8 @@ from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)
 
+IMAGE_CHUNK_SIZE = 1024 * 1024  # 1MB
+
 
 def _configdrive_location():
     return '/tmp/configdrive'
@@ -141,7 +143,7 @@ def _download_image(image_info):
     image_location = _image_location(image_info)
     with open(image_location, 'wb') as f:
         try:
-            for chunk in resp.iter_content(1024 * 1024):
+            for chunk in resp.iter_content(IMAGE_CHUNK_SIZE):
                 f.write(chunk)
         except Exception:
             raise errors.ImageDownloadError(image_info['id'])
@@ -158,12 +160,19 @@ def _verify_image(image_info, image_location):
     checksum = image_info['checksum']
     log_msg = 'Verifying image at {0} against MD5 checksum {1}'
     LOG.debug(log_msg.format(image_location, checksum))
-    hash_ = hashlib.md5(open(image_location).read()).hexdigest()
-    if hash_ == checksum:
+    hash_ = hashlib.md5()
+    with open(image_location) as image:
+        while True:
+            data = image.read(IMAGE_CHUNK_SIZE)
+            if not data:
+                break
+            hash_.update(data)
+    hash_digest = hash_.hexdigest()
+    if hash_digest == checksum:
         return True
     log_msg = ('Image verification failed. Location: {0};'
                'image hash: {1}; verification hash: {2}')
-    LOG.warning(log_msg.format(image_location, checksum, hash_))
+    LOG.warning(log_msg.format(image_location, checksum, hash_digest))
     return False
 
 
