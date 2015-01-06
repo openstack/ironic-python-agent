@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import errno
 import os
 import tempfile
 import testtools
@@ -52,11 +53,18 @@ exit 1
 ''')
             fp.close()
             os.chmod(tmpfilename, 0o755)
-            self.assertRaises(processutils.ProcessExecutionError,
-                              utils.execute,
-                              tmpfilename, tmpfilename2, attempts=10,
-                              process_input='foo',
-                              delay_on_retry=False)
+            try:
+                self.assertRaises(processutils.ProcessExecutionError,
+                                  utils.execute,
+                                  tmpfilename, tmpfilename2, attempts=10,
+                                  process_input='foo',
+                                  delay_on_retry=False)
+            except OSError as e:
+                if e.errno == errno.EACCES:
+                    self.skipTest("Permissions error detected. "
+                                  "Are you running with a noexec /tmp?")
+                else:
+                    raise
             fp = open(tmpfilename2, 'r')
             runs = fp.read()
             fp.close()
@@ -97,10 +105,17 @@ grep foo
 ''')
             fp.close()
             os.chmod(tmpfilename, 0o755)
-            utils.execute(tmpfilename,
-                          tmpfilename2,
-                          process_input='foo',
-                          attempts=2)
+            try:
+                utils.execute(tmpfilename,
+                              tmpfilename2,
+                              process_input='foo',
+                              attempts=2)
+            except OSError as e:
+                if e.errno == errno.EACCES:
+                    self.skipTest("Permissions error detected. "
+                                  "Are you running with a noexec /tmp?")
+                else:
+                    raise
         finally:
             os.unlink(tmpfilename)
             os.unlink(tmpfilename2)
