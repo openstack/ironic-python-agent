@@ -137,7 +137,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
     def __init__(self, api_url, advertise_address, listen_address,
                  ip_lookup_attempts, ip_lookup_sleep, network_interface,
-                 lookup_timeout, lookup_interval, driver_name):
+                 lookup_timeout, lookup_interval, driver_name, standalone):
         super(IronicPythonAgent, self).__init__()
         self.ext_mgr = extension.ExtensionManager(
             namespace='ironic_python_agent.extensions',
@@ -166,6 +166,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.ip_lookup_attempts = ip_lookup_attempts
         self.ip_lookup_sleep = ip_lookup_sleep
         self.network_interface = network_interface
+        self.standalone = standalone
 
     def get_status(self):
         """Retrieve a serializable status.
@@ -267,20 +268,22 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                                                       result_id)
 
     def force_heartbeat(self):
-        self.heartbeater.force_heartbeat()
+        if not self.standalone:
+            self.heartbeater.force_heartbeat()
 
     def run(self):
         """Run the Ironic Python Agent."""
         # Get the UUID so we can heartbeat to Ironic. Raises LookupNodeError
         # if there is an issue (uncaught, restart agent)
         self.started_at = _time()
-        content = self.api_client.lookup_node(
+        if not self.standalone:
+            content = self.api_client.lookup_node(
                 hardware_info=self.hardware.list_hardware_info(),
                 timeout=self.lookup_timeout,
                 starting_interval=self.lookup_interval)
 
-        self.node = content['node']
-        self.heartbeat_timeout = content['heartbeat_timeout']
+            self.node = content['node']
+            self.heartbeat_timeout = content['heartbeat_timeout']
 
         wsgi = simple_server.make_server(
             self.listen_address[0],
@@ -288,12 +291,14 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             self.api,
             server_class=simple_server.WSGIServer)
 
-        # Don't start heartbeating until the server is listening
-        self.heartbeater.start()
+        if not self.standalone:
+            # Don't start heartbeating until the server is listening
+            self.heartbeater.start()
 
         try:
             wsgi.serve_forever()
         except BaseException:
             self.log.exception('shutting down')
 
-        self.heartbeater.stop()
+        if not self.standalone:
+            self.heartbeater.stop()

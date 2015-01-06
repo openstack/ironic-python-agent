@@ -128,8 +128,7 @@ APARAMS = _get_agent_params()
 
 cli_opts = [
     cfg.StrOpt('api_url',
-                  required=('ipa-api-url' not in APARAMS),
-                  default=APARAMS.get('ipa-api-url'),
+                  default=APARAMS.get('ipa-api-url', 'http://127.0.0.1:6835'),
                   deprecated_name='api-url',
                   help='URL of the Ironic API'),
 
@@ -195,7 +194,12 @@ cli_opts = [
 
     cfg.FloatOpt('lldp_timeout',
                  default=APARAMS.get('lldp-timeout', 30.0),
-                 help='The amount of seconds to wait for LLDP packets.')
+                 help='The amount of seconds to wait for LLDP packets.'),
+
+    cfg.BoolOpt('standalone',
+                default=False,
+                help='Note: for debugging only. Start the Agent but suppress '
+                     'any calls to Ironic API.'),
 ]
 
 CONF.register_cli_opts(cli_opts)
@@ -204,7 +208,6 @@ CONF.register_cli_opts(cli_opts)
 def run():
     CONF()
     log.setup('ironic-python-agent')
-
     agent.IronicPythonAgent(CONF.api_url,
                             (CONF.advertise_host, CONF.advertise_port),
                             (CONF.listen_host, CONF.listen_port),
@@ -213,4 +216,5 @@ def run():
                             CONF.network_interface,
                             CONF.lookup_timeout,
                             CONF.lookup_interval,
-                            CONF.driver_name).run()
+                            CONF.driver_name,
+                            CONF.standalone).run()
