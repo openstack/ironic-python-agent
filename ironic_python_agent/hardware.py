@@ -27,15 +27,20 @@ from ironic_python_agent import errors
 from ironic_python_agent.openstack.common import log
 from ironic_python_agent import utils
 
-_global_manager = None
+_global_managers = None
+LOG = log.getLogger()
 
 
 class HardwareSupport(object):
-    """These are just guidelines to suggest values that might be returned by
-    calls to `evaluate_hardware_support`. No HardwareManager in mainline
-    ironic-python-agent will ever offer a value greater than `MAINLINE`.
-    Service Providers should feel free to return values greater than
-    SERVICE_PROVIDER to distinguish between additional levels of support.
+    """Example priorities for hardware managers.
+
+    Priorities for HardwareManagers are integers, where largest means most
+    specific and smallest means most generic. These values are guidelines
+    that suggest values that might be returned by calls to
+    `evaluate_hardware_support()`. No HardwareManager in mainline IPA will
+    ever return a value greater than MAINLINE. Third party hardware managers
+    should feel free to return values of SERVICE_PROVIDER or greater to
+    distinguish between additional levels of hardware support.
     """
     NONE = 0
     GENERIC = 1
@@ -91,27 +96,21 @@ class HardwareManager(object):
     def evaluate_hardware_support(self):
         pass
 
-    @abc.abstractmethod
     def list_network_interfaces(self):
-        pass
+        raise errors.IncompatibleHardwareMethodError
 
-    @abc.abstractmethod
     def get_cpus(self):
-        pass
+        raise errors.IncompatibleHardwareMethodError
 
-    @abc.abstractmethod
     def list_block_devices(self):
-        pass
+        raise errors.IncompatibleHardwareMethodError
 
-    @abc.abstractmethod
     def get_memory(self):
-        pass
+        raise errors.IncompatibleHardwareMethodError
 
-    @abc.abstractmethod
     def get_os_install_device(self):
-        pass
+        raise errors.IncompatibleHardwareMethodError
 
-    @abc.abstractmethod
     def erase_block_device(self, block_device):
         """Attempt to erase a block device.
 
@@ -129,11 +128,12 @@ class HardwareManager(object):
         encouraged.
 
         :param block_device: a BlockDevice indicating a device to be erased.
-        :raises: BlockDeviceEraseError when an error occurs erasing a block
-                 device, or if the block device is not supported.
-
+        :raises IncompatibleHardwareMethodError: when there is no known way to
+                erase the block device
+        :raises BlockDeviceEraseError: when there is an error erasing the
+                block device
         """
-        pass
+        raise errors.IncompatibleHardwareMethodError
 
     def erase_devices(self):
         """Erase any device that holds user data.
@@ -270,10 +270,10 @@ class GenericHardwareManager(HardwareManager):
         if self._ata_erase(block_device):
             return
 
-        # NOTE(russell_h): Support for additional generic erase methods should
-        # be added above this raise, in order of precedence.
-        raise errors.BlockDeviceEraseError(('Unable to erase block device '
-            '{0}: device is unsupported.').format(block_device.name))
+        msg = ('Unable to erase block device {0}: device is unsupported.'
+              ).format(block_device.name)
+        LOG.error(msg)
+        raise errors.IncompatibleHardwareMethodError(msg)
 
     def _get_ata_security_lines(self, block_device):
         output = utils.execute('hdparm', '-I', block_device.name)[0]
@@ -332,11 +332,19 @@ def _compare_extensions(ext1, ext2):
     return mgr2.evaluate_hardware_support() - mgr1.evaluate_hardware_support()
 
 
-def get_manager():
-    global _global_manager
+def _get_managers():
+    """Get a list of hardware managers in priority order.
 
-    if not _global_manager:
-        LOG = log.getLogger()
+    Use stevedore to find all eligible hardware managers, sort them based on
+    self-reported (via evaluate_hardware_support()) priorities, and return them
+    in a list. The resulting list is cached in _global_managers.
+
+    :returns: Priority-sorted list of hardware managers
+    :raises HardwareManagerNotFound: if no valid hardware managers found
+    """
+    global _global_managers
+
+    if not _global_managers:
         extension_manager = stevedore.ExtensionManager(
             namespace='ironic_python_agent.hardware_managers',
             invoke_on_load=True)
@@ -344,22 +352,54 @@ def get_manager():
         # There will always be at least one extension available (the
         # GenericHardwareManager).
         if six.PY2:
-            preferred_extension = sorted(
-                    extension_manager,
-                    _compare_extensions)[0]
+            extensions = sorted(extension_manager, _compare_extensions)
         else:
-            preferred_extension = sorted(
-                    extension_manager,
-                    key=functools.cmp_to_key(_compare_extensions))[0]
+            extensions = sorted(extension_manager,
+                            key=functools.cmp_to_key(_compare_extensions))
 
-        preferred_manager = preferred_extension.obj
+        preferred_managers = []
 
-        if preferred_manager.evaluate_hardware_support() <= 0:
-            raise RuntimeError('No suitable HardwareManager could be found')
+        for extension in extensions:
+            if extension.obj.evaluate_hardware_support() > 0:
+                preferred_managers.append(extension.obj)
+                LOG.info('Hardware manager found: {0}'.format(
+                    extension.entry_point_target))
 
-        LOG.info('selected hardware manager {0}'.format(
-                 preferred_extension.entry_point_target))
+        if not preferred_managers:
+            raise errors.HardwareManagerNotFound
 
-        _global_manager = preferred_manager
+        _global_managers = preferred_managers
 
-    return _global_manager
+    return _global_managers
+
+
+def dispatch_to_managers(method, *args, **kwargs):
+    """Dispatch a method to best suited hardware manager.
+
+    Dispatches the given method in priority order as sorted by
+    `_get_managers`. If the method doesn't exist or raises
+    IncompatibleHardwareMethodError, it is attempted again with a more generic
+    hardware manager. This continues until a method executes that returns
+    any result without raising an IncompatibleHardwareMethodError.
+
+    :param method: hardware manager method to dispatch
+    :param *args: arguments to dispatched method
+    :param **kwargs: keyword arguments to dispatched method
+
+    :returns: result of successful dispatch of method
+    :raises HardwareManagerMethodNotFound: if all managers failed the method
+    :raises HardwareManagerNotFound: if no valid hardware managers found
+    """
+    managers = _get_managers()
+    for manager in managers:
+        if getattr(manager, method, None):
+            try:
+                return getattr(manager, method)(*args, **kwargs)
+            except(errors.IncompatibleHardwareMethodError):
+                LOG.debug('HardwareManager {0} does not support {1}'
+                        .format(manager, method))
+        else:
+            LOG.debug('HardwareManager {0} does not have method {1}'
+                      .format(manager, method))
+
+    raise errors.HardwareManagerMethodNotFound(method)

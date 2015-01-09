@@ -23,9 +23,9 @@ class TestDecomExtension(test_base.BaseTestCase):
         super(TestDecomExtension, self).setUp()
         self.agent_extension = decom.DecomExtension()
 
-    @mock.patch('ironic_python_agent.hardware.get_manager', autospec=True)
-    def test_erase_hardware(self, mocked_get_manager):
-        hardware_manager = mocked_get_manager.return_value
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    def test_erase_devices(self, mocked_dispatch):
         result = self.agent_extension.erase_hardware()
         result.join()
-        hardware_manager.erase_devices.assert_called_once_with()
+        mocked_dispatch.assert_called_once_with('erase_devices')

@@ -1,0 +1,154 @@
+# Copyright 2013 Rackspace, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import mock
+from oslotest import base as test_base
+from stevedore import extension
+
+from ironic_python_agent import errors
+from ironic_python_agent import hardware
+
+
+def counted(fn):
+    def wrapper(*args, **kwargs):
+        wrapper.called += 1
+        return fn(*args, **kwargs)
+    wrapper.called = 0
+    wrapper.__name__ = fn.__name__
+    return wrapper
+
+
+class FakeGenericHardwareManager(hardware.HardwareManager):
+    @counted
+    def generic_only(self):
+        return True
+
+    @counted
+    def specific_only(self):
+        raise Exception("Test fail: This method should not be called")
+
+    @counted
+    def mainline_fail(self):
+        return True
+
+    @counted
+    def both_succeed(self):
+        return True
+
+    @counted
+    def unexpected_fail(self):
+        raise Exception("Test fail: This method should not be called")
+
+    @counted
+    def evaluate_hardware_support(self):
+        return hardware.HardwareSupport.GENERIC
+
+
+class FakeMainlineHardwareManager(hardware.HardwareManager):
+    @counted
+    def specific_only(self):
+        return True
+
+    @counted
+    def mainline_fail(self):
+        raise errors.IncompatibleHardwareMethodError
+
+    @counted
+    def both_succeed(self):
+        return True
+
+    @counted
+    def unexpected_fail(self):
+        raise RuntimeError('A problem was encountered')
+
+    @counted
+    def evaluate_hardware_support(self):
+        return hardware.HardwareSupport.MAINLINE
+
+
+class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
+    def setUp(self):
+        super(TestMultipleHardwareManagerLoading, self).setUp()
+        fake_ep = mock.Mock()
+        fake_ep.module_name = 'fake'
+        fake_ep.attrs = ['fake attrs']
+        ext1 = extension.Extension('fake_generic', fake_ep, None,
+                FakeGenericHardwareManager())
+        ext2 = extension.Extension('fake_mainline', fake_ep, None,
+                FakeMainlineHardwareManager())
+        self.fake_ext_mgr = extension.ExtensionManager.make_test_instance([
+                ext1, ext2
+        ])
+
+        self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager')
+        self.mocked_extension_mgr = self.extension_mgr_patcher.start()
+        self.mocked_extension_mgr.return_value = self.fake_ext_mgr
+        hardware._global_managers = None
+
+    def tearDown(self):
+        super(TestMultipleHardwareManagerLoading, self).tearDown()
+        self.extension_mgr_patcher.stop()
+
+    def test_mainline_method_only(self):
+        hardware.dispatch_to_managers('specific_only')
+
+        self.assertEqual(1, FakeMainlineHardwareManager.specific_only.called)
+
+    def test_generic_method_only(self):
+        hardware.dispatch_to_managers('generic_only')
+
+        self.assertEqual(1, FakeGenericHardwareManager.generic_only.called)
+
+    def test_both_succeed(self):
+        """In the case where both managers will work; only the most specific
+        manager should have it's function called.
+        """
+        hardware.dispatch_to_managers('both_succeed')
+
+        self.assertEqual(1, FakeMainlineHardwareManager.both_succeed.called)
+        self.assertEqual(0, FakeGenericHardwareManager.both_succeed.called)
+
+    def test_mainline_fails(self):
+        """Ensure that if the mainline manager is unable to run the method
+        that we properly fall back to generic.
+        """
+        hardware.dispatch_to_managers('mainline_fail')
+
+        self.assertEqual(1, FakeMainlineHardwareManager.mainline_fail.called)
+        self.assertEqual(1, FakeGenericHardwareManager.mainline_fail.called)
+
+    def test_manager_method_not_found(self):
+        self.assertRaises(errors.HardwareManagerMethodNotFound,
+                          hardware.dispatch_to_managers,
+                          'fake_method')
+
+    def test_method_fails(self):
+        self.assertRaises(RuntimeError,
+                          hardware.dispatch_to_managers,
+                          'unexpected_fail')
+
+
+class TestNoHardwareManagerLoading(test_base.BaseTestCase):
+    def setUp(self):
+        super(TestNoHardwareManagerLoading, self).setUp()
+        self.empty_ext_mgr = extension.ExtensionManager.make_test_instance([])
+
+    @mock.patch('stevedore.ExtensionManager')
+    def test_no_managers_found(self, mocked_extension_mgr_constructor):
+        mocked_extension_mgr_constructor.return_value = self.empty_ext_mgr
+        hardware._global_managers = None
+
+        self.assertRaises(errors.HardwareManagerNotFound,
+                          hardware.dispatch_to_managers,
+                          'some_method')

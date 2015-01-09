@@ -70,7 +70,6 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         """
         super(IronicPythonAgentHeartbeater, self).__init__()
         self.agent = agent
-        self.hardware = hardware.get_manager()
         self.api = ironic_api_client.APIClient(agent.api_url,
                                                agent.driver_name)
         self.log = log.getLogger(__name__)
@@ -156,7 +155,6 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.api = app.VersionSelectorApplication(self)
         self.heartbeater = IronicPythonAgentHeartbeater(self)
         self.heartbeat_timeout = None
-        self.hardware = hardware.get_manager()
         self.log = log.getLogger(__name__)
         self.started_at = None
         self.node = None
@@ -201,7 +199,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         attempts = 0
         while (attempts < self.ip_lookup_attempts):
             for iface in ifaces:
-                found_ip = self.hardware.get_ipv4_addr(iface)
+                found_ip = hardware.dispatch_to_managers('get_ipv4_addr',
+                                                         iface)
                 if found_ip is not None:
                     self.advertise_address = (found_ip,
                                               self.advertise_address[1])
@@ -223,7 +222,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                  be found.
         """
         iface_list = [iface.serialize()['name'] for iface in
-                self.hardware.list_network_interfaces()]
+                hardware.dispatch_to_managers('list_network_interfaces')]
         iface_list = [name for name in iface_list if 'lo' not in name]
 
         if len(iface_list) == 0:
@@ -278,7 +277,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.started_at = _time()
         if not self.standalone:
             content = self.api_client.lookup_node(
-                hardware_info=self.hardware.list_hardware_info(),
+                hardware_info=hardware.dispatch_to_managers(
+                                  'list_hardware_info'),
                 timeout=self.lookup_timeout,
                 starting_interval=self.lookup_interval)
 

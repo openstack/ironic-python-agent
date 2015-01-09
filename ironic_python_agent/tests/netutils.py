@@ -17,7 +17,6 @@ import binascii
 import mock
 from oslotest import base as test_base
 
-from ironic_python_agent import hardware
 from ironic_python_agent import netutils
 
 # hexlify-ed output from LLDP packet
@@ -33,7 +32,6 @@ FAKE_LLDP_PACKET = binascii.unhexlify(
 class TestNetutils(test_base.BaseTestCase):
     def setUp(self):
         super(TestNetutils, self).setUp()
-        self.hardware = hardware.GenericHardwareManager()
 
     @mock.patch('fcntl.ioctl')
     @mock.patch('select.select')
