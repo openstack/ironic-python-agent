@@ -121,7 +121,7 @@ class LookupAgentIPError(IronicAPIError):
     message = 'Error finding IP for Ironic Agent'
 
     def __init__(self, details):
-        super(IronicAPIError, self).__init__(details)
+        super(LookupAgentIPError, self).__init__(details)
 
 
 class LookupAgentInterfaceError(IronicAPIError):
@@ -130,7 +130,7 @@ class LookupAgentInterfaceError(IronicAPIError):
     message = 'Error finding network interface for Ironic Agent'
 
     def __init__(self, details):
-        super(IronicAPIError, self).__init__(details)
+        super(LookupAgentInterfaceError, self).__init__(details)
 
 
 class ImageDownloadError(RESTError):
@@ -230,7 +230,7 @@ class VirtualMediaBootError(RESTError):
     message = 'Booting ironic-python-client from virtual media failed.'
 
     def __init__(self, details):
-        super(RESTError, self).__init__(details)
+        super(VirtualMediaBootError, self).__init__(details)
         self.details = details
 
 
