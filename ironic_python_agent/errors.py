@@ -266,11 +266,8 @@ class HardwareManagerMethodNotFound(RESTError):
     msg = 'No HardwareManager found to handle method'
     message = msg + '.'
 
-    def __init__(self, method=None):
-        if method is not None:
-            self.details = (self.msg + ': "{0}".').format(method)
-        else:
-            self.details = self.message
+    def __init__(self, method):
+        self.details = (self.msg + ': "{0}".').format(method)
         super(HardwareManagerMethodNotFound, self).__init__(self.details)
 
 
