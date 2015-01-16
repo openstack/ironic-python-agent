@@ -228,30 +228,34 @@ class VirtualMediaBootError(RESTError):
         super(VirtualMediaBootError, self).__init__(details)
 
 
-class ExtensionError(Exception):
+class ExtensionError(RESTError):
     pass
 
 
-class UnknownNodeError(Exception):
+class UnknownNodeError(RESTError):
     """Error raised when the agent is not associated with an Ironic node."""
 
     message = 'Agent is not associated with an Ironic node.'
 
-    def __init__(self, message=None):
-        if message is not None:
-            self.message = message
-        super(UnknownNodeError, self).__init__(self.message)
+    def __init__(self, details=None):
+        if details is not None:
+            details = details
+        else:
+            details = self.message
+        super(UnknownNodeError, self).__init__(details)
 
 
-class HardwareManagerNotFound(Exception):
+class HardwareManagerNotFound(RESTError):
     """Error raised when no valid HardwareManager can be found."""
 
     message = 'No valid HardwareManager found.'
 
-    def __init__(self, message=None):
-        if message is not None:
-            self.message = message
-        super(HardwareManagerNotFound, self).__init__(self.message)
+    def __init__(self, details=None):
+        if details is not None:
+            details = details
+        else:
+            details = self.message
+        super(HardwareManagerNotFound, self).__init__(details)
 
 
 class HardwareManagerMethodNotFound(RESTError):
