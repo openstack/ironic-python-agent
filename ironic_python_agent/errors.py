@@ -22,10 +22,12 @@ class RESTError(Exception, encoding.Serializable):
     status_code = 500
     serializable_fields = ('type', 'code', 'message', 'details')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, details=None, *args, **kwargs):
         super(RESTError, self).__init__(*args, **kwargs)
         self.type = self.__class__.__name__
         self.code = self.status_code
+        if details:
+            self.details = details
 
 
 class InvalidContentError(RESTError):
@@ -37,7 +39,7 @@ class InvalidContentError(RESTError):
     status_code = 400
 
     def __init__(self, details):
-        self.details = details
+        super(InvalidContentError, self).__init__(details)
 
 
 class NotFound(RESTError):
@@ -56,8 +58,7 @@ class CommandExecutionError(RESTError):
     message = 'Command execution failed'
 
     def __init__(self, details):
-        super(CommandExecutionError, self).__init__()
-        self.details = details
+        super(CommandExecutionError, self).__init__(details)
 
 
 class InvalidCommandError(InvalidContentError):
@@ -82,7 +83,6 @@ class RequestedObjectNotFoundError(NotFound):
     def __init__(self, type_descr, obj_id):
         details = '{0} with id {1} not found.'.format(type_descr, obj_id)
         super(RequestedObjectNotFoundError, self).__init__(details)
-        self.details = details
 
 
 class IronicAPIError(RESTError):
@@ -92,7 +92,6 @@ class IronicAPIError(RESTError):
 
     def __init__(self, details):
         super(IronicAPIError, self).__init__(details)
-        self.details = details
 
 
 class HeartbeatError(IronicAPIError):
@@ -139,8 +138,8 @@ class ImageDownloadError(RESTError):
     message = 'Error downloading image.'
 
     def __init__(self, image_id):
-        super(ImageDownloadError, self).__init__()
-        self.details = 'Could not download image with id {0}.'.format(image_id)
+        details = 'Could not download image with id {0}.'.format(image_id)
+        super(ImageDownloadError, self).__init__(details)
 
 
 class ImageChecksumError(RESTError):
@@ -149,9 +148,9 @@ class ImageChecksumError(RESTError):
     message = 'Error verifying image checksum.'
 
     def __init__(self, image_id):
-        super(ImageChecksumError, self).__init__()
-        self.details = 'Image with id {0} failed to verify against checksum.'
-        self.details = self.details.format(image_id)
+        details = 'Image with id {0} failed to verify against checksum.'
+        details = details.format(image_id)
+        super(ImageChecksumError, self).__init__(details)
 
 
 class ImageWriteError(RESTError):
@@ -160,10 +159,10 @@ class ImageWriteError(RESTError):
     message = 'Error writing image to device.'
 
     def __init__(self, device, exit_code, stdout, stderr):
-        super(ImageWriteError, self).__init__()
-        self.details = ('Writing image to device {0} failed with exit code '
-                        '{1}. stdout: {2}. stderr: {3}')
-        self.details = self.details.format(device, exit_code, stdout, stderr)
+        details = ('Writing image to device {0} failed with exit code '
+                   '{1}. stdout: {2}. stderr: {3}')
+        details = details.format(device, exit_code, stdout, stderr)
+        super(ImageWriteError, self).__init__(details)
 
 
 class ConfigDriveTooLargeError(RESTError):
@@ -174,7 +173,6 @@ class ConfigDriveTooLargeError(RESTError):
         details = ('Configdrive at {0} has size {1}, which is larger than '
                    'the intended partition.').format(filename, filesize)
         super(ConfigDriveTooLargeError, self).__init__(details)
-        self.details = details
 
 
 class ConfigDriveWriteError(RESTError):
@@ -189,7 +187,6 @@ class ConfigDriveWriteError(RESTError):
                    '{1}. stdout: {2}. stderr: {3}.')
         details = details.format(device, exit_code, stdout, stderr)
         super(ConfigDriveWriteError, self).__init__(details)
-        self.details = details
 
 
 class SystemRebootError(RESTError):
@@ -198,10 +195,10 @@ class SystemRebootError(RESTError):
     message = 'Error rebooting system.'
 
     def __init__(self, exit_code, stdout, stderr):
-        super(SystemRebootError, self).__init__()
-        self.details = ('Reboot script failed with exit code {0}. stdout: '
-                        '{1}. stderr: {2}.')
-        self.details = self.details.format(exit_code, stdout, stderr)
+        details = ('Reboot script failed with exit code {0}. stdout: '
+                   '{1}. stderr: {2}.')
+        details = details.format(exit_code, stdout, stderr)
+        super(SystemRebootError, self).__init__(details)
 
 
 class BlockDeviceEraseError(RESTError):
@@ -211,7 +208,6 @@ class BlockDeviceEraseError(RESTError):
 
     def __init__(self, details):
         super(BlockDeviceEraseError, self).__init__(details)
-        self.details = details
 
 
 class BlockDeviceError(RESTError):
@@ -220,7 +216,6 @@ class BlockDeviceError(RESTError):
 
     def __init__(self, details):
         super(BlockDeviceError, self).__init__(details)
-        self.details = details
 
 
 class VirtualMediaBootError(RESTError):
@@ -231,7 +226,6 @@ class VirtualMediaBootError(RESTError):
 
     def __init__(self, details):
         super(VirtualMediaBootError, self).__init__(details)
-        self.details = details
 
 
 class ExtensionError(Exception):
@@ -267,8 +261,8 @@ class HardwareManagerMethodNotFound(RESTError):
     message = msg + '.'
 
     def __init__(self, method):
-        self.details = (self.msg + ': "{0}".').format(method)
-        super(HardwareManagerMethodNotFound, self).__init__(self.details)
+        details = (self.msg + ': "{0}".').format(method)
+        super(HardwareManagerMethodNotFound, self).__init__(details)
 
 
 class IncompatibleHardwareMethodError(RESTError):
@@ -280,7 +274,7 @@ class IncompatibleHardwareMethodError(RESTError):
 
     def __init__(self, details=None):
         if details is not None:
-            self.details = details
+            details = details
         else:
-            self.details = self.message
-        super(IncompatibleHardwareMethodError, self).__init__(self.details)
+            details = self.message
+        super(IncompatibleHardwareMethodError, self).__init__(details)
