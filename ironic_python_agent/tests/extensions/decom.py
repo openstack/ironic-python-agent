@@ -29,3 +29,6 @@ class TestDecomExtension(test_base.BaseTestCase):
         result = self.agent_extension.erase_hardware()
         result.join()
         mocked_dispatch.assert_called_once_with('erase_devices')
+        self.assertTrue('result' in result.command_result.keys())
+        cmd_result_text = 'erase_hardware: finished'
+        self.assertEqual(cmd_result_text, result.command_result['result'])

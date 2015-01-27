@@ -20,3 +20,5 @@ class DecomExtension(base.BaseAgentExtension):
     @base.async_command('erase_hardware')
     def erase_hardware(self):
         hardware.dispatch_to_managers('erase_devices')
+
+        return 'finished'

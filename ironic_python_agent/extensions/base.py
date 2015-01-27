@@ -78,6 +78,11 @@ class SyncCommandResult(BaseCommandResult):
 
         super(SyncCommandResult, self).__init__(command_name,
                                                 command_params)
+
+        if type(result_or_error) in (str, unicode):
+            result_key = 'result' if success else 'error'
+            result_or_error = {result_key: result_or_error}
+
         if success:
             self.command_status = AgentCommandStatus.SUCCEEDED
             self.command_result = result_or_error
@@ -141,6 +146,10 @@ class AsyncCommandResult(BaseCommandResult):
         """Run a command."""
         try:
             result = self.execute_method(**self.command_params)
+
+            if type(result) in (str, unicode):
+                result = {'result': '{}: {}'.format(self.command_name, result)}
+
             with self.command_state_lock:
                 self.command_result = result
                 self.command_status = AgentCommandStatus.SUCCEEDED
@@ -239,6 +248,8 @@ def async_command(command_name, validator=None):
     """Will run the command in an AsyncCommandResult in its own thread.
     command_name is set based on the func name and command_params will
     be whatever args/kwargs you pass into the decorated command.
+    Return values of type `str` or `unicode` are prefixed with the
+    `command_name` parameter when returned for consistency.
     """
     def async_decorator(func):
         func.command_name = command_name

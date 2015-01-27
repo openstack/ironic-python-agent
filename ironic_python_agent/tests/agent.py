@@ -267,7 +267,8 @@ class TestBaseAgent(test_base.BaseTestCase):
         result.join()
 
         expected_result['command_status'] = 'SUCCEEDED'
-        expected_result['command_result'] = 'command execution succeeded'
+        expected_result['command_result'] = {'result': ('foo_command: command '
+                                                        'execution succeeded')}
 
         self.assertEqualEncoded(result, expected_result)
 

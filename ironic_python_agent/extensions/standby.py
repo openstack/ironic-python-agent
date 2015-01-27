@@ -210,10 +210,15 @@ class StandbyExtension(base.BaseAgentExtension):
     def cache_image(self, image_info=None, force=False):
         device = hardware.dispatch_to_managers('get_os_install_device')
 
+        result_msg = 'image ({0}) already present on device {1}'
+
         if self.cached_image_id != image_info['id'] or force:
             _download_image(image_info)
             _write_image(image_info, device)
             self.cached_image_id = image_info['id']
+            result_msg = 'image ({0}) cached to device {1}'
+
+        return result_msg.format(image_info['id'], device)
 
     @base.async_command('prepare_image', _validate_image_info)
     def prepare_image(self,
@@ -229,6 +234,9 @@ class StandbyExtension(base.BaseAgentExtension):
 
         if configdrive is not None:
             _write_configdrive_to_partition(configdrive, device)
+
+        return 'image ({0}) written to device {1}'.format(image_info['id'],
+                                                          device)
 
     @base.async_command('run_image')
     def run_image(self):
