@@ -273,7 +273,7 @@ def sync_command(command_name, validator=None):
 
         @functools.wraps(func)
         def wrapper(self, **command_params):
-            # Run a validator before passing everything off to async.
+            # Run a validator before invoking the function.
             # validators should raise exceptions or return silently.
             if validator:
                 validator(self, **command_params)
