@@ -314,7 +314,13 @@ class GenericHardwareManager(HardwareManager):
 
         utils.execute('hdparm', '--user-master', 'u', '--security-set-pass',
                       'NULL', block_device.name)
-        utils.execute('hdparm', '--user-master', 'u', '--security-erase',
+
+        # Use the 'enhanced' security erase option if it's supported.
+        erase_option = '--security-erase'
+        if 'not supported: enhanced erase' not in security_lines:
+            erase_option += '-enhanced'
+
+        utils.execute('hdparm', '--user-master', 'u', erase_option,
                       'NULL', block_device.name)
 
         # Verify that security is now 'not enabled'
