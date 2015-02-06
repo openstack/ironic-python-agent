@@ -2,6 +2,21 @@
 
 coreos:
   units:
+    - name: user-configdrive.service
+      mask: true
+
+    - name: user-configvirtfs.service
+      mask: true
+
+    - name: user-configdrive.path
+      mask: true
+
+    - name: media-configdrive.mount
+      mask: true
+
+    - name: media-configvirtfs.mount
+      mask: true
+
     - name: ironic-python-agent-embed-ssh-keys.service
       command: start
       content: |
