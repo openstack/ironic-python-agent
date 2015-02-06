@@ -41,9 +41,9 @@ DEVICE="$2"
 [[ -f $CONFIGDRIVE ]] || usage "$CONFIGDRIVE (CONFIGDRIVE) is not a regular file"
 [[ -b $DEVICE ]] || usage "$DEVICE (DEVICE) is not a block device"
 
-# We need to run partprobe to ensure all partitions are visible so the
+# We need to run partx -u to ensure all partitions are visible so the
 # following blkid command returns partitions just imaged to the device
-/sbin/partprobe $DEVICE || fail "running partprobe against $DEVICE"
+partx -u $DEVICE || fail "running partx -u $DEVICE"
 
 # Check for preexisting partition for configdrive
 EXISTING_PARTITION=`/sbin/blkid -l -o device $DEVICE -t LABEL=config-2`
