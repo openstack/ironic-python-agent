@@ -282,3 +282,15 @@ class IncompatibleHardwareMethodError(RESTError):
         else:
             details = self.message
         super(IncompatibleHardwareMethodError, self).__init__(details)
+
+
+class ISCSIError(RESTError):
+    """Error raised when an image cannot be written to a device."""
+
+    message = 'Error starting iSCSI target.'
+
+    def __init__(self, error_msg, exit_code, stdout, stderr):
+        details = ('Error starting iSCSI target: {0}. Failed with exit code '
+                   '{1}. stdout: {2}. stderr: {3}')
+        details = details.format(error_msg, exit_code, stdout, stderr)
+        super(ISCSIError, self).__init__(details)

@@ -11,7 +11,7 @@ RUN apt-get update && \
     apt-get -y upgrade && \
     apt-get install -y --no-install-recommends python2.7 python2.7-dev \
         python-pip qemu-utils parted hdparm util-linux genisoimage git gcc \
-        bash coreutils && \
+        bash coreutils tgt && \
     apt-get -y autoremove && \
     apt-get clean
 
@@ -24,7 +24,7 @@ RUN pip install /tmp/ironic-python-agent
 RUN rm -rf /tmp/ironic-python-agent
 RUN rm -rf /var/lib/apt/lists/*
 
-RUN apt-get -y purge perl gcc-4.6 gcc python2.7-dev git python3 \
+RUN apt-get -y purge gcc-4.6 gcc python2.7-dev git python3 \
                      python3-minimal python3.4 python3.4-minimal && \
     apt-get -y autoremove && \
     apt-get clean
