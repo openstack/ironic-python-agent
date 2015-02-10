@@ -15,8 +15,8 @@
 import glob
 import os
 
-from oslo.config import cfg
 from oslo_concurrency import processutils
+from oslo_config import cfg
 
 from ironic_python_agent import agent
 from ironic_python_agent import errors
