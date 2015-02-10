@@ -106,7 +106,7 @@ HDPARM_INFO_TEMPLATE = (
     '\tnot\tlocked\n'
     '\t%(frozen)s\n'
     '\tnot\texpired: security count\n'
-    '\t\tsupported: enhanced erase\n'
+    '\t%(enhanced_erase)s\n'
     '\t24min for SECURITY ERASE UNIT. 24min for ENHANCED SECURITY '
         'ERASE UNIT.\n'
     'Checksum: correct\n'
@@ -323,6 +323,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'supported': '\tsupported',
             'enabled': 'not\tenabled',
             'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
         }
         mocked_execute.side_effect = [
             (HDPARM_INFO_TEMPLATE % hdparm_info_fields, ''),
@@ -363,6 +364,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'supported': 'not\tsupported',
             'enabled': 'not\tenabled',
             'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
         }
 
         mocked_execute.side_effect = [
@@ -381,6 +383,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'supported': '\tsupported',
             'enabled': '\tenabled',
             'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
         }
 
         mocked_execute.side_effect = [
@@ -399,6 +402,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'supported': '\tsupported',
             'enabled': 'not\tenabled',
             'frozen': '\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
         }
 
         mocked_execute.side_effect = [
@@ -417,6 +421,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'supported': '\tsupported',
             'enabled': 'not\tenabled',
             'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
         }
 
         # If security mode remains enabled after the erase, it is indiciative
@@ -425,6 +430,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'supported': '\tsupported',
             'enabled': '\tenabled',
             'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
         }
 
         mocked_execute.side_effect = [
@@ -439,3 +445,34 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware.erase_block_device,
                           block_device)
+
+    def test_normal_vs_enhanced_security_erase(self):
+        @mock.patch.object(utils, 'execute')
+        def test_security_erase_option(test_case,
+                                       enhanced_erase_string,
+                                       expected_option,
+                                       mocked_execute):
+            hdparm_parameters = {
+                'supported': '\tsupported',
+                'enabled': 'not\tenabled',
+                'frozen': 'not\tfrozen',
+                'enhanced_erase': enhanced_erase_string,
+            }
+            mocked_execute.side_effect = [
+                (HDPARM_INFO_TEMPLATE % hdparm_parameters, ''),
+                ('', ''),
+                ('', ''),
+                (HDPARM_INFO_TEMPLATE % hdparm_parameters, ''),
+            ]
+
+            block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                                True)
+            test_case.hardware.erase_block_device(block_device)
+            mocked_execute.assert_any_call('hdparm', '--user-master', 'u',
+                                           expected_option,
+                                           'NULL', '/dev/sda')
+
+        test_security_erase_option(self,
+                '\tsupported: enhanced erase', '--security-erase-enhanced')
+        test_security_erase_option(self,
+                '\tnot\tsupported: enhanced erase', '--security-erase')
