@@ -14,3 +14,4 @@ imagebuild/coreos/build
 imagebuild/coreos/dist
 imagebuild/coreos/oem/authorized_keys
 imagebuild/coreos/UPLOAD
+*.swp
