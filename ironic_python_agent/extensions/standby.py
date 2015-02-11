@@ -119,7 +119,9 @@ def _write_configdrive_to_partition(configdrive, device):
 def _request_url(image_info, url):
     resp = requests.get(url, stream=True)
     if resp.status_code != 200:
-        raise errors.ImageDownloadError(image_info['id'])
+        msg = ('Received status code {0} from {1}, expected 200. Response '
+               'body: {2}').format(resp.status_code, url, resp.text)
+        raise errors.ImageDownloadError(image_info['id'], msg)
     return resp
 
 
@@ -130,23 +132,27 @@ def _download_image(image_info):
         try:
             LOG.info("Attempting to download image from {0}".format(url))
             resp = _request_url(image_info, url)
-        except errors.ImageDownloadError:
+        except errors.ImageDownloadError as e:
             failtime = time.time() - starttime
-            log_msg = "Image download failed. URL: {0}; time: {1} seconds"
-            LOG.warning(log_msg.format(url, failtime))
+            log_msg = ('Image download failed. URL: {0}; time: {1} seconds. '
+                       'Error: {2}')
+            LOG.warning(log_msg.format(url, failtime, e.details))
             continue
         else:
             break
     if resp is None:
-        raise errors.ImageDownloadError(image_info['id'])
+        msg = 'Image download failed for all URLs.'
+        raise errors.ImageDownloadError(image_info['id'], msg)
 
     image_location = _image_location(image_info)
     with open(image_location, 'wb') as f:
         try:
             for chunk in resp.iter_content(IMAGE_CHUNK_SIZE):
                 f.write(chunk)
-        except Exception:
-            raise errors.ImageDownloadError(image_info['id'])
+        except Exception as e:
+            msg = 'Unable to write image to {0}. Error: {1}'.format(
+                    image_location, str(e))
+            raise errors.ImageDownloadError(image_info['id'], msg)
 
     totaltime = time.time() - starttime
     LOG.info("Image downloaded from {0} in {1} seconds".format(image_location,

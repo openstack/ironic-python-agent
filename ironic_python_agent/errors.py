@@ -137,8 +137,8 @@ class ImageDownloadError(RESTError):
 
     message = 'Error downloading image.'
 
-    def __init__(self, image_id):
-        details = 'Could not download image with id {0}.'.format(image_id)
+    def __init__(self, image_id, msg):
+        details = 'Download of image id {0} failed: {1}'.format(image_id, msg)
         super(ImageDownloadError, self).__init__(details)
 
 
