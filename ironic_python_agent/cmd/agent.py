@@ -197,7 +197,7 @@ cli_opts = [
                  help='The amount of seconds to wait for LLDP packets.'),
 
     cfg.BoolOpt('standalone',
-                default=False,
+                default=APARAMS.get('ipa-standalone', False),
                 help='Note: for debugging only. Start the Agent but suppress '
                      'any calls to Ironic API.'),
 ]
