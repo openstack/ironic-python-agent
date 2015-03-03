@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+
 import mock
 from oslotest import base as test_base
 from stevedore import extension
@@ -21,18 +23,32 @@ from ironic_python_agent import hardware
 
 
 def counted(fn):
-    def wrapper(*args, **kwargs):
-        wrapper.called += 1
-        return fn(*args, **kwargs)
-    wrapper.called = 0
-    wrapper.__name__ = fn.__name__
+    def wrapper(self, *args, **kwargs):
+        try:
+            counts = self._call_counts
+        except AttributeError:
+            counts = self._call_counts = collections.Counter()
+        counts[fn.__name__] += 1
+        return fn(self, *args, **kwargs)
     return wrapper
 
 
 class FakeGenericHardwareManager(hardware.HardwareManager):
     @counted
     def generic_only(self):
-        return True
+        return 'generic_only'
+
+    @counted
+    def generic_none(self):
+        return None
+
+    @counted
+    def specific_none(self):
+        return 'generic'
+
+    @counted
+    def return_list(self):
+        return ['generic']
 
     @counted
     def specific_only(self):
@@ -40,11 +56,11 @@ class FakeGenericHardwareManager(hardware.HardwareManager):
 
     @counted
     def mainline_fail(self):
-        return True
+        return 'generic_mainline_fail'
 
     @counted
     def both_succeed(self):
-        return True
+        return 'generic_both'
 
     @counted
     def unexpected_fail(self):
@@ -58,7 +74,19 @@ class FakeGenericHardwareManager(hardware.HardwareManager):
 class FakeMainlineHardwareManager(hardware.HardwareManager):
     @counted
     def specific_only(self):
-        return True
+        return 'specific_only'
+
+    @counted
+    def generic_none(self):
+        return 'specific'
+
+    @counted
+    def specific_none(self):
+        return None
+
+    @counted
+    def return_list(self):
+        return ['specific']
 
     @counted
     def mainline_fail(self):
@@ -66,7 +94,7 @@ class FakeMainlineHardwareManager(hardware.HardwareManager):
 
     @counted
     def both_succeed(self):
-        return True
+        return 'specific_both'
 
     @counted
     def unexpected_fail(self):
@@ -83,12 +111,12 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
         fake_ep = mock.Mock()
         fake_ep.module_name = 'fake'
         fake_ep.attrs = ['fake attrs']
-        ext1 = extension.Extension('fake_generic', fake_ep, None,
+        self.generic_hwm = extension.Extension('fake_generic', fake_ep, None,
                 FakeGenericHardwareManager())
-        ext2 = extension.Extension('fake_mainline', fake_ep, None,
+        self.mainline_hwm = extension.Extension('fake_mainline', fake_ep, None,
                 FakeMainlineHardwareManager())
         self.fake_ext_mgr = extension.ExtensionManager.make_test_instance([
-                ext1, ext2
+                self.generic_hwm, self.mainline_hwm
         ])
 
         self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager')
@@ -103,12 +131,13 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
     def test_mainline_method_only(self):
         hardware.dispatch_to_managers('specific_only')
 
-        self.assertEqual(1, FakeMainlineHardwareManager.specific_only.called)
+        self.assertEqual(
+            1, self.mainline_hwm.obj._call_counts['specific_only'])
 
     def test_generic_method_only(self):
         hardware.dispatch_to_managers('generic_only')
 
-        self.assertEqual(1, FakeGenericHardwareManager.generic_only.called)
+        self.assertEqual(1, self.generic_hwm.obj._call_counts['generic_only'])
 
     def test_both_succeed(self):
         """In the case where both managers will work; only the most specific
@@ -116,8 +145,8 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
         """
         hardware.dispatch_to_managers('both_succeed')
 
-        self.assertEqual(1, FakeMainlineHardwareManager.both_succeed.called)
-        self.assertEqual(0, FakeGenericHardwareManager.both_succeed.called)
+        self.assertEqual(1, self.mainline_hwm.obj._call_counts['both_succeed'])
+        self.assertEqual(0, self.generic_hwm.obj._call_counts['both_succeed'])
 
     def test_mainline_fails(self):
         """Ensure that if the mainline manager is unable to run the method
@@ -125,8 +154,9 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
         """
         hardware.dispatch_to_managers('mainline_fail')
 
-        self.assertEqual(1, FakeMainlineHardwareManager.mainline_fail.called)
-        self.assertEqual(1, FakeGenericHardwareManager.mainline_fail.called)
+        self.assertEqual(
+            1, self.mainline_hwm.obj._call_counts['mainline_fail'])
+        self.assertEqual(1, self.generic_hwm.obj._call_counts['mainline_fail'])
 
     def test_manager_method_not_found(self):
         self.assertRaises(errors.HardwareManagerMethodNotFound,
@@ -136,6 +166,53 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
     def test_method_fails(self):
         self.assertRaises(RuntimeError,
                           hardware.dispatch_to_managers,
+                          'unexpected_fail')
+
+    def test_dispatch_to_all_managers_mainline_only(self):
+        results = hardware.dispatch_to_all_managers('generic_none')
+
+        self.assertEqual(1, self.generic_hwm.obj._call_counts['generic_none'])
+        self.assertEqual({'FakeGenericHardwareManager': None,
+                          'FakeMainlineHardwareManager': 'specific'},
+                         results)
+
+    def test_dispatch_to_all_managers_generic_method_only(self):
+        results = hardware.dispatch_to_all_managers('specific_none')
+
+        self.assertEqual(1, self.generic_hwm.obj._call_counts['specific_none'])
+        self.assertEqual({'FakeGenericHardwareManager': 'generic',
+                          'FakeMainlineHardwareManager': None}, results)
+
+    def test_dispatch_to_all_managers_both_succeed(self):
+        """In the case where both managers will work; only the most specific
+        manager should have it's function called.
+        """
+        results = hardware.dispatch_to_all_managers('both_succeed')
+
+        self.assertEqual({'FakeGenericHardwareManager': 'generic_both',
+                          'FakeMainlineHardwareManager': 'specific_both'},
+                         results)
+        self.assertEqual(1, self.mainline_hwm.obj._call_counts['both_succeed'])
+        self.assertEqual(1, self.generic_hwm.obj._call_counts['both_succeed'])
+
+    def test_dispatch_to_all_managers_mainline_fails(self):
+        """Ensure that if the mainline manager is unable to run the method
+        that we properly fall back to generic.
+        """
+        hardware.dispatch_to_all_managers('mainline_fail')
+
+        self.assertEqual(
+            1, self.mainline_hwm.obj._call_counts['mainline_fail'])
+        self.assertEqual(1, self.generic_hwm.obj._call_counts['mainline_fail'])
+
+    def test_dispatch_to_all_managers_manager_method_not_found(self):
+        self.assertRaises(errors.HardwareManagerMethodNotFound,
+                          hardware.dispatch_to_all_managers,
+                          'unknown_method')
+
+    def test_dispatch_to_all_managers_method_fails(self):
+        self.assertRaises(RuntimeError,
+                          hardware.dispatch_to_all_managers,
                           'unexpected_fail')
 
 

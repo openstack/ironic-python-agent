@@ -379,6 +379,46 @@ def _get_managers():
     return _global_managers
 
 
+def dispatch_to_all_managers(method, *args, **kwargs):
+    """Dispatch a method to all hardware managers.
+
+    Dispatches the given method in priority order as sorted by
+    `_get_managers`. If the method doesn't exist or raises
+    IncompatibleHardwareMethodError, it continues to the next hardware manager.
+    All managers that have hardware support for this node will be called,
+    and their responses will be added to a dictionary of the form
+    {HardwareManagerClassName: response}.
+
+    :param method: hardware manager method to dispatch
+    :param *args: arguments to dispatched method
+    :param **kwargs: keyword arguments to dispatched method
+    :raises errors.HardwareManagerMethodNotFound: if all managers raise
+        IncompatibleHardwareMethodError.
+    :returns: a dictionary with keys for each hardware manager that returns
+        a response and the value as a list of results from that hardware
+        manager.
+    """
+    responses = {}
+    managers = _get_managers()
+    for manager in managers:
+        if getattr(manager, method, None):
+            try:
+                response = getattr(manager, method)(*args, **kwargs)
+            except errors.IncompatibleHardwareMethodError:
+                LOG.debug('HardwareManager {0} does not support {1}'
+                          .format(manager, method))
+                continue
+            responses[manager.__class__.__name__] = response
+        else:
+            LOG.debug('HardwareManager {0} does not have method {1}'
+                      .format(manager, method))
+
+    if responses == {}:
+        raise errors.HardwareManagerMethodNotFound(method)
+
+    return responses
+
+
 def dispatch_to_managers(method, *args, **kwargs):
     """Dispatch a method to best suited hardware manager.
 
