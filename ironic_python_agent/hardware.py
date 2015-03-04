@@ -137,13 +137,16 @@ class HardwareManager(object):
         """
         raise errors.IncompatibleHardwareMethodError
 
-    def erase_devices(self):
+    def erase_devices(self, node, ports):
         """Erase any device that holds user data.
 
         By default this will attempt to erase block devices. This method can be
         overridden in an implementation-specific hardware manager in order to
         erase additional hardware, although backwards-compatible upstream
         submissions are encouraged.
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
         """
         block_devices = self.list_block_devices()
         for block_device in block_devices:
@@ -157,8 +160,73 @@ class HardwareManager(object):
         hardware_info['memory'] = self.get_memory()
         return hardware_info
 
+    def get_clean_steps(self, node, ports):
+        """Get a list of clean steps with priority.
+
+        Returns a list of dicts of the following form:
+        {'step': the HardwareManager function to call.
+         'priority': the order steps will be run in. Ironic will sort all the
+            clean steps from all the drivers, with the largest priority
+            step being run first. If priority is set to 0, the step will
+            not be run during cleaning, but may be run during zapping.
+         'reboot_requested': Whether the agent should request Ironic reboots
+            the node via the power driver after the operation completes.
+        }
+
+        Note: multiple hardware managers may return the same step name. The
+        priority of the step will be the largest priority of steps with
+        the same name. The steps will be called using
+        `hardware.dispatch_to_managers` and handled by the best suited
+        hardware manager. If you need a step to be executed by only your
+        hardware manager, ensure it has a unique step name.
+
+        `node` and `ports` can be used by other hardware managers to further
+        determine if a clean step is supported for the node.
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        :return: a default list of decommission steps, as a list of
+        dictionaries
+        """
+        return [
+            {
+                'step': 'erase_devices',
+                'priority': 10,
+                'interface': 'deploy',
+                'reboot_requested': False
+            }
+        ]
+
+    def get_version(self):
+        """Get a name and version for this hardware manager.
+
+        In order to avoid errors and make agent upgrades painless, cleaning
+        will check the version of all hardware managers during get_clean_steps
+        at the beginning of cleaning and before executing each step in the
+        agent.
+
+        The agent isn't aware of the steps being taken before or after via
+        out of band steps, so it can never know if a new step is safe to run.
+        Therefore, we default to restarting the whole process.
+
+        :returns: a dictionary with two keys: `name` and
+            `version`, where `name` is a string identifying the hardware
+            manager and `version` is an arbitrary version string. `name` will
+            be a class variable called HARDWARE_MANAGER_NAME, or default to
+            the class name and `version` will be a class variable called
+            HARDWARE_MANAGER_VERSION or default to '1.0'.
+        """
+        return {
+            'name': getattr(self, 'HARDWARE_MANAGER_NAME',
+                            type(self).__name__),
+            'version': getattr(self, 'HARDWARE_MANAGER_VERSION', '1.0')
+        }
+
 
 class GenericHardwareManager(HardwareManager):
+    HARDWARE_MANAGER_NAME = 'generic_hardware_manager'
+    HARDWARE_MANAGER_VERSION = '1.0'
+
     def __init__(self):
         self.sys_path = '/sys'
 
