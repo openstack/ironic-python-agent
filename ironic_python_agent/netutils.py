@@ -69,8 +69,8 @@ class RawPromiscuousSockets(object):
                 fcntl.ioctl(sock.fileno(), SIOCSIFFLAGS, ifr)  # S for Set
                 # Bind the socket so it can be used
                 LOG.debug('Binding interface %(interface)s for protocol '
-                          '%(proto)s: %s', {'interface': interface_name,
-                                            'proto': self.protocol})
+                          '%(proto)s', {'interface': interface_name,
+                                        'proto': self.protocol})
                 sock.bind((interface_name, self.protocol))
             except Exception:
                 LOG.warning('Failed to open all RawPromiscuousSockets, '
