@@ -294,3 +294,15 @@ class ISCSIError(RESTError):
                    '{1}. stdout: {2}. stderr: {3}')
         details = details.format(error_msg, exit_code, stdout, stderr)
         super(ISCSIError, self).__init__(details)
+
+
+class DeviceNotFound(NotFound):
+    """Error raised when the disk or partition to deploy the image onto is
+    not found.
+    """
+
+    message = ('Error finding the disk or partition device to deploy '
+               'the image onto.')
+
+    def __init__(self, details):
+        super(DeviceNotFound, self).__init__(details)
