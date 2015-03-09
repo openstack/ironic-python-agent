@@ -21,11 +21,11 @@ import shutil
 import tempfile
 
 from oslo_concurrency import processutils
+from oslo_log import log
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
-from ironic_python_agent.openstack.common import log
 from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)

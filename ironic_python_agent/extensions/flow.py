@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oslo_log import log
+
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
-from ironic_python_agent.openstack.common import log
 
 LOG = log.getLogger(__name__)
 

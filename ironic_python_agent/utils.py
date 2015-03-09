@@ -18,11 +18,11 @@ import glob
 import os
 
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 from six.moves.urllib import parse
 
 from ironic_python_agent import errors
 from ironic_python_agent.openstack.common import _i18n as gtu
-from ironic_python_agent.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

@@ -18,6 +18,7 @@ import select
 import threading
 import time
 
+from oslo_log import log
 import pkg_resources
 from stevedore import extension
 from wsgiref import simple_server
@@ -28,7 +29,6 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
-from ironic_python_agent.openstack.common import log
 
 
 def _time():

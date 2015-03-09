@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from oslo_config import cfg
+from oslo_log import log
 
 from ironic_python_agent import agent
-from ironic_python_agent.openstack.common import log
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
@@ -103,8 +103,9 @@ CONF.register_cli_opts(cli_opts)
 
 
 def run():
+    log.register_options(CONF)
+    log.setup(CONF, 'ironic-python-agent')
     CONF()
-    log.setup('ironic-python-agent')
     agent.IronicPythonAgent(CONF.api_url,
                             (CONF.advertise_host, CONF.advertise_port),
                             (CONF.listen_host, CONF.listen_port),

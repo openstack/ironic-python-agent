@@ -134,7 +134,7 @@ grep foo
 
 class GetAgentParamsTestCase(test_base.BaseTestCase):
 
-    @mock.patch('ironic_python_agent.openstack.common.log.getLogger')
+    @mock.patch('oslo_log.log.getLogger')
     @mock.patch(OPEN_FUNCTION_NAME)
     def test__read_params_from_file_fail(self, logger_mock, open_mock):
         open_mock.side_effect = Exception

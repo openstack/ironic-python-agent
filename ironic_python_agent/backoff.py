@@ -17,8 +17,8 @@ import sys
 
 from eventlet import event
 from eventlet import greenthread
+from oslo_log import log
 
-from ironic_python_agent.openstack.common import log
 from ironic_python_agent.openstack.common import loopingcall
 
 LOG = log.getLogger(__name__)

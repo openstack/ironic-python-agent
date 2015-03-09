@@ -17,11 +17,11 @@ import inspect
 import threading
 import uuid
 
+from oslo_log import log
 import six
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
-from ironic_python_agent.openstack.common import log
 from ironic_python_agent import utils
 
 
