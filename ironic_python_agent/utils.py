@@ -17,12 +17,16 @@ import glob
 import os
 
 from oslo_concurrency import processutils
+from six.moves.urllib import parse
 
 from ironic_python_agent import errors
 from ironic_python_agent.openstack.common import _i18n as gtu
 from ironic_python_agent.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
+
+
+SUPPORTED_ROOT_DEVICE_HINTS = set(('size', 'model', 'wwn', 'serial', 'vendor'))
 
 
 def get_ordereddict(*args, **kwargs):
@@ -140,3 +144,48 @@ def get_agent_params():
         params.update(vmedia_params)
 
     return params
+
+
+def normalize(string):
+    """Return a normalized string."""
+    # Since we can't use space on the kernel cmdline, Ironic will
+    # urlencode the values.
+    return parse.unquote(string).lower().strip()
+
+
+def parse_root_device_hints():
+    """Parse the root device hints.
+
+    Parse the root device hints given by Ironic via kernel cmdline
+    or vmedia.
+
+    :returns: A dict with the hints or an empty dict if no hints are
+              passed.
+    :raises: DeviceNotFound if there are unsupported hints.
+
+    """
+    root_device = get_agent_params().get('root_device')
+    if not root_device:
+        return {}
+
+    hints = dict((item.split('=') for item in root_device.split(',')))
+
+    # Find invalid hints for logging
+    not_supported = set(hints) - SUPPORTED_ROOT_DEVICE_HINTS
+    if not_supported:
+        error_msg = ('No device can be found because the following hints: '
+                     '"%(not_supported)s" are not supported by this version '
+                     'of IPA. Supported hints are: "%(supported)s"',
+                    {'not_supported': ', '.join(not_supported),
+                     'supported': ', '.join(SUPPORTED_ROOT_DEVICE_HINTS)})
+        raise errors.DeviceNotFound(error_msg)
+
+    # Normalise the values
+    hints = {k: normalize(v) for k, v in hints.iteritems()}
+
+    if 'size' in hints:
+        # NOTE(lucasagomes): Ironic should validate before passing to
+        # the deploy ramdisk
+        hints['size'] = int(hints['size'])
+
+    return hints

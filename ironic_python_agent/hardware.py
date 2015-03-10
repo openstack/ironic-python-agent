@@ -18,7 +18,9 @@ import os
 import shlex
 
 import netifaces
+from oslo_utils import units
 import psutil
+import pyudev
 import six
 import stevedore
 
@@ -256,15 +258,100 @@ class GenericHardwareManager(HardwareManager):
                                        rotational=bool(int(device['ROTA']))))
         return devices
 
+    def _get_device_vendor(self, dev):
+        """Get the vendor name of a given device."""
+        try:
+            devname = os.path.basename(dev)
+            with open('/sys/class/block/%s/device/vendor' % devname, 'r') as f:
+                return f.read().strip()
+        except IOError:
+            LOG.warning("Can't find the device vendor for device %s", dev)
+
     def get_os_install_device(self):
-        # Find the first device larger than 4GB, assume it is the OS disk
-        # TODO(russellhaering): This isn't a valid assumption in all cases,
-        #                       is there a more reasonable default behavior?
         block_devices = self.list_block_devices()
-        block_devices.sort(key=lambda device: device.size)
-        for device in block_devices:
-            if device.size >= (4 * pow(1024, 3)):
-                return device.name
+        root_device_hints = utils.parse_root_device_hints()
+
+        if not root_device_hints:
+            # If no hints are passed find the first device larger than
+            # 4GB, assume it is the OS disk
+            # TODO(russellhaering): This isn't a valid assumption in
+            # all cases, is there a more reasonable default behavior?
+            block_devices.sort(key=lambda device: device.size)
+            for device in block_devices:
+                if device.size >= (4 * pow(1024, 3)):
+                    return device.name
+        else:
+
+            def match(hint, current_value, device):
+                hint_value = root_device_hints[hint]
+                if hint_value != current_value:
+                    LOG.debug("Root device hint %(hint)s=%(value)s does not "
+                              "match the device %(device)s value of "
+                              "%(current)s", {'hint': hint,
+                              'value': hint_value, 'device': device,
+                              'current': current_value})
+                    return False
+                return True
+
+            context = pyudev.Context()
+            for dev in block_devices:
+                try:
+                    udev = pyudev.Device.from_device_file(context, dev.name)
+                except (ValueError, EnvironmentError) as e:
+                    LOG.warning("Device %(dev)s is inaccessible, skipping... "
+                    "Error: %(error)s", {'dev': dev, 'error': e})
+                    continue
+
+                # TODO(lucasagomes): Add support for operators <, >, =, etc...
+                # to better deal with sizes.
+                if 'size' in root_device_hints:
+                    # Since we don't support units yet we expect the size
+                    # in GiB for now
+                    size = dev.size / units.Gi
+                    if not match('size', size, dev.name):
+                        continue
+
+                if 'model' in root_device_hints:
+                    model = udev.get('ID_MODEL', None)
+                    if not model:
+                        continue
+                    model = utils.normalize(model)
+                    if not match('model', model, dev.name):
+                        continue
+
+                if 'wwn' in root_device_hints:
+                    wwn = udev.get('ID_WWN', None)
+                    if not wwn:
+                        continue
+                    wwn = utils.normalize(wwn)
+                    if not match('wwn', wwn, dev.name):
+                        continue
+
+                if 'serial' in root_device_hints:
+                    # TODO(lucasagomes): Since lsblk only supports
+                    # returning the short serial we are using
+                    # ID_SERIAL_SHORT here to keep compatibility with the
+                    # bash deploy ramdisk
+                    serial = udev.get('ID_SERIAL_SHORT', None)
+                    if not serial:
+                        continue
+                    serial = utils.normalize(serial)
+                    if not match('serial', serial, dev.name):
+                        continue
+
+                if 'vendor' in root_device_hints:
+                    vendor = self._get_device_vendor(dev.name)
+                    if not vendor:
+                        continue
+                    vendor = utils.normalize(vendor)
+                    if not match('vendor', vendor, dev.name):
+                        continue
+
+                return dev.name
+
+            else:
+                raise errors.DeviceNotFound("No suitable device was found for "
+                    "deployment using these hints %s" % root_device_hints)
 
     def erase_block_device(self, block_device):
         if self._ata_erase(block_device):
