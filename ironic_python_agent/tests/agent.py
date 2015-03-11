@@ -12,33 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import glob
 import json
-import os
 import time
 
 import mock
-from oslo_concurrency import processutils
 from oslotest import base as test_base
 import pkg_resources
-import six
 from stevedore import extension
 from wsgiref import simple_server
 
 from ironic_python_agent import agent
-from ironic_python_agent.cmd import agent as agent_cmd
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
-from ironic_python_agent import utils
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
-
-if six.PY2:
-    OPEN_FUNCTION_NAME = '__builtin__.open'
-else:
-    OPEN_FUNCTION_NAME = 'builtins.open'
 
 
 def foo_execute(*args, **kwargs):
@@ -352,140 +341,3 @@ class TestAgentStandalone(test_base.BaseTestCase):
 
         self.assertFalse(self.agent.heartbeater.called)
         self.assertFalse(self.agent.api_client.lookup_node.called)
-
-
-class TestAgentCmd(test_base.BaseTestCase):
-    @mock.patch('ironic_python_agent.openstack.common.log.getLogger')
-    @mock.patch(OPEN_FUNCTION_NAME)
-    def test__read_params_from_file_fail(self, logger_mock, open_mock):
-        open_mock.side_effect = Exception
-        params = agent_cmd._read_params_from_file('file-path')
-        self.assertEqual(params, {})
-
-    @mock.patch(OPEN_FUNCTION_NAME)
-    def test__read_params_from_file(self, open_mock):
-        kernel_line = 'api-url=http://localhost:9999 baz foo=bar\n'
-        open_mock.return_value.__enter__ = lambda s: s
-        open_mock.return_value.__exit__ = mock.Mock()
-        read_mock = open_mock.return_value.read
-        read_mock.return_value = kernel_line
-        params = agent_cmd._read_params_from_file('file-path')
-        open_mock.assert_called_once_with('file-path')
-        read_mock.assert_called_once_with()
-        self.assertEqual(params['api-url'], 'http://localhost:9999')
-        self.assertEqual(params['foo'], 'bar')
-        self.assertFalse('baz' in params)
-
-    @mock.patch.object(agent_cmd, '_read_params_from_file')
-    def test__get_agent_params_kernel_cmdline(self, read_params_mock):
-
-        expected_params = {'a': 'b'}
-        read_params_mock.return_value = expected_params
-        returned_params = agent_cmd._get_agent_params()
-        read_params_mock.assert_called_once_with('/proc/cmdline')
-        self.assertEqual(expected_params, returned_params)
-
-    @mock.patch.object(agent_cmd, '_get_vmedia_params')
-    @mock.patch.object(agent_cmd, '_read_params_from_file')
-    def test__get_agent_params_vmedia(self, read_params_mock,
-                                       get_vmedia_params_mock):
-
-        kernel_params = {'boot_method': 'vmedia'}
-        vmedia_params = {'a': 'b'}
-        expected_params = dict(kernel_params.items() +
-                               vmedia_params.items())
-        read_params_mock.return_value = kernel_params
-        get_vmedia_params_mock.return_value = vmedia_params
-
-        returned_params = agent_cmd._get_agent_params()
-        read_params_mock.assert_called_once_with('/proc/cmdline')
-        self.assertEqual(expected_params, returned_params)
-
-    @mock.patch(OPEN_FUNCTION_NAME)
-    @mock.patch.object(glob, 'glob')
-    def test__get_vmedia_device(self, glob_mock, open_mock):
-
-        glob_mock.return_value = ['/sys/class/block/sda/device/model',
-                                  '/sys/class/block/sdb/device/model',
-                                  '/sys/class/block/sdc/device/model']
-        fobj_mock = mock.MagicMock()
-        mock_file_handle = mock.MagicMock(spec=file)
-        mock_file_handle.__enter__.return_value = fobj_mock
-        open_mock.return_value = mock_file_handle
-
-        fobj_mock.read.side_effect = ['scsi disk', Exception, 'Virtual Media']
-        vmedia_device_returned = agent_cmd._get_vmedia_device()
-        self.assertEqual('sdc', vmedia_device_returned)
-
-    @mock.patch.object(agent_cmd, '_get_vmedia_device')
-    @mock.patch.object(agent_cmd, '_read_params_from_file')
-    @mock.patch.object(os, 'mkdir')
-    @mock.patch.object(utils, 'execute')
-    def test__get_vmedia_params(self, execute_mock, mkdir_mock,
-                                read_params_mock, get_device_mock):
-        vmedia_mount_point = "/vmedia_mnt"
-
-        null_output = ["", ""]
-        expected_params = {'a': 'b'}
-        read_params_mock.return_value = expected_params
-        execute_mock.side_effect = [null_output, null_output]
-        get_device_mock.return_value = "sda"
-
-        returned_params = agent_cmd._get_vmedia_params()
-
-        mkdir_mock.assert_called_once_with(vmedia_mount_point)
-        execute_mock.assert_any_call('mount', "/dev/sda", vmedia_mount_point)
-        read_params_mock.assert_called_once_with("/vmedia_mnt/parameters.txt")
-        execute_mock.assert_any_call('umount', vmedia_mount_point)
-        self.assertEqual(expected_params, returned_params)
-
-    @mock.patch.object(agent_cmd, '_get_vmedia_device')
-    def test__get_vmedia_params_cannot_find_dev(self, get_device_mock):
-        get_device_mock.return_value = None
-        self.assertRaises(errors.VirtualMediaBootError,
-                          agent_cmd._get_vmedia_params)
-
-    @mock.patch.object(agent_cmd, '_get_vmedia_device')
-    @mock.patch.object(agent_cmd, '_read_params_from_file')
-    @mock.patch.object(os, 'mkdir')
-    @mock.patch.object(utils, 'execute')
-    def test__get_vmedia_params_mount_fails(self, execute_mock,
-                                            mkdir_mock, read_params_mock,
-                                            get_device_mock):
-        vmedia_mount_point = "/vmedia_mnt"
-
-        expected_params = {'a': 'b'}
-        read_params_mock.return_value = expected_params
-        get_device_mock.return_value = "sda"
-
-        execute_mock.side_effect = processutils.ProcessExecutionError()
-
-        self.assertRaises(errors.VirtualMediaBootError,
-                          agent_cmd._get_vmedia_params)
-
-        mkdir_mock.assert_called_once_with(vmedia_mount_point)
-        execute_mock.assert_any_call('mount', "/dev/sda", vmedia_mount_point)
-
-    @mock.patch.object(agent_cmd, '_get_vmedia_device')
-    @mock.patch.object(agent_cmd, '_read_params_from_file')
-    @mock.patch.object(os, 'mkdir')
-    @mock.patch.object(utils, 'execute')
-    def test__get_vmedia_params_umount_fails(self, execute_mock, mkdir_mock,
-                                            read_params_mock, get_device_mock):
-        vmedia_mount_point = "/vmedia_mnt"
-
-        null_output = ["", ""]
-        expected_params = {'a': 'b'}
-        read_params_mock.return_value = expected_params
-        get_device_mock.return_value = "sda"
-
-        execute_mock.side_effect = [null_output,
-                                    processutils.ProcessExecutionError()]
-
-        returned_params = agent_cmd._get_vmedia_params()
-
-        mkdir_mock.assert_called_once_with(vmedia_mount_point)
-        execute_mock.assert_any_call('mount', "/dev/sda", vmedia_mount_point)
-        read_params_mock.assert_called_once_with("/vmedia_mnt/parameters.txt")
-        execute_mock.assert_any_call('umount', vmedia_mount_point)
-        self.assertEqual(expected_params, returned_params)

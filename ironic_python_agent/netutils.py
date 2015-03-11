@@ -22,6 +22,11 @@ import sys
 
 from oslo_config import cfg
 
+# FIXME(lucasagomes): If you don't import the agent module the tests in
+# this file will fail, it was working before because the agent module was
+# being imported at tests/agent.py
+from ironic_python_agent.cmd import agent  # noqa
+
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
