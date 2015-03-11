@@ -105,16 +105,16 @@ class TestExecuteCommandMixin(test_base.BaseTestCase):
                           'fake.sleep', sleep_info={"time": 1})
 
     def test_execute_command_other_exception(self):
-        msg = 'foo bar baz'
         fake_ext = self.agent.ext_mgr['fake'].obj
         fake_ext.execute = mock.Mock()
-        fake_ext.execute.side_effect = Exception(msg)
+        exc = errors.CommandExecutionError('foo bar baz')
+        fake_ext.execute.side_effect = exc
         result = self.agent.execute_command(
             'fake.sleep', sleep_info={"time": 1}
         )
-        self.assertEqual(result.command_status,
-                         base.AgentCommandStatus.FAILED)
-        self.assertEqual(result.command_error, {'error': msg})
+        self.assertEqual(base.AgentCommandStatus.FAILED,
+                         result.command_status)
+        self.assertEqual(exc, result.command_error)
 
 
 class TestExtensionDecorators(test_base.BaseTestCase):

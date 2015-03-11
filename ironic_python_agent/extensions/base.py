@@ -235,10 +235,7 @@ class ExecuteCommandMixin(object):
             except Exception as e:
                 # Other errors are considered command execution errors, and are
                 # recorded as an
-                result = SyncCommandResult(command_name,
-                                           kwargs,
-                                           False,
-                                           six.text_type(e))
+                result = SyncCommandResult(command_name, kwargs, False, e)
 
             self.command_results[result.id] = result
             return result
