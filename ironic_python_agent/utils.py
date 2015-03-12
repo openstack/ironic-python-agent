@@ -92,12 +92,19 @@ def _get_vmedia_params():
     vmedia_mount_point = "/vmedia_mnt"
     parameters_file = "parameters.txt"
 
-    vmedia_device = _get_vmedia_device()
-    if not vmedia_device:
-        msg = "Unable to find virtual media device"
-        raise errors.VirtualMediaBootError(msg)
+    vmedia_device_file = "/dev/disk/by-label/ir-vfd-dev"
+    if not os.path.exists(vmedia_device_file):
 
-    vmedia_device_file = os.path.join("/dev", vmedia_device)
+        # TODO(rameshg87): This block of code is there only for compatibility
+        # reasons (so that newer agent can work with older Ironic). Remove
+        # this after Liberty release.
+        vmedia_device = _get_vmedia_device()
+        if not vmedia_device:
+            msg = "Unable to find virtual media device"
+            raise errors.VirtualMediaBootError(msg)
+
+        vmedia_device_file = os.path.join("/dev", vmedia_device)
+
     os.mkdir(vmedia_mount_point)
 
     try:

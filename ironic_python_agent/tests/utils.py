@@ -196,44 +196,78 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         vmedia_device_returned = utils._get_vmedia_device()
         self.assertEqual('sdc', vmedia_device_returned)
 
-    @mock.patch.object(utils, '_get_vmedia_device')
     @mock.patch.object(utils, '_read_params_from_file')
+    @mock.patch.object(os.path, 'exists')
     @mock.patch.object(os, 'mkdir')
     @mock.patch.object(utils, 'execute')
-    def test__get_vmedia_params(self, execute_mock, mkdir_mock,
-                                read_params_mock, get_device_mock):
+    def test__get_vmedia_params_by_label(self, execute_mock, mkdir_mock,
+                                         exists_mock, read_params_mock):
         vmedia_mount_point = "/vmedia_mnt"
 
         null_output = ["", ""]
         expected_params = {'a': 'b'}
         read_params_mock.return_value = expected_params
+        exists_mock.return_value = True
+        execute_mock.side_effect = [null_output, null_output]
+
+        returned_params = utils._get_vmedia_params()
+
+        mkdir_mock.assert_called_once_with(vmedia_mount_point)
+        execute_mock.assert_any_call('mount', "/dev/disk/by-label/ir-vfd-dev",
+                                     vmedia_mount_point)
+        read_params_mock.assert_called_once_with("/vmedia_mnt/parameters.txt")
+        exists_mock.assert_called_once_with("/dev/disk/by-label/ir-vfd-dev")
+        execute_mock.assert_any_call('umount', vmedia_mount_point)
+        self.assertEqual(expected_params, returned_params)
+
+    @mock.patch.object(utils, '_get_vmedia_device')
+    @mock.patch.object(utils, '_read_params_from_file')
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch.object(os, 'mkdir')
+    @mock.patch.object(utils, 'execute')
+    def test__get_vmedia_params_by_device(self, execute_mock, mkdir_mock,
+                                          exists_mock, read_params_mock,
+                                          get_device_mock):
+        vmedia_mount_point = "/vmedia_mnt"
+
+        null_output = ["", ""]
+        expected_params = {'a': 'b'}
+        read_params_mock.return_value = expected_params
+        exists_mock.return_value = False
         execute_mock.side_effect = [null_output, null_output]
         get_device_mock.return_value = "sda"
 
         returned_params = utils._get_vmedia_params()
 
         mkdir_mock.assert_called_once_with(vmedia_mount_point)
-        execute_mock.assert_any_call('mount', "/dev/sda", vmedia_mount_point)
+        execute_mock.assert_any_call('mount', "/dev/sda",
+                                     vmedia_mount_point)
         read_params_mock.assert_called_once_with("/vmedia_mnt/parameters.txt")
         execute_mock.assert_any_call('umount', vmedia_mount_point)
         self.assertEqual(expected_params, returned_params)
 
     @mock.patch.object(utils, '_get_vmedia_device')
-    def test__get_vmedia_params_cannot_find_dev(self, get_device_mock):
+    @mock.patch.object(os.path, 'exists')
+    def test__get_vmedia_params_cannot_find_dev(self, exists_mock,
+                                                get_device_mock):
         get_device_mock.return_value = None
+        exists_mock.return_value = False
         self.assertRaises(errors.VirtualMediaBootError,
                           utils._get_vmedia_params)
 
     @mock.patch.object(utils, '_get_vmedia_device')
     @mock.patch.object(utils, '_read_params_from_file')
+    @mock.patch.object(os.path, 'exists')
     @mock.patch.object(os, 'mkdir')
     @mock.patch.object(utils, 'execute')
     def test__get_vmedia_params_mount_fails(self, execute_mock,
-                                            mkdir_mock, read_params_mock,
+                                            mkdir_mock, exists_mock,
+                                            read_params_mock,
                                             get_device_mock):
         vmedia_mount_point = "/vmedia_mnt"
 
         expected_params = {'a': 'b'}
+        exists_mock.return_value = True
         read_params_mock.return_value = expected_params
         get_device_mock.return_value = "sda"
 
@@ -243,18 +277,22 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
                           utils._get_vmedia_params)
 
         mkdir_mock.assert_called_once_with(vmedia_mount_point)
-        execute_mock.assert_any_call('mount', "/dev/sda", vmedia_mount_point)
+        execute_mock.assert_any_call('mount', "/dev/disk/by-label/ir-vfd-dev",
+                                     vmedia_mount_point)
 
     @mock.patch.object(utils, '_get_vmedia_device')
     @mock.patch.object(utils, '_read_params_from_file')
+    @mock.patch.object(os.path, 'exists')
     @mock.patch.object(os, 'mkdir')
     @mock.patch.object(utils, 'execute')
     def test__get_vmedia_params_umount_fails(self, execute_mock, mkdir_mock,
-                                            read_params_mock, get_device_mock):
+                                             exists_mock, read_params_mock,
+                                             get_device_mock):
         vmedia_mount_point = "/vmedia_mnt"
 
         null_output = ["", ""]
         expected_params = {'a': 'b'}
+        exists_mock.return_value = True
         read_params_mock.return_value = expected_params
         get_device_mock.return_value = "sda"
 
@@ -264,7 +302,8 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         returned_params = utils._get_vmedia_params()
 
         mkdir_mock.assert_called_once_with(vmedia_mount_point)
-        execute_mock.assert_any_call('mount', "/dev/sda", vmedia_mount_point)
+        execute_mock.assert_any_call('mount', "/dev/disk/by-label/ir-vfd-dev",
+                                     vmedia_mount_point)
         read_params_mock.assert_called_once_with("/vmedia_mnt/parameters.txt")
         execute_mock.assert_any_call('umount', vmedia_mount_point)
         self.assertEqual(expected_params, returned_params)
