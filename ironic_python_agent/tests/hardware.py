@@ -14,6 +14,7 @@
 
 import mock
 from oslotest import base as test_base
+import pyudev
 import six
 from stevedore import extension
 
@@ -115,7 +116,7 @@ HDPARM_INFO_TEMPLATE = (
 BLK_DEVICE_TEMPLATE = (
     'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '
     'ROTA="0" TYPE="disk"\n'
-    'KNAME="sdb" MODEL="Fastable SD131 7" SIZE="31016853504" '
+    'KNAME="sdb" MODEL="Fastable SD131 7" SIZE="10737418240" '
     'ROTA="0" TYPE="disk"\n'
     'KNAME="sdc" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
     ' ROTA="0" TYPE="disk"\n'
@@ -187,6 +188,61 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual(self.hardware.get_os_install_device(), '/dev/sdb')
         mocked_execute.assert_called_once_with(
             'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
+
+    @mock.patch.object(hardware.GenericHardwareManager, '_get_device_vendor')
+    @mock.patch.object(pyudev.Device, 'from_device_file')
+    @mock.patch.object(utils, 'parse_root_device_hints')
+    @mock.patch.object(utils, 'execute')
+    def test_get_os_install_device_root_device_hints(self, mocked_execute,
+                                                     mock_root_device,
+                                                     mock_pyudev,
+                                                     mock_dev_vendor):
+        model = 'fastable sd131 7'
+        mock_root_device.return_value = {'model': model,
+                                         'wwn': 'fake-wwn',
+                                         'serial': 'fake-serial',
+                                         'vendor': 'fake-vendor',
+                                         'size': 10}
+        mock_dev_vendor.return_value = 'fake-vendor'
+        mock_pyudev.side_effect = ({}, {'ID_MODEL': model,
+                                        'ID_WWN': 'fake-wwn',
+                                        'ID_SERIAL_SHORT': 'fake-serial'})
+        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+
+        self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
+        mock_root_device.assert_called_once_with()
+        expected = [mock.call(mock.ANY, '/dev/sda'),
+                    mock.call(mock.ANY, '/dev/sdb')]
+        mock_pyudev.assert_has_calls(expected)
+
+    @mock.patch.object(pyudev.Device, 'from_device_file')
+    @mock.patch.object(utils, 'parse_root_device_hints')
+    @mock.patch.object(utils, 'execute')
+    def test_get_os_install_device_root_device_hints_no_device_found(self,
+            mocked_execute, mock_root_device, mock_pyudev):
+        mock_root_device.return_value = {'model': 'endo-sym armor'}
+        mock_pyudev.return_value = {'ID_MODEL': 'Saturn V Armor'}
+        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+        self.assertRaises(errors.DeviceNotFound,
+                          self.hardware.get_os_install_device)
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
+        mock_root_device.assert_called_once_with()
+        expected = [mock.call(mock.ANY, '/dev/sda'),
+                    mock.call(mock.ANY, '/dev/sdb'),
+                    mock.call(mock.ANY, '/dev/sdc'),
+                    mock.call(mock.ANY, '/dev/sdd')]
+        mock_pyudev.assert_has_calls(expected)
+
+    def test__get_device_vendor(self):
+        fileobj = mock.mock_open(read_data='fake-vendor')
+        with mock.patch(OPEN_FUNCTION_NAME, fileobj, create=True) as mock_open:
+            vendor = self.hardware._get_device_vendor('/dev/sdfake')
+            mock_open.assert_called_once_with(
+                '/sys/class/block/sdfake/device/vendor', 'r')
+            self.assertEqual('fake-vendor', vendor)
 
     @mock.patch('ironic_python_agent.hardware.GenericHardwareManager.'
                 '_get_cpu_count')
@@ -298,7 +354,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                  rotational=False),
             hardware.BlockDevice(name='/dev/sdb',
                                  model='Fastable SD131 7',
-                                 size=31016853504,
+                                 size=10737418240,
                                  rotational=False),
             hardware.BlockDevice(name='/dev/sdc',
                                  model='NWD-BLP4-1600',
