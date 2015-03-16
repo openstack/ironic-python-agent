@@ -155,20 +155,29 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         self.assertEqual(params['foo'], 'bar')
         self.assertFalse('baz' in params)
 
+    @mock.patch.object(utils, '_set_cached_params')
     @mock.patch.object(utils, '_read_params_from_file')
-    def test_get_agent_params_kernel_cmdline(self, read_params_mock):
-
+    @mock.patch.object(utils, '_get_cached_params')
+    def test_get_agent_params_kernel_cmdline(self, get_cache_mock,
+                                             read_params_mock,
+                                             set_cache_mock):
+        get_cache_mock.return_value = {}
         expected_params = {'a': 'b'}
         read_params_mock.return_value = expected_params
         returned_params = utils.get_agent_params()
         read_params_mock.assert_called_once_with('/proc/cmdline')
         self.assertEqual(expected_params, returned_params)
+        set_cache_mock.assert_called_once_with(expected_params)
 
+    @mock.patch.object(utils, '_set_cached_params')
     @mock.patch.object(utils, '_get_vmedia_params')
     @mock.patch.object(utils, '_read_params_from_file')
-    def test_get_agent_params_vmedia(self, read_params_mock,
-                                       get_vmedia_params_mock):
-
+    @mock.patch.object(utils, '_get_cached_params')
+    def test_get_agent_params_vmedia(self, get_cache_mock,
+                                     read_params_mock,
+                                     get_vmedia_params_mock,
+                                     set_cache_mock):
+        get_cache_mock.return_value = {}
         kernel_params = {'boot_method': 'vmedia'}
         vmedia_params = {'a': 'b'}
         expected_params = dict(kernel_params.items() +
@@ -178,6 +187,15 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
         returned_params = utils.get_agent_params()
         read_params_mock.assert_called_once_with('/proc/cmdline')
+        self.assertEqual(expected_params, returned_params)
+        # Make sure information is cached
+        set_cache_mock.assert_called_once_with(expected_params)
+
+    @mock.patch.object(utils, '_get_cached_params')
+    def test_get_agent_params_from_cache(self, get_cache_mock):
+        get_cache_mock.return_value = {'a': 'b'}
+        returned_params = utils.get_agent_params()
+        expected_params = {'a': 'b'}
         self.assertEqual(expected_params, returned_params)
 
     @mock.patch(OPEN_FUNCTION_NAME)

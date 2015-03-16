@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import copy
 import glob
 import os
 
@@ -27,6 +28,21 @@ LOG = logging.getLogger(__name__)
 
 
 SUPPORTED_ROOT_DEVICE_HINTS = set(('size', 'model', 'wwn', 'serial', 'vendor'))
+
+# Agent parameters can be pased by kernel command-line arguments and/or
+# by virtual media. Virtual media parameters passed would be available
+# when the agent is started, but might not be available for re-reading
+# later on because:
+# * Virtual media might be exposed from Swift and swift temp url might
+#   expire.
+# * Ironic might have removed the floppy image from Swift after starting
+#   the deploy.
+#
+# Even if it's available, there is no need to re-read from the device and
+# /proc/cmdline again, because it is never going to change.  So we cache the
+# agent parameters that was passed (by proc/cmdline and/or virtual media)
+# when we read it for the first time, and then use this cache.
+AGENT_PARAMS_CACHED = dict()
 
 
 def get_ordereddict(*args, **kwargs):
@@ -123,6 +139,17 @@ def _get_vmedia_params():
     return params
 
 
+def _get_cached_params():
+    """Helper method to get cached params to ease unit testing."""
+    return AGENT_PARAMS_CACHED
+
+
+def _set_cached_params(params):
+    """Helper method to set cached params to ease unit testing."""
+    global AGENT_PARAMS_CACHED
+    AGENT_PARAMS_CACHED = params
+
+
 def get_agent_params():
     """Gets parameters passed to the agent via kernel cmdline or vmedia.
 
@@ -135,15 +162,22 @@ def get_agent_params():
 
     :returns: a dict of potential configuration parameters for the agent
     """
-    params = _read_params_from_file('/proc/cmdline')
 
-    # If the node booted over virtual media, the parameters are passed
-    # in a text file within the virtual media floppy.
-    if params.get('boot_method', None) == 'vmedia':
-        vmedia_params = _get_vmedia_params()
-        params.update(vmedia_params)
+    # Check if we have the parameters cached
+    params = _get_cached_params()
+    if not params:
+        params = _read_params_from_file('/proc/cmdline')
 
-    return params
+        # If the node booted over virtual media, the parameters are passed
+        # in a text file within the virtual media floppy.
+        if params.get('boot_method') == 'vmedia':
+            vmedia_params = _get_vmedia_params()
+            params.update(vmedia_params)
+
+        # Cache the parameters so that it can be used later on.
+        _set_cached_params(params)
+
+    return copy.deepcopy(params)
 
 
 def normalize(string):
