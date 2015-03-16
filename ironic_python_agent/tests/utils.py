@@ -191,12 +191,15 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         # Make sure information is cached
         set_cache_mock.assert_called_once_with(expected_params)
 
+    @mock.patch.object(utils, '_set_cached_params')
     @mock.patch.object(utils, '_get_cached_params')
-    def test_get_agent_params_from_cache(self, get_cache_mock):
+    def test_get_agent_params_from_cache(self, get_cache_mock,
+                                         set_cache_mock):
         get_cache_mock.return_value = {'a': 'b'}
         returned_params = utils.get_agent_params()
         expected_params = {'a': 'b'}
         self.assertEqual(expected_params, returned_params)
+        self.assertEqual(0, set_cache_mock.call_count)
 
     @mock.patch(OPEN_FUNCTION_NAME)
     @mock.patch.object(glob, 'glob')
