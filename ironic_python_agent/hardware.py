@@ -357,10 +357,27 @@ class GenericHardwareManager(HardwareManager):
         if self._ata_erase(block_device):
             return
 
+        if self._shred_block_device(block_device):
+            return
+
         msg = ('Unable to erase block device {0}: device is unsupported.'
               ).format(block_device.name)
         LOG.error(msg)
         raise errors.IncompatibleHardwareMethodError(msg)
+
+    def _shred_block_device(self, block_device):
+        """Erase a block device using shred.
+
+        :param block_device: a BlockDevice object to be erased
+        :returns: True if the erase succeeds, False if it fails for any reason
+        """
+        try:
+            utils.execute('shred', '--force', '--zero', '--verbose',
+                          '--iterations', '1', block_device.name)
+        except errors.ProcessExecutionError:
+            return False
+
+        return True
 
     def _get_ata_security_lines(self, block_device):
         output = utils.execute('hdparm', '-I', block_device.name)[0]

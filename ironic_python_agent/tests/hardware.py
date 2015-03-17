@@ -125,6 +125,19 @@ BLK_DEVICE_TEMPLATE = (
     'KNAME="loop0" MODEL="" SIZE="109109248" ROTA="1" TYPE="loop"'
 )
 
+SHRED_OUTPUT = (
+        'shred: /dev/sda: pass 1/2 (random)...\n'
+        'shred: /dev/sda: pass 1/2 (random)...4.9GiB/29GiB 17%\n'
+        'shred: /dev/sda: pass 1/2 (random)...15GiB/29GiB 51%\n'
+        'shred: /dev/sda: pass 1/2 (random)...20GiB/29GiB 69%\n'
+        'shred: /dev/sda: pass 1/2 (random)...29GiB/29GiB 100%\n'
+        'shred: /dev/sda: pass 2/2 (000000)...\n'
+        'shred: /dev/sda: pass 2/2 (000000)...4.9GiB/29GiB 17%\n'
+        'shred: /dev/sda: pass 2/2 (000000)...15GiB/29GiB 51%\n'
+        'shred: /dev/sda: pass 2/2 (000000)...20GiB/29GiB 69%\n'
+        'shred: /dev/sda: pass 2/2 (000000)...29GiB/29GiB 100%\n'
+)
+
 
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
@@ -401,37 +414,45 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         ])
 
     @mock.patch.object(utils, 'execute')
-    def test_erase_block_device_ata_nosecurity(self, mocked_execute):
+    def test_erase_block_device_nosecurity_shred(self, mocked_execute):
         hdparm_output = HDPARM_INFO_TEMPLATE.split('\nSecurity:')[0]
 
         mocked_execute.side_effect = [
-            (hdparm_output, '')
+            (hdparm_output, ''),
+            (SHRED_OUTPUT, '')
         ]
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.assertRaises(errors.IncompatibleHardwareMethodError,
-                          self.hardware.erase_block_device,
-                          block_device)
+        self.hardware.erase_block_device(block_device)
+        mocked_execute.assert_has_calls([
+            mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('shred', '--force', '--zero', '--verbose',
+                      '--iterations', '1', '/dev/sda')
+        ])
 
     @mock.patch.object(utils, 'execute')
-    def test_erase_block_device_ata_not_supported(self, mocked_execute):
+    def test_erase_block_device_notsupported_shred(self, mocked_execute):
         hdparm_output = HDPARM_INFO_TEMPLATE % {
-            'supported': 'not\tsupported',
-            'enabled': 'not\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
+                'supported': 'not\tsupported',
+                'enabled': 'not\tenabled',
+                'frozen': 'not\tfrozen',
+                'enhanced_erase': 'not\tsupported: enhanced erase',
         }
 
         mocked_execute.side_effect = [
-            (hdparm_output, '')
+            (hdparm_output, ''),
+            (SHRED_OUTPUT, '')
         ]
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.assertRaises(errors.IncompatibleHardwareMethodError,
-                          self.hardware.erase_block_device,
-                          block_device)
+        self.hardware.erase_block_device(block_device)
+        mocked_execute.assert_has_calls([
+            mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('shred', '--force', '--zero', '--verbose',
+                      '--iterations', '1', '/dev/sda')
+        ])
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_security_enabled(self, mocked_execute):
