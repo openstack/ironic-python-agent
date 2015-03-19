@@ -215,13 +215,14 @@ class TestImageExtension(test_base.BaseTestCase):
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" UUID="%s" TYPE="part"''' % self.fake_root_uuid)
-        mock_execute.side_effect = (None, [lsblk_output])
+        mock_execute.side_effect = (None, None, [lsblk_output])
 
         root_part = image._get_partition(self.fake_dev,
                                               self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
         expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
                               delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,TYPE', self.fake_dev)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
@@ -231,20 +232,21 @@ class TestImageExtension(test_base.BaseTestCase):
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" UUID="" TYPE="part"''')
-        mock_execute.side_effect = (None, [lsblk_output])
+        mock_execute.side_effect = (None, None, [lsblk_output])
 
         self.assertRaises(errors.DeviceNotFound,
                           image._get_partition, self.fake_dev,
                           self.fake_root_uuid)
         expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
                               delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,TYPE', self.fake_dev)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
 
     def test__get_partition_command_fail(self, mock_execute,
                                               mock_dispatch):
-        mock_execute.side_effect = (None,
+        mock_execute.side_effect = (None, None,
                                     processutils.ProcessExecutionError('boom'))
         self.assertRaises(errors.CommandExecutionError,
                           image._get_partition, self.fake_dev,
@@ -252,6 +254,7 @@ class TestImageExtension(test_base.BaseTestCase):
 
         expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
                               delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,TYPE', self.fake_dev)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)

@@ -44,6 +44,7 @@ def _get_partition(device, uuid):
         try:
             utils.execute('partx', '-u', device, attempts=3,
                           delay_on_retry=True)
+            utils.execute('udevadm', 'settle')
         except processutils.ProcessExecutionError:
             LOG.warning("Couldn't re-read the partition table "
                         "on device %s" % device)
