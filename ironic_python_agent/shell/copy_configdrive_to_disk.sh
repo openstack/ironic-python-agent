@@ -45,6 +45,12 @@ DEVICE="$2"
 # following blkid command returns partitions just imaged to the device
 partx -u $DEVICE || fail "running partx -u $DEVICE"
 
+# todo(jayf): partx -u doesn't work in all cases, but partprobe fails in
+# devstack. We run both commands now as a temporary workaround for bug 1433812
+# long term, this should all be refactored into python and share code with
+# the other partition-modifying code in the agent.
+partprobe $DEVICE || true
+
 # Check for preexisting partition for configdrive
 EXISTING_PARTITION=`/sbin/blkid -l -o device $DEVICE -t LABEL=config-2`
 if [[ $? == 0 ]]; then
