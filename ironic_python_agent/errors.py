@@ -284,6 +284,38 @@ class IncompatibleHardwareMethodError(RESTError):
         super(IncompatibleHardwareMethodError, self).__init__(details)
 
 
+class CleanVersionMismatch(RESTError):
+    """Error raised when Ironic and the Agent have different versions.
+
+    If the agent version has changed since get_clean_steps was called by
+    the Ironic conductor, it indicates the agent has been updated (either
+    on purpose, or a new agent was deployed and the node was rebooted).
+    Since we cannot know if the upgraded IPA will work with cleaning as it
+    stands (steps could have different priorities, either in IPA or in
+    other Ironic interfaces), we should restart cleaning from the start.
+
+    """
+    message = 'Clean version mismatch, reload agent with correct version'
+
+    def __init__(self, agent_version, node_version):
+        self.status_code = 409
+        details = ('Agent clean version: {0}, node clean version: {1}'
+                   .format(agent_version, node_version))
+        super(CleanVersionMismatch, self).__init__(details)
+
+
+class CleaningError(RESTError):
+    """Error raised when a cleaning step fails."""
+    message = 'Clean step failed.'
+
+    def __init__(self, details=None):
+        if details is not None:
+            details = details
+        else:
+            details = self.message
+        super(CleaningError, self).__init__(details)
+
+
 class ISCSIError(RESTError):
     """Error raised when an image cannot be written to a device."""
 

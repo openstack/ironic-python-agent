@@ -30,6 +30,7 @@ class AgentCommandStatus(object):
     RUNNING = u'RUNNING'
     SUCCEEDED = u'SUCCEEDED'
     FAILED = u'FAILED'
+    CLEAN_VERSION_MISMATCH = u'CLEAN_VERSION_MISMATCH'
 
 
 class BaseCommandResult(encoding.Serializable):
@@ -153,6 +154,11 @@ class AsyncCommandResult(BaseCommandResult):
             with self.command_state_lock:
                 self.command_result = result
                 self.command_status = AgentCommandStatus.SUCCEEDED
+        except errors.CleanVersionMismatch as e:
+            with self.command_state_lock:
+                self.command_error = e
+                self.command_status = AgentCommandStatus.CLEAN_VERSION_MISMATCH
+                self.command_result = None
         except Exception as e:
             if not isinstance(e, errors.RESTError):
                 e = errors.CommandExecutionError(str(e))
