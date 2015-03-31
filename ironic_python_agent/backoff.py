@@ -60,17 +60,20 @@ class BackOffLoopingCall(loopingcall.LoopingCallBase):
 
     :param initial_delay: delay before first running of function
     :param starting_interval: initial interval in seconds between calls to
-    function. When an error occurs and then a success, the interval is
-    returned to starting_interval
-    :param timeout: time in seconds before a LoopingCallTimeout is raised
-    The call will never take longer than timeout, but may quit before timeout
+                              function. When an error occurs and then a
+                              success, the interval is returned to
+                              starting_interval
+    :param timeout: time in seconds before a LoopingCallTimeout is raised.
+                    The call will never take longer than timeout, but may quit
+                    before timeout.
     :param max_interval: The maximum interval between calls during errors
     :param jitter: Used to vary when calls are actually run to avoid group of
-    calls all coming at the exact same time. Uses random.gauss(jitter,
-    0.1), with jitter as the mean for the distribution. If set below .5,
-    it can cause the calls to come more rapidly after each failure.
+                   calls all coming at the exact same time. Uses
+                   random.gauss(jitter, 0.1), with jitter as the mean for the
+                   distribution. If set below .5, it can cause the calls to
+                   come more rapidly after each failure.
     :raises: LoopingCallTimeout if time spent doing error retries would exceed
-    timeout.
+             timeout.
     """
 
     def start(self, initial_delay=None, starting_interval=1, timeout=300,
