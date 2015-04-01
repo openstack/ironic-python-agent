@@ -163,30 +163,35 @@ class HardwareManager(object):
     def get_clean_steps(self, node, ports):
         """Get a list of clean steps with priority.
 
-        Returns a list of dicts of the following form:
-        {'step': the HardwareManager function to call.
-         'priority': the order steps will be run in. Ironic will sort all the
-            clean steps from all the drivers, with the largest priority
-            step being run first. If priority is set to 0, the step will
-            not be run during cleaning, but may be run during zapping.
-         'reboot_requested': Whether the agent should request Ironic reboots
-            the node via the power driver after the operation completes.
-        }
+        Returns a list of steps. Each step is represeted by a dict::
 
-        Note: multiple hardware managers may return the same step name. The
-        priority of the step will be the largest priority of steps with
-        the same name. The steps will be called using
-        `hardware.dispatch_to_managers` and handled by the best suited
-        hardware manager. If you need a step to be executed by only your
-        hardware manager, ensure it has a unique step name.
+          {
+           'step': the HardwareManager function to call.
+           'priority': the order steps will be run in. Ironic will sort all
+                       the clean steps from all the drivers, with the largest
+                       priority step being run first. If priority is set to 0,
+                       the step will not be run during cleaning, but may be
+                       run during zapping.
+           'reboot_requested': Whether the agent should request Ironic reboots
+                               the node via the power driver after the
+                               operation completes.
+          }
+
+        If multiple hardware managers return the same step name, the priority
+        of the step will be the largest priority of steps with the same name.
+        The steps will be called using `hardware.dispatch_to_managers` and
+        handled by the best suited hardware manager. If you need a step to be
+        executed by only your hardware manager, ensure it has a unique step
+        name.
 
         `node` and `ports` can be used by other hardware managers to further
         determine if a clean step is supported for the node.
 
         :param node: Ironic node object
         :param ports: list of Ironic port objects
-        :return: a default list of decommission steps, as a list of
-        dictionaries
+        :return: a list of cleaning steps, where each step is described as a
+                 dict as defined above
+
         """
         return [
             {

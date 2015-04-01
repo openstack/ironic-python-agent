@@ -40,12 +40,14 @@ class CleanExtension(base.BaseAgentExtension):
     @base.async_command('execute_clean_step')
     def execute_clean_step(self, step, node, ports, clean_version=None,
                            **kwargs):
-        """Execute a clean step
+        """Execute a clean step.
+
         :param step: A clean step with 'step', 'priority' and 'interface' keys
         :param node: A dict representation of a node
         :param ports: A dict representation of ports attached to node
         :param clean_version: The clean version as returned by
-            _get_current_clean_version() at the beginning of cleaning/zapping
+                              _get_current_clean_version() at the beginning
+                              of cleaning/zapping
         :returns: a CommandResult object with command_result set to whatever
             the step returns.
         """
