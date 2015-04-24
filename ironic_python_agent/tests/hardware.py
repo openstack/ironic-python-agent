@@ -14,6 +14,7 @@
 
 import mock
 import os
+from oslo_concurrency import processutils
 from oslotest import base as test_base
 import pyudev
 import six
@@ -501,6 +502,26 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertFalse(res)
         mocked_exists.assert_called_once_with('/dev/disk/by-label/ir-vfd-dev')
         self.assertFalse(mocked_link.called)
+
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_shred_fail_oserror(self, mocked_execute):
+        mocked_execute.side_effect = OSError
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+        res = self.hardware._shred_block_device(block_device)
+        self.assertFalse(res)
+        mocked_execute.assert_called_once_with('shred', '--force', '--zero',
+            '--verbose', '--iterations', '1', '/dev/sda')
+
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_shred_fail_processerror(self, mocked_execute):
+        mocked_execute.side_effect = processutils.ProcessExecutionError
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+        res = self.hardware._shred_block_device(block_device)
+        self.assertFalse(res)
+        mocked_execute.assert_called_once_with('shred', '--force', '--zero',
+            '--verbose', '--iterations', '1', '/dev/sda')
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_security_enabled(self, mocked_execute):
