@@ -427,6 +427,13 @@ class GenericHardwareManager(HardwareManager):
                     "deployment using these hints %s" % root_device_hints)
 
     def erase_block_device(self, block_device):
+
+        # Check if the block device is virtual media and skip the device.
+        if self._is_virtual_media_device(block_device):
+            LOG.info("Skipping the erase of virtual media device %s",
+                     block_device.name)
+            return
+
         if self._ata_erase(block_device):
             return
 
@@ -451,6 +458,21 @@ class GenericHardwareManager(HardwareManager):
             return False
 
         return True
+
+    def _is_virtual_media_device(self, block_device):
+        """Check if the block device corresponds to Virtual Media device.
+
+        :param block_device: a BlockDevice object
+        :returns: True if it's a virtual media device, else False
+        """
+        vm_device_label = '/dev/disk/by-label/ir-vfd-dev'
+        if os.path.exists(vm_device_label):
+            link = os.readlink(vm_device_label)
+            device = os.path.normpath(os.path.join(os.path.dirname(
+                                                  vm_device_label), link))
+            if block_device.name == device:
+                return True
+        return False
 
     def _get_ata_security_lines(self, block_device):
         output = utils.execute('hdparm', '-I', block_device.name)[0]

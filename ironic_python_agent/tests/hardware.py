@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import mock
+import os
 from oslotest import base as test_base
 import pyudev
 import six
@@ -453,6 +454,53 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             mock.call('shred', '--force', '--zero', '--verbose',
                       '--iterations', '1', '/dev/sda')
         ])
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_virtual_media_device', autospec=True)
+    def test_erase_block_device_virtual_media(self, vm_mock):
+        vm_mock.return_value = True
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+        self.hardware.erase_block_device(block_device)
+        vm_mock.assert_called_once_with(self.hardware, block_device)
+
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    def test__is_virtual_media_device_exists(self, mocked_exists,
+                                             mocked_link):
+        mocked_exists.return_value = True
+        mocked_link.return_value = '../../sda'
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+        res = self.hardware._is_virtual_media_device(block_device)
+        self.assertTrue(res)
+        mocked_exists.assert_called_once_with('/dev/disk/by-label/ir-vfd-dev')
+        mocked_link.assert_called_once_with('/dev/disk/by-label/ir-vfd-dev')
+
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    def test__is_virtual_media_device_exists_no_match(self, mocked_exists,
+                                                      mocked_link):
+        mocked_exists.return_value = True
+        mocked_link.return_value = '../../sdb'
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+        res = self.hardware._is_virtual_media_device(block_device)
+        self.assertFalse(res)
+        mocked_exists.assert_called_once_with('/dev/disk/by-label/ir-vfd-dev')
+        mocked_link.assert_called_once_with('/dev/disk/by-label/ir-vfd-dev')
+
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    def test__is_virtual_media_device_path_doesnt_exist(self, mocked_exists,
+                                             mocked_link):
+        mocked_exists.return_value = False
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+        res = self.hardware._is_virtual_media_device(block_device)
+        self.assertFalse(res)
+        mocked_exists.assert_called_once_with('/dev/disk/by-label/ir-vfd-dev')
+        self.assertFalse(mocked_link.called)
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_security_enabled(self, mocked_execute):
