@@ -17,6 +17,7 @@ RUN apt-get update && \
 
 # Install requirements separately, because pip understands a git+https url
 # while setuptools doesn't
+RUN pip install --upgrade pip
 RUN pip install -r /tmp/ironic-python-agent/requirements.txt
 
 # This will succeed because all the dependencies were installed previously
