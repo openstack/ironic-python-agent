@@ -18,6 +18,7 @@ import os
 import shlex
 
 import netifaces
+from oslo_concurrency import processutils
 from oslo_log import log
 from oslo_utils import units
 import psutil
@@ -454,7 +455,10 @@ class GenericHardwareManager(HardwareManager):
         try:
             utils.execute('shred', '--force', '--zero', '--verbose',
                           '--iterations', '1', block_device.name)
-        except errors.ProcessExecutionError:
+        except (processutils.ProcessExecutionError, OSError) as e:
+            msg = ("Erasing block device %(dev)s failed with error %(err)s ",
+                  {'dev': block_device.name, 'err': e})
+            LOG.error(msg)
             return False
 
         return True
