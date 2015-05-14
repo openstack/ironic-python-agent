@@ -16,6 +16,7 @@
 import errno
 import glob
 import os
+import shutil
 import tempfile
 import testtools
 
@@ -217,13 +218,16 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         vmedia_device_returned = utils._get_vmedia_device()
         self.assertEqual('sdc', vmedia_device_returned)
 
+    @mock.patch.object(shutil, 'rmtree', autospec=True)
+    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
     @mock.patch.object(utils, '_read_params_from_file')
     @mock.patch.object(os.path, 'exists')
     @mock.patch.object(os, 'mkdir')
     @mock.patch.object(utils, 'execute')
     def test__get_vmedia_params_by_label(self, execute_mock, mkdir_mock,
-                                         exists_mock, read_params_mock):
-        vmedia_mount_point = "/vmedia_mnt"
+                                         exists_mock, read_params_mock,
+                                         mkdtemp_mock, rmtree_mock):
+        mkdtemp_mock.return_value = "/tempdir"
 
         null_output = ["", ""]
         expected_params = {'a': 'b'}
@@ -233,14 +237,17 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
         returned_params = utils._get_vmedia_params()
 
-        mkdir_mock.assert_called_once_with(vmedia_mount_point)
         execute_mock.assert_any_call('mount', "/dev/disk/by-label/ir-vfd-dev",
-                                     vmedia_mount_point)
-        read_params_mock.assert_called_once_with("/vmedia_mnt/parameters.txt")
+                                     "/tempdir")
+        read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
         exists_mock.assert_called_once_with("/dev/disk/by-label/ir-vfd-dev")
-        execute_mock.assert_any_call('umount', vmedia_mount_point)
+        execute_mock.assert_any_call('umount', "/tempdir")
         self.assertEqual(expected_params, returned_params)
+        mkdtemp_mock.assert_called_once_with()
+        rmtree_mock.assert_called_once_with("/tempdir")
 
+    @mock.patch.object(shutil, 'rmtree', autospec=True)
+    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
     @mock.patch.object(utils, '_get_vmedia_device')
     @mock.patch.object(utils, '_read_params_from_file')
     @mock.patch.object(os.path, 'exists')
@@ -248,8 +255,9 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
     @mock.patch.object(utils, 'execute')
     def test__get_vmedia_params_by_device(self, execute_mock, mkdir_mock,
                                           exists_mock, read_params_mock,
-                                          get_device_mock):
-        vmedia_mount_point = "/vmedia_mnt"
+                                          get_device_mock, mkdtemp_mock,
+                                          rmtree_mock):
+        mkdtemp_mock.return_value = "/tempdir"
 
         null_output = ["", ""]
         expected_params = {'a': 'b'}
@@ -260,12 +268,13 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
         returned_params = utils._get_vmedia_params()
 
-        mkdir_mock.assert_called_once_with(vmedia_mount_point)
         execute_mock.assert_any_call('mount', "/dev/sda",
-                                     vmedia_mount_point)
-        read_params_mock.assert_called_once_with("/vmedia_mnt/parameters.txt")
-        execute_mock.assert_any_call('umount', vmedia_mount_point)
+                                     "/tempdir")
+        read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
+        execute_mock.assert_any_call('umount', "/tempdir")
         self.assertEqual(expected_params, returned_params)
+        mkdtemp_mock.assert_called_once_with()
+        rmtree_mock.assert_called_once_with("/tempdir")
 
     @mock.patch.object(utils, '_get_vmedia_device')
     @mock.patch.object(os.path, 'exists')
@@ -276,6 +285,8 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         self.assertRaises(errors.VirtualMediaBootError,
                           utils._get_vmedia_params)
 
+    @mock.patch.object(shutil, 'rmtree', autospec=True)
+    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
     @mock.patch.object(utils, '_get_vmedia_device')
     @mock.patch.object(utils, '_read_params_from_file')
     @mock.patch.object(os.path, 'exists')
@@ -284,8 +295,9 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
     def test__get_vmedia_params_mount_fails(self, execute_mock,
                                             mkdir_mock, exists_mock,
                                             read_params_mock,
-                                            get_device_mock):
-        vmedia_mount_point = "/vmedia_mnt"
+                                            get_device_mock, mkdtemp_mock,
+                                            rmtree_mock):
+        mkdtemp_mock.return_value = "/tempdir"
 
         expected_params = {'a': 'b'}
         exists_mock.return_value = True
@@ -297,10 +309,13 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         self.assertRaises(errors.VirtualMediaBootError,
                           utils._get_vmedia_params)
 
-        mkdir_mock.assert_called_once_with(vmedia_mount_point)
         execute_mock.assert_any_call('mount', "/dev/disk/by-label/ir-vfd-dev",
-                                     vmedia_mount_point)
+                                     "/tempdir")
+        mkdtemp_mock.assert_called_once_with()
+        rmtree_mock.assert_called_once_with("/tempdir")
 
+    @mock.patch.object(shutil, 'rmtree', autospec=True)
+    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
     @mock.patch.object(utils, '_get_vmedia_device')
     @mock.patch.object(utils, '_read_params_from_file')
     @mock.patch.object(os.path, 'exists')
@@ -308,8 +323,9 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
     @mock.patch.object(utils, 'execute')
     def test__get_vmedia_params_umount_fails(self, execute_mock, mkdir_mock,
                                              exists_mock, read_params_mock,
-                                             get_device_mock):
-        vmedia_mount_point = "/vmedia_mnt"
+                                             get_device_mock, mkdtemp_mock,
+                                             rmtree_mock):
+        mkdtemp_mock.return_value = "/tempdir"
 
         null_output = ["", ""]
         expected_params = {'a': 'b'}
@@ -322,12 +338,45 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
         returned_params = utils._get_vmedia_params()
 
-        mkdir_mock.assert_called_once_with(vmedia_mount_point)
         execute_mock.assert_any_call('mount', "/dev/disk/by-label/ir-vfd-dev",
-                                     vmedia_mount_point)
-        read_params_mock.assert_called_once_with("/vmedia_mnt/parameters.txt")
-        execute_mock.assert_any_call('umount', vmedia_mount_point)
+                                     "/tempdir")
+        read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
+        execute_mock.assert_any_call('umount', "/tempdir")
         self.assertEqual(expected_params, returned_params)
+        mkdtemp_mock.assert_called_once_with()
+        rmtree_mock.assert_called_once_with("/tempdir")
+
+    @mock.patch.object(shutil, 'rmtree', autospec=True)
+    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
+    @mock.patch.object(utils, '_get_vmedia_device')
+    @mock.patch.object(utils, '_read_params_from_file')
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch.object(os, 'mkdir')
+    @mock.patch.object(utils, 'execute')
+    def test__get_vmedia_params_rmtree_fails(self, execute_mock, mkdir_mock,
+                                             exists_mock, read_params_mock,
+                                             get_device_mock, mkdtemp_mock,
+                                             rmtree_mock):
+        mkdtemp_mock.return_value = "/tempdir"
+        rmtree_mock.side_effect = Exception
+
+        null_output = ["", ""]
+        expected_params = {'a': 'b'}
+        exists_mock.return_value = True
+        read_params_mock.return_value = expected_params
+        get_device_mock.return_value = "sda"
+
+        execute_mock.return_value = null_output
+
+        returned_params = utils._get_vmedia_params()
+
+        execute_mock.assert_any_call('mount', "/dev/disk/by-label/ir-vfd-dev",
+                                     "/tempdir")
+        read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
+        execute_mock.assert_any_call('umount', "/tempdir")
+        self.assertEqual(expected_params, returned_params)
+        mkdtemp_mock.assert_called_once_with()
+        rmtree_mock.assert_called_once_with("/tempdir")
 
     @mock.patch.object(utils, 'get_agent_params')
     def test_parse_root_device_hints(self, mock_get_params):

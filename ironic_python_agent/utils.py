@@ -16,6 +16,8 @@ import collections
 import copy
 import glob
 import os
+import shutil
+import tempfile
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
@@ -109,7 +111,6 @@ def _get_vmedia_params():
     :returns: a partial dict of potential agent configuration parameters
     :raises: VirtualMediaBootError when it cannot find the virtual media device
     """
-    vmedia_mount_point = "/vmedia_mnt"
     parameters_file = "parameters.txt"
 
     vmedia_device_file = "/dev/disk/by-label/ir-vfd-dev"
@@ -125,23 +126,29 @@ def _get_vmedia_params():
 
         vmedia_device_file = os.path.join("/dev", vmedia_device)
 
-    os.mkdir(vmedia_mount_point)
-
+    vmedia_mount_point = tempfile.mkdtemp()
     try:
-        stdout, stderr = execute("mount", vmedia_device_file,
-                                 vmedia_mount_point)
-    except processutils.ProcessExecutionError as e:
-        msg = ("Unable to mount virtual media device %(device)s: %(error)s" %
-              {'device': vmedia_device_file, 'error': e})
-        raise errors.VirtualMediaBootError(msg)
+        try:
+            stdout, stderr = execute("mount", vmedia_device_file,
+                                     vmedia_mount_point)
+        except processutils.ProcessExecutionError as e:
+            msg = ("Unable to mount virtual media device %(device)s: "
+                   "%(error)s" % {'device': vmedia_device_file, 'error': e})
+            raise errors.VirtualMediaBootError(msg)
 
-    parameters_file_path = os.path.join(vmedia_mount_point, parameters_file)
-    params = _read_params_from_file(parameters_file_path)
+        parameters_file_path = os.path.join(vmedia_mount_point,
+                                            parameters_file)
+        params = _read_params_from_file(parameters_file_path)
 
-    try:
-        stdout, stderr = execute("umount", vmedia_mount_point)
-    except processutils.ProcessExecutionError as e:
-        pass
+        try:
+            stdout, stderr = execute("umount", vmedia_mount_point)
+        except processutils.ProcessExecutionError as e:
+            pass
+    finally:
+        try:
+            shutil.rmtree(vmedia_mount_point)
+        except Exception as e:
+            pass
 
     return params
 
