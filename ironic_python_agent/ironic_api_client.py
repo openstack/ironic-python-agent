@@ -91,8 +91,9 @@ class APIClient(object):
         return node_content
 
     def _do_lookup(self, hardware_info):
-        """The actual call to lookup a node. Should be called inside
-        loopingcall.BackOffLoopingCall.
+        """The actual call to lookup a node.
+
+        Should be called as a `loopingcall.BackOffLoopingCall`.
         """
         path = '/{api_version}/drivers/{driver}/vendor_passthru/lookup'.format(
             api_version=self.api_version,

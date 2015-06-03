@@ -249,6 +249,7 @@ class ExecuteCommandMixin(object):
 
 def async_command(command_name, validator=None):
     """Will run the command in an AsyncCommandResult in its own thread.
+
     command_name is set based on the func name and command_params will
     be whatever args/kwargs you pass into the decorated command.
     Return values of type `str` or `unicode` are prefixed with the
@@ -277,8 +278,9 @@ def async_command(command_name, validator=None):
 
 
 def sync_command(command_name, validator=None):
-    """Decorate a method in order to wrap up its return value in a
-    SyncCommandResult. For consistency with @async_command() can also accept a
+    """Decorate a method to wrap its return value in a SyncCommandResult.
+
+    For consistency with @async_command() can also accept a
     validator which will be used to validate input, although a synchronous
     command can also choose to implement validation inline.
     """

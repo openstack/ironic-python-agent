@@ -105,8 +105,7 @@ def _get_vmedia_device():
 
 
 def _get_vmedia_params():
-    """This method returns the parameters passed to the agent through virtual
-    media floppy.
+    """This method returns the parameters passed through virtual media floppy.
 
     :returns: a partial dict of potential agent configuration parameters
     :raises: VirtualMediaBootError when it cannot find the virtual media device

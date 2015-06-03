@@ -31,8 +31,9 @@ class RESTError(Exception, encoding.Serializable):
 
 
 class InvalidContentError(RESTError):
-    """Error which occurs when a user supplies invalid content, either
-    because that content cannot be parsed according to the advertised
+    """Error which occurs when a user supplies invalid content.
+
+    Either because that content cannot be parsed according to the advertised
     `Content-Type`, or due to a content validation error.
     """
     message = 'Invalid request body'
@@ -43,10 +44,7 @@ class InvalidContentError(RESTError):
 
 
 class NotFound(RESTError):
-    """Error which occurs when a user supplies invalid content, either
-    because that content cannot be parsed according to the advertised
-    `Content-Type`, or due to a content validation error.
-    """
+    """Error which occurs if a non-existent API endpoint is called."""
     message = 'Not found'
     status_code = 404
     details = 'The requested URL was not found.'
@@ -104,9 +102,7 @@ class HeartbeatError(IronicAPIError):
 
 
 class LookupNodeError(IronicAPIError):
-    """Error raised when the node configuration lookup to the Ironic API
-    fails.
-    """
+    """Error raised when the node lookup to the Ironic API fails."""
 
     message = 'Error getting configuration from Ironic.'
 
@@ -167,6 +163,7 @@ class ImageWriteError(RESTError):
 
 class ConfigDriveTooLargeError(RESTError):
     """Error raised when a configdrive is larger than the partition."""
+
     message = 'Configdrive is too large for intended partition.'
 
     def __init__(self, filename, filesize):
@@ -176,9 +173,7 @@ class ConfigDriveTooLargeError(RESTError):
 
 
 class ConfigDriveWriteError(RESTError):
-    """Error raised when a configdrive directory cannot be written to a
-    device.
-    """
+    """Error raised when a configdrive cannot be written to a device."""
 
     message = 'Error writing configdrive to device.'
 
@@ -211,7 +206,8 @@ class BlockDeviceEraseError(RESTError):
 
 
 class BlockDeviceError(RESTError):
-    """Error raised when a block devices causes an unknown error"""
+    """Error raised when a block devices causes an unknown error."""
+
     message = 'Block device caused unknown error'
 
     def __init__(self, details):
@@ -219,10 +215,9 @@ class BlockDeviceError(RESTError):
 
 
 class VirtualMediaBootError(RESTError):
-    """Error raised when booting ironic-python-client from virtual media
-    fails.
-    """
-    message = 'Booting ironic-python-client from virtual media failed.'
+    """Error raised when virtual media device cannot be found for config."""
+
+    message = 'Configuring agent from virtual media failed.'
 
     def __init__(self, details):
         super(VirtualMediaBootError, self).__init__(details)
@@ -270,9 +265,7 @@ class HardwareManagerMethodNotFound(RESTError):
 
 
 class IncompatibleHardwareMethodError(RESTError):
-    """Error raised when HardwareManager method is incompatible with node
-    hardware.
-    """
+    """Error raised when HardwareManager method incompatible with hardware."""
 
     message = 'HardwareManager method is not compatible with hardware.'
 
@@ -306,6 +299,7 @@ class CleanVersionMismatch(RESTError):
 
 class CleaningError(RESTError):
     """Error raised when a cleaning step fails."""
+
     message = 'Clean step failed.'
 
     def __init__(self, details=None):
@@ -329,9 +323,7 @@ class ISCSIError(RESTError):
 
 
 class DeviceNotFound(NotFound):
-    """Error raised when the disk or partition to deploy the image onto is
-    not found.
-    """
+    """Error raised when the device to deploy the image onto is not found."""
 
     message = ('Error finding the disk or partition device to deploy '
                'the image onto.')

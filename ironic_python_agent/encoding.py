@@ -42,8 +42,9 @@ class RESTJSONEncoder(json.JSONEncoder):
         return super(RESTJSONEncoder, self).encode(o) + delimiter
 
     def default(self, o):
-        """Turn an object into a serializable object. In particular, by
-        calling :meth:`.Serializable.serialize`.
+        """Turn an object into a serializable object.
+
+        In particular, by calling :meth:`.Serializable.serialize` on `o`.
         """
         if isinstance(o, Serializable):
             return o.serialize()

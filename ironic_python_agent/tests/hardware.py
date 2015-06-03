@@ -113,7 +113,11 @@ HDPARM_INFO_TEMPLATE = (
     '\t24min for SECURITY ERASE UNIT. 24min for ENHANCED SECURITY '
         'ERASE UNIT.\n'
     'Checksum: correct\n'
-)
+)  # noqa
+# NOTE(jroll) noqa here is to dodge E131 (indent rules). Since this is a
+# massive multi-line string (with specific whitespace formatting), it's easier
+# for a human to parse it with indentations on line continuations. The other
+# option would be to ignore the 79-character limit here. Ew.
 
 BLK_DEVICE_TEMPLATE = (
     'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '

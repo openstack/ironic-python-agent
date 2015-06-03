@@ -140,18 +140,16 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
         self.assertEqual(1, self.generic_hwm.obj._call_counts['generic_only'])
 
     def test_both_succeed(self):
-        """In the case where both managers will work; only the most specific
-        manager should have it's function called.
-        """
+        # In the case where both managers will work; only the most specific
+        # manager should have it's function called.
         hardware.dispatch_to_managers('both_succeed')
 
         self.assertEqual(1, self.mainline_hwm.obj._call_counts['both_succeed'])
         self.assertEqual(0, self.generic_hwm.obj._call_counts['both_succeed'])
 
     def test_mainline_fails(self):
-        """Ensure that if the mainline manager is unable to run the method
-        that we properly fall back to generic.
-        """
+        # Ensure that if the mainline manager is unable to run the method
+        # that we properly fall back to generic.
         hardware.dispatch_to_managers('mainline_fail')
 
         self.assertEqual(
@@ -184,9 +182,8 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
                           'FakeMainlineHardwareManager': None}, results)
 
     def test_dispatch_to_all_managers_both_succeed(self):
-        """In the case where both managers will work; only the most specific
-        manager should have it's function called.
-        """
+        # In the case where both managers will work; only the most specific
+        # manager should have it's function called.
         results = hardware.dispatch_to_all_managers('both_succeed')
 
         self.assertEqual({'FakeGenericHardwareManager': 'generic_both',
@@ -196,9 +193,8 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
         self.assertEqual(1, self.generic_hwm.obj._call_counts['both_succeed'])
 
     def test_dispatch_to_all_managers_mainline_fails(self):
-        """Ensure that if the mainline manager is unable to run the method
-        that we properly fall back to generic.
-        """
+        # Ensure that if the mainline manager is unable to run the method
+        # that we properly fall back to generic.
         hardware.dispatch_to_all_managers('mainline_fail')
 
         self.assertEqual(

@@ -24,7 +24,7 @@ from ironic_python_agent.openstack.common import loopingcall
 LOG = log.getLogger(__name__)
 
 
-#TODO(JoshNang) move to oslo, i18n
+# TODO(JoshNang) move to oslo, i18n
 class LoopingCallTimeOut(Exception):
     """Exception for a timed out LoopingCall.
 
@@ -35,7 +35,9 @@ class LoopingCallTimeOut(Exception):
 
 
 class BackOffLoopingCall(loopingcall.LoopingCallBase):
-    """The passed in function should return True (no error, return to
+    """Run a method in a loop with backoff on error.
+
+    The passed in function should return True (no error, return to
     initial_interval),
     False (error, start backing off), or raise LoopingCallDone(retvalue=None)
     (quit looping, return retvalue if set).
