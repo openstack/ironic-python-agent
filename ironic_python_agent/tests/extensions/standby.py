@@ -451,8 +451,8 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_run_image(self, execute_mock):
-        script = standby._path_to_script('shell/reboot.sh')
-        command = ['/bin/bash', script]
+        script = standby._path_to_script('shell/shutdown.sh')
+        command = ['/bin/bash', script, '-r']
         execute_mock.return_value = ('', '')
 
         success_result = self.agent_extension.run_image()
@@ -474,3 +474,25 @@ class TestStandbyExtension(test_base.BaseTestCase):
     def test_path_to_script(self):
         script = standby._path_to_script('shell/reboot.sh')
         self.assertTrue(script.endswith('extensions/../shell/reboot.sh'))
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_power_off(self, execute_mock):
+        script = standby._path_to_script('shell/shutdown.sh')
+        command = ['/bin/bash', script, '-h']
+        execute_mock.return_value = ('', '')
+
+        success_result = self.agent_extension.power_off()
+        success_result.join()
+
+        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
+        self.assertEqual('SUCCEEDED', success_result.command_status)
+
+        execute_mock.reset_mock()
+        execute_mock.return_value = ('', '')
+        execute_mock.side_effect = processutils.ProcessExecutionError
+
+        failed_result = self.agent_extension.power_off()
+        failed_result.join()
+
+        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
+        self.assertEqual('FAILED', failed_result.command_status)
