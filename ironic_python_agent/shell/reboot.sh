@@ -18,5 +18,8 @@
 
 set -e
 
+# Make sure all functions of sysrq is enabled.
+echo "1" > /proc/sys/kernel/sysrq
+
 echo "s" > /proc/sysrq-trigger
 echo "b" > /proc/sysrq-trigger
