@@ -52,28 +52,88 @@ class TestCleanExtension(test_base.BaseTestCase):
                     'priority': 20,
                     'interface': 'deploy',
                     'reboot_requested': True
-                }
+                },
+                {
+                    'step': 'upgrade_firmware',
+                    'priority': 60,
+                    'interface': 'deploy',
+                    'reboot_requested': False
+                },
             ],
             'FirmwareHardwareManager': [
                 {
                     'step': 'upgrade_firmware',
-                    'priority': 30,
+                    'priority': 10,
                     'interface': 'deploy',
                     'reboot_requested': False
-                }
+                },
+                {
+                    'step': 'erase_devices',
+                    'priority': 40,
+                    'interface': 'deploy',
+                    'reboot_requested': False
+                },
+            ],
+            'DiskHardwareManager': [
+                {
+                    'step': 'erase_devices',
+                    'priority': 50,
+                    'interface': 'deploy',
+                    'reboot_requested': False
+                },
             ]
         }
 
-        mock_dispatch.return_value = manager_steps
+        expected_steps = {
+            'SpecificHardwareManager': [
+                # Only manager upgrading BIOS
+                {
+                    'step': 'upgrade_bios',
+                    'priority': 20,
+                    'interface': 'deploy',
+                    'reboot_requested': True
+                }
+            ],
+            'FirmwareHardwareManager': [
+                # Higher support than specific, even though lower priority
+                {
+                    'step': 'upgrade_firmware',
+                    'priority': 10,
+                    'interface': 'deploy',
+                    'reboot_requested': False
+                },
+            ],
+            'DiskHardwareManager': [
+                # Higher support than specific, higher priority than firmware
+                {
+                    'step': 'erase_devices',
+                    'priority': 50,
+                    'interface': 'deploy',
+                    'reboot_requested': False
+                },
+            ]
+
+        }
+
+        hardware_support = {
+            'SpecificHardwareManager': 3,
+            'FirmwareHardwareManager': 4,
+            'DiskHardwareManager': 4
+        }
+
+        mock_dispatch.side_effect = [manager_steps, hardware_support]
         expected_return = {
             'hardware_manager_version': self.version,
-            'clean_steps': manager_steps
+            'clean_steps': expected_steps
         }
 
         async_results = self.agent_extension.get_clean_steps(node=self.node,
                                                              ports=self.ports)
 
-        self.assertEqual(expected_return, async_results.join().command_result)
+        # Ordering of the clean steps doesn't matter; they're sorted by
+        # 'priority' in Ironic
+        self.assertEqual(expected_return,
+                         async_results.join().command_result)
 
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers')
     @mock.patch('ironic_python_agent.extensions.clean._check_clean_version')

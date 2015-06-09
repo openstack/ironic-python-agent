@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+
 from oslo_log import log
 
 from ironic_python_agent import errors
@@ -35,12 +37,15 @@ class CleanExtension(base.BaseAgentExtension):
         LOG.debug('Getting clean steps, called with node: %(node)s, '
                   'ports: %(ports)s', {'node': node, 'ports': ports})
         # Results should be a dict, not a list
-        steps = hardware.dispatch_to_all_managers('get_clean_steps',
-                                                  node, ports)
+        candidate_steps = hardware.dispatch_to_all_managers('get_clean_steps',
+                                                            node, ports)
 
-        LOG.debug('Returning clean steps: %s', steps)
+        LOG.debug('Clean steps before deduplication: %s', candidate_steps)
+        clean_steps = _deduplicate_steps(candidate_steps)
+        LOG.debug('Returning clean steps: %s', clean_steps)
+
         return {
-            'clean_steps': steps,
+            'clean_steps': clean_steps,
             'hardware_manager_version': _get_current_clean_version()
         }
 
@@ -88,6 +93,74 @@ class CleanExtension(base.BaseAgentExtension):
             'clean_result': result,
             'clean_step': step
         }
+
+
+def _deduplicate_steps(candidate_steps):
+    """Remove duplicated clean steps
+
+    Deduplicates clean steps returned from HardwareManagers to prevent
+    running a given step more than once. Other than individual step
+    priority, it doesn't actually impact the cleaning run which specific
+    steps are kept and what HardwareManager they are associated with.
+    However, in order to make testing easier, this method returns
+    deterministic results.
+
+    Uses the following filtering logic to decide which step "wins":
+    - Keep the step that belongs to HardwareManager with highest
+      HardwareSupport (larger int) value.
+    - If equal support level, keep the step with the higher defined priority
+      (larger int).
+    - If equal support level and priority, keep the step associated with the
+      HardwareManager whose name comes earlier in the alphabet.
+
+    :param candidate_steps: A dict containing all possible clean steps from
+        all managers, key=manager, value=list of clean steps
+    :returns: A deduplicated dictionary of {hardware_manager:
+        [clean-steps]}
+    """
+    support = hardware.dispatch_to_all_managers(
+        'evaluate_hardware_support')
+
+    steps = collections.defaultdict(list)
+    deduped_steps = collections.defaultdict(list)
+
+    for manager, manager_steps in candidate_steps.items():
+        # We cannot deduplicate steps with unknown hardware support
+        if manager not in support:
+            LOG.warning('Unknown hardware support for %(manager)s, '
+                        'dropping clean steps: %(steps)s',
+                        {'manager': manager, 'steps': manager_steps})
+            continue
+
+        for step in manager_steps:
+            # build a new dict of steps that's easier to filter
+            step['hwm'] = {'name': manager,
+                           'support': support[manager]}
+            steps[step['step']].append(step)
+
+    for step_name, step_list in steps.items():
+        # determine the max support level among candidate steps
+        max_support = max([x['hwm']['support'] for x in step_list])
+        # filter out any steps that are not at the max support for this step
+        max_support_steps = [x for x in step_list
+                             if x['hwm']['support'] == max_support]
+
+        # determine the max priority among remaining steps
+        max_priority = max([x['priority'] for x in max_support_steps])
+        # filter out any steps that are not at the max priority for this step
+        max_priority_steps = [x for x in max_support_steps
+                              if x['priority'] == max_priority]
+
+        # if there are still multiple steps, sort by hwm name and take
+        # the first result
+        winning_step = sorted(max_priority_steps,
+                              key=lambda x: x['hwm']['name'])[0]
+        # Remove extra metadata we added to the step for filtering
+        manager = winning_step.pop('hwm')['name']
+        # Add winning step to deduped_steps
+        deduped_steps[manager].append(winning_step)
+
+    return deduped_steps
 
 
 def _check_clean_version(clean_version=None):
