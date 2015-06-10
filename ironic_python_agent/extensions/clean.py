@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oslo_log import log
+
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
+
+LOG = log.getLogger()
 
 
 class CleanExtension(base.BaseAgentExtension):
@@ -28,10 +32,13 @@ class CleanExtension(base.BaseAgentExtension):
         :returns: A list of clean steps with keys step, priority, and
             reboot_requested
         """
+        LOG.debug('Getting clean steps, called with node: %(node)s, '
+                  'ports: %(ports)s', {'node': node, 'ports': ports})
         # Results should be a dict, not a list
         steps = hardware.dispatch_to_all_managers('get_clean_steps',
                                                   node, ports)
 
+        LOG.debug('Returning clean steps: %s', steps)
         return {
             'clean_steps': steps,
             'hardware_manager_version': _get_current_clean_version()
@@ -52,17 +59,23 @@ class CleanExtension(base.BaseAgentExtension):
             the step returns.
         """
         # Ensure the agent is still the same version, or raise an exception
+        LOG.info('Executing clean step %s', step)
         _check_clean_version(clean_version)
 
         if 'step' not in step:
-            raise ValueError('Malformed clean_step, no "step" key: %s'.format(
-                step))
+            msg = 'Malformed clean_step, no "step" key: %s' % step
+            LOG.error(msg)
+            raise ValueError(msg)
         try:
             result = hardware.dispatch_to_managers(step['step'], node, ports)
         except Exception as e:
-            raise errors.CleaningError(
-                'Error performing clean_step %(step)s: %(err)s' %
-                {'step': step['step'], 'err': e})
+            msg = ('Error performing clean_step %(step)s: %(err)s' %
+                   {'step': step['step'], 'err': e})
+            LOG.exception(msg)
+            raise errors.CleaningError(msg)
+
+        LOG.info('Clean step completed: %(step)s, result: %(result)s',
+                 {'step': step, 'result': result})
         # Return the step that was executed so we can dispatch
         # to the appropriate Ironic interface
         return {
@@ -78,6 +91,9 @@ def _check_clean_version(clean_version=None):
         return
     agent_version = _get_current_clean_version()
     if clean_version != agent_version:
+        LOG.warning('Mismatched clean versions. Agent version: %(agent), '
+                    'node version: %(node)', {'agent': agent_version,
+                                              'node': clean_version})
         raise errors.CleanVersionMismatch(agent_version=agent_version,
                                           node_version=clean_version)
 

@@ -614,6 +614,11 @@ def dispatch_to_all_managers(method, *args, **kwargs):
                 LOG.debug('HardwareManager {0} does not support {1}'
                           .format(manager, method))
                 continue
+            except Exception as e:
+                LOG.exception('Unexpected error dispatching %(method)s to '
+                              'manager %(manager)s: %(e)s',
+                              {'method': method, 'manager': manager, 'e': e})
+                raise
             responses[manager.__class__.__name__] = response
         else:
             LOG.debug('HardwareManager {0} does not have method {1}'
@@ -650,6 +655,11 @@ def dispatch_to_managers(method, *args, **kwargs):
             except(errors.IncompatibleHardwareMethodError):
                 LOG.debug('HardwareManager {0} does not support {1}'
                         .format(manager, method))
+            except Exception as e:
+                LOG.exception('Unexpected error dispatching %(method)s to '
+                              'manager %(manager)s: %(e)s',
+                              {'method': method, 'manager': manager, 'e': e})
+                raise
         else:
             LOG.debug('HardwareManager {0} does not have method {1}'
                       .format(manager, method))
