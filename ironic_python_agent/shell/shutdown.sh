@@ -22,4 +22,8 @@ set -e
 echo "1" > /proc/sys/kernel/sysrq
 
 echo "s" > /proc/sysrq-trigger
-echo "b" > /proc/sysrq-trigger
+if [[ $1 = '-h' ]]; then
+    echo "o" > /proc/sysrq-trigger
+elif [[ $1 = '-r' ]]; then
+    echo "b" > /proc/sysrq-trigger
+fi

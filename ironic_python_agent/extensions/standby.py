@@ -238,13 +238,21 @@ class StandbyExtension(base.BaseAgentExtension):
         return 'image ({0}) written to device {1}'.format(image_info['id'],
                                                           device)
 
-    @base.async_command('run_image')
-    def run_image(self):
-        script = _path_to_script('shell/reboot.sh')
-        LOG.info('Rebooting system')
-        command = ['/bin/bash', script]
+    def _run_shutdown_script(self, parameter):
+        script = _path_to_script('shell/shutdown.sh')
+        command = ['/bin/bash', script, parameter]
         # this should never return if successful
         try:
             stdout, stderr = utils.execute(*command, check_exit_code=[0])
         except processutils.ProcessExecutionError as e:
             raise errors.SystemRebootError(e.exit_code, e.stdout, e.stderr)
+
+    @base.async_command('run_image')
+    def run_image(self):
+        LOG.info('Rebooting system')
+        self._run_shutdown_script('-r')
+
+    @base.async_command('power_off')
+    def power_off(self):
+        LOG.info('Powering off system')
+        self._run_shutdown_script('-h')

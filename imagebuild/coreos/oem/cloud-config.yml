@@ -58,6 +58,8 @@ coreos:
                                           --machine=ironic_python_agent \
                                           --bind=/dev:/dev \
                                           --bind=/dev/pts:/dev/pts \
+                                          --bind=/proc:/proc \
+                                          --bind=/sys:/sys \
                                           --bind=/usr/share/oem:/mnt \
                                           --user=root \
                                           --keep-unit \
