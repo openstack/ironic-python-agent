@@ -39,7 +39,7 @@ log "Erasing existing mbr from ${DEVICE}"
 dd if=/dev/zero of=$DEVICE bs=512 count=10
 
 log "Imaging $IMAGEFILE to $DEVICE"
-qemu-img convert -t directsync -O raw $IMAGEFILE $DEVICE
+qemu-img convert -t directsync -O host_device $IMAGEFILE $DEVICE
 sync
 
 log "${DEVICE} imaged successfully!"
