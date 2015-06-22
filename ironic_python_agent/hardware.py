@@ -151,7 +151,7 @@ class HardwareManager(object):
         """
         block_devices = self.list_block_devices()
         for block_device in block_devices:
-            self.erase_block_device(block_device)
+            self.erase_block_device(node, block_device)
 
     def list_hardware_info(self):
         hardware_info = {}
@@ -427,7 +427,7 @@ class GenericHardwareManager(HardwareManager):
                 raise errors.DeviceNotFound("No suitable device was found for "
                     "deployment using these hints %s" % root_device_hints)
 
-    def erase_block_device(self, block_device):
+    def erase_block_device(self, node, block_device):
 
         # Check if the block device is virtual media and skip the device.
         if self._is_virtual_media_device(block_device):
@@ -438,7 +438,7 @@ class GenericHardwareManager(HardwareManager):
         if self._ata_erase(block_device):
             return
 
-        if self._shred_block_device(block_device):
+        if self._shred_block_device(node, block_device):
             return
 
         msg = ('Unable to erase block device {0}: device is unsupported.'
@@ -446,15 +446,18 @@ class GenericHardwareManager(HardwareManager):
         LOG.error(msg)
         raise errors.IncompatibleHardwareMethodError(msg)
 
-    def _shred_block_device(self, block_device):
+    def _shred_block_device(self, node, block_device):
         """Erase a block device using shred.
 
+        :param node: Ironic node info.
         :param block_device: a BlockDevice object to be erased
         :returns: True if the erase succeeds, False if it fails for any reason
         """
+        info = node.get('driver_internal_info', {})
+        npasses = info.get('agent_erase_devices_iterations', 1)
         try:
             utils.execute('shred', '--force', '--zero', '--verbose',
-                          '--iterations', '1', block_device.name)
+                          '--iterations', npasses, block_device.name)
         except (processutils.ProcessExecutionError, OSError) as e:
             msg = ("Erasing block device %(dev)s failed with error %(err)s ",
                   {'dev': block_device.name, 'err': e})

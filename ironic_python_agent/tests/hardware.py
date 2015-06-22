@@ -182,6 +182,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     def setUp(self):
         super(TestGenericHardwareManager, self).setUp()
         self.hardware = hardware.GenericHardwareManager()
+        self.node = {'uuid': 'dda135fb-732d-4742-8e72-df8f3199d244',
+                     'driver_internal_info': {}}
 
     @mock.patch('os.listdir')
     @mock.patch('os.path.exists')
@@ -409,7 +411,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.hardware.erase_block_device(block_device)
+        self.hardware.erase_block_device(self.node, block_device)
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
             mock.call('hdparm', '--user-master', 'u', '--security-set-pass',
@@ -422,6 +424,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_nosecurity_shred(self, mocked_execute):
         hdparm_output = HDPARM_INFO_TEMPLATE.split('\nSecurity:')[0]
+        info = self.node.get('driver_internal_info')
+        info['agent_erase_devices_iterations'] = 2
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
@@ -430,11 +434,11 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.hardware.erase_block_device(block_device)
+        self.hardware.erase_block_device(self.node, block_device)
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
             mock.call('shred', '--force', '--zero', '--verbose',
-                      '--iterations', '1', '/dev/sda')
+                      '--iterations', 2, '/dev/sda')
         ])
 
     @mock.patch.object(utils, 'execute')
@@ -453,11 +457,11 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.hardware.erase_block_device(block_device)
+        self.hardware.erase_block_device(self.node, block_device)
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
             mock.call('shred', '--force', '--zero', '--verbose',
-                      '--iterations', '1', '/dev/sda')
+                      '--iterations', 1, '/dev/sda')
         ])
 
     @mock.patch.object(hardware.GenericHardwareManager,
@@ -466,7 +470,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         vm_mock.return_value = True
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.hardware.erase_block_device(block_device)
+        self.hardware.erase_block_device(self.node, block_device)
         vm_mock.assert_called_once_with(self.hardware, block_device)
 
     @mock.patch.object(os, 'readlink', autospec=True)
@@ -512,20 +516,20 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_execute.side_effect = OSError
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        res = self.hardware._shred_block_device(block_device)
+        res = self.hardware._shred_block_device(self.node, block_device)
         self.assertFalse(res)
         mocked_execute.assert_called_once_with('shred', '--force', '--zero',
-            '--verbose', '--iterations', '1', '/dev/sda')
+            '--verbose', '--iterations', 1, '/dev/sda')
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_shred_fail_processerror(self, mocked_execute):
         mocked_execute.side_effect = processutils.ProcessExecutionError
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        res = self.hardware._shred_block_device(block_device)
+        res = self.hardware._shred_block_device(self.node, block_device)
         self.assertFalse(res)
         mocked_execute.assert_called_once_with('shred', '--force', '--zero',
-            '--verbose', '--iterations', '1', '/dev/sda')
+            '--verbose', '--iterations', 1, '/dev/sda')
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_security_enabled(self, mocked_execute):
@@ -544,7 +548,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                             True)
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware.erase_block_device,
-                          block_device)
+                          self.node, block_device)
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_frozen(self, mocked_execute):
@@ -563,7 +567,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                             True)
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware.erase_block_device,
-                          block_device)
+                          self.node, block_device)
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_failed(self, mocked_execute):
@@ -594,7 +598,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                             True)
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware.erase_block_device,
-                          block_device)
+                          self.node, block_device)
 
     def test_normal_vs_enhanced_security_erase(self):
         @mock.patch.object(utils, 'execute')
@@ -617,7 +621,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
             block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                                 True)
-            test_case.hardware.erase_block_device(block_device)
+            test_case.hardware.erase_block_device(self.node, block_device)
             mocked_execute.assert_any_call('hdparm', '--user-master', 'u',
                                            expected_option,
                                            'NULL', '/dev/sda')
