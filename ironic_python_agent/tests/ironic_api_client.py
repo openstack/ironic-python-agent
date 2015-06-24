@@ -15,13 +15,13 @@
 import json
 
 import mock
+from oslo_service import loopingcall
 from oslotest import base as test_base
 
 from ironic_python_agent import backoff
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
-from ironic_python_agent.openstack.common import loopingcall
 
 API_URL = 'http://agent-api.ironic.example.org/'
 DRIVER = 'agent_ipmitool'

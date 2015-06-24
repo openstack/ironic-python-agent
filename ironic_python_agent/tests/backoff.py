@@ -15,9 +15,9 @@
 import unittest
 
 import mock
+from oslo_service import loopingcall
 
 from ironic_python_agent import backoff
-from ironic_python_agent.openstack.common import loopingcall
 
 
 class TestBackOffLoopingCall(unittest.TestCase):
