@@ -25,6 +25,11 @@ RUN pip install /tmp/ironic-python-agent
 RUN rm -rf /tmp/ironic-python-agent
 RUN rm -rf /var/lib/apt/lists/*
 
+# Before cleaning mark packages that are required so they are not removed
+RUN apt-mark manual python-setuptools
+RUN apt-mark manual python-minimal
+
+# Remove no longer needed packages
 RUN apt-get -y purge gcc-4.6 gcc python2.7-dev git python3 \
                      python3-minimal python3.4 python3.4-minimal && \
     apt-get -y autoremove && \
