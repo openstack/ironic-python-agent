@@ -457,7 +457,7 @@ class GenericHardwareManager(HardwareManager):
         npasses = info.get('agent_erase_devices_iterations', 1)
         try:
             utils.execute('shred', '--force', '--zero', '--verbose',
-                          '--iterations', npasses, block_device.name)
+                          '--iterations', str(npasses), block_device.name)
         except (processutils.ProcessExecutionError, OSError) as e:
             msg = ("Erasing block device %(dev)s failed with error %(err)s ",
                   {'dev': block_device.name, 'err': e})
