@@ -15,12 +15,12 @@
 import json
 
 from oslo_log import log
+from oslo_service import loopingcall
 import requests
 
 from ironic_python_agent import backoff
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
-from ironic_python_agent.openstack.common import loopingcall
 
 
 LOG = log.getLogger(__name__)
