@@ -438,7 +438,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
             mock.call('shred', '--force', '--zero', '--verbose',
-                      '--iterations', 2, '/dev/sda')
+                      '--iterations', '2', '/dev/sda')
         ])
 
     @mock.patch.object(utils, 'execute')
@@ -461,7 +461,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
             mock.call('shred', '--force', '--zero', '--verbose',
-                      '--iterations', 1, '/dev/sda')
+                      '--iterations', '1', '/dev/sda')
         ])
 
     @mock.patch.object(hardware.GenericHardwareManager,
@@ -519,7 +519,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         res = self.hardware._shred_block_device(self.node, block_device)
         self.assertFalse(res)
         mocked_execute.assert_called_once_with('shred', '--force', '--zero',
-            '--verbose', '--iterations', 1, '/dev/sda')
+            '--verbose', '--iterations', '1', '/dev/sda')
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_shred_fail_processerror(self, mocked_execute):
@@ -529,7 +529,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         res = self.hardware._shred_block_device(self.node, block_device)
         self.assertFalse(res)
         mocked_execute.assert_called_once_with('shred', '--force', '--zero',
-            '--verbose', '--iterations', 1, '/dev/sda')
+            '--verbose', '--iterations', '1', '/dev/sda')
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_security_enabled(self, mocked_execute):
