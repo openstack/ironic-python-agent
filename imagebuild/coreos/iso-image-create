@@ -97,7 +97,19 @@ mkdir -p "$TMP_IMAGE_DIR"
 # Copy isolinux bin to the isolinux directory
 mkdir -p "$TMP_IMAGE_DIR/isolinux"
 v_print "Copying isolinux.bin"
-cp /usr/lib/syslinux/isolinux.bin "$TMP_IMAGE_DIR/isolinux"
+if [ -f /usr/share/syslinux/isolinux.bin ]
+then
+    cp /usr/share/syslinux/isolinux.bin "$TMP_IMAGE_DIR/isolinux"
+
+elif [ -f /usr/lib/syslinux/isolinux.bin ]
+then
+    cp /usr/lib/syslinux/isolinux.bin "$TMP_IMAGE_DIR/isolinux"
+else
+    err_print "Could not find isolinux.bin. Install syslinux?"
+    cleanup
+    exit 1
+fi
+
 
 # Copy initrd, kernel
 v_print "Copying kernel to $TMP_IMAGE_DIR/vmlinuz"
