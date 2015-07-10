@@ -183,7 +183,7 @@ class TestBaseAgent(test_base.BaseTestCase):
             listen_addr[1],
             self.agent.api,
             server_class=simple_server.WSGIServer)
-        wsgi_server.serve_forever.assert_called_once()
+        wsgi_server.serve_forever.assert_called_once_with()
 
         self.agent.heartbeater.start.assert_called_once_with()
 
@@ -337,7 +337,7 @@ class TestAgentStandalone(test_base.BaseTestCase):
             listen_addr[1],
             self.agent.api,
             server_class=simple_server.WSGIServer)
-        wsgi_server.serve_forever.assert_called_once()
+        wsgi_server.serve_forever.assert_called_once_with()
 
         self.assertFalse(self.agent.heartbeater.called)
         self.assertFalse(self.agent.api_client.lookup_node.called)
