@@ -234,6 +234,12 @@ class HardwareManager(object):
            'reboot_requested': Whether the agent should request Ironic reboots
                                the node via the power driver after the
                                operation completes.
+           'abortable': Boolean value. Whether the clean step can be
+                        stopped by the operator or not. Some clean step may
+                        cause non-reversible damage to a machine if interrupted
+                        (i.e firmware update), for such steps this parameter
+                        should be set to False. If no value is set for this
+                        parameter, Ironic will consider False (non-abortable).
           }
 
         If multiple hardware managers return the same step name, the priority
@@ -257,7 +263,8 @@ class HardwareManager(object):
                 'step': 'erase_devices',
                 'priority': 10,
                 'interface': 'deploy',
-                'reboot_requested': False
+                'reboot_requested': False,
+                'abortable': True
             }
         ]
 
