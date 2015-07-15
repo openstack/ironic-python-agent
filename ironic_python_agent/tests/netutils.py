@@ -39,15 +39,15 @@ class TestNetutils(test_base.BaseTestCase):
     def test_get_lldp_info(self, sock_mock, select_mock, fcntl_mock):
         expected_lldp = {
             'eth1': [
-                (0, ''),
-                (1, '\x04\x88Z\x92\xecTY'),
-                (2, '\x05Ethernet1/18'),
-                (3, '\x00x')],
+                (0, b''),
+                (1, b'\x04\x88Z\x92\xecTY'),
+                (2, b'\x05Ethernet1/18'),
+                (3, b'\x00x')],
             'eth0': [
-                (0, ''),
-                (1, '\x04\x88Z\x92\xecTY'),
-                (2, '\x05Ethernet1/18'),
-                (3, '\x00x')]
+                (0, b''),
+                (1, b'\x04\x88Z\x92\xecTY'),
+                (2, b'\x05Ethernet1/18'),
+                (3, b'\x00x')]
         }
 
         interface_names = ['eth0', 'eth1']
@@ -87,15 +87,15 @@ class TestNetutils(test_base.BaseTestCase):
     def test_get_lldp_info_multiple(self, sock_mock, select_mock, fcntl_mock):
         expected_lldp = {
             'eth1': [
-                (0, ''),
-                (1, '\x04\x88Z\x92\xecTY'),
-                (2, '\x05Ethernet1/18'),
-                (3, '\x00x')],
+                (0, b''),
+                (1, b'\x04\x88Z\x92\xecTY'),
+                (2, b'\x05Ethernet1/18'),
+                (3, b'\x00x')],
             'eth0': [
-                (0, ''),
-                (1, '\x04\x88Z\x92\xecTY'),
-                (2, '\x05Ethernet1/18'),
-                (3, '\x00x')]
+                (0, b''),
+                (1, b'\x04\x88Z\x92\xecTY'),
+                (2, b'\x05Ethernet1/18'),
+                (3, b'\x00x')]
         }
 
         interface_names = ['eth0', 'eth1']
@@ -136,10 +136,10 @@ class TestNetutils(test_base.BaseTestCase):
         expected_lldp = {
             'eth1': [],
             'eth0': [
-                (0, ''),
-                (1, '\x04\x88Z\x92\xecTY'),
-                (2, '\x05Ethernet1/18'),
-                (3, '\x00x')]
+                (0, b''),
+                (1, b'\x04\x88Z\x92\xecTY'),
+                (2, b'\x05Ethernet1/18'),
+                (3, b'\x00x')]
         }
 
         interface_names = ['eth0', 'eth1']

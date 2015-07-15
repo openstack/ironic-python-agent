@@ -30,7 +30,6 @@ from ironic_python_agent.cmd import agent  # noqa
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
-
 LLDP_ETHERTYPE = 0x88cc
 IFF_PROMISC = 0x100
 SIOCGIFFLAGS = 0x8913
@@ -66,7 +65,7 @@ class RawPromiscuousSockets(object):
             LOG.info('Interface %s entering promiscuous mode to capture ',
                      interface_name)
             try:
-                ifr.ifr_ifrn = interface_name
+                ifr.ifr_ifrn = interface_name.encode()
                 # Get current flags
                 fcntl.ioctl(sock.fileno(), SIOCGIFFLAGS, ifr)  # G for Get
                 # bitwise or the flags with promiscuous mode, set the new flags
@@ -91,7 +90,7 @@ class RawPromiscuousSockets(object):
 
     def __exit__(self, exception_type, exception_val, trace):
         if exception_type:
-            LOG.exception('Error while using raw socket: %(type)s: %(val)',
+            LOG.exception('Error while using raw socket: %(type)s: %(val)s',
                           {'type': exception_type, 'val': exception_val})
 
         for _name, sock, ifr in self.interfaces:

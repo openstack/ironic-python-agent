@@ -228,7 +228,7 @@ def parse_root_device_hints():
         raise errors.DeviceNotFound(error_msg)
 
     # Normalise the values
-    hints = {k: normalize(v) for k, v in hints.iteritems()}
+    hints = {k: normalize(v) for k, v in hints.items()}
 
     if 'size' in hints:
         # NOTE(lucasagomes): Ironic should validate before passing to

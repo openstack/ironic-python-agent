@@ -69,7 +69,7 @@ exit 1
                 self.assertRaises(processutils.ProcessExecutionError,
                                   utils.execute,
                                   tmpfilename, tmpfilename2, attempts=10,
-                                  process_input='foo',
+                                  process_input=b'foo',
                                   delay_on_retry=False)
             except OSError as e:
                 if e.errno == errno.EACCES:
@@ -120,7 +120,7 @@ grep foo
             try:
                 utils.execute(tmpfilename,
                               tmpfilename2,
-                              process_input='foo',
+                              process_input=b'foo',
                               attempts=2)
             except OSError as e:
                 if e.errno == errno.EACCES:
@@ -181,8 +181,8 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         get_cache_mock.return_value = {}
         kernel_params = {'boot_method': 'vmedia'}
         vmedia_params = {'a': 'b'}
-        expected_params = dict(kernel_params.items() +
-                               vmedia_params.items())
+        expected_params = dict(list(kernel_params.items()) +
+                               list(vmedia_params.items()))
         read_params_mock.return_value = kernel_params
         get_vmedia_params_mock.return_value = vmedia_params
 
@@ -210,7 +210,7 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
                                   '/sys/class/block/sdb/device/model',
                                   '/sys/class/block/sdc/device/model']
         fobj_mock = mock.MagicMock()
-        mock_file_handle = mock.MagicMock(spec=file)
+        mock_file_handle = mock.MagicMock()
         mock_file_handle.__enter__.return_value = fobj_mock
         open_mock.return_value = mock_file_handle
 

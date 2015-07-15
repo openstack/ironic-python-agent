@@ -80,7 +80,7 @@ class SyncCommandResult(BaseCommandResult):
         super(SyncCommandResult, self).__init__(command_name,
                                                 command_params)
 
-        if type(result_or_error) in (str, unicode):
+        if isinstance(result_or_error, (bytes, six.text_type)):
             result_key = 'result' if success else 'error'
             result_or_error = {result_key: result_or_error}
 
@@ -148,7 +148,7 @@ class AsyncCommandResult(BaseCommandResult):
         try:
             result = self.execute_method(**self.command_params)
 
-            if type(result) in (str, unicode):
+            if isinstance(result, (bytes, six.text_type)):
                 result = {'result': '{}: {}'.format(self.command_name, result)}
 
             with self.command_state_lock:
