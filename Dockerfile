@@ -1,4 +1,4 @@
-FROM stackbrew/ubuntu:trusty
+FROM debian:jessie
 
 # The add is before the RUN to ensure we get the latest version of packages
 # Docker will cache RUN commands, but because the SHA1 of the dir will be
@@ -30,8 +30,7 @@ RUN apt-mark manual python-setuptools
 RUN apt-mark manual python-minimal
 
 # Remove no longer needed packages
-RUN apt-get -y purge gcc-4.6 gcc python2.7-dev git python3 \
-                     python3-minimal python3.4 python3.4-minimal && \
+RUN apt-get -y purge gcc-4.6 gcc python2.7-dev git && \
     apt-get -y autoremove && \
     apt-get clean
 
