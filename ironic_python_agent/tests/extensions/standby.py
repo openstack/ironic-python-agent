@@ -204,7 +204,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         response = requests_mock.return_value
         response.status_code = 200
         response.iter_content.return_value = ['some', 'content']
-        file_mock = mock.Mock(spec=file)
+        file_mock = mock.Mock()
         open_mock.return_value.__enter__.return_value = file_mock
         file_mock.read.return_value = None
         hexdigest_mock = md5_mock.return_value.hexdigest
@@ -247,7 +247,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         image_info = self._build_fake_image_info()
         hexdigest_mock = md5_mock.return_value.hexdigest
         hexdigest_mock.return_value = image_info['checksum']
-        file_mock = mock.Mock(spec=file)
+        file_mock = mock.Mock()
         file_mock.read.return_value = None
         open_mock.return_value.__enter__.return_value = file_mock
         image_location = '/foo/bar'
@@ -261,7 +261,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
     def test_verify_image_failure(self, md5_mock, open_mock):
         image_info = self._build_fake_image_info()
         md5_mock.return_value.hexdigest.return_value = 'wrong hash'
-        file_mock = mock.Mock(spec=file)
+        file_mock = mock.Mock()
         file_mock.read.return_value = None
         open_mock.return_value.__enter__.return_value = file_mock
         image_location = '/foo/bar'

@@ -18,7 +18,6 @@ import hashlib
 import os
 import requests
 import six
-import StringIO
 import time
 
 from oslo_concurrency import processutils
@@ -76,7 +75,7 @@ def _download_configdrive_to_file(configdrive, filename):
 def _write_configdrive_to_file(configdrive, filename):
     LOG.debug('Writing configdrive to {0}'.format(filename))
     # configdrive data is base64'd, decode it first
-    data = StringIO.StringIO(base64.b64decode(configdrive))
+    data = six.StringIO(base64.b64decode(configdrive))
     gunzipped = gzip.GzipFile('configdrive', 'rb', 9, data)
     with open(filename, 'wb') as f:
         f.write(gunzipped.read())
