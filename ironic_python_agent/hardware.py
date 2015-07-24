@@ -391,20 +391,7 @@ class GenericHardwareManager(HardwareManager):
         root_device_hints = utils.parse_root_device_hints()
 
         if not root_device_hints:
-            # If no hints are passed find the first device larger than
-            # 4GiB, assume it is the OS disk
-            min_size_required = 4 * units.Gi
-            # TODO(russellhaering): This isn't a valid assumption in
-            # all cases, is there a more reasonable default behavior?
-            block_devices.sort(key=lambda device: device.size)
-            if block_devices[-1].size < min_size_required:
-                raise errors.DeviceNotFound("No suitable device was found "
-                    "for deployment - root device hints were not provided "
-                    "and all found block devices are smaller than %iB."
-                                            % min_size_required)
-            for device in block_devices:
-                if device.size >= min_size_required:
-                    return device.name
+            return utils.guess_root_disk(block_devices).name
         else:
 
             def match(hint, current_value, device):

@@ -28,6 +28,7 @@ from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
+from ironic_python_agent import inspector
 from ironic_python_agent import ironic_api_client
 
 
@@ -280,11 +281,16 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         hardware.load_managers()
 
         if not self.standalone:
+            # Inspection should be started before call to lookup, otherwise
+            # lookup will fail due to unknown MAC.
+            uuid = inspector.inspect()
+
             content = self.api_client.lookup_node(
                 hardware_info=hardware.dispatch_to_managers(
                                   'list_hardware_info'),
                 timeout=self.lookup_timeout,
-                starting_interval=self.lookup_interval)
+                starting_interval=self.lookup_interval,
+                node_uuid=uuid)
 
             self.node = content['node']
             self.heartbeat_timeout = content['heartbeat_timeout']

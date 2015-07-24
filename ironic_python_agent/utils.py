@@ -20,6 +20,7 @@ import tempfile
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
+from oslo_utils import units
 from six.moves.urllib import parse
 
 from ironic_python_agent import errors
@@ -232,3 +233,72 @@ def parse_root_device_hints():
         hints['size'] = int(hints['size'])
 
     return hints
+
+
+class AccumulatedFailures(object):
+    """Object to accumulate failures without raising exception."""
+
+    def __init__(self, exc_class=RuntimeError):
+        self._failures = []
+        self._exc_class = exc_class
+
+    def add(self, fail, *fmt):
+        """Add failure with optional formatting.
+
+        :param fail: exception or error string
+        :param fmt: formatting arguments (only if fail is a string)
+        """
+        if fmt:
+            fail = fail % fmt
+        LOG.error('%s', fail)
+        self._failures.append(fail)
+
+    def get_error(self):
+        """Get error string or None."""
+        if not self._failures:
+            return
+
+        msg = ('The following errors were encountered:\n%s'
+               % '\n'.join('* %s' % item for item in self._failures))
+        return msg
+
+    def raise_if_needed(self):
+        """Raise exception if error list is not empty.
+
+        :raises: RuntimeError
+        """
+        if self._failures:
+            raise self._exc_class(self.get_error())
+
+    def __nonzero__(self):
+        return bool(self._failures)
+
+    __bool__ = __nonzero__
+
+    def __repr__(self):  # pragma: no cover
+        # This is for tests
+        if self:
+            return '<%s: %s>' % (self.__class__.__name__,
+                                 ', '.join(self._failures))
+        else:
+            return '<%s: success>' % self.__class__.__name__
+
+
+def guess_root_disk(block_devices, min_size_required=4 * units.Gi):
+    """Find suitable disk provided that root device hints are not given.
+
+    If no hints are passed find the first device larger than min_size_required,
+    assume it is the OS disk
+    """
+    # TODO(russellhaering): This isn't a valid assumption in
+    # all cases, is there a more reasonable default behavior?
+    block_devices.sort(key=lambda device: device.size)
+    if not block_devices or block_devices[-1].size < min_size_required:
+        raise errors.DeviceNotFound(
+            "No suitable device was found "
+            "for deployment - root device hints were not provided "
+            "and all found block devices are smaller than %iB."
+            % min_size_required)
+    for device in block_devices:
+        if device.size >= min_size_required:
+            return device

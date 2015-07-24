@@ -63,6 +63,19 @@ After the agent heartbeats, the conductor performs any actions needed against
 the node, including querying status of an already run command. For example,
 initiating in-band cleaning tasks or deploying an image to the node.
 
+Inspection
+~~~~~~~~~~
+IPA can conduct hardware inspection on start up and post data to the `Ironic
+Inspector`_. Edit your default PXE/iPXE configuration or kernel command
+options baked in the image, and set ``ipa-inspection-callback-url`` to the
+full endpoint of Ironic Inspector, for example::
+
+    ipa-inspection-callback-url=http://IP:5050/v1/continue
+
+Make sure your DHCP environment is set to boot IPA by default.
+
+.. _Ironic Inspector: https://github.com/openstack/ironic-inspector
+
 Image Builders
 --------------
 Unlike most other python software, you must build an IPA ramdisk image before
