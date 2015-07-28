@@ -114,7 +114,7 @@ class HardwareManager(object):
     def get_os_install_device(self):
         raise errors.IncompatibleHardwareMethodError
 
-    def erase_block_device(self, block_device):
+    def erase_block_device(self, node, block_device):
         """Attempt to erase a block device.
 
         Implementations should detect the type of device and erase it in the
@@ -130,6 +130,7 @@ class HardwareManager(object):
         parent class. Upstream submissions of common functionality are
         encouraged.
 
+        :param node: Ironic node object
         :param block_device: a BlockDevice indicating a device to be erased.
         :raises IncompatibleHardwareMethodError: when there is no known way to
                 erase the block device
