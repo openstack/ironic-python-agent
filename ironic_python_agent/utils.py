@@ -24,7 +24,6 @@ from oslo_log import log as logging
 from six.moves.urllib import parse
 
 from ironic_python_agent import errors
-from ironic_python_agent.openstack.common import _i18n as gtu
 
 LOG = logging.getLogger(__name__)
 
@@ -59,10 +58,9 @@ def get_ordereddict(*args, **kwargs):
 def execute(*cmd, **kwargs):
     """Convenience wrapper around oslo's execute() method."""
     result = processutils.execute(*cmd, **kwargs)
-    LOG.debug(gtu._('Execution completed, command line is "%s"'),
-              ' '.join(cmd))
-    LOG.debug(gtu._('Command stdout is: "%s"') % result[0])
-    LOG.debug(gtu._('Command stderr is: "%s"') % result[1])
+    LOG.debug('Execution completed, command line is "%s"', ' '.join(cmd))
+    LOG.debug('Command stdout is: "%s"', result[0])
+    LOG.debug('Command stderr is: "%s"', result[1])
     return result
 
 
