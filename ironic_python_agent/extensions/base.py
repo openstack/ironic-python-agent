@@ -24,6 +24,8 @@ from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent import utils
 
+LOG = log.getLogger()
+
 
 class AgentCommandStatus(object):
     """Mapping of agent command statuses."""
@@ -150,7 +152,8 @@ class AsyncCommandResult(BaseCommandResult):
 
             if isinstance(result, (bytes, six.text_type)):
                 result = {'result': '{}: {}'.format(self.command_name, result)}
-
+            LOG.info('Command: %(name)s, result: %(result)s',
+                     {'name': self.command_name, 'result': result})
             with self.command_state_lock:
                 self.command_result = result
                 self.command_status = AgentCommandStatus.SUCCEEDED
@@ -159,7 +162,11 @@ class AsyncCommandResult(BaseCommandResult):
                 self.command_error = e
                 self.command_status = AgentCommandStatus.CLEAN_VERSION_MISMATCH
                 self.command_result = None
+            LOG.info('Clean version mismatch for command %s',
+                     self.command_name)
         except Exception as e:
+            LOG.exception('Command failed: %(name)s, error: %(err)s',
+                          {'name': self.command_name, 'err': e})
             if not isinstance(e, errors.RESTError):
                 e = errors.CommandExecutionError(str(e))
 
@@ -220,11 +227,16 @@ class ExecuteCommandMixin(object):
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
         with self.command_lock:
+            LOG.info('Executing command: %(name)s with args: %(args)s',
+                     {'name': command_name, 'args': kwargs})
             extension_part, command_part = self.split_command(command_name)
 
             if len(self.command_results) > 0:
                 last_command = list(self.command_results.values())[-1]
                 if not last_command.is_done():
+                    LOG.info('Tried to execute %(command)s, agent is still '
+                             'executing %(last)s', {'command': command_name,
+                                                    'last': last_command})
                     raise errors.CommandExecutionError('agent is busy')
 
             try:
@@ -232,17 +244,21 @@ class ExecuteCommandMixin(object):
                 result = ext.execute(command_part, **kwargs)
             except KeyError:
                 # Extension Not found
+                LOG.exception('Extension %s not found', extension_part)
                 raise errors.RequestedObjectNotFoundError('Extension',
                                                           extension_part)
             except errors.InvalidContentError as e:
                 # Any command may raise a InvalidContentError which will be
                 # returned to the caller directly.
+                LOG.exception('Invalid content error: %s', e)
                 raise e
             except Exception as e:
                 # Other errors are considered command execution errors, and are
-                # recorded as an
+                # recorded as a failed SyncCommandResult with an error message
+                LOG.exception('Command execution error: %s', e)
                 result = SyncCommandResult(command_name, kwargs, False, e)
-
+            LOG.info('Command %(name)s completed: %(result)s',
+                     {'name': command_name, 'result': result})
             self.command_results[result.id] = result
             return result
 

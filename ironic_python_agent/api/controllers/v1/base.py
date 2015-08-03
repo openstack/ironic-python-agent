@@ -26,12 +26,12 @@ class ExceptionType(wtypes.UserType):
         return value
 
     def tobasetype(self, value):
-        """Turn a RESTError into a dict."""
+        """Turn an Exception into a dict."""
         return {
             'type': value.__class__.__name__,
-            'code': value.status_code,
-            'message': value.message,
-            'details': value.details,
+            'code': getattr(value, 'status_code', 500),
+            'message': str(value),
+            'details': getattr(value, 'details', ''),
         }
 
     frombasetype = tobasetype
