@@ -162,8 +162,8 @@ class AsyncCommandResult(BaseCommandResult):
                 self.command_error = e
                 self.command_status = AgentCommandStatus.CLEAN_VERSION_MISMATCH
                 self.command_result = None
-            LOG.info('Clean version mismatch for command %s',
-                     self.command_name)
+            LOG.error('Clean version mismatch for command %s',
+                      self.command_name)
         except Exception as e:
             LOG.exception('Command failed: %(name)s, error: %(err)s',
                           {'name': self.command_name, 'err': e})
@@ -227,16 +227,16 @@ class ExecuteCommandMixin(object):
     def execute_command(self, command_name, **kwargs):
         """Execute an agent command."""
         with self.command_lock:
-            LOG.info('Executing command: %(name)s with args: %(args)s',
-                     {'name': command_name, 'args': kwargs})
+            LOG.debug('Executing command: %(name)s with args: %(args)s',
+                      {'name': command_name, 'args': kwargs})
             extension_part, command_part = self.split_command(command_name)
 
             if len(self.command_results) > 0:
                 last_command = list(self.command_results.values())[-1]
                 if not last_command.is_done():
-                    LOG.info('Tried to execute %(command)s, agent is still '
-                             'executing %(last)s', {'command': command_name,
-                                                    'last': last_command})
+                    LOG.error('Tried to execute %(command)s, agent is still '
+                              'executing %(last)s', {'command': command_name,
+                                                     'last': last_command})
                     raise errors.CommandExecutionError('agent is busy')
 
             try:
