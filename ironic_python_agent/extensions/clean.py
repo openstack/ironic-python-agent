@@ -59,7 +59,7 @@ class CleanExtension(base.BaseAgentExtension):
             the step returns.
         """
         # Ensure the agent is still the same version, or raise an exception
-        LOG.info('Executing clean step %s', step)
+        LOG.debug('Executing clean step %s', step)
         _check_clean_version(clean_version)
 
         if 'step' not in step:
