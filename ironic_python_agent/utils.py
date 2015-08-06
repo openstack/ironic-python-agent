@@ -64,6 +64,14 @@ def execute(*cmd, **kwargs):
     return result
 
 
+def try_execute(*cmd, **kwargs):
+    """The same as execute but returns None on error."""
+    try:
+        return execute(*cmd, **kwargs)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        LOG.debug('Command failed: %s', e)
+
+
 def _read_params_from_file(filepath):
     """Extract key=value pairs from a file.
 

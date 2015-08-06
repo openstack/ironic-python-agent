@@ -21,6 +21,7 @@ import netifaces
 from oslo_concurrency import processutils
 from oslo_log import log
 from oslo_utils import units
+import pint
 import psutil
 import pyudev
 import six
@@ -32,6 +33,10 @@ from ironic_python_agent import utils
 
 _global_managers = None
 LOG = log.getLogger()
+
+UNIT_CONVERTER = pint.UnitRegistry(filename=None)
+UNIT_CONVERTER.define('MB = []')
+UNIT_CONVERTER.define('GB = 1024 MB')
 
 
 class HardwareSupport(object):
@@ -67,30 +72,34 @@ class BlockDevice(encoding.Serializable):
 
 class NetworkInterface(encoding.Serializable):
     serializable_fields = ('name', 'mac_address', 'switch_port_descr',
-                           'switch_chassis_descr')
+                           'switch_chassis_descr', 'ipv4_address')
 
-    def __init__(self, name, mac_addr):
+    def __init__(self, name, mac_addr, ipv4_address=None):
         self.name = name
         self.mac_address = mac_addr
+        self.ipv4_address = ipv4_address
         # TODO(russellhaering): Pull these from LLDP
         self.switch_port_descr = None
         self.switch_chassis_descr = None
 
 
 class CPU(encoding.Serializable):
-    serializable_fields = ('model_name', 'frequency', 'count')
+    serializable_fields = ('model_name', 'frequency', 'count', 'architecture')
 
-    def __init__(self, model_name, frequency, count):
+    def __init__(self, model_name, frequency, count, architecture):
         self.model_name = model_name
         self.frequency = frequency
         self.count = count
+        self.architecture = architecture
 
 
 class Memory(encoding.Serializable):
-    serializable_fields = ('total', )
+    serializable_fields = ('total', 'physical_mb')
+    # physical = total + kernel binary + reserved space
 
-    def __init__(self, total):
+    def __init__(self, total, physical_mb=None):
         self.total = total
+        self.physical_mb = physical_mb
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -113,6 +122,9 @@ class HardwareManager(object):
 
     def get_os_install_device(self):
         raise errors.IncompatibleHardwareMethodError
+
+    def get_bmc_address(self):
+        raise errors.IncompatibleHardwareMethodError()
 
     def erase_block_device(self, node, block_device):
         """Attempt to erase a block device.
@@ -160,6 +172,7 @@ class HardwareManager(object):
         hardware_info['cpu'] = self.get_cpus()
         hardware_info['disks'] = self.list_block_devices()
         hardware_info['memory'] = self.get_memory()
+        hardware_info['bmc_address'] = self.get_bmc_address()
         return hardware_info
 
     def get_clean_steps(self, node, ports):
@@ -242,11 +255,13 @@ class GenericHardwareManager(HardwareManager):
 
     def _get_interface_info(self, interface_name):
         addr_path = '{0}/class/net/{1}/address'.format(self.sys_path,
-                                                     interface_name)
+                                                       interface_name)
         with open(addr_path) as addr_file:
             mac_addr = addr_file.read().strip()
 
-        return NetworkInterface(interface_name, mac_addr)
+        return NetworkInterface(
+            interface_name, mac_addr,
+            ipv4_address=self.get_ipv4_addr(interface_name))
 
     def get_ipv4_addr(self, interface_id):
         try:
@@ -267,35 +282,53 @@ class GenericHardwareManager(HardwareManager):
                 for name in iface_names
                 if self._is_device(name)]
 
-    def _get_cpu_count(self):
-        if psutil.version_info[0] == 1:
-            return psutil.NUM_CPUS
-        elif psutil.version_info[0] == 2:
-            return psutil.cpu_count()
-        else:
-            raise AttributeError("Only psutil versions 1 and 2 supported")
-
     def get_cpus(self):
-        model = None
-        freq = None
-        with open('/proc/cpuinfo') as f:
-            lines = f.read()
-            for line in lines.split('\n'):
-                if model and freq:
-                    break
-                if not model and line.startswith('model name'):
-                    model = line.split(':')[1].strip()
-                if not freq and line.startswith('cpu MHz'):
-                    freq = line.split(':')[1].strip()
-
-        return CPU(model, freq, self._get_cpu_count())
+        lines = utils.execute('lscpu')[0]
+        cpu_info = {k.strip().lower(): v.strip() for k, v in
+                    (line.split(':', 1)
+                     for line in lines.split('\n')
+                     if line.strip())}
+        # Current CPU frequency can be different from maximum one on modern
+        # processors
+        freq = cpu_info.get('cpu max mhz', cpu_info.get('cpu mhz'))
+        return CPU(model_name=cpu_info.get('model name'),
+                   frequency=freq,
+                   # this includes hyperthreading cores
+                   count=int(cpu_info.get('cpu(s)')),
+                   architecture=cpu_info.get('architecture'))
 
     def get_memory(self):
         # psutil returns a long, so we force it to an int
         if psutil.version_info[0] == 1:
-            return Memory(int(psutil.TOTAL_PHYMEM))
+            total = int(psutil.TOTAL_PHYMEM)
         elif psutil.version_info[0] == 2:
-            return Memory(int(psutil.phymem_usage().total))
+            total = int(psutil.phymem_usage().total)
+
+        try:
+            out, _e = utils.execute("dmidecode --type memory | grep Size",
+                                    shell=True)
+        except (processutils.ProcessExecutionError, OSError) as e:
+            LOG.warn("Cannot get real physical memory size: %s", e)
+            physical = None
+        else:
+            physical = 0
+            for line in out.strip().split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+
+                try:
+                    value = line.split(None, 1)[1].strip()
+                    physical += int(UNIT_CONVERTER(value).to_base_units())
+                except Exception as exc:
+                    LOG.error('Cannot parse size expression %s: %s',
+                              line, exc)
+
+            if not physical:
+                LOG.warn('failed to get real physical RAM, dmidecode returned '
+                         '%s', out)
+
+        return Memory(total=total, physical_mb=physical)
 
     def list_block_devices(self):
         """List all physical block devices
@@ -537,6 +570,23 @@ class GenericHardwareManager(HardwareManager):
                 'erasing block device {0}').format(block_device.name))
 
         return True
+
+    def get_bmc_address(self):
+        # These modules are rarely loaded automatically
+        utils.try_execute('modprobe', 'ipmi_msghandler')
+        utils.try_execute('modprobe', 'ipmi_devintf')
+        utils.try_execute('modprobe', 'ipmi_si')
+
+        try:
+            out, _e = utils.execute(
+                "ipmitool lan print | grep -e 'IP Address [^S]' "
+                "| awk '{ print $4 }'", shell=True)
+        except (processutils.ProcessExecutionError, OSError) as e:
+            # Not error, because it's normal in virtual environment
+            LOG.warn("Cannot get BMC address: %s", e)
+            return
+
+        return out.strip()
 
 
 def _compare_extensions(ext1, ext2):

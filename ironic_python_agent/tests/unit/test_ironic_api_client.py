@@ -44,12 +44,14 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                 hardware.NetworkInterface('eth0', '00:0c:29:8c:11:b1'),
                 hardware.NetworkInterface('eth1', '00:0c:29:8c:11:b2'),
             ],
-            'cpu': hardware.CPU('Awesome Jay CPU x10 9001', '9001', '10'),
+            'cpu': hardware.CPU('Awesome Jay CPU x10 9001', '9001', '10',
+                                'ARMv9'),
             'disks': [
                 hardware.BlockDevice('/dev/sdj', 'small', '9001', False),
                 hardware.BlockDevice('/dev/hdj', 'big', '9002', False),
             ],
-            'memory': hardware.Memory('8675309'),
+            'memory': hardware.Memory(total='8675309',
+                                      physical_mb='8675'),
         }
 
     def test_successful_heartbeat(self):
@@ -145,12 +147,14 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                 {
                     u'mac_address': u'00:0c:29:8c:11:b1',
                     u'name': u'eth0',
+                    u'ipv4_address': None,
                     u'switch_chassis_descr': None,
                     u'switch_port_descr': None
                 },
                 {
                     u'mac_address': u'00:0c:29:8c:11:b2',
                     u'name': u'eth1',
+                    u'ipv4_address': None,
                     u'switch_chassis_descr': None,
                     'switch_port_descr': None
                 }
@@ -159,23 +163,25 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                 u'model_name': u'Awesome Jay CPU x10 9001',
                 u'frequency': u'9001',
                 u'count': u'10',
+                u'architecture': u'ARMv9'
             },
             u'disks': [
                 {
                     u'model': u'small',
                     u'name': u'/dev/sdj',
                     u'rotational': False,
-                    u'size': u'9001'
+                    u'size': u'9001',
                 },
                 {
                     u'model': u'big',
                     u'name': u'/dev/hdj',
                     u'rotational': False,
-                    u'size': u'9002'
+                    u'size': u'9002',
                 }
             ],
             u'memory': {
                 u'total': u'8675309',
+                u'physical_mb': u'8675'
             },
         })
 

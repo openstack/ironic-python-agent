@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import mock
+import netifaces
 import os
 from oslo_concurrency import processutils
 from oslotest import base as test_base
@@ -121,7 +122,7 @@ HDPARM_INFO_TEMPLATE = (
 
 BLK_DEVICE_TEMPLATE = (
     'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '
-    'ROTA="0" TYPE="disk"\n'
+    'ROTA="0" TYPE="disk" SERIAL="123"\n'
     'KNAME="sdb" MODEL="Fastable SD131 7" SIZE="10737418240" '
     'ROTA="0" TYPE="disk"\n'
     'KNAME="sdc" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
@@ -143,6 +144,59 @@ SHRED_OUTPUT = (
         'shred: /dev/sda: pass 2/2 (000000)...20GiB/29GiB 69%\n'
         'shred: /dev/sda: pass 2/2 (000000)...29GiB/29GiB 100%\n'
 )
+
+
+LSCPU_OUTPUT = """
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                4
+On-line CPU(s) list:   0-3
+Thread(s) per core:    1
+Core(s) per socket:    4
+Socket(s):             1
+NUMA node(s):          1
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 45
+Model name:            Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz
+Stepping:              7
+CPU MHz:               1290.000
+CPU max MHz:           2400.0000
+CPU min MHz:           1200.0000
+BogoMIPS:              4800.06
+Virtualization:        VT-x
+L1d cache:             32K
+L1i cache:             32K
+L2 cache:              256K
+L3 cache:              10240K
+NUMA node0 CPU(s):     0-3
+"""
+
+LSCPU_OUTPUT_NO_MAX_MHZ = """
+Architecture:          x86_64
+CPU op-mode(s):        32-bit, 64-bit
+Byte Order:            Little Endian
+CPU(s):                12
+On-line CPU(s) list:   0-11
+Thread(s) per core:    2
+Core(s) per socket:    6
+Socket(s):             1
+NUMA node(s):          1
+Vendor ID:             GenuineIntel
+CPU family:            6
+Model:                 63
+Model name:            Intel(R) Xeon(R) CPU E5-1650 v3 @ 3.50GHz
+Stepping:              2
+CPU MHz:               1794.433
+BogoMIPS:              6983.57
+Virtualization:        VT-x
+L1d cache:             32K
+L1i cache:             32K
+L2 cache:              256K
+L3 cache:              15360K
+NUMA node0 CPU(s):     0-11
+"""
 
 
 class FakeHardwareManager(hardware.GenericHardwareManager):
@@ -185,30 +239,37 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.node = {'uuid': 'dda135fb-732d-4742-8e72-df8f3199d244',
                      'driver_internal_info': {}}
 
+    @mock.patch('netifaces.ifaddresses')
     @mock.patch('os.listdir')
     @mock.patch('os.path.exists')
     @mock.patch(OPEN_FUNCTION_NAME)
     def test_list_network_interfaces(self,
                                      mocked_open,
                                      mocked_exists,
-                                     mocked_listdir):
+                                     mocked_listdir,
+                                     mocked_ifaddresses):
         mocked_listdir.return_value = ['lo', 'eth0']
         mocked_exists.side_effect = [False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
         read_mock.return_value = '00:0c:29:8c:11:b1\n'
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+        }
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(len(interfaces), 1)
         self.assertEqual(interfaces[0].name, 'eth0')
         self.assertEqual(interfaces[0].mac_address, '00:0c:29:8c:11:b1')
+        self.assertEqual(interfaces[0].ipv4_address, '192.168.1.2')
 
     @mock.patch.object(utils, 'execute')
     def test_get_os_install_device(self, mocked_execute):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         self.assertEqual(self.hardware.get_os_install_device(), '/dev/sdb')
         mocked_execute.assert_called_once_with(
-            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
+            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
+            check_exit_code=[0])
 
     @mock.patch.object(hardware.GenericHardwareManager, '_get_device_vendor')
     @mock.patch.object(pyudev.Device, 'from_device_file')
@@ -232,7 +293,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
         mocked_execute.assert_called_once_with(
-            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
+            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
+            check_exit_code=[0])
         mock_root_device.assert_called_once_with()
         expected = [mock.call(mock.ANY, '/dev/sda'),
                     mock.call(mock.ANY, '/dev/sdb')]
@@ -249,7 +311,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertRaises(errors.DeviceNotFound,
                           self.hardware.get_os_install_device)
         mocked_execute.assert_called_once_with(
-            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
+            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
+            check_exit_code=[0])
         mock_root_device.assert_called_once_with()
         expected = [mock.call(mock.ANY, '/dev/sda'),
                     mock.call(mock.ANY, '/dev/sdb'),
@@ -265,74 +328,42 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                 '/sys/class/block/sdfake/device/vendor', 'r')
             self.assertEqual('fake-vendor', vendor)
 
-    @mock.patch('ironic_python_agent.hardware.GenericHardwareManager.'
-                '_get_cpu_count')
-    @mock.patch(OPEN_FUNCTION_NAME)
-    def test_get_cpus(self, mocked_open, mocked_cpucount):
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.return_value = (
-            'processor       : 0\n'
-            'vendor_id       : GenuineIntel\n'
-            'cpu family      : 6\n'
-            'model           : 58\n'
-            'model name      : Intel(R) Core(TM) i7-3720QM CPU @ 2.60GHz\n'
-            'stepping        : 9\n'
-            'microcode       : 0x15\n'
-            'cpu MHz         : 2594.685\n'
-            'cache size      : 6144 KB\n'
-            'fpu             : yes\n'
-            'fpu_exception   : yes\n'
-            'cpuid level     : 13\n'
-            'wp              : yes\n'
-            'flags           : fpu vme de pse tsc msr pae mce cx8 apic sep '
-            'mtrr pge mca cmov pat pse36 clflush dts mmx fxsr sse sse2 ss '
-            'syscall nx rdtscp lm constant_tsc arch_perfmon pebs bts nopl '
-            'xtopology tsc_reliable nonstop_tsc aperfmperf eagerfpu pni '
-            'pclmulqdq ssse3 cx16 pcid sse4_1 sse4_2 x2apic popcnt aes xsave '
-            'avx f16c rdrand hypervisor lahf_lm ida arat epb xsaveopt pln pts '
-            'dtherm fsgsbase smep\n'
-            'bogomips        : 5189.37\n'
-            'clflush size    : 64\n'
-            'cache_alignment : 64\n'
-            'address sizes   : 40 bits physical, 48 bits virtual\n'
-            'power management:\n'
-            '\n'
-            'processor       : 1\n'
-            'vendor_id       : GenuineIntel\n'
-            'cpu family      : 6\n'
-            'model           : 58\n'
-            'model name      : Intel(R) Core(TM) i7-3720QM CPU @ 2.60GHz\n'
-            'stepping        : 9\n'
-            'microcode       : 0x15\n'
-            'cpu MHz         : 2594.685\n'
-            'cache size      : 6144 KB\n'
-            'fpu             : yes\n'
-            'fpu_exception   : yes\n'
-            'cpuid level     : 13\n'
-            'wp              : yes\n'
-            'flags           : fpu vme de pse tsc msr pae mce cx8 apic sep '
-            'mtrr pge mca cmov pat pse36 clflush dts mmx fxsr sse sse2 ss '
-            'syscall nx rdtscp lm constant_tsc arch_perfmon pebs bts nopl '
-            'xtopology tsc_reliable nonstop_tsc aperfmperf eagerfpu pni '
-            'pclmulqdq ssse3 cx16 pcid sse4_1 sse4_2 x2apic popcnt aes xsave '
-            'avx f16c rdrand hypervisor lahf_lm ida arat epb xsaveopt pln pts '
-            'dtherm fsgsbase smep\n'
-            'bogomips        : 5189.37\n'
-            'clflush size    : 64\n'
-            'cache_alignment : 64\n'
-            'address sizes   : 40 bits physical, 48 bits virtual\n'
-            'power management:\n'
-        )
-
-        mocked_cpucount.return_value = 2
+    @mock.patch.object(utils, 'execute')
+    def test_get_cpus(self, mocked_execute):
+        mocked_execute.return_value = LSCPU_OUTPUT, ''
 
         cpus = self.hardware.get_cpus()
         self.assertEqual(cpus.model_name,
-                         'Intel(R) Core(TM) i7-3720QM CPU @ 2.60GHz')
-        self.assertEqual(cpus.frequency, '2594.685')
-        self.assertEqual(cpus.count, 2)
+                         'Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz')
+        self.assertEqual(cpus.frequency, '2400.0000')
+        self.assertEqual(cpus.count, 4)
+        self.assertEqual(cpus.architecture, 'x86_64')
+
+    @mock.patch.object(utils, 'execute')
+    def test_get_cpus2(self, mocked_execute):
+        mocked_execute.return_value = LSCPU_OUTPUT_NO_MAX_MHZ, ''
+
+        cpus = self.hardware.get_cpus()
+        self.assertEqual(cpus.model_name,
+                         'Intel(R) Xeon(R) CPU E5-1650 v3 @ 3.50GHz')
+        self.assertEqual(cpus.frequency, '1794.433')
+        self.assertEqual(cpus.count, 12)
+        self.assertEqual(cpus.architecture, 'x86_64')
+
+    @mock.patch('psutil.version_info', (2, 0))
+    @mock.patch('psutil.phymem_usage', autospec=True)
+    @mock.patch.object(utils, 'execute')
+    def test_get_memory(self, mocked_execute, mocked_usage):
+        mocked_usage.return_value = mock.Mock(total=3952 * 1024 * 1024)
+        mocked_execute.return_value = (
+            "Foo\nSize: 2048 MB\nSize: 2 GB\n",
+            ""
+        )
+
+        mem = self.hardware.get_memory()
+
+        self.assertEqual(mem.total, 3952 * 1024 * 1024)
+        self.assertEqual(mem.physical_mb, 4096)
 
     def test_list_hardware_info(self):
         self.hardware.list_network_interfaces = mock.Mock()
@@ -345,7 +376,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.hardware.get_cpus.return_value = hardware.CPU(
             'Awesome CPU x14 9001',
             9001,
-            14)
+            14,
+            'x86_64')
 
         self.hardware.get_memory = mock.Mock()
         self.hardware.get_memory.return_value = hardware.Memory(1017012)
@@ -630,3 +662,13 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                 '\tsupported: enhanced erase', '--security-erase-enhanced')
         test_security_erase_option(self,
                 '\tnot\tsupported: enhanced erase', '--security-erase')
+
+    @mock.patch.object(utils, 'execute')
+    def test_get_bmc_address(self, mocked_execute):
+        mocked_execute.return_value = '192.1.2.3\n', ''
+        self.assertEqual('192.1.2.3', self.hardware.get_bmc_address())
+
+    @mock.patch.object(utils, 'execute')
+    def test_get_bmc_address_virt(self, mocked_execute):
+        mocked_execute.side_effect = processutils.ProcessExecutionError()
+        self.assertIsNone(self.hardware.get_bmc_address())
