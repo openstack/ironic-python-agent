@@ -17,6 +17,7 @@ from ironic_python_agent import encoding
 
 class RESTError(Exception, encoding.Serializable):
     """Base class for errors generated in ironic-python-client."""
+    # NOTE(JoshNang) `message` should not end with a period
     message = 'An error occurred'
     details = 'An unexpected error occurred. Please try back later.'
     status_code = 500
@@ -28,6 +29,13 @@ class RESTError(Exception, encoding.Serializable):
         self.code = self.status_code
         if details:
             self.details = details
+
+    def __str__(self):
+        return "{}: {}".format(self.message, self.details)
+
+    def __repr__(self):
+        """Should look like RESTError('message: details')"""
+        return "{}('{}')".format(self.__class__.__name__, self.__str__())
 
 
 class InvalidContentError(RESTError):
@@ -86,7 +94,7 @@ class RequestedObjectNotFoundError(NotFound):
 class IronicAPIError(RESTError):
     """Error raised when a call to the agent API fails."""
 
-    message = 'Error in call to ironic-api.'
+    message = 'Error in call to ironic-api'
 
     def __init__(self, details):
         super(IronicAPIError, self).__init__(details)
@@ -95,7 +103,7 @@ class IronicAPIError(RESTError):
 class HeartbeatError(IronicAPIError):
     """Error raised when a heartbeat to the agent API fails."""
 
-    message = 'Error heartbeating to agent API.'
+    message = 'Error heartbeating to agent API'
 
     def __init__(self, details):
         super(HeartbeatError, self).__init__(details)
@@ -104,7 +112,7 @@ class HeartbeatError(IronicAPIError):
 class LookupNodeError(IronicAPIError):
     """Error raised when the node lookup to the Ironic API fails."""
 
-    message = 'Error getting configuration from Ironic.'
+    message = 'Error getting configuration from Ironic'
 
     def __init__(self, details):
         super(LookupNodeError, self).__init__(details)
@@ -131,7 +139,7 @@ class LookupAgentInterfaceError(IronicAPIError):
 class ImageDownloadError(RESTError):
     """Error raised when an image cannot be downloaded."""
 
-    message = 'Error downloading image.'
+    message = 'Error downloading image'
 
     def __init__(self, image_id, msg):
         details = 'Download of image id {0} failed: {1}'.format(image_id, msg)
@@ -141,7 +149,7 @@ class ImageDownloadError(RESTError):
 class ImageChecksumError(RESTError):
     """Error raised when an image fails to verify against its checksum."""
 
-    message = 'Error verifying image checksum.'
+    message = 'Error verifying image checksum'
 
     def __init__(self, image_id):
         details = 'Image with id {0} failed to verify against checksum.'
@@ -152,7 +160,7 @@ class ImageChecksumError(RESTError):
 class ImageWriteError(RESTError):
     """Error raised when an image cannot be written to a device."""
 
-    message = 'Error writing image to device.'
+    message = 'Error writing image to device'
 
     def __init__(self, device, exit_code, stdout, stderr):
         details = ('Writing image to device {0} failed with exit code '
@@ -164,7 +172,7 @@ class ImageWriteError(RESTError):
 class ConfigDriveTooLargeError(RESTError):
     """Error raised when a configdrive is larger than the partition."""
 
-    message = 'Configdrive is too large for intended partition.'
+    message = 'Configdrive is too large for intended partition'
 
     def __init__(self, filename, filesize):
         details = ('Configdrive at {0} has size {1}, which is larger than '
@@ -175,7 +183,7 @@ class ConfigDriveTooLargeError(RESTError):
 class ConfigDriveWriteError(RESTError):
     """Error raised when a configdrive cannot be written to a device."""
 
-    message = 'Error writing configdrive to device.'
+    message = 'Error writing configdrive to device'
 
     def __init__(self, device, exit_code, stdout, stderr):
         details = ('Writing configdrive to device {0} failed with exit code '
@@ -187,7 +195,7 @@ class ConfigDriveWriteError(RESTError):
 class SystemRebootError(RESTError):
     """Error raised when a system cannot reboot."""
 
-    message = 'Error rebooting system.'
+    message = 'Error rebooting system'
 
     def __init__(self, exit_code, stdout, stderr):
         details = ('Reboot script failed with exit code {0}. stdout: '
@@ -217,7 +225,7 @@ class BlockDeviceError(RESTError):
 class VirtualMediaBootError(RESTError):
     """Error raised when virtual media device cannot be found for config."""
 
-    message = 'Configuring agent from virtual media failed.'
+    message = 'Configuring agent from virtual media failed'
 
     def __init__(self, details):
         super(VirtualMediaBootError, self).__init__(details)
@@ -230,50 +238,37 @@ class ExtensionError(RESTError):
 class UnknownNodeError(RESTError):
     """Error raised when the agent is not associated with an Ironic node."""
 
-    message = 'Agent is not associated with an Ironic node.'
+    message = 'Agent is not associated with an Ironic node'
 
     def __init__(self, details=None):
-        if details is not None:
-            details = details
-        else:
-            details = self.message
         super(UnknownNodeError, self).__init__(details)
 
 
 class HardwareManagerNotFound(RESTError):
     """Error raised when no valid HardwareManager can be found."""
 
-    message = 'No valid HardwareManager found.'
+    message = 'No valid HardwareManager found'
 
     def __init__(self, details=None):
-        if details is not None:
-            details = details
-        else:
-            details = self.message
         super(HardwareManagerNotFound, self).__init__(details)
 
 
 class HardwareManagerMethodNotFound(RESTError):
     """Error raised when all HardwareManagers fail to handle a method."""
 
-    msg = 'No HardwareManager found to handle method'
-    message = msg + '.'
+    message = 'No HardwareManager found to handle method'
 
     def __init__(self, method):
-        details = (self.msg + ': "{0}".').format(method)
+        details = 'Could not find method: {0}'.format(method)
         super(HardwareManagerMethodNotFound, self).__init__(details)
 
 
 class IncompatibleHardwareMethodError(RESTError):
     """Error raised when HardwareManager method incompatible with hardware."""
 
-    message = 'HardwareManager method is not compatible with hardware.'
+    message = 'HardwareManager method is not compatible with hardware'
 
     def __init__(self, details=None):
-        if details is not None:
-            details = details
-        else:
-            details = self.message
         super(IncompatibleHardwareMethodError, self).__init__(details)
 
 
@@ -300,20 +295,16 @@ class CleanVersionMismatch(RESTError):
 class CleaningError(RESTError):
     """Error raised when a cleaning step fails."""
 
-    message = 'Clean step failed.'
+    message = 'Clean step failed'
 
     def __init__(self, details=None):
-        if details is not None:
-            details = details
-        else:
-            details = self.message
         super(CleaningError, self).__init__(details)
 
 
 class ISCSIError(RESTError):
     """Error raised when an image cannot be written to a device."""
 
-    message = 'Error starting iSCSI target.'
+    message = 'Error starting iSCSI target'
 
     def __init__(self, error_msg, exit_code, stdout, stderr):
         details = ('Error starting iSCSI target: {0}. Failed with exit code '
@@ -326,7 +317,7 @@ class DeviceNotFound(NotFound):
     """Error raised when the device to deploy the image onto is not found."""
 
     message = ('Error finding the disk or partition device to deploy '
-               'the image onto.')
+               'the image onto')
 
     def __init__(self, details):
         super(DeviceNotFound, self).__init__(details)

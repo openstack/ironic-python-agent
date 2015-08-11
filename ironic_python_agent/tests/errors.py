@@ -21,6 +21,15 @@ SAME_CL_DETAILS = 'same_as_class_details'
 DIFF_CL_DETAILS = 'different_from_class_details'
 SAME_CL_MSG = 'same_as_class_message'
 SAME_DETAILS = 'same_as_DETAILS'
+DEFAULT_DETAILS = 'default_resterror_details'
+
+
+class TestError(errors.RESTError):
+    message = 'message'
+
+    def __init__(self, details=None):
+        # Follows the pattern seen in most in error classes
+        super(TestError, self).__init__(details)
 
 
 class TestErrors(test_base.BaseTestCase):
@@ -76,6 +85,8 @@ class TestErrors(test_base.BaseTestCase):
             self.assertEqual(cls.message, obj.details, obj_info)
         elif check_details == SAME_DETAILS:
             self.assertEqual(DETAILS, obj.details, obj_info)
+        elif check_details == DEFAULT_DETAILS:
+            self.assertEqual(errors.RESTError.details, obj.details, obj_info)
         else:
             self.fail("unexpected value for check_details: %(chk)s, %(info)s" %
                       {'info': obj_info, 'chk': check_details})
@@ -109,15 +120,20 @@ class TestErrors(test_base.BaseTestCase):
                  (errors.BlockDeviceEraseError(DETAILS), SAME_DETAILS),
                  (errors.BlockDeviceError(DETAILS), SAME_DETAILS),
                  (errors.VirtualMediaBootError(DETAILS), SAME_DETAILS),
-                 (errors.UnknownNodeError(), SAME_CL_MSG),
+                 (errors.UnknownNodeError(), DEFAULT_DETAILS),
                  (errors.UnknownNodeError(DETAILS), SAME_DETAILS),
-                 (errors.HardwareManagerNotFound(), SAME_CL_MSG),
+                 (errors.HardwareManagerNotFound(), DEFAULT_DETAILS),
                  (errors.HardwareManagerNotFound(DETAILS), SAME_DETAILS),
                  (errors.HardwareManagerMethodNotFound('method'),
                   DIFF_CL_DETAILS),
-                 (errors.IncompatibleHardwareMethodError(), SAME_CL_MSG),
+                 (errors.IncompatibleHardwareMethodError(), DEFAULT_DETAILS),
                  (errors.IncompatibleHardwareMethodError(DETAILS),
                   SAME_DETAILS),
                 ]
         for (obj, check_details) in cases:
             self._test_class(obj, check_details)
+
+    def test_error_string(self):
+        err = TestError('test error')
+        self.assertEqual('message: test error', str(err))
+        self.assertEqual('TestError(\'message: test error\')', repr(err))
