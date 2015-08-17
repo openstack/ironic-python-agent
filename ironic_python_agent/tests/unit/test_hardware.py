@@ -426,6 +426,22 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                 self.assertEqual(getattr(expected, attr),
                                  getattr(device, attr))
 
+    @mock.patch.object(hardware, 'dispatch_to_managers')
+    def test_erase_devices(self, mocked_dispatch):
+        mocked_dispatch.return_value = 'erased device'
+
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.return_value = [
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
+        ]
+
+        expected = {'/dev/hdaa': 'erased device', '/dev/sdj': 'erased device'}
+
+        result = self.hardware.erase_devices({}, [])
+
+        self.assertEqual(expected, result)
+
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_success(self, mocked_execute):
         hdparm_info_fields = {

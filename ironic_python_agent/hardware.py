@@ -161,10 +161,15 @@ class HardwareManager(object):
 
         :param node: Ironic node object
         :param ports: list of Ironic port objects
+        :return: a dictionary in the form {device.name: erasure output}
         """
+        erase_results = {}
         block_devices = self.list_block_devices()
         for block_device in block_devices:
-            self.erase_block_device(node, block_device)
+            result = dispatch_to_managers(
+                'erase_block_device', node=node, block_device=block_device)
+            erase_results[block_device.name] = result
+        return erase_results
 
     def list_hardware_info(self):
         hardware_info = {}
