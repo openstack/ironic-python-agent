@@ -39,6 +39,7 @@ class FunctionalBase(test_base.BaseTestCase):
         self.process = multiprocessing.Process(
             target=self.agent.run)
         self.process.start()
+        self.addCleanup(self.process.terminate)
 
         # Wait for process to start, otherwise we have a race for tests
         tries = 0
@@ -52,7 +53,3 @@ class FunctionalBase(test_base.BaseTestCase):
                 tries += 1
 
         raise IOError('Agent did not start after %s seconds.' % max_tries)
-
-    def tearDown(self):
-        super(FunctionalBase, self).tearDown()
-        self.process.terminate()
