@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 from oslo_config import cfg
 from oslo_log import log
 
@@ -104,8 +106,8 @@ CONF.register_cli_opts(cli_opts)
 
 def run():
     log.register_options(CONF)
+    CONF(args=sys.argv[1:])
     log.setup(CONF, 'ironic-python-agent')
-    CONF()
     agent.IronicPythonAgent(CONF.api_url,
                             (CONF.advertise_host, CONF.advertise_port),
                             (CONF.listen_host, CONF.listen_port),
