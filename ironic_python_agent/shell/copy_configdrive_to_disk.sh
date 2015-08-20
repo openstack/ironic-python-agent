@@ -35,6 +35,8 @@ usage() {
   exit 1
 }
 
+MAX_DISK_PARTITIONS=128
+
 CONFIGDRIVE="$1"
 DEVICE="$2"
 
@@ -57,13 +59,41 @@ if [[ $? == 0 ]]; then
   log "Existing configdrive found on ${DEVICE} at ${EXISTING_PARTITION}"
   ISO_PARTITION=$EXISTING_PARTITION
 else
-  # Create small partition at the end of the device
-  log "Adding configdrive partition to $DEVICE"
-  parted -a optimal -s -- $DEVICE mkpart primary ext2 -64MiB -0 || fail "creating configdrive on ${DEVICE}"
 
-  # Find partition we just created
-  # Dump all partitions, ignore empty ones, then get the last partition ID
-  ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v ' 0,' | tail -n1 | awk '{print $1}'` || fail "finding ISO partition created on ${DEVICE}"
+  # Check if it is GPT partition and needs to be re-sized
+  partprobe $DEVICE print 2>&1 | grep "fix the GPT to use all of the space"
+  if [[ $? == 0 ]]; then
+    log "Fixing GPT to use all of the space on device $DEVICE"
+    sgdisk -e $DEVICE || fail "move backup GPT data structures to the end of ${DEVICE}"
+
+    # Need to create new partition for config drive
+    # Not all images have partion numbers in a sequential numbers. There are holes.
+    # These holes get filled up when a new partition is created.
+    TEMP_DIR="$(mktemp -d)"
+    EXISTING_PARTITION_LIST=$TEMP_DIR/existing_partitions
+    UPDATED_PARTITION_LIST=$TEMP_DIR/updated_partitions
+
+    gdisk -l $DEVICE | grep -A$MAX_DISK_PARTITIONS "Number  Start" | grep -v "Number  Start" > $EXISTING_PARTITION_LIST
+
+    # Create small partition at the end of the device
+    log "Adding configdrive partition to $DEVICE"
+    sgdisk -n 0:-64MB:0 $DEVICE || fail "creating configdrive on ${DEVICE}"
+
+    gdisk -l $DEVICE | grep -A$MAX_DISK_PARTITIONS "Number  Start" | grep -v "Number  Start" > $UPDATED_PARTITION_LIST
+
+    CONFIG_PARTITION_ID=`diff $EXISTING_PARTITION_LIST $UPDATED_PARTITION_LIST | tail -n1 |awk '{print $2}'`
+    ISO_PARTITION="${DEVICE}${CONFIG_PARTITION_ID}"
+  else
+    log "Working on MBR only device $DEVICE"
+
+    # Create small partition at the end of the device
+    log "Adding configdrive partition to $DEVICE"
+    parted -a optimal -s -- $DEVICE mkpart primary ext2 -64MiB -0 || fail "creating configdrive on ${DEVICE}"
+
+    # Find partition we just created
+    # Dump all partitions, ignore empty ones, then get the last partition ID
+    ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v ' 0,' | tail -n1 | awk '{print $1}'` || fail "finding ISO partition created on ${DEVICE}"
+  fi
 fi
 
 # This writes the ISO image to the config drive.
