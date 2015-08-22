@@ -25,6 +25,24 @@ class Serializable(object):
         return dict((f, getattr(self, f)) for f in self.serializable_fields)
 
 
+class SerializableComparable(Serializable):
+    """A Serializable class which supports some comparison operators
+
+    This class supports the '__eq__' and '__ne__' comparison operators, but
+    intentionally disables the '__hash__' operator as some child classes may be
+    mutable.  The addition of these comparison operators is mainly used to
+    assist with unit testing.
+    """
+
+    __hash__ = None
+
+    def __eq__(self, other):
+        return self.serialize() == other.serialize()
+
+    def __ne__(self, other):
+        return self.serialize() != other.serialize()
+
+
 class RESTJSONEncoder(json.JSONEncoder):
     """A slightly customized JSON encoder."""
     def encode(self, o):
