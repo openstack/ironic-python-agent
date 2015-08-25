@@ -131,7 +131,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
         self.assertRaises(loopingcall.LoopingCallDone,
                           self.api_client._do_lookup,
-                          hardware_info=self.hardware_info)
+                          hardware_info=self.hardware_info,
+                          node_uuid=None)
 
         url = '{api_url}v1/drivers/{driver}/vendor_passthru/lookup'.format(
                 api_url=API_URL, driver=DRIVER)
@@ -141,6 +142,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
+        self.assertNotIn('node_uuid', content)
         self.assertEqual(content['version'], self.api_client.payload_version)
         self.assertEqual(content['inventory'], {
             u'interfaces': [
@@ -195,7 +197,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        error = self.api_client._do_lookup(self.hardware_info)
+        error = self.api_client._do_lookup(self.hardware_info,
+                                           node_uuid=None)
 
         self.assertFalse(error)
 
@@ -207,7 +210,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        error = self.api_client._do_lookup(self.hardware_info)
+        error = self.api_client._do_lookup(self.hardware_info,
+                                           node_uuid=None)
 
         self.assertFalse(error)
 
@@ -221,7 +225,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        error = self.api_client._do_lookup(self.hardware_info)
+        error = self.api_client._do_lookup(self.hardware_info,
+                                           node_uuid=None)
 
         self.assertFalse(error)
 
@@ -233,6 +238,76 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        error = self.api_client._do_lookup(self.hardware_info)
+        error = self.api_client._do_lookup(self.hardware_info,
+                                           node_uuid=None)
 
         self.assertFalse(error)
+
+    def test_do_lookup_with_node_uuid(self):
+        response = FakeResponse(status_code=200, content={
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'heartbeat_timeout': 300
+        })
+
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaises(loopingcall.LoopingCallDone,
+                          self.api_client._do_lookup,
+                          hardware_info=self.hardware_info,
+                          node_uuid='uuid')
+
+        url = '{api_url}v1/drivers/{driver}/vendor_passthru/lookup'.format(
+                api_url=API_URL, driver=DRIVER)
+        request_args = self.api_client.session.request.call_args[0]
+        self.assertEqual(request_args[0], 'POST')
+        self.assertEqual(request_args[1], url)
+
+        data = self.api_client.session.request.call_args[1]['data']
+        content = json.loads(data)
+        self.assertEqual(content['node_uuid'], 'uuid')
+        self.assertEqual(content['version'], self.api_client.payload_version)
+        self.assertEqual(content['inventory'], {
+            u'interfaces': [
+                {
+                    u'mac_address': u'00:0c:29:8c:11:b1',
+                    u'name': u'eth0',
+                    u'ipv4_address': None,
+                    u'switch_chassis_descr': None,
+                    u'switch_port_descr': None
+                },
+                {
+                    u'mac_address': u'00:0c:29:8c:11:b2',
+                    u'name': u'eth1',
+                    u'ipv4_address': None,
+                    u'switch_chassis_descr': None,
+                    'switch_port_descr': None
+                }
+            ],
+            u'cpu': {
+                u'model_name': u'Awesome Jay CPU x10 9001',
+                u'frequency': u'9001',
+                u'count': u'10',
+                u'architecture': u'ARMv9'
+            },
+            u'disks': [
+                {
+                    u'model': u'small',
+                    u'name': u'/dev/sdj',
+                    u'rotational': False,
+                    u'size': u'9001',
+                },
+                {
+                    u'model': u'big',
+                    u'name': u'/dev/hdj',
+                    u'rotational': False,
+                    u'size': u'9002',
+                }
+            ],
+            u'memory': {
+                u'total': u'8675309',
+                u'physical_mb': u'8675'
+            },
+        })

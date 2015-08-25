@@ -78,10 +78,12 @@ class APIClient(object):
             msg = 'Invalid status code: {0}'.format(response.status_code)
             raise errors.HeartbeatError(msg)
 
-    def lookup_node(self, hardware_info, timeout, starting_interval):
+    def lookup_node(self, hardware_info, timeout, starting_interval,
+                    node_uuid=None):
         timer = backoff.BackOffLoopingCall(
             self._do_lookup,
-            hardware_info=hardware_info)
+            hardware_info=hardware_info,
+            node_uuid=node_uuid)
         try:
             node_content = timer.start(starting_interval=starting_interval,
                                        timeout=timeout).wait()
@@ -90,7 +92,7 @@ class APIClient(object):
                                          'logs for details.')
         return node_content
 
-    def _do_lookup(self, hardware_info):
+    def _do_lookup(self, hardware_info, node_uuid):
         """The actual call to lookup a node.
 
         Should be called as a `loopingcall.BackOffLoopingCall`.
@@ -105,6 +107,8 @@ class APIClient(object):
             'version': self.payload_version,
             'inventory': hardware_info
         }
+        if node_uuid:
+            data['node_uuid'] = node_uuid
 
         # Make the POST, make sure we get back normal data/status codes and
         # content
