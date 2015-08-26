@@ -236,7 +236,8 @@ class TestStandbyExtension(test_base.BaseTestCase):
         image_info = self._build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
-        verify_mock.return_value = False
+        verify_mock.side_effect = errors.ImageChecksumError(
+            'foo', '/bar/foo', 'incorrect', 'correct')
         self.assertRaises(errors.ImageChecksumError,
                           standby._download_image,
                           image_info)
@@ -266,8 +267,9 @@ class TestStandbyExtension(test_base.BaseTestCase):
         open_mock.return_value.__enter__.return_value = file_mock
         image_location = '/foo/bar'
 
-        verified = standby._verify_image(image_info, image_location)
-        self.assertFalse(verified)
+        self.assertRaises(errors.ImageChecksumError,
+                          standby._verify_image,
+                          image_info, image_location)
         self.assertEqual(md5_mock.call_count, 1)
 
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
