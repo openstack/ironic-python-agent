@@ -275,6 +275,10 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         # Get the UUID so we can heartbeat to Ironic. Raises LookupNodeError
         # if there is an issue (uncaught, restart agent)
         self.started_at = _time()
+
+        # Cached hw managers at runtime, not load time. See bug 1490008.
+        hardware.load_managers()
+
         if not self.standalone:
             content = self.api_client.lookup_node(
                 hardware_info=hardware.dispatch_to_managers(
