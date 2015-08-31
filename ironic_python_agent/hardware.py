@@ -716,3 +716,15 @@ def dispatch_to_managers(method, *args, **kwargs):
                       .format(manager, method))
 
     raise errors.HardwareManagerMethodNotFound(method)
+
+
+def load_managers():
+    """Preload hardware managers into the cache.
+
+    This method is to help warm up the cache for hardware managers when
+    called. Used to resolve bug 1490008, where agents can crash the first
+    time a hardware manager is needed.
+
+    :raises HardwareManagerNotFound: if no valid hardware managers found
+    """
+    _get_managers()
