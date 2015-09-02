@@ -13,10 +13,7 @@
 # under the License.
 
 import random
-import sys
 
-from eventlet import event
-from eventlet import greenthread
 from oslo_log import log
 from oslo_service import loopingcall
 
@@ -78,56 +75,42 @@ class BackOffLoopingCall(loopingcall.LoopingCallBase):
              timeout.
     """
 
+    _KIND = 'Dynamic backoff interval looping call'
+    _RUN_ONLY_ONE_MESSAGE = ("A dynamic backoff interval looping call can"
+                             " only run one function at a time")
+
+    def __init__(self, f=None, *args, **kw):
+        super(BackOffLoopingCall, self).__init__(f=f, *args, **kw)
+        self._error_time = 0
+        self._interval = 1
+
     def start(self, initial_delay=None, starting_interval=1, timeout=300,
               max_interval=300, jitter=0.75):
-        self._running = True
-        done = event.Event()
+        if self._thread is not None:
+            raise RuntimeError(self._RUN_ONLY_ONE_MESSAGE)
 
-        def _inner():
-            interval = starting_interval
-            error_time = 0
+        # Reset any prior state.
+        self._error_time = 0
+        self._interval = starting_interval
 
-            if initial_delay:
-                greenthread.sleep(initial_delay)
-
-            try:
-                while self._running:
-                    no_error = self.f(*self.args, **self.kw)
-                    if not self._running:
-                        break
-                    random_jitter = random.gauss(jitter, 0.1)
-                    if no_error:
-                        # Reset error state
-                        error_time = 0
-                        interval = starting_interval
-                        idle = interval * random_jitter
-                    else:
-                        # Backoff
-                        interval = min(interval * 2 * random_jitter,
-                                       max_interval)
-                        idle = interval
-
-                        # Don't go over timeout, end early if necessary. If
-                        # timeout is 0, keep going.
-                        if timeout > 0 and error_time + idle > timeout:
-                            raise LoopingCallTimeOut(
-                                'Looping call timed out after %.02f seconds'
-                                % error_time)
-                        error_time += idle
-
-                    LOG.debug('Dynamic looping call sleeping for %.02f '
-                              'seconds', idle)
-                    greenthread.sleep(idle)
-            except loopingcall.LoopingCallDone as e:
-                self.stop()
-                done.send(e.retvalue)
-            except Exception:
-                LOG.exception('in dynamic looping call')
-                done.send_exception(*sys.exc_info())
-                return
+        def _idle_for(success, _elapsed):
+            random_jitter = random.gauss(jitter, 0.1)
+            if success:
+                # Reset error state now that it didn't error...
+                self._interval = starting_interval
+                self._error_time = 0
+                return self._interval * random_jitter
             else:
-                done.send(True)
+                # Perform backoff
+                self._interval = idle = min(
+                    self._interval * 2 * random_jitter, max_interval)
+                # Don't go over timeout, end early if necessary. If
+                # timeout is 0, keep going.
+                if timeout > 0 and self._error_time + idle > timeout:
+                    raise LoopingCallTimeOut(
+                        'Looping call timed out after %.02f seconds'
+                        % self._error_time)
+                self._error_time += idle
+                return idle
 
-        self.done = done
-        greenthread.spawn(_inner)
-        return self.done
+        return self._start(_idle_for, initial_delay=initial_delay)
