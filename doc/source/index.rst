@@ -114,6 +114,23 @@ This is a generic tool that can be used to combine any initrd and kernel into
 a suitable ISO for booting, and so should work against any IPA ramdisk created
 -- both DIB and CoreOS.
 
+IPA Flags
+=========
+
+You can pass a variety of flags to IPA on start up to change its behavior.
+If you're using the CoreOS image, you can modify the
+ironic-python-agent.service unit in cloud-config.yaml [5]_.
+
+* --standalone: This disables the initial lookup and heartbeats to Ironic.
+  Lookup sends some information to Ironic in order to determine Ironic's node
+  UUID for the node. Heartbeat sends a periodic pings to Ironic to tell Ironic
+  the node is still running. These heartbeats also trigger parts of the deploy
+  and cleaning cycles. This flag is useful for debugging IPA without an Ironic
+  installation.
+
+* --debug: Enables debug logging.
+
+
 Hardware Managers
 =================
 
@@ -260,6 +277,7 @@ References
 .. [2] CoreOS Cloud Init - https://coreos.com/docs/cluster-management/setup/cloudinit-cloud-config/
 .. [3] DIB Element for IPA - https://github.com/openstack/diskimage-builder/tree/master/elements/ironic-agent
 .. [4] Ironic Cleaning - http://docs.openstack.org/developer/ironic/deploy/cleaning.html
+.. [5] cloud-config.yaml - https://github.com/openstack/ironic-python-agent/blob/master/imagebuild/coreos/oem/cloud-config.yml
 
 Indices and tables
 ==================
