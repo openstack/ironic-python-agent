@@ -128,8 +128,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
 
     except processutils.ProcessExecutionError as e:
         error_msg = ('Installing GRUB2 boot loader to device %(dev)s '
-                     'failed with %(err)s. Attempted 3 times.' %
-                     {'dev': device, 'err': e})
+                     'failed with %(err)s.' % {'dev': device, 'err': e})
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
 
