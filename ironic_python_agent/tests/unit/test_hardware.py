@@ -396,10 +396,20 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual(hardware_info['interfaces'],
                          self.hardware.list_network_interfaces())
 
-    @mock.patch.object(utils, 'execute')
-    def test_list_block_device(self, mocked_execute):
-        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+    @mock.patch.object(hardware, 'list_all_block_devices')
+    def test_list_block_devices(self, list_mock):
+        device = hardware.BlockDevice('/dev/hdaa', 'small', 65535, False)
+        list_mock.return_value = [device]
         devices = self.hardware.list_block_devices()
+
+        self.assertEqual([device], devices)
+
+        list_mock.assert_called_once_with()
+
+    @mock.patch.object(utils, 'execute')
+    def test_list_all_block_device(self, mocked_execute):
+        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+        devices = hardware.list_all_block_devices()
         expected_devices = [
             hardware.BlockDevice(name='/dev/sda',
                                  model='TinyUSB Drive',
