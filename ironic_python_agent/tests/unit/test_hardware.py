@@ -16,6 +16,7 @@ import mock
 import netifaces
 import os
 from oslo_concurrency import processutils
+from oslo_utils import units
 from oslotest import base as test_base
 import pyudev
 import six
@@ -130,6 +131,14 @@ BLK_DEVICE_TEMPLATE = (
     'KNAME="sdd" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
     ' ROTA="0" TYPE="disk"\n'
     'KNAME="loop0" MODEL="" SIZE="109109248" ROTA="1" TYPE="loop"'
+)
+
+# NOTE(pas-ha) largest device is 1 byte smaller than 4GiB
+BLK_DEVICE_TEMPLATE_SMALL = (
+    'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '
+    'ROTA="0" TYPE="disk"\n'
+    'KNAME="sdb" MODEL="AlmostBigEnough Drive" SIZE="4294967295" '
+    'ROTA="0" TYPE="disk"'
 )
 
 SHRED_OUTPUT = (
@@ -270,6 +279,16 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_execute.assert_called_once_with(
             'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
+
+    @mock.patch.object(utils, 'execute')
+    def test_get_os_install_device_fails(self, mocked_execute):
+        """Fail to find device >=4GB w/o root device hints"""
+        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
+        ex = self.assertRaises(errors.DeviceNotFound,
+                               self.hardware.get_os_install_device)
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
+        self.assertIn(str(4 * units.Gi), ex.details)
 
     @mock.patch.object(hardware.GenericHardwareManager, '_get_device_vendor')
     @mock.patch.object(pyudev.Device, 'from_device_file')
