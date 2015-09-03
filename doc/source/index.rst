@@ -123,7 +123,7 @@ ironic-python-agent.service unit in cloud-config.yaml [5]_.
 
 * --standalone: This disables the initial lookup and heartbeats to Ironic.
   Lookup sends some information to Ironic in order to determine Ironic's node
-  UUID for the node. Heartbeat sends a periodic pings to Ironic to tell Ironic
+  UUID for the node. Heartbeat sends periodic pings to Ironic to tell Ironic
   the node is still running. These heartbeats also trigger parts of the deploy
   and cleaning cycles. This flag is useful for debugging IPA without an Ironic
   installation.
