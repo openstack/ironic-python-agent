@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import copy
 import glob
 import os
@@ -44,15 +43,6 @@ SUPPORTED_ROOT_DEVICE_HINTS = set(('size', 'model', 'wwn', 'serial', 'vendor'))
 # agent parameters that was passed (by proc/cmdline and/or virtual media)
 # when we read it for the first time, and then use this cache.
 AGENT_PARAMS_CACHED = dict()
-
-
-def get_ordereddict(*args, **kwargs):
-    """A fix for py26 not having ordereddict."""
-    try:
-        return collections.OrderedDict(*args, **kwargs)
-    except AttributeError:
-        import ordereddict
-        return ordereddict.OrderedDict(*args, **kwargs)
 
 
 def execute(*cmd, **kwargs):
