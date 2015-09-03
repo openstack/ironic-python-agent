@@ -105,6 +105,7 @@ CONF.register_cli_opts(cli_opts)
 
 
 def run():
+    """Entrypoint for IronicPythonAgent."""
     log.register_options(CONF)
     CONF(args=sys.argv[1:])
     log.setup(CONF, 'ironic-python-agent')
