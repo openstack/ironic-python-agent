@@ -85,7 +85,15 @@ class CleanExtension(base.BaseAgentExtension):
 
 
 def _check_clean_version(clean_version=None):
-    """Ensure the clean version hasn't changed."""
+    """Ensure the clean version hasn't changed.
+
+    :param clean_version: Hardware manager versions used during this
+                          cleaning cycle.
+    :raises: errors.CleanVersionMismatch if any hardware manager version on
+             the currently running agent doesn't match the one stored in
+             clean_version.
+    :returns: None
+    """
     # If the version is None, assume this is the first run
     if clean_version is None:
         return
@@ -99,6 +107,11 @@ def _check_clean_version(clean_version=None):
 
 
 def _get_current_clean_version():
+    """Fetches versions from all hardware managers.
+
+    :returns: Dict in the format {name: version} containing one entry for
+              every hardware manager.
+    """
     return {version.get('name'): version.get('version')
             for version in hardware.dispatch_to_all_managers(
                 'get_version').values()}
