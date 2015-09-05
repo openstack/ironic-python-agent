@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import functools
 import inspect
 import threading
@@ -22,7 +23,6 @@ import six
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
-from ironic_python_agent import utils
 
 LOG = log.getLogger()
 
@@ -206,7 +206,7 @@ class BaseAgentExtension(object):
 class ExecuteCommandMixin(object):
     def __init__(self):
         self.command_lock = threading.Lock()
-        self.command_results = utils.get_ordereddict()
+        self.command_results = collections.OrderedDict()
         self.ext_mgr = None
 
     def get_extension(self, extension_name):
