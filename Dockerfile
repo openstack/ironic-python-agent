@@ -5,6 +5,10 @@ FROM debian:jessie
 # different it will not cache this layer
 ADD . /tmp/ironic-python-agent
 
+# Add 'testing' for qemu-utils
+RUN echo 'APT::Default-Release "jessie";' > /etc/apt/apt.conf.d/10default && \
+    sed -e 's/jessie/testing/g' /etc/apt/sources.list > /etc/apt/sources.list.d/testing.list
+
 # Install requirements: Python for ironic-python-agent, others for putting an
 # image on disk
 RUN apt-get update && \
@@ -12,8 +16,15 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends python2.7 python2.7-dev \
         python-pip qemu-utils parted hdparm util-linux genisoimage git gcc \
         bash coreutils tgt && \
-    apt-get -y autoremove && \
+    apt-get --only-upgrade -t testing install -y qemu-utils
+
+# Some cleanup
+RUN apt-get -y autoremove && \
     apt-get clean
+
+# Before cleaning mark packages that are required so they are not removed
+RUN apt-mark manual python-setuptools
+RUN apt-mark manual python-minimal
 
 # Install requirements separately, because pip understands a git+https url
 # while setuptools doesn't
@@ -22,16 +33,12 @@ RUN pip install -r /tmp/ironic-python-agent/requirements.txt
 
 # This will succeed because all the dependencies were installed previously
 RUN pip install /tmp/ironic-python-agent
-RUN rm -rf /tmp/ironic-python-agent
-RUN rm -rf /var/lib/apt/lists/*
-
-# Before cleaning mark packages that are required so they are not removed
-RUN apt-mark manual python-setuptools
-RUN apt-mark manual python-minimal
 
 # Remove no longer needed packages
 RUN apt-get -y purge gcc-4.6 gcc python2.7-dev git && \
     apt-get -y autoremove && \
     apt-get clean
+RUN rm -rf /tmp/ironic-python-agent
+RUN rm -rf /var/lib/apt/lists/*
 
 CMD [ "/usr/local/bin/ironic-python-agent" ]
