@@ -76,6 +76,12 @@ class CleanExtension(base.BaseAgentExtension):
 
         LOG.info('Clean step completed: %(step)s, result: %(result)s',
                  {'step': step, 'result': result})
+
+        # Cast result tuples (like output of utils.execute) as lists, or
+        # WSME throws errors
+        if isinstance(result, tuple):
+            result = list(result)
+
         # Return the step that was executed so we can dispatch
         # to the appropriate Ironic interface
         return {

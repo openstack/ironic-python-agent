@@ -97,6 +97,29 @@ class TestCleanExtension(test_base.BaseTestCase):
             self.node, self.ports)
         self.assertEqual(expected_result, async_result.command_result)
 
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers')
+    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version')
+    def test_execute_clean_step_tuple_result(self, mock_version,
+                                             mock_dispatch):
+        result = ('stdout', 'stderr')
+        mock_dispatch.return_value = result
+
+        expected_result = {
+            'clean_step': self.step['GenericHardwareManager'][0],
+            'clean_result': ['stdout', 'stderr']
+        }
+        async_result = self.agent_extension.execute_clean_step(
+            step=self.step['GenericHardwareManager'][0],
+            node=self.node, ports=self.ports,
+            clean_version=self.version)
+        async_result.join()
+
+        mock_version.assert_called_once_with(self.version)
+        mock_dispatch.assert_called_once_with(
+            self.step['GenericHardwareManager'][0]['step'],
+            self.node, self.ports)
+        self.assertEqual(expected_result, async_result.command_result)
+
     @mock.patch('ironic_python_agent.extensions.clean._check_clean_version')
     def test_execute_clean_step_no_step(self, mock_version):
         async_result = self.agent_extension.execute_clean_step(
