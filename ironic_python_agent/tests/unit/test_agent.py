@@ -16,6 +16,7 @@ import json
 import time
 
 import mock
+from oslo_config import cfg
 from oslotest import base as test_base
 import pkg_resources
 from stevedore import extension
@@ -26,8 +27,11 @@ from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
+from ironic_python_agent import inspector
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
+
+CONF = cfg.CONF
 
 
 def foo_execute(*args, **kwargs):
@@ -164,6 +168,7 @@ class TestBaseAgent(test_base.BaseTestCase):
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
     def test_run(self, mocked_list_hardware, wsgi_server_cls):
+        CONF.set_override('inspection_callback_url', '')
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
 
@@ -184,6 +189,43 @@ class TestBaseAgent(test_base.BaseTestCase):
             self.agent.api,
             server_class=simple_server.WSGIServer)
         wsgi_server.serve_forever.assert_called_once_with()
+
+        self.agent.heartbeater.start.assert_called_once_with()
+
+    @mock.patch.object(inspector, 'inspect', autospec=True)
+    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
+    def test_run_with_inspection(self, mocked_list_hardware, wsgi_server_cls,
+                                 mocked_inspector):
+        CONF.set_override('inspection_callback_url', 'http://foo/bar')
+
+        wsgi_server = wsgi_server_cls.return_value
+        wsgi_server.start.side_effect = KeyboardInterrupt()
+
+        mocked_inspector.return_value = 'uuid'
+
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'heartbeat_timeout': 300,
+        }
+        self.agent.run()
+
+        listen_addr = ('192.0.2.1', 9999)
+        wsgi_server_cls.assert_called_once_with(
+            listen_addr[0],
+            listen_addr[1],
+            self.agent.api,
+            server_class=simple_server.WSGIServer)
+        wsgi_server.serve_forever.assert_called_once_with()
+        mocked_inspector.assert_called_once_with()
+        self.assertEqual(1, self.agent.api_client.lookup_node.call_count)
+        self.assertEqual(
+            'uuid',
+            self.agent.api_client.lookup_node.call_args[1]['node_uuid'])
 
         self.agent.heartbeater.start.assert_called_once_with()
 

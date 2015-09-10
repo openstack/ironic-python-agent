@@ -18,6 +18,7 @@ from oslo_config import cfg
 from oslo_log import log
 
 from ironic_python_agent import agent
+from ironic_python_agent import inspector
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
@@ -99,6 +100,19 @@ cli_opts = [
                 default=APARAMS.get('ipa-standalone', False),
                 help='Note: for debugging only. Start the Agent but suppress '
                      'any calls to Ironic API.'),
+
+    cfg.StrOpt('inspection_callback_url',
+               default=APARAMS.get('ipa-inspection-callback-url'),
+               help='Endpoint of ironic-inspector. If set, hardware inventory '
+                    'will be collected and sent to ironic-inspector '
+                    'on start up.'),
+
+    cfg.StrOpt('inspection_collectors',
+               default=APARAMS.get('ipa-inspection-collectors',
+                                   inspector.DEFAULT_COLLECTOR),
+               help='Comma-separated list of plugins providing additional '
+                    'hardware data for inspection, empty value gives '
+                    'a minimum required set of plugins.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

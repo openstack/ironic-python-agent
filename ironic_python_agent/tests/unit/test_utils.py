@@ -413,3 +413,27 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         }
         self.assertRaises(errors.DeviceNotFound,
                           utils.parse_root_device_hints)
+
+
+class TestFailures(testtools.TestCase):
+    def test_get_error(self):
+        f = utils.AccumulatedFailures()
+        self.assertFalse(f)
+        self.assertIsNone(f.get_error())
+
+        f.add('foo')
+        f.add('%s', 'bar')
+        f.add(RuntimeError('baz'))
+        self.assertTrue(f)
+
+        exp = ('The following errors were encountered:\n* foo\n* bar\n* baz')
+        self.assertEqual(exp, f.get_error())
+
+    def test_raise(self):
+        class FakeException(Exception):
+            pass
+
+        f = utils.AccumulatedFailures(exc_class=FakeException)
+        self.assertIsNone(f.raise_if_needed())
+        f.add('foo')
+        self.assertRaisesRegexp(FakeException, 'foo', f.raise_if_needed)

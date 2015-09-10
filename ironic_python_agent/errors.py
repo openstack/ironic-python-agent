@@ -321,3 +321,9 @@ class DeviceNotFound(NotFound):
 
     def __init__(self, details):
         super(DeviceNotFound, self).__init__(details)
+
+
+# This is not something we return to a user, so we don't inherit it from
+# RESTError.
+class InspectionError(Exception):
+    """Failure during inspection."""
