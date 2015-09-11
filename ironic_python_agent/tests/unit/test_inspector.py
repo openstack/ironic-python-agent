@@ -261,7 +261,10 @@ class TestDiscoverNetworkProperties(BaseDiscoverTest):
         self.inventory['interfaces'] = [
             hardware.NetworkInterface(name='lo',
                                       mac_addr='aa:bb:cc:dd:ee:ff',
-                                      ipv4_address='127.0.0.1')
+                                      ipv4_address='127.0.0.1'),
+            hardware.NetworkInterface(name='local-2',
+                                      mac_addr='aa:bb:cc:dd:ee:ff',
+                                      ipv4_address='127.0.1.42'),
         ]
 
         inspector.discover_network_properties(self.inventory, self.data,
