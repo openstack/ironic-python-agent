@@ -151,19 +151,12 @@ def setup_ipmi_credentials(resp):
 def discover_network_properties(inventory, data, failures):
     """Discover network and BMC related properties.
 
-    Populates 'boot_interface', 'ipmi_address' and 'interfaces' keys.
+    This logic should eventually move to inspector itself.
 
     :param inventory: hardware inventory from a hardware manager
     :param data: mutable data that we'll send to inspector
     :param failures: AccumulatedFailures object
     """
-    # Both boot interface and IPMI address might not be present,
-    # we don't count it as failure
-    data['boot_interface'] = utils.get_agent_params().get('BOOTIF')
-    LOG.info('boot devices was %s', data['boot_interface'])
-    data['ipmi_address'] = inventory.get('bmc_address')
-    LOG.info('BMC IP address: %s', data['ipmi_address'])
-
     data.setdefault('interfaces', {})
     for iface in inventory['interfaces']:
         is_loopback = (iface.ipv4_address and
@@ -190,27 +183,21 @@ def discover_network_properties(inventory, data, failures):
         failures.add('no network interfaces found')
 
 
-def discover_scheduling_properties(inventory, data):
+def discover_scheduling_properties(inventory, data, root_disk=None):
     """Discover properties required for nova scheduler.
 
     This logic should eventually move to inspector itself.
 
     :param inventory: hardware inventory from a hardware manager
     :param data: mutable data that we'll send to inspector
+    :param root_disk: root device (if it can be detected)
     """
     data['cpus'] = inventory['cpu'].count
     data['cpu_arch'] = inventory['cpu'].architecture
     data['memory_mb'] = inventory['memory'].physical_mb
-
-    # Replicate the same logic as in deploy. This logic will be moved to
-    # inspector itself, but we need it for backward compatibility.
-    try:
-        disk = utils.guess_root_disk(inventory['disks'])
-    except errors.DeviceNotFound:
-        LOG.warn('no suitable root device detected')
-    else:
+    if root_disk is not None:
         # -1 is required to give Ironic some spacing for partitioning
-        data['local_gb'] = disk.size / units.Gi - 1
+        data['local_gb'] = root_disk.size / units.Gi - 1
 
     for key in ('cpus', 'local_gb', 'memory_mb'):
         try:
@@ -230,14 +217,37 @@ def collect_default(data, failures):
         1. it collects exactly the same data as the old bash-based ramdisk
         2. it also posts the whole inventory which we'll eventually use.
 
+    In both cases it tries to get BMC address, PXE boot device and the expected
+    root device.
+
     :param data: mutable data that we'll send to inspector
     :param failures: AccumulatedFailures object
     """
     inventory = hardware.dispatch_to_managers('list_hardware_info')
+
+    # In the future we will only need the current version of inventory,
+    # a guessed root disk, PXE boot interface and IPMI address.
+    # Everything else will be done by inspector itself and its plugins.
+    data['inventory'] = inventory
+    # Replicate the same logic as in deploy. We need to make sure that when
+    # root device hints are not set, inspector will use the same root disk as
+    # will be used for deploy.
+    try:
+        root_disk = utils.guess_root_disk(inventory['disks'][:])
+    except errors.DeviceNotFound:
+        root_disk = None
+        LOG.warn('no suitable root device detected')
+    else:
+        data['root_disk'] = root_disk
+        LOG.debug('default root device is %s', root_disk.name)
+    # Both boot interface and IPMI address might not be present,
+    # we don't count it as failure
+    data['boot_interface'] = utils.get_agent_params().get('BOOTIF')
+    LOG.debug('boot devices was %s', data['boot_interface'])
+    data['ipmi_address'] = inventory.get('bmc_address')
+    LOG.debug('BMC IP address: %s', data['ipmi_address'])
+
     # These 2 calls are required for backward compatibility and should be
     # dropped after inspector is ready (probably in Mitaka cycle).
     discover_network_properties(inventory, data, failures)
-    discover_scheduling_properties(inventory, data)
-    # In the future we will only need the current version of inventory,
-    # everything else will be done by inspector itself and its plugins
-    data['inventory'] = inventory
+    discover_scheduling_properties(inventory, data, root_disk)
