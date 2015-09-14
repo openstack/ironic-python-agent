@@ -27,6 +27,17 @@ section of the Ironic dev-quickstart guide.
 
 Project Resources
 =================
+Project status, bugs, and blueprints are tracked on Launchpad:
+
+  http://launchpad.net/ironic
+
+Developer documentation can be found here:
+
+  http://docs.openstack.org/developer/ironic-python-agent
+
+Additional resources are linked from the project wiki page:
+
+  https://wiki.openstack.org/wiki/Ironic-python-agent
 
 IRC channel:
     #openstack-ironic
