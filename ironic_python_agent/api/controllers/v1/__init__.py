@@ -68,9 +68,9 @@ class V1(base.APIBase):
                                 '',
                                 bookmark=True),
             link.Link.make_link('describedby',
-                                'https://github.com',
-                                'rackerlabs',
-                                'teeth-agent',
+                                'http://docs.openstack.org',
+                                'developer',
+                                'ironic-python-agent',
                                 bookmark=True,
                                 type='text/html')
         ]
