@@ -66,8 +66,8 @@ initiating in-band cleaning tasks or deploying an image to the node.
 Inspection
 ~~~~~~~~~~
 IPA can conduct hardware inspection on start up and post data to the `Ironic
-Inspector`_. Edit your default PXE/iPXE configuration or kernel command
-options baked in the image, and set ``ipa-inspection-callback-url`` to the
+Inspector`_. Edit your default PXE/iPXE configuration or IPA options
+baked in the image, and set ``ipa-inspection-callback-url`` to the
 full endpoint of Ironic Inspector, for example::
 
     ipa-inspection-callback-url=http://IP:5050/v1/continue

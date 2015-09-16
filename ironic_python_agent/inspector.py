@@ -15,6 +15,7 @@
 
 import logging
 
+import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import excutils
@@ -151,6 +152,10 @@ def discover_network_properties(inventory, data, failures):
     """Discover network and BMC related properties.
 
     Populates 'boot_interface', 'ipmi_address' and 'interfaces' keys.
+
+    :param inventory: hardware inventory from a hardware manager
+    :param data: mutable data that we'll send to inspector
+    :param failures: AccumulatedFailures object
     """
     # Both boot interface and IPMI address might not be present,
     # we don't count it as failure
@@ -161,7 +166,9 @@ def discover_network_properties(inventory, data, failures):
 
     data.setdefault('interfaces', {})
     for iface in inventory['interfaces']:
-        if iface.name == 'lo' or iface.ipv4_address == '127.0.0.1':
+        is_loopback = (iface.ipv4_address and
+                       netaddr.IPAddress(iface.ipv4_address).is_loopback())
+        if iface.name == 'lo' or is_loopback:
             LOG.debug('ignoring local network interface %s', iface.name)
             continue
 
@@ -184,6 +191,13 @@ def discover_network_properties(inventory, data, failures):
 
 
 def discover_scheduling_properties(inventory, data):
+    """Discover properties required for nova scheduler.
+
+    This logic should eventually move to inspector itself.
+
+    :param inventory: hardware inventory from a hardware manager
+    :param data: mutable data that we'll send to inspector
+    """
     data['cpus'] = inventory['cpu'].count
     data['cpu_arch'] = inventory['cpu'].architecture
     data['memory_mb'] = inventory['memory'].physical_mb
@@ -209,6 +223,16 @@ def discover_scheduling_properties(inventory, data):
 
 
 def collect_default(data, failures):
+    """The default inspection collector.
+
+    This is the only collector that is called by default. It is designed to be
+    both backward and future compatible:
+        1. it collects exactly the same data as the old bash-based ramdisk
+        2. it also posts the whole inventory which we'll eventually use.
+
+    :param data: mutable data that we'll send to inspector
+    :param failures: AccumulatedFailures object
+    """
     inventory = hardware.dispatch_to_managers('list_hardware_info')
     # These 2 calls are required for backward compatibility and should be
     # dropped after inspector is ready (probably in Mitaka cycle).
