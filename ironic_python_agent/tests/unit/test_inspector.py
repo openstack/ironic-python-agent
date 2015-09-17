@@ -254,8 +254,6 @@ class BaseDiscoverTest(unittest.TestCase):
         self.data = {}
 
 
-@mock.patch.object(utils, 'get_agent_params',
-                   lambda: {'BOOTIF': 'boot:if'})
 class TestDiscoverNetworkProperties(BaseDiscoverTest):
     def test_no_network_interfaces(self):
         self.inventory['interfaces'] = [
@@ -282,8 +280,6 @@ class TestDiscoverNetworkProperties(BaseDiscoverTest):
                           'em2': {'mac': '11:22:33:44:55:66',
                                   'ip': None}},
                          self.data['interfaces'])
-        self.assertEqual('1.2.3.4', self.data['ipmi_address'])
-        self.assertEqual('boot:if', self.data['boot_interface'])
         self.assertFalse(self.failures)
 
     def test_missing(self):
@@ -305,7 +301,9 @@ class TestDiscoverNetworkProperties(BaseDiscoverTest):
 
 class TestDiscoverSchedulingProperties(BaseDiscoverTest):
     def test_ok(self):
-        inspector.discover_scheduling_properties(self.inventory, self.data)
+        inspector.discover_scheduling_properties(
+            self.inventory, self.data,
+            root_disk=self.inventory['disks'][2])
 
         self.assertEqual({'cpus': 4, 'cpu_arch': 'x86_64', 'local_gb': 464,
                           'memory_mb': 12288}, self.data)
@@ -313,7 +311,6 @@ class TestDiscoverSchedulingProperties(BaseDiscoverTest):
     def test_no_local_gb(self):
         # Some DRAC servers do not have any visible hard drive until RAID is
         # built
-        self.inventory['disks'] = []
 
         inspector.discover_scheduling_properties(self.inventory, self.data)
 
@@ -321,6 +318,8 @@ class TestDiscoverSchedulingProperties(BaseDiscoverTest):
                          self.data)
 
 
+@mock.patch.object(utils, 'get_agent_params',
+                   lambda: {'BOOTIF': 'boot:if'})
 @mock.patch.object(inspector, 'discover_scheduling_properties', autospec=True)
 @mock.patch.object(inspector, 'discover_network_properties', autospec=True)
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
@@ -330,10 +329,37 @@ class TestCollectDefault(BaseDiscoverTest):
 
         inspector.collect_default(self.data, self.failures)
 
+        for key in ('memory', 'interfaces', 'cpu', 'disks'):
+            self.assertTrue(self.data['inventory'][key])
+
+        self.assertEqual('1.2.3.4', self.data['ipmi_address'])
+        self.assertEqual('boot:if', self.data['boot_interface'])
+        self.assertEqual(self.inventory['disks'][0].name,
+                         self.data['root_disk'].name)
+
         mock_dispatch.assert_called_once_with('list_hardware_info')
         mock_discover_net.assert_called_once_with(self.inventory, self.data,
                                                   self.failures)
-        mock_discover_sched.assert_called_once_with(self.inventory, self.data)
+        mock_discover_sched.assert_called_once_with(
+            self.inventory, self.data,
+            root_disk=self.inventory['disks'][0])
 
-        for key in ('memory', 'interfaces', 'cpu', 'disks'):
+    def test_no_root_disk(self, mock_dispatch, mock_discover_net,
+                          mock_discover_sched):
+        mock_dispatch.return_value = self.inventory
+        self.inventory['disks'] = []
+
+        inspector.collect_default(self.data, self.failures)
+
+        for key in ('memory', 'interfaces', 'cpu'):
             self.assertTrue(self.data['inventory'][key])
+
+        self.assertEqual('1.2.3.4', self.data['ipmi_address'])
+        self.assertEqual('boot:if', self.data['boot_interface'])
+        self.assertNotIn('root_disk', self.data)
+
+        mock_dispatch.assert_called_once_with('list_hardware_info')
+        mock_discover_net.assert_called_once_with(self.inventory, self.data,
+                                                  self.failures)
+        mock_discover_sched.assert_called_once_with(
+            self.inventory, self.data, root_disk=None)
