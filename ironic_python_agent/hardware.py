@@ -99,7 +99,7 @@ class HardwareType(object):
     MAC_ADDRESS = 'mac_address'
 
 
-class BlockDevice(encoding.Serializable):
+class BlockDevice(encoding.SerializableComparable):
     serializable_fields = ('name', 'model', 'size', 'rotational')
 
     def __init__(self, name, model, size, rotational):
@@ -109,7 +109,7 @@ class BlockDevice(encoding.Serializable):
         self.rotational = rotational
 
 
-class NetworkInterface(encoding.Serializable):
+class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'switch_port_descr',
                            'switch_chassis_descr', 'ipv4_address')
 
@@ -122,7 +122,7 @@ class NetworkInterface(encoding.Serializable):
         self.switch_chassis_descr = None
 
 
-class CPU(encoding.Serializable):
+class CPU(encoding.SerializableComparable):
     serializable_fields = ('model_name', 'frequency', 'count', 'architecture')
 
     def __init__(self, model_name, frequency, count, architecture):
@@ -132,7 +132,7 @@ class CPU(encoding.Serializable):
         self.architecture = architecture
 
 
-class Memory(encoding.Serializable):
+class Memory(encoding.SerializableComparable):
     serializable_fields = ('total', 'physical_mb')
     # physical = total + kernel binary + reserved space
 

@@ -35,7 +35,7 @@ class AgentCommandStatus(object):
     CLEAN_VERSION_MISMATCH = u'CLEAN_VERSION_MISMATCH'
 
 
-class BaseCommandResult(encoding.Serializable):
+class BaseCommandResult(encoding.SerializableComparable):
     """Base class for command result."""
 
     serializable_fields = ('id', 'command_name', 'command_params',
