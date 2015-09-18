@@ -290,59 +290,73 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
         self.assertIn(str(4 * units.Gi), ex.details)
 
-    @mock.patch.object(hardware.GenericHardwareManager, '_get_device_vendor')
-    @mock.patch.object(pyudev.Device, 'from_device_file')
+    @mock.patch.object(hardware, 'list_all_block_devices')
     @mock.patch.object(utils, 'parse_root_device_hints')
-    @mock.patch.object(utils, 'execute')
-    def test_get_os_install_device_root_device_hints(self, mocked_execute,
-                                                     mock_root_device,
-                                                     mock_pyudev,
-                                                     mock_dev_vendor):
+    def test_get_os_install_device_root_device_hints(self, mock_root_device,
+                                                     mock_dev):
         model = 'fastable sd131 7'
         mock_root_device.return_value = {'model': model,
                                          'wwn': 'fake-wwn',
                                          'serial': 'fake-serial',
                                          'vendor': 'fake-vendor',
                                          'size': 10}
-        mock_dev_vendor.return_value = 'fake-vendor'
-        mock_pyudev.side_effect = ({}, {'ID_MODEL': model,
-                                        'ID_WWN': 'fake-wwn',
-                                        'ID_SERIAL_SHORT': 'fake-serial'})
-        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+        mock_dev.return_value = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 wwn='wwn0',
+                                 serial='serial0'),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model=model,
+                                 size=10737418240,
+                                 rotational=False,
+                                 vendor='fake-vendor',
+                                 wwn='fake-wwn',
+                                 serial='fake-serial'),
+        ]
 
         self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
-        mocked_execute.assert_called_once_with(
-            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
-            check_exit_code=[0])
         mock_root_device.assert_called_once_with()
-        expected = [mock.call(mock.ANY, '/dev/sda'),
-                    mock.call(mock.ANY, '/dev/sdb')]
-        mock_pyudev.assert_has_calls(expected)
+        mock_dev.assert_called_once_with()
 
-    @mock.patch.object(pyudev.Device, 'from_device_file')
+    @mock.patch.object(hardware, 'list_all_block_devices')
     @mock.patch.object(utils, 'parse_root_device_hints')
-    @mock.patch.object(utils, 'execute')
-    def test_get_os_install_device_root_device_hints_no_device_found(self,
-            mocked_execute, mock_root_device, mock_pyudev):
-        mock_root_device.return_value = {'model': 'endo-sym armor'}
-        mock_pyudev.return_value = {'ID_MODEL': 'Saturn V Armor'}
-        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+    def test_get_os_install_device_root_device_hints_no_device_found(
+            self, mock_root_device, mock_dev):
+        model = 'fastable sd131 7'
+        mock_root_device.return_value = {'model': model,
+                                         'wwn': 'fake-wwn',
+                                         'serial': 'fake-serial',
+                                         'vendor': 'fake-vendor',
+                                         'size': 10}
+        # Model is different here
+        mock_dev.return_value = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 wwn='wwn0',
+                                 serial='serial0'),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='Another Model',
+                                 size=10737418240,
+                                 rotational=False,
+                                 vendor='fake-vendor',
+                                 wwn='fake-wwn',
+                                 serial='fake-serial'),
+        ]
         self.assertRaises(errors.DeviceNotFound,
                           self.hardware.get_os_install_device)
-        mocked_execute.assert_called_once_with(
-            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
-            check_exit_code=[0])
         mock_root_device.assert_called_once_with()
-        expected = [mock.call(mock.ANY, '/dev/sda'),
-                    mock.call(mock.ANY, '/dev/sdb'),
-                    mock.call(mock.ANY, '/dev/sdc'),
-                    mock.call(mock.ANY, '/dev/sdd')]
-        mock_pyudev.assert_has_calls(expected)
+        mock_dev.assert_called_once_with()
 
     def test__get_device_vendor(self):
         fileobj = mock.mock_open(read_data='fake-vendor')
         with mock.patch(OPEN_FUNCTION_NAME, fileobj, create=True) as mock_open:
-            vendor = self.hardware._get_device_vendor('/dev/sdfake')
+            vendor = hardware._get_device_vendor('/dev/sdfake')
             mock_open.assert_called_once_with(
                 '/sys/class/block/sdfake/device/vendor', 'r')
             self.assertEqual('fake-vendor', vendor)
@@ -425,33 +439,94 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         list_mock.assert_called_once_with()
 
+    @mock.patch.object(hardware, '_get_device_vendor')
+    @mock.patch.object(pyudev.Device, 'from_device_file')
     @mock.patch.object(utils, 'execute')
-    def test_list_all_block_device(self, mocked_execute):
+    def test_list_all_block_device(self, mocked_execute, mocked_udev,
+                                   mocked_dev_vendor):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+        mocked_udev.side_effect = OSError()
+        mocked_dev_vendor.return_value = 'Super Vendor'
         devices = hardware.list_all_block_devices()
         expected_devices = [
             hardware.BlockDevice(name='/dev/sda',
                                  model='TinyUSB Drive',
                                  size=3116853504,
-                                 rotational=False),
+                                 rotational=False,
+                                 vendor='Super Vendor'),
             hardware.BlockDevice(name='/dev/sdb',
                                  model='Fastable SD131 7',
                                  size=10737418240,
-                                 rotational=False),
+                                 rotational=False,
+                                 vendor='Super Vendor'),
             hardware.BlockDevice(name='/dev/sdc',
                                  model='NWD-BLP4-1600',
                                  size=1765517033472,
-                                 rotational=False),
+                                 rotational=False,
+                                 vendor='Super Vendor'),
             hardware.BlockDevice(name='/dev/sdd',
                                  model='NWD-BLP4-1600',
                                  size=1765517033472,
-                                 rotational=False)
+                                 rotational=False,
+                                 vendor='Super Vendor')
         ]
 
         self.assertEqual(4, len(expected_devices))
         for expected, device in zip(expected_devices, devices):
             # Compare all attrs of the objects
-            for attr in ['name', 'model', 'size', 'rotational']:
+            for attr in ['name', 'model', 'size', 'rotational',
+                         'wwn', 'vendor', 'serial']:
+                self.assertEqual(getattr(expected, attr),
+                                 getattr(device, attr))
+
+    @mock.patch.object(hardware, '_get_device_vendor')
+    @mock.patch.object(pyudev.Device, 'from_device_file')
+    @mock.patch.object(utils, 'execute')
+    def test_list_all_block_device_with_udev(self, mocked_execute, mocked_udev,
+                                             mocked_dev_vendor):
+        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+        mocked_udev.side_effect = iter([
+            {'ID_WWN': 'wwn%d' % i, 'ID_SERIAL_SHORT': 'serial%d' % i}
+            for i in range(4)
+        ])
+        mocked_dev_vendor.return_value = 'Super Vendor'
+        devices = hardware.list_all_block_devices()
+        expected_devices = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 wwn='wwn0',
+                                 serial='serial0'),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='Fastable SD131 7',
+                                 size=10737418240,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 wwn='wwn1',
+                                 serial='serial1'),
+            hardware.BlockDevice(name='/dev/sdc',
+                                 model='NWD-BLP4-1600',
+                                 size=1765517033472,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 wwn='wwn2',
+                                 serial='serial2'),
+            hardware.BlockDevice(name='/dev/sdd',
+                                 model='NWD-BLP4-1600',
+                                 size=1765517033472,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 wwn='wwn3',
+                                 serial='serial3')
+        ]
+
+        self.assertEqual(4, len(expected_devices))
+        for expected, device in zip(expected_devices, devices):
+            # Compare all attrs of the objects
+            for attr in ['name', 'model', 'size', 'rotational',
+                         'wwn', 'vendor', 'serial']:
                 self.assertEqual(getattr(expected, attr),
                                  getattr(device, attr))
 

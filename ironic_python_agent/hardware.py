@@ -39,6 +39,16 @@ UNIT_CONVERTER.define('MB = []')
 UNIT_CONVERTER.define('GB = 1024 MB')
 
 
+def _get_device_vendor(dev):
+    """Get the vendor name of a given device."""
+    try:
+        devname = os.path.basename(dev)
+        with open('/sys/class/block/%s/device/vendor' % devname, 'r') as f:
+            return f.read().strip()
+    except IOError:
+        LOG.warning("Can't find the device vendor for device %s", dev)
+
+
 def list_all_block_devices():
     """List all physical block devices
 
@@ -54,6 +64,7 @@ def list_all_block_devices():
     report = utils.execute('lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
                            check_exit_code=[0])[0]
     lines = report.split('\n')
+    context = pyudev.Context()
 
     devices = []
     for line in lines:
@@ -71,10 +82,28 @@ def list_all_block_devices():
         if diff:
             raise errors.BlockDeviceError(
                 '%s must be returned by lsblk.' % diff)
-        devices.append(BlockDevice(name='/dev/' + device['KNAME'],
+
+        name = '/dev/' + device['KNAME']
+        try:
+            udev = pyudev.Device.from_device_file(context, name)
+        except (ValueError, EnvironmentError) as e:
+            LOG.warning("Device %(dev)s is inaccessible, skipping... "
+                        "Error: %(error)s", {'dev': name, 'error': e})
+            extra = {}
+        else:
+            # TODO(lucasagomes): Since lsblk only supports
+            # returning the short serial we are using
+            # ID_SERIAL_SHORT here to keep compatibility with the
+            # bash deploy ramdisk
+            extra = {key: udev.get('ID_%s' % udev_key) for key, udev_key in
+                     [('wwn', 'WWN'), ('serial', 'SERIAL_SHORT')]}
+
+        devices.append(BlockDevice(name=name,
                                    model=device['MODEL'],
                                    size=int(device['SIZE']),
-                                   rotational=bool(int(device['ROTA']))))
+                                   rotational=bool(int(device['ROTA'])),
+                                   vendor=_get_device_vendor(device['KNAME']),
+                                   **extra))
     return devices
 
 
@@ -100,13 +129,18 @@ class HardwareType(object):
 
 
 class BlockDevice(encoding.SerializableComparable):
-    serializable_fields = ('name', 'model', 'size', 'rotational')
+    serializable_fields = ('name', 'model', 'size', 'rotational',
+                           'wwn', 'serial', 'vendor')
 
-    def __init__(self, name, model, size, rotational):
+    def __init__(self, name, model, size, rotational, wwn=None, serial=None,
+                 vendor=None):
         self.name = name
         self.model = model
         self.size = size
         self.rotational = rotational
+        self.wwn = wwn
+        self.serial = serial
+        self.vendor = vendor
 
 
 class NetworkInterface(encoding.SerializableComparable):
@@ -377,15 +411,6 @@ class GenericHardwareManager(HardwareManager):
     def list_block_devices(self):
         return list_all_block_devices()
 
-    def _get_device_vendor(self, dev):
-        """Get the vendor name of a given device."""
-        try:
-            devname = os.path.basename(dev)
-            with open('/sys/class/block/%s/device/vendor' % devname, 'r') as f:
-                return f.read().strip()
-        except IOError:
-            LOG.warning("Can't find the device vendor for device %s", dev)
-
     def get_os_install_device(self):
         block_devices = self.list_block_devices()
         root_device_hints = utils.parse_root_device_hints()
@@ -405,15 +430,21 @@ class GenericHardwareManager(HardwareManager):
                     return False
                 return True
 
-            context = pyudev.Context()
-            for dev in block_devices:
-                try:
-                    udev = pyudev.Device.from_device_file(context, dev.name)
-                except (ValueError, EnvironmentError) as e:
-                    LOG.warning("Device %(dev)s is inaccessible, skipping... "
-                    "Error: %(error)s", {'dev': dev, 'error': e})
-                    continue
+            def check_device_attrs(device):
+                for key in ('model', 'wwn', 'serial', 'vendor'):
+                    if key not in root_device_hints:
+                        continue
 
+                    value = getattr(device, key)
+                    if not value:
+                        return False
+                    value = utils.normalize(value)
+                    if not match(key, value, device.name):
+                        return False
+
+                return True
+
+            for dev in block_devices:
                 # TODO(lucasagomes): Add support for operators <, >, =, etc...
                 # to better deal with sizes.
                 if 'size' in root_device_hints:
@@ -423,43 +454,8 @@ class GenericHardwareManager(HardwareManager):
                     if not match('size', size, dev.name):
                         continue
 
-                if 'model' in root_device_hints:
-                    model = udev.get('ID_MODEL', None)
-                    if not model:
-                        continue
-                    model = utils.normalize(model)
-                    if not match('model', model, dev.name):
-                        continue
-
-                if 'wwn' in root_device_hints:
-                    wwn = udev.get('ID_WWN', None)
-                    if not wwn:
-                        continue
-                    wwn = utils.normalize(wwn)
-                    if not match('wwn', wwn, dev.name):
-                        continue
-
-                if 'serial' in root_device_hints:
-                    # TODO(lucasagomes): Since lsblk only supports
-                    # returning the short serial we are using
-                    # ID_SERIAL_SHORT here to keep compatibility with the
-                    # bash deploy ramdisk
-                    serial = udev.get('ID_SERIAL_SHORT', None)
-                    if not serial:
-                        continue
-                    serial = utils.normalize(serial)
-                    if not match('serial', serial, dev.name):
-                        continue
-
-                if 'vendor' in root_device_hints:
-                    vendor = self._get_device_vendor(dev.name)
-                    if not vendor:
-                        continue
-                    vendor = utils.normalize(vendor)
-                    if not match('vendor', vendor, dev.name):
-                        continue
-
-                return dev.name
+                if check_device_attrs(dev):
+                    return dev.name
 
             else:
                 raise errors.DeviceNotFound("No suitable device was found for "

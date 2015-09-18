@@ -173,12 +173,18 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'name': u'/dev/sdj',
                     u'rotational': False,
                     u'size': u'9001',
+                    u'serial': None,
+                    u'wwn': None,
+                    u'vendor': None,
                 },
                 {
                     u'model': u'big',
                     u'name': u'/dev/hdj',
                     u'rotational': False,
                     u'size': u'9002',
+                    u'serial': None,
+                    u'wwn': None,
+                    u'vendor': None,
                 }
             ],
             u'memory': {
@@ -298,12 +304,18 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'name': u'/dev/sdj',
                     u'rotational': False,
                     u'size': u'9001',
+                    u'serial': None,
+                    u'wwn': None,
+                    u'vendor': None,
                 },
                 {
                     u'model': u'big',
                     u'name': u'/dev/hdj',
                     u'rotational': False,
                     u'size': u'9002',
+                    u'serial': None,
+                    u'wwn': None,
+                    u'vendor': None,
                 }
             ],
             u'memory': {
