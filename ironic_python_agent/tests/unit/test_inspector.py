@@ -13,8 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import collections
 import copy
+import io
+import tarfile
 import unittest
 
 import mock
@@ -363,3 +366,74 @@ class TestCollectDefault(BaseDiscoverTest):
                                                   self.failures)
         mock_discover_sched.assert_called_once_with(
             self.inventory, self.data, root_disk=None)
+
+
+@mock.patch.object(utils, 'execute', autospec=True)
+class TestCollectLogs(unittest.TestCase):
+    def test(self, mock_execute):
+        contents = 'journal contents'
+        mock_execute.return_value = (contents, '')
+
+        data = {}
+        inspector.collect_logs(data, None)
+        res = io.BytesIO(base64.b64decode(data['logs']))
+
+        with tarfile.open(fileobj=res) as tar:
+            members = [(m.name, m.size) for m in tar]
+            self.assertEqual([('journal', len(contents))], members)
+
+            member = tar.extractfile('journal')
+            self.assertEqual(contents, member.read().decode('utf-8'))
+
+    def test_no_journal(self, mock_execute):
+        mock_execute.side_effect = OSError()
+
+        data = {}
+        inspector.collect_logs(data, None)
+        self.assertFalse(data)
+
+
+@mock.patch.object(utils, 'execute', autospec=True)
+class TestCollectExtraHardware(unittest.TestCase):
+    def setUp(self):
+        super(TestCollectExtraHardware, self).setUp()
+        self.data = {}
+        self.failures = utils.AccumulatedFailures()
+
+    def test_no_benchmarks(self, mock_execute):
+        mock_execute.return_value = ("[1, 2, 3]", "")
+
+        inspector.collect_extra_hardware(self.data, None)
+
+        self.assertEqual({'data': [1, 2, 3]}, self.data)
+        mock_execute.assert_called_once_with('hardware-detect')
+
+    @mock.patch.object(utils, 'get_agent_params', autospec=True)
+    def test_benchmarks(self, mock_params, mock_execute):
+        mock_params.return_value = {'ipa-inspection-benchmarks': 'cpu,mem'}
+        mock_execute.return_value = ("[1, 2, 3]", "")
+
+        inspector.collect_extra_hardware(self.data, None)
+
+        self.assertEqual({'data': [1, 2, 3]}, self.data)
+        mock_execute.assert_called_once_with('hardware-detect',
+                                             '--benchmark',
+                                             'cpu', 'mem')
+
+    def test_execute_failed(self, mock_execute):
+        mock_execute.side_effect = processutils.ProcessExecutionError()
+
+        inspector.collect_extra_hardware(self.data, self.failures)
+
+        self.assertNotIn('data', self.data)
+        self.assertTrue(self.failures)
+        mock_execute.assert_called_once_with('hardware-detect')
+
+    def test_parsing_failed(self, mock_execute):
+        mock_execute.return_value = ("foobar", "")
+
+        inspector.collect_extra_hardware(self.data, self.failures)
+
+        self.assertNotIn('data', self.data)
+        self.assertTrue(self.failures)
+        mock_execute.assert_called_once_with('hardware-detect')
