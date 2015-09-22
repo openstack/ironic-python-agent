@@ -150,10 +150,14 @@ class ImageChecksumError(RESTError):
     """Error raised when an image fails to verify against its checksum."""
 
     message = 'Error verifying image checksum'
+    details_str = ('Image failed to verify against checksum. location: {0}; '
+                   'image ID: {1}; image checksum: {2}; verification '
+                   'checksum: {3}')
 
-    def __init__(self, image_id):
-        details = 'Image with id {0} failed to verify against checksum.'
-        details = details.format(image_id)
+    def __init__(self, image_id, image_location, checksum,
+                 calculated_checksum):
+        details = self.details_str.format(image_location, image_id, checksum,
+                                          calculated_checksum)
         super(ImageChecksumError, self).__init__(details)
 
 

@@ -106,7 +106,9 @@ class TestErrors(test_base.BaseTestCase):
                  (errors.LookupAgentInterfaceError(DETAILS), SAME_DETAILS),
                  (errors.ImageDownloadError('image_id', DETAILS),
                      DIFF_CL_DETAILS),
-                 (errors.ImageChecksumError('image_id'), DIFF_CL_DETAILS),
+                 (errors.ImageChecksumError(
+                     'image_id', '/foo/image_id', 'incorrect', 'correct'),
+                  DIFF_CL_DETAILS),
                  (errors.ImageWriteError('device', 'exit_code', 'stdout',
                                          'stderr'),
                   DIFF_CL_DETAILS),
