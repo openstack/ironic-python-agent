@@ -28,7 +28,7 @@ APARAMS = utils.get_agent_params()
 
 cli_opts = [
     cfg.StrOpt('api_url',
-                  default=APARAMS.get('ipa-api-url', 'http://127.0.0.1:6835'),
+                  default=APARAMS.get('ipa-api-url', 'http://127.0.0.1:6385'),
                   deprecated_name='api-url',
                   help='URL of the Ironic API'),
 
