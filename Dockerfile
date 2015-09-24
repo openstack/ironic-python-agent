@@ -13,7 +13,7 @@ RUN echo 'APT::Default-Release "jessie";' > /etc/apt/apt.conf.d/10default && \
 # image on disk
 RUN apt-get update && \
     apt-get -y upgrade && \
-    apt-get install -y --no-install-recommends python2.7 python2.7-dev \
+    apt-get install -y --no-install-recommends gdisk python2.7 python2.7-dev \
         python-pip qemu-utils parted hdparm util-linux genisoimage git gcc \
         bash coreutils tgt dmidecode ipmitool && \
     apt-get --only-upgrade -t testing install -y qemu-utils
