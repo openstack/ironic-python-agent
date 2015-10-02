@@ -142,16 +142,16 @@ BLK_DEVICE_TEMPLATE_SMALL = (
 )
 
 SHRED_OUTPUT = (
-        'shred: /dev/sda: pass 1/2 (random)...\n'
-        'shred: /dev/sda: pass 1/2 (random)...4.9GiB/29GiB 17%\n'
-        'shred: /dev/sda: pass 1/2 (random)...15GiB/29GiB 51%\n'
-        'shred: /dev/sda: pass 1/2 (random)...20GiB/29GiB 69%\n'
-        'shred: /dev/sda: pass 1/2 (random)...29GiB/29GiB 100%\n'
-        'shred: /dev/sda: pass 2/2 (000000)...\n'
-        'shred: /dev/sda: pass 2/2 (000000)...4.9GiB/29GiB 17%\n'
-        'shred: /dev/sda: pass 2/2 (000000)...15GiB/29GiB 51%\n'
-        'shred: /dev/sda: pass 2/2 (000000)...20GiB/29GiB 69%\n'
-        'shred: /dev/sda: pass 2/2 (000000)...29GiB/29GiB 100%\n'
+    'shred: /dev/sda: pass 1/2 (random)...\n'
+    'shred: /dev/sda: pass 1/2 (random)...4.9GiB/29GiB 17%\n'
+    'shred: /dev/sda: pass 1/2 (random)...15GiB/29GiB 51%\n'
+    'shred: /dev/sda: pass 1/2 (random)...20GiB/29GiB 69%\n'
+    'shred: /dev/sda: pass 1/2 (random)...29GiB/29GiB 100%\n'
+    'shred: /dev/sda: pass 2/2 (000000)...\n'
+    'shred: /dev/sda: pass 2/2 (000000)...4.9GiB/29GiB 17%\n'
+    'shred: /dev/sda: pass 2/2 (000000)...15GiB/29GiB 51%\n'
+    'shred: /dev/sda: pass 2/2 (000000)...20GiB/29GiB 69%\n'
+    'shred: /dev/sda: pass 2/2 (000000)...29GiB/29GiB 100%\n'
 )
 
 
@@ -229,11 +229,14 @@ class TestHardwareManagerLoading(test_base.BaseTestCase):
         fake_ep = mock.Mock()
         fake_ep.module_name = 'fake'
         fake_ep.attrs = ['fake attrs']
-        ext1 = extension.Extension('fake_generic0', fake_ep, None,
+        ext1 = extension.Extension(
+            'fake_generic0', fake_ep, None,
             FakeHardwareManager(hardware.HardwareSupport.GENERIC))
-        ext2 = extension.Extension('fake_mainline0', fake_ep, None,
+        ext2 = extension.Extension(
+            'fake_mainline0', fake_ep, None,
             FakeHardwareManager(hardware.HardwareSupport.MAINLINE))
-        ext3 = extension.Extension('fake_generic1', fake_ep, None,
+        ext3 = extension.Extension(
+            'fake_generic1', fake_ep, None,
             FakeHardwareManager(hardware.HardwareSupport.GENERIC))
         self.correct_hw_manager = ext2.obj
         self.fake_ext_mgr = extension.ExtensionManager.make_test_instance([
@@ -596,10 +599,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_notsupported_shred(self, mocked_execute):
         hdparm_output = HDPARM_INFO_TEMPLATE % {
-                'supported': 'not\tsupported',
-                'enabled': 'not\tenabled',
-                'frozen': 'not\tfrozen',
-                'enhanced_erase': 'not\tsupported: enhanced erase',
+            'supported': 'not\tsupported',
+            'enabled': 'not\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
         }
 
         mocked_execute.side_effect = [
@@ -654,7 +657,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os.path, 'exists', autospec=True)
     def test__is_virtual_media_device_path_doesnt_exist(self, mocked_exists,
-                                             mocked_link):
+                                                        mocked_link):
         mocked_exists.return_value = False
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -670,8 +673,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                             True)
         res = self.hardware._shred_block_device(self.node, block_device)
         self.assertFalse(res)
-        mocked_execute.assert_called_once_with('shred', '--force', '--zero',
-            '--verbose', '--iterations', '1', '/dev/sda')
+        mocked_execute.assert_called_once_with(
+            'shred', '--force', '--zero', '--verbose', '--iterations', '1',
+            '/dev/sda')
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_shred_fail_processerror(self, mocked_execute):
@@ -680,8 +684,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                             True)
         res = self.hardware._shred_block_device(self.node, block_device)
         self.assertFalse(res)
-        mocked_execute.assert_called_once_with('shred', '--force', '--zero',
-            '--verbose', '--iterations', '1', '/dev/sda')
+        mocked_execute.assert_called_once_with(
+            'shred', '--force', '--zero', '--verbose', '--iterations', '1',
+            '/dev/sda')
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_security_enabled(self, mocked_execute):
@@ -778,10 +783,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                            expected_option,
                                            'NULL', '/dev/sda')
 
-        test_security_erase_option(self,
-                '\tsupported: enhanced erase', '--security-erase-enhanced')
-        test_security_erase_option(self,
-                '\tnot\tsupported: enhanced erase', '--security-erase')
+        test_security_erase_option(
+            self, '\tsupported: enhanced erase', '--security-erase-enhanced')
+        test_security_erase_option(
+            self, '\tnot\tsupported: enhanced erase', '--security-erase')
 
     @mock.patch.object(utils, 'execute')
     def test_get_bmc_address(self, mocked_execute):

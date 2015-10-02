@@ -111,13 +111,12 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
         fake_ep = mock.Mock()
         fake_ep.module_name = 'fake'
         fake_ep.attrs = ['fake attrs']
-        self.generic_hwm = extension.Extension('fake_generic', fake_ep, None,
-                FakeGenericHardwareManager())
-        self.mainline_hwm = extension.Extension('fake_mainline', fake_ep, None,
-                FakeMainlineHardwareManager())
-        self.fake_ext_mgr = extension.ExtensionManager.make_test_instance([
-                self.generic_hwm, self.mainline_hwm
-        ])
+        self.generic_hwm = extension.Extension(
+            'fake_generic', fake_ep, None, FakeGenericHardwareManager())
+        self.mainline_hwm = extension.Extension(
+            'fake_mainline', fake_ep, None, FakeMainlineHardwareManager())
+        self.fake_ext_mgr = extension.ExtensionManager.make_test_instance(
+            [self.generic_hwm, self.mainline_hwm])
 
         self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager')
         self.mocked_extension_mgr = self.extension_mgr_patcher.start()

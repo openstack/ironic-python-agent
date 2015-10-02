@@ -28,14 +28,14 @@ APARAMS = utils.get_agent_params()
 
 cli_opts = [
     cfg.StrOpt('api_url',
-                  default=APARAMS.get('ipa-api-url', 'http://127.0.0.1:6385'),
-                  deprecated_name='api-url',
-                  help='URL of the Ironic API'),
+               default=APARAMS.get('ipa-api-url', 'http://127.0.0.1:6385'),
+               deprecated_name='api-url',
+               help='URL of the Ironic API'),
 
     cfg.StrOpt('listen_host',
-                  default=APARAMS.get('ipa-listen-host', '0.0.0.0'),
-                  deprecated_name='listen-host',
-                  help='The IP address to listen on.'),
+               default=APARAMS.get('ipa-listen-host', '0.0.0.0'),
+               deprecated_name='listen-host',
+               help='The IP address to listen on.'),
 
     cfg.IntOpt('listen_port',
                default=int(APARAMS.get('ipa-listen-port', 9999)),
@@ -43,10 +43,10 @@ cli_opts = [
                help='The port to listen on'),
 
     cfg.StrOpt('advertise_host',
-                  default=APARAMS.get('ipa-advertise-host', None),
-                  deprecated_name='advertise_host',
-                  help='The host to tell Ironic to reply and send '
-                       'commands to.'),
+               default=APARAMS.get('ipa-advertise-host', None),
+               deprecated_name='advertise_host',
+               help='The host to tell Ironic to reply and send '
+                    'commands to.'),
 
     cfg.IntOpt('advertise_port',
                default=int(APARAMS.get('ipa-advertise-port', 9999)),
@@ -88,9 +88,9 @@ cli_opts = [
                     'exceeded.'),
 
     cfg.StrOpt('driver_name',
-                  default=APARAMS.get('ipa-driver-name', 'agent_ipmitool'),
-                  deprecated_name='driver-name',
-                  help='The Ironic driver in use for this node'),
+               default=APARAMS.get('ipa-driver-name', 'agent_ipmitool'),
+               deprecated_name='driver-name',
+               help='The Ironic driver in use for this node'),
 
     cfg.FloatOpt('lldp_timeout',
                  default=APARAMS.get('lldp-timeout', 30.0),

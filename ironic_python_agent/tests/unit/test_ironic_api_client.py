@@ -135,7 +135,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           node_uuid=None)
 
         url = '{api_url}v1/drivers/{driver}/vendor_passthru/lookup'.format(
-                api_url=API_URL, driver=DRIVER)
+            api_url=API_URL, driver=DRIVER)
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'POST')
         self.assertEqual(request_args[1], url)
@@ -266,7 +266,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           node_uuid='uuid')
 
         url = '{api_url}v1/drivers/{driver}/vendor_passthru/lookup'.format(
-                api_url=API_URL, driver=DRIVER)
+            api_url=API_URL, driver=DRIVER)
         request_args = self.api_client.session.request.call_args[0]
         self.assertEqual(request_args[0], 'POST')
         self.assertEqual(request_args[1], url)

@@ -223,7 +223,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                  be found.
         """
         iface_list = [iface.serialize()['name'] for iface in
-                hardware.dispatch_to_managers('list_network_interfaces')]
+                      hardware.dispatch_to_managers('list_network_interfaces')]
         iface_list = [name for name in iface_list if 'lo' not in name]
 
         if len(iface_list) == 0:
@@ -287,7 +287,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
             content = self.api_client.lookup_node(
                 hardware_info=hardware.dispatch_to_managers(
-                                  'list_hardware_info'),
+                    'list_hardware_info'),
                 timeout=self.lookup_timeout,
                 starting_interval=self.lookup_interval,
                 node_uuid=uuid)

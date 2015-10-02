@@ -134,7 +134,7 @@ class TestExtensionDecorators(test_base.BaseTestCase):
                          result.command_status)
         self.assertEqual(None, result.command_error)
         self.assertEqual({'result': 'fake_async_command: v1'},
-                          result.command_result)
+                         result.command_result)
         self.agent.force_heartbeat.assert_called_once_with()
 
     def test_async_command_success_without_agent(self):
@@ -148,7 +148,7 @@ class TestExtensionDecorators(test_base.BaseTestCase):
                          result.command_status)
         self.assertEqual(None, result.command_error)
         self.assertEqual({'result': 'fake_async_command: v1'},
-                          result.command_result)
+                         result.command_result)
 
     def test_async_command_validation_failure(self):
         self.assertRaises(errors.InvalidCommandParamsError,

@@ -131,7 +131,7 @@ class TestErrors(test_base.BaseTestCase):
                  (errors.IncompatibleHardwareMethodError(), DEFAULT_DETAILS),
                  (errors.IncompatibleHardwareMethodError(DETAILS),
                   SAME_DETAILS),
-                ]
+                 ]
         for (obj, check_details) in cases:
             self._test_class(obj, check_details)
 

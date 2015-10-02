@@ -144,7 +144,8 @@ def main():
         os.makedirs(output_dir)
 
     output_kernel = os.path.join(output_dir, os.path.basename(kernel))
-    output_cpio = os.path.join(output_dir,
+    output_cpio = os.path.join(
+        output_dir,
         os.path.basename(orig_cpio).replace('.cpio.gz', '-oem.cpio.gz'))
     inject_oem(orig_cpio, oem_dir, output_cpio)
     shutil.copy(kernel, output_kernel)

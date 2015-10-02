@@ -63,7 +63,7 @@ class TestISCSIExtension(test_base.BaseTestCase):
         mock_dispatch.assert_called_once_with('get_os_install_device')
         mock_wait_iscsi.assert_called_once_with()
         self.assertEqual({'iscsi_target_iqn': self.fake_iqn},
-                          result.command_result)
+                         result.command_result)
 
     @mock.patch.object(os.path, 'exists', lambda x: False)
     def test_start_iscsi_target_fail_wait_daemon(self, mock_execute,

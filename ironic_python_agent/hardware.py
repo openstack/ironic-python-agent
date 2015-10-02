@@ -358,7 +358,7 @@ class GenericHardwareManager(HardwareManager):
 
     def _is_device(self, interface_name):
         device_path = '{0}/class/net/{1}/device'.format(self.sys_path,
-                                                      interface_name)
+                                                        interface_name)
         return os.path.exists(device_path)
 
     def list_network_interfaces(self):
@@ -431,9 +431,10 @@ class GenericHardwareManager(HardwareManager):
                 if hint_value != current_value:
                     LOG.debug("Root device hint %(hint)s=%(value)s does not "
                               "match the device %(device)s value of "
-                              "%(current)s", {'hint': hint,
-                              'value': hint_value, 'device': device,
-                              'current': current_value})
+                              "%(current)s", {
+                                  'hint': hint,
+                                  'value': hint_value, 'device': device,
+                                  'current': current_value})
                     return False
                 return True
 
@@ -465,7 +466,8 @@ class GenericHardwareManager(HardwareManager):
                     return dev.name
 
             else:
-                raise errors.DeviceNotFound("No suitable device was found for "
+                raise errors.DeviceNotFound(
+                    "No suitable device was found for "
                     "deployment using these hints %s" % root_device_hints)
 
     def erase_block_device(self, node, block_device):
@@ -483,7 +485,7 @@ class GenericHardwareManager(HardwareManager):
             return
 
         msg = ('Unable to erase block device {0}: device is unsupported.'
-              ).format(block_device.name)
+               ).format(block_device.name)
         LOG.error(msg)
         raise errors.IncompatibleHardwareMethodError(msg)
 
@@ -501,7 +503,7 @@ class GenericHardwareManager(HardwareManager):
                           '--iterations', str(npasses), block_device.name)
         except (processutils.ProcessExecutionError, OSError) as e:
             msg = ("Erasing block device %(dev)s failed with error %(err)s ",
-                  {'dev': block_device.name, 'err': e})
+                   {'dev': block_device.name, 'err': e})
             LOG.error(msg)
             return False
 
@@ -517,7 +519,7 @@ class GenericHardwareManager(HardwareManager):
         if os.path.exists(vm_device_label):
             link = os.readlink(vm_device_label)
             device = os.path.normpath(os.path.join(os.path.dirname(
-                                                  vm_device_label), link))
+                                                   vm_device_label), link))
             if block_device.name == device:
                 return True
         return False
@@ -552,12 +554,14 @@ class GenericHardwareManager(HardwareManager):
             return False
 
         if 'enabled' in security_lines:
-            raise errors.BlockDeviceEraseError(('Block device {0} already has '
-                'a security password set').format(block_device.name))
+            raise errors.BlockDeviceEraseError(
+                ('Block device {0} already has a security password set'
+                 ).format(block_device.name))
 
         if 'not frozen' not in security_lines:
-            raise errors.BlockDeviceEraseError(('Block device {0} is frozen '
-                'and cannot be erased').format(block_device.name))
+            raise errors.BlockDeviceEraseError(
+                ('Block device {0} is frozen and cannot be erased'
+                 ).format(block_device.name))
 
         utils.execute('hdparm', '--user-master', 'u', '--security-set-pass',
                       'NULL', block_device.name)
@@ -573,8 +577,9 @@ class GenericHardwareManager(HardwareManager):
         # Verify that security is now 'not enabled'
         security_lines = self._get_ata_security_lines(block_device)
         if 'not enabled' not in security_lines:
-            raise errors.BlockDeviceEraseError(('An unknown error occurred '
-                'erasing block device {0}').format(block_device.name))
+            raise errors.BlockDeviceEraseError(
+                ('An unknown error occurred erasing block device {0}'
+                 ).format(block_device.name))
 
         return True
 
@@ -625,7 +630,7 @@ def _get_managers():
             extensions = sorted(extension_manager, _compare_extensions)
         else:
             extensions = sorted(extension_manager,
-                            key=functools.cmp_to_key(_compare_extensions))
+                                key=functools.cmp_to_key(_compare_extensions))
 
         preferred_managers = []
 
@@ -712,7 +717,7 @@ def dispatch_to_managers(method, *args, **kwargs):
                 return getattr(manager, method)(*args, **kwargs)
             except(errors.IncompatibleHardwareMethodError):
                 LOG.debug('HardwareManager {0} does not support {1}'
-                        .format(manager, method))
+                          .format(manager, method))
             except Exception as e:
                 LOG.exception('Unexpected error dispatching %(method)s to '
                               'manager %(manager)s: %(e)s',

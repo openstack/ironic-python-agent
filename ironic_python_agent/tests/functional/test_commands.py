@@ -20,7 +20,8 @@ from ironic_python_agent.tests.functional import base
 
 class TestCommands(base.FunctionalBase):
     def test_empty_commands(self):
-        commands = requests.get('http://localhost:%s/v1/commands' %
-                os.environ.get('TEST_PORT', '9999'))
+        commands = requests.get(
+            'http://localhost:%s/v1/commands' % os.environ.get('TEST_PORT',
+                                                               '9999'))
         self.assertEqual(200, commands.status_code)
         self.assertEqual({'commands': []}, commands.json())

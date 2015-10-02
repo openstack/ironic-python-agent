@@ -220,8 +220,8 @@ def parse_root_device_hints():
         error_msg = ('No device can be found because the following hints: '
                      '"%(not_supported)s" are not supported by this version '
                      'of IPA. Supported hints are: "%(supported)s"',
-                    {'not_supported': ', '.join(not_supported),
-                     'supported': ', '.join(SUPPORTED_ROOT_DEVICE_HINTS)})
+                     {'not_supported': ', '.join(not_supported),
+                      'supported': ', '.join(SUPPORTED_ROOT_DEVICE_HINTS)})
         raise errors.DeviceNotFound(error_msg)
 
     # Normalise the values

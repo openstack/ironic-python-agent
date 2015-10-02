@@ -85,7 +85,7 @@ class TestImageExtension(test_base.BaseTestCase):
                               self.fake_dir + '/proc'),
                     mock.call(('chroot %s /bin/bash -c '
                               '"/usr/sbin/grub-install %s"' %
-                              (self.fake_dir, self.fake_dev)), shell=True,
+                               (self.fake_dir, self.fake_dev)), shell=True,
                               env_variables={'PATH': '/sbin:/bin'}),
                     mock.call(('chroot %s /bin/bash -c '
                                '"/usr/sbin/grub-mkconfig -o '
@@ -130,7 +130,7 @@ class TestImageExtension(test_base.BaseTestCase):
                               self.fake_dir + '/boot/efi'),
                     mock.call(('chroot %s /bin/bash -c '
                               '"/usr/sbin/grub-install %s"' %
-                              (self.fake_dir, self.fake_dev)), shell=True,
+                               (self.fake_dir, self.fake_dev)), shell=True,
                               env_variables={'PATH': '/sbin:/bin'}),
                     mock.call(('chroot %s /bin/bash -c '
                                '"/usr/sbin/grub-mkconfig -o '
@@ -159,8 +159,8 @@ class TestImageExtension(test_base.BaseTestCase):
     @mock.patch.object(os, 'makedirs')
     @mock.patch.object(image, '_get_partition')
     def test__install_grub2_uefi_umount_fails(
-        self, mock_get_part_uuid, mkdir_mock, environ_mock,
-        mock_execute, mock_dispatch):
+            self, mock_get_part_uuid, mkdir_mock, environ_mock, mock_execute,
+            mock_dispatch):
         mock_get_part_uuid.side_effect = [self.fake_root_part,
                                           self.fake_efi_system_part]
 
@@ -186,7 +186,7 @@ class TestImageExtension(test_base.BaseTestCase):
                               self.fake_dir + '/boot/efi'),
                     mock.call(('chroot %s /bin/bash -c '
                               '"/usr/sbin/grub-install %s"' %
-                              (self.fake_dir, self.fake_dev)), shell=True,
+                               (self.fake_dir, self.fake_dev)), shell=True,
                               env_variables={'PATH': '/sbin:/bin'}),
                     mock.call(('chroot %s /bin/bash -c '
                                '"/usr/sbin/grub-mkconfig -o '
@@ -217,8 +217,7 @@ class TestImageExtension(test_base.BaseTestCase):
         KNAME="test2" UUID="%s" TYPE="part"''' % self.fake_root_uuid)
         mock_execute.side_effect = (None, None, [lsblk_output])
 
-        root_part = image._get_partition(self.fake_dev,
-                                              self.fake_root_uuid)
+        root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
         expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
                               delay_on_retry=True),
@@ -228,7 +227,7 @@ class TestImageExtension(test_base.BaseTestCase):
         self.assertFalse(mock_dispatch.called)
 
     def test__get_partition_no_device_found(self, mock_execute,
-                                                 mock_dispatch):
+                                            mock_dispatch):
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" UUID="" TYPE="part"''')
@@ -245,7 +244,7 @@ class TestImageExtension(test_base.BaseTestCase):
         self.assertFalse(mock_dispatch.called)
 
     def test__get_partition_command_fail(self, mock_execute,
-                                              mock_dispatch):
+                                         mock_dispatch):
         mock_execute.side_effect = (None, None,
                                     processutils.ProcessExecutionError('boom'))
         self.assertRaises(errors.CommandExecutionError,

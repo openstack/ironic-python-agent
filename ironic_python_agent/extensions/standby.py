@@ -150,7 +150,7 @@ def _download_image(image_info):
                 f.write(chunk)
         except Exception as e:
             msg = 'Unable to write image to {0}. Error: {1}'.format(
-                    image_location, str(e))
+                image_location, str(e))
             raise errors.ImageDownloadError(image_info['id'], msg)
 
     totaltime = time.time() - starttime

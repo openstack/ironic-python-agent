@@ -80,12 +80,11 @@ exit 1
             fp = open(tmpfilename2, 'r')
             runs = fp.read()
             fp.close()
-            self.assertNotEqual(runs.strip(), 'failure', 'stdin did not '
-                                                          'always get passed '
-                                                          'correctly')
+            self.assertNotEqual(runs.strip(), 'failure',
+                                'stdin did not always get passed correctly')
             runs = int(runs.strip())
             self.assertEqual(10, runs,
-                              'Ran %d times instead of 10.' % (runs,))
+                             'Ran %d times instead of 10.' % (runs,))
         finally:
             os.unlink(tmpfilename)
             os.unlink(tmpfilename2)
