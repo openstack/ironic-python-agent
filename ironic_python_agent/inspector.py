@@ -13,7 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
+import io
+import json
 import logging
+import tarfile
 
 import netaddr
 from oslo_concurrency import processutils
@@ -251,3 +255,67 @@ def collect_default(data, failures):
     # dropped after inspector is ready (probably in Mitaka cycle).
     discover_network_properties(inventory, data, failures)
     discover_scheduling_properties(inventory, data, root_disk)
+
+
+def collect_logs(data, failures):
+    """Collect journald logs from the ramdisk.
+
+    As inspection runs before any nodes details are known, it's handy to have
+    logs returned with data. This collector sends logs to inspector in format
+    expected by the 'ramdisk_error' plugin: base64 encoded tar.gz.
+
+    This collector should be installed last in the collector chain, otherwise
+    it won't collect enough logs.
+
+    This collector does not report failures.
+
+    :param data: mutable data that we'll send to inspector
+    :param failures: AccumulatedFailures object
+    """
+    try:
+        out, _e = utils.execute('journalctl', '--full', '--no-pager', '-b',
+                                '-n', '10000')
+    except (processutils.ProcessExecutionError, OSError):
+        LOG.warn('failed to get system journal')
+        return
+
+    journal = io.BytesIO(out.encode('utf-8'))
+    with io.BytesIO() as fp:
+        with tarfile.open(fileobj=fp, mode='w:gz') as tar:
+            tarinfo = tarfile.TarInfo('journal')
+            tarinfo.size = len(out)
+            tar.addfile(tarinfo, journal)
+
+        fp.seek(0)
+        data['logs'] = base64.b64encode(fp.getvalue())
+
+
+def collect_extra_hardware(data, failures):
+    """Collect detailed inventory using 'hardware-detect' utility.
+
+    Recognizes ipa-inspection-benchmarks with list of benchmarks (possible
+    values are cpu, disk, mem) to run. No benchmarks are run by default, as
+    they're pretty time-consuming.
+
+    Puts collected data as JSON under 'data' key.
+    Requires 'hardware' python package to be installed on the ramdisk in
+    addition to the packages in requirements.txt.
+
+    :param data: mutable data that we'll send to inspector
+    :param failures: AccumulatedFailures object
+    """
+    benchmarks = utils.get_agent_params().get('ipa-inspection-benchmarks', [])
+    if benchmarks:
+        benchmarks = ['--benchmark'] + benchmarks.split(',')
+
+    try:
+        out, err = utils.execute('hardware-detect', *benchmarks)
+    except (processutils.ProcessExecutionError, OSError) as exc:
+        failures.add('failed to run hardware-detect utility: %s', exc)
+        return
+
+    try:
+        data['data'] = json.loads(out)
+    except ValueError as exc:
+        msg = 'JSON returned from hardware-detect cannot be decoded: %s'
+        failures.add(msg, exc)
