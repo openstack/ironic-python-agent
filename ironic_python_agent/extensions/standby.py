@@ -116,7 +116,11 @@ def _write_configdrive_to_partition(configdrive, device):
 
 
 def _request_url(image_info, url):
-    resp = requests.get(url, stream=True)
+    no_proxy = image_info.get('no_proxy')
+    if no_proxy:
+        os.environ['no_proxy'] = no_proxy
+    proxies = image_info.get('proxies', {})
+    resp = requests.get(url, stream=True, proxies=proxies)
     if resp.status_code != 200:
         msg = ('Received status code {0} from {1}, expected 200. Response '
                'body: {2}').format(resp.status_code, url, resp.text)

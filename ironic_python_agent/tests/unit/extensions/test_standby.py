@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import mock
 from oslo_concurrency import processutils
 from oslotest import base as test_base
@@ -212,7 +214,37 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         standby._download_image(image_info)
         requests_mock.assert_called_once_with(image_info['urls'][0],
-                                              stream=True)
+                                              stream=True, proxies={})
+        write = file_mock.write
+        write.assert_any_call('some')
+        write.assert_any_call('content')
+        self.assertEqual(write.call_count, 2)
+
+    @mock.patch('hashlib.md5')
+    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('requests.get')
+    @mock.patch.dict(os.environ, {})
+    def test_download_image_proxy(
+            self, requests_mock, open_mock, md5_mock):
+        image_info = self._build_fake_image_info()
+        proxies = {'http': 'http://a.b.com',
+                   'https': 'https://secure.a.b.com'}
+        no_proxy = '.example.org,.b.com'
+        image_info['proxies'] = proxies
+        image_info['no_proxy'] = no_proxy
+        response = requests_mock.return_value
+        response.status_code = 200
+        response.iter_content.return_value = ['some', 'content']
+        file_mock = mock.Mock()
+        open_mock.return_value.__enter__.return_value = file_mock
+        file_mock.read.return_value = None
+        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['checksum']
+
+        standby._download_image(image_info)
+        self.assertEqual(no_proxy, os.environ['no_proxy'])
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              stream=True, proxies=proxies)
         write = file_mock.write
         write.assert_any_call('some')
         write.assert_any_call('content')
