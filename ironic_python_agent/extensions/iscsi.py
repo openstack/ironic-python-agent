@@ -55,7 +55,7 @@ def _wait_for_iscsi_daemon(interval=1, attempts=10):
 
 def _start_iscsi_daemon(iqn, device):
     """Start a ISCSI target for the device."""
-    LOG.debug("Starting ISCSI target on device %{device}", {'device': device})
+    LOG.debug("Starting ISCSI target on device %(device)s", {'device': device})
 
     # Start ISCSI Target daemon
     _execute(['tgtd'], "Unable to start the ISCSI daemon")
