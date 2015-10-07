@@ -49,19 +49,22 @@ def _get_device_vendor(dev):
         LOG.warning("Can't find the device vendor for device %s", dev)
 
 
-def list_all_block_devices():
+def list_all_block_devices(block_type='disk'):
     """List all physical block devices
 
     The switches we use for lsblk: P for KEY="value" output, b for size output
     in bytes, d to exclude dependent devices (like md or dm devices), i to
-    ensure ascii characters only, and o to specify the fields we need.
+    ensure ascii characters only, and o to specify the fields/columns we need.
 
     Broken out as its own function to facilitate custom hardware managers that
     don't need to subclass GenericHardwareManager.
 
+    :param block_type: Type of block device to find
     :return: A list of BlockDevices
     """
-    report = utils.execute('lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
+
+    columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
+    report = utils.execute('lsblk', '-Pbdi', '-o{}'.format(','.join(columns)),
                            check_exit_code=[0])[0]
     lines = report.split('\n')
     context = pyudev.Context()
@@ -73,15 +76,15 @@ def list_all_block_devices():
         vals = shlex.split(line)
         for key, val in (v.split('=', 1) for v in vals):
             device[key] = val.strip()
-        # Ignore non disk
-        if device.get('TYPE') != 'disk':
+        # Ignore block types not specified
+        if device.get('TYPE') != block_type:
             continue
 
-        # Ensure all required keys are at least present, even if blank
-        diff = set(['KNAME', 'MODEL', 'SIZE', 'ROTA']) - set(device.keys())
-        if diff:
+        # Ensure all required columns are at least present, even if blank
+        missing = set(columns) - set(device)
+        if missing:
             raise errors.BlockDeviceError(
-                '%s must be returned by lsblk.' % diff)
+                '%s must be returned by lsblk.' % ', '.join(sorted(missing)))
 
         name = '/dev/' + device['KNAME']
         try:

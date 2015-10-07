@@ -140,6 +140,14 @@ BLK_DEVICE_TEMPLATE_SMALL = (
     'KNAME="sdb" MODEL="AlmostBigEnough Drive" SIZE="4294967295" '
     'ROTA="0" TYPE="disk"'
 )
+BLK_DEVICE_TEMPLATE_SMALL_DEVICES = [
+    hardware.BlockDevice(name='/dev/sda', model='TinyUSB Drive',
+                         size=3116853504, rotational=False,
+                         vendor="FooTastic"),
+    hardware.BlockDevice(name='/dev/sdb', model='AlmostBigEnough Drive',
+                         size=4294967295, rotational=False,
+                         vendor="FooTastic"),
+]
 
 SHRED_OUTPUT = (
     'shred: /dev/sda: pass 1/2 (random)...\n'
@@ -280,7 +288,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         self.assertEqual(self.hardware.get_os_install_device(), '/dev/sdb')
         mocked_execute.assert_called_once_with(
-            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
 
     @mock.patch.object(utils, 'execute')
@@ -290,7 +298,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         ex = self.assertRaises(errors.DeviceNotFound,
                                self.hardware.get_os_install_device)
         mocked_execute.assert_called_once_with(
-            'lsblk', '-PbdioKNAME,MODEL,SIZE,ROTA,TYPE', check_exit_code=[0])
+            'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            check_exit_code=[0])
         self.assertIn(str(4 * units.Gi), ex.details)
 
     @mock.patch.object(hardware, 'list_all_block_devices')
@@ -797,3 +806,39 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     def test_get_bmc_address_virt(self, mocked_execute):
         mocked_execute.side_effect = processutils.ProcessExecutionError()
         self.assertIsNone(self.hardware.get_bmc_address())
+
+
+class TestModuleFunctions(test_base.BaseTestCase):
+
+    @mock.patch.object(hardware, '_get_device_vendor', lambda x: "FooTastic")
+    @mock.patch.object(hardware.pyudev.Device, "from_device_file")
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_list_all_block_devices_success(self, mocked_execute,
+                                            mocked_fromdevfile):
+        mocked_fromdevfile.return_value = {}
+        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
+        result = hardware.list_all_block_devices()
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            check_exit_code=[0])
+        self.assertEqual(BLK_DEVICE_TEMPLATE_SMALL_DEVICES, result)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(hardware, '_get_device_vendor', lambda x: "FooTastic")
+    def test_list_all_block_devices_wrong_block_type(self, mocked_execute):
+        mocked_execute.return_value = ('TYPE="foo" MODEL="model"', '')
+        result = hardware.list_all_block_devices()
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            check_exit_code=[0])
+        self.assertEqual([], result)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_list_all_block_devices_missing(self, mocked_execute):
+        """Test for missing values returned from lsblk"""
+        mocked_execute.return_value = ('TYPE="disk" MODEL="model"', '')
+        self.assertRaisesRegexp(
+            errors.BlockDeviceError,
+            r'^Block device caused unknown error: KNAME, ROTA, SIZE must be '
+            r'returned by lsblk.$',
+            hardware.list_all_block_devices)
