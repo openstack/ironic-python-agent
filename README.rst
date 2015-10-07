@@ -30,7 +30,7 @@ Project Resources
 =================
 Project status, bugs, and blueprints are tracked on Launchpad:
 
-  http://launchpad.net/ironic
+  http://launchpad.net/ironic-python-agent
 
 Developer documentation can be found here:
 
