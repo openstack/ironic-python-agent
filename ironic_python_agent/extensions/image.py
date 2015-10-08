@@ -31,7 +31,7 @@ from ironic_python_agent import utils
 LOG = log.getLogger(__name__)
 
 
-BIND_MOUNTS = ('/dev', '/sys', '/proc')
+BIND_MOUNTS = ('/dev', '/proc')
 
 
 def _get_partition(device, uuid):
@@ -97,6 +97,8 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
         for fs in BIND_MOUNTS:
             utils.execute('mount', '-o', 'bind', fs, path + fs)
 
+        utils.execute('mount', '-t', 'sysfs', 'none', path + '/sys')
+
         if efi_partition:
             if not os.path.exists(efi_partition_mount_point):
                 os.makedirs(efi_partition_mount_point)
@@ -156,6 +158,13 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
             except processutils.ProcessExecutionError as e:
                 umount_binds_fail = True
                 LOG.warning(umount_warn_msg, {'path': path + fs, 'error': e})
+
+        try:
+            utils.execute('umount', path + '/sys', attempts=3,
+                          delay_on_retry=True)
+        except processutils.ProcessExecutionError as e:
+            umount_binds_fail = True
+            LOG.warning(umount_warn_msg, {'path': path + '/sys', 'error': e})
 
         # If umounting the binds succeed then we can try to delete it
         if not umount_binds_fail:
