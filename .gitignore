@@ -10,9 +10,11 @@ devenv/*
 .coverage
 coverage.xml
 .testrepository
+imagebuild/.image_cache
 imagebuild/coreos/build
 imagebuild/coreos/dist
 imagebuild/coreos/oem/authorized_keys
+imagebuild/coreos/oem/container.tar.gz
 imagebuild/coreos/UPLOAD
 *.swp
 _build
