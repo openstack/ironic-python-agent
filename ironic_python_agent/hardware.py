@@ -78,6 +78,9 @@ def list_all_block_devices(block_type='disk'):
             device[key] = val.strip()
         # Ignore block types not specified
         if device.get('TYPE') != block_type:
+            LOG.debug(
+                "TYPE did not match. Wanted: {!r} but found: {!r}".format(
+                    block_type, line))
             continue
 
         # Ensure all required columns are at least present, even if blank
