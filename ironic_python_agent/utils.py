@@ -47,7 +47,18 @@ AGENT_PARAMS_CACHED = dict()
 
 
 def execute(*cmd, **kwargs):
-    """Convenience wrapper around oslo's execute() method."""
+    """Convenience wrapper around oslo's execute() method.
+
+    Executes and logs results from a system command. See docs for
+    oslo_concurrency.processutils.execute for usage.
+
+    :param *cmd: positional arguments to pass to processutils.execute()
+    :param **kwargs: keyword arguments to pass to processutils.execute()
+    :raises: UnknownArgumentError on receiving unknown arguments
+    :raises: ProcessExecutionError
+    :raises: OSError
+    :returns: tuple of (stdout, stderr)
+    """
     result = processutils.execute(*cmd, **kwargs)
     LOG.debug('Execution completed, command line is "%s"', ' '.join(cmd))
     LOG.debug('Command stdout is: "%s"', result[0])
@@ -56,7 +67,19 @@ def execute(*cmd, **kwargs):
 
 
 def try_execute(*cmd, **kwargs):
-    """The same as execute but returns None on error."""
+    """The same as execute but returns None on error.
+
+    Executes and logs results from a system command. See docs for
+    oslo_concurrency.processutils.execute for usage.
+
+    Instead of raising an exception on failure, this method simply
+    returns None in case of failure.
+
+    :param *cmd: positional arguments to pass to processutils.execute()
+    :param **kwargs: keyword arguments to pass to processutils.execute()
+    :raises: UnknownArgumentError on receiving unknown arguments
+    :returns: tuple of (stdout, stderr) or None in some error cases
+    """
     try:
         return execute(*cmd, **kwargs)
     except (processutils.ProcessExecutionError, OSError) as e:
@@ -191,9 +214,12 @@ def get_agent_params():
 
 
 def normalize(string):
-    """Return a normalized string."""
-    # Since we can't use space on the kernel cmdline, Ironic will
-    # urlencode the values.
+    """Return a normalized string.
+
+    Take a urlencoded value from Ironic and urldecode it.
+
+    :returns: a normalized version of passed in string
+    """
     return parse.unquote(string).lower().strip()
 
 
