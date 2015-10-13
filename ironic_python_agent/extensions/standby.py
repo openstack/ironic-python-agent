@@ -220,6 +220,30 @@ class StandbyExtension(base.BaseAgentExtension):
 
         self.cached_image_id = None
 
+    def _cache_and_write_image(self, image_info, device):
+        _download_image(image_info)
+        _write_image(image_info, device)
+        self.cached_image_id = image_info['id']
+
+    def _stream_raw_image_onto_device(self, image_info, device):
+        starttime = time.time()
+        image_download = ImageDownload(image_info, time_obj=starttime)
+
+        with open(device, 'wb+') as f:
+            try:
+                for chunk in image_download:
+                    f.write(chunk)
+            except Exception as e:
+                msg = 'Unable to write image to device {0}. Error: {1}'.format(
+                      device, str(e))
+                raise errors.ImageDownloadError(image_info['id'], msg)
+
+        totaltime = time.time() - starttime
+        LOG.info("Image streamed onto device {0} in {1} "
+                 "seconds".format(device, totaltime))
+        # Verify if the checksum of the streamed image is correct
+        _verify_image(image_info, device, image_download.md5sum())
+
     @base.async_command('cache_image', _validate_image_info)
     def cache_image(self, image_info=None, force=False):
         LOG.debug('Caching image %s', image_info['id'])
@@ -230,9 +254,7 @@ class StandbyExtension(base.BaseAgentExtension):
         if self.cached_image_id != image_info['id'] or force:
             LOG.debug('Already had %s cached, overwriting',
                       self.cached_image_id)
-            _download_image(image_info)
-            _write_image(image_info, device)
-            self.cached_image_id = image_info['id']
+            self._cache_and_write_image(image_info, device)
             result_msg = 'image ({0}) cached to device {1}'
 
         msg = result_msg.format(image_info['id'], device)
@@ -246,13 +268,19 @@ class StandbyExtension(base.BaseAgentExtension):
         LOG.debug('Preparing image %s', image_info['id'])
         device = hardware.dispatch_to_managers('get_os_install_device')
 
+        disk_format = image_info.get('disk_format')
+        stream_raw_images = image_info.get('stream_raw_images', False)
         # don't write image again if already cached
         if self.cached_image_id != image_info['id']:
-            LOG.debug('Already had %s cached, overwriting',
-                      self.cached_image_id)
-            _download_image(image_info)
-            _write_image(image_info, device)
-            self.cached_image_id = image_info['id']
+
+            if self.cached_image_id is not None:
+                LOG.debug('Already had %s cached, overwriting',
+                          self.cached_image_id)
+
+            if stream_raw_images and disk_format == 'raw':
+                self._stream_raw_image_onto_device(image_info, device)
+            else:
+                self._cache_and_write_image(image_info, device)
 
         if configdrive is not None:
             _write_configdrive_to_partition(configdrive, device)
