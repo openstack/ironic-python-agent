@@ -1,0 +1,12 @@
+bash.tcz
+coreutils.tcz
+dmidecode.tcz
+gdisk.tcz
+hdparm.tcz
+parted.tcz
+python.tcz
+raid-dm-3.16.6-tinycore64.tcz
+scsi-3.16.6-tinycore64.tcz
+udev-lib.tcz
+util-linux.tcz
+glib2.tcz
