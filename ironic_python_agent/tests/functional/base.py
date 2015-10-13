@@ -33,10 +33,18 @@ class FunctionalBase(test_base.BaseTestCase):
         self.test_port = os.environ.get('TEST_PORT', '9999')
         # Build a basic standalone agent using the config option defaults.
         # 127.0.0.1:6835 is the fake Ironic client.
+
         self.agent = agent.IronicPythonAgent(
-            'http://127.0.0.1:6835', 'localhost',
-            ('0.0.0.0', int(self.test_port)), 3, 10, None, 300, 1,
-            'agent_ipmitool', True)
+            api_url='http://127.0.0.1:6835',
+            advertise_address='localhost',
+            listen_address=('0.0.0.0', int(self.test_port)),
+            ip_lookup_attempts=3,
+            ip_lookup_sleep=10,
+            network_interface=None,
+            lookup_timeout=300,
+            lookup_interval=1,
+            driver_name='agent_ipmitool',
+            standalone=True)
         self.process = multiprocessing.Process(
             target=self.agent.run)
         self.process.start()
