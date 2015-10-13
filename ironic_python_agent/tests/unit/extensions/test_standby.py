@@ -28,26 +28,27 @@ else:
     OPEN_FUNCTION_NAME = 'builtins.open'
 
 
+def _build_fake_image_info():
+    return {
+        'id': 'fake_id',
+        'urls': [
+            'http://example.org',
+        ],
+        'checksum': 'abc123'
+    }
+
+
 class TestStandbyExtension(test_base.BaseTestCase):
     def setUp(self):
         super(TestStandbyExtension, self).setUp()
         self.agent_extension = standby.StandbyExtension()
 
-    def _build_fake_image_info(self):
-        return {
-            'id': 'fake_id',
-            'urls': [
-                'http://example.org',
-            ],
-            'checksum': 'abc123'
-        }
-
     def test_validate_image_info_success(self):
-        standby._validate_image_info(None, self._build_fake_image_info())
+        standby._validate_image_info(None, _build_fake_image_info())
 
     def test_validate_image_info_missing_field(self):
         for field in ['id', 'urls', 'checksum']:
-            invalid_info = self._build_fake_image_info()
+            invalid_info = _build_fake_image_info()
             del invalid_info[field]
 
             self.assertRaises(errors.InvalidCommandParamsError,
@@ -55,7 +56,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                               invalid_info)
 
     def test_validate_image_info_invalid_urls(self):
-        invalid_info = self._build_fake_image_info()
+        invalid_info = _build_fake_image_info()
         invalid_info['urls'] = 'this_is_not_a_list'
 
         self.assertRaises(errors.InvalidCommandParamsError,
@@ -63,7 +64,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           invalid_info)
 
     def test_validate_image_info_empty_urls(self):
-        invalid_info = self._build_fake_image_info()
+        invalid_info = _build_fake_image_info()
         invalid_info['urls'] = []
 
         self.assertRaises(errors.InvalidCommandParamsError,
@@ -71,7 +72,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           invalid_info)
 
     def test_validate_image_info_invalid_checksum(self):
-        invalid_info = self._build_fake_image_info()
+        invalid_info = _build_fake_image_info()
         invalid_info['checksum'] = {'not': 'a string'}
 
         self.assertRaises(errors.InvalidCommandParamsError,
@@ -79,7 +80,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           invalid_info)
 
     def test_validate_image_info_empty_checksum(self):
-        invalid_info = self._build_fake_image_info()
+        invalid_info = _build_fake_image_info()
         invalid_info['checksum'] = ''
 
         self.assertRaises(errors.InvalidCommandParamsError,
@@ -92,14 +93,14 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           image_info={'foo': 'bar'})
 
     def test_image_location(self):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         location = standby._image_location(image_info)
         self.assertEqual(location, '/tmp/fake_id')
 
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_write_image(self, execute_mock, open_mock):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         device = '/dev/sda'
         location = standby._image_location(image_info)
         script = standby._path_to_script('shell/write_image.sh')
@@ -202,7 +203,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
     @mock.patch(OPEN_FUNCTION_NAME)
     @mock.patch('requests.get')
     def test_download_image(self, requests_mock, open_mock, md5_mock):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
         response.iter_content.return_value = ['some', 'content']
@@ -226,7 +227,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
     @mock.patch.dict(os.environ, {})
     def test_download_image_proxy(
             self, requests_mock, open_mock, md5_mock):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         proxies = {'http': 'http://a.b.com',
                    'https': 'https://secure.a.b.com'}
         no_proxy = '.example.org,.b.com'
@@ -252,57 +253,40 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
     @mock.patch('requests.get', autospec=True)
     def test_download_image_bad_status(self, requests_mock):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 404
         self.assertRaises(errors.ImageDownloadError,
                           standby._download_image,
                           image_info)
 
-    @mock.patch('ironic_python_agent.extensions.standby._verify_image',
-                autospec=True)
+    @mock.patch('hashlib.md5', autospec=True)
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_download_image_verify_fails(self, requests_mock, open_mock,
-                                         verify_mock):
-        image_info = self._build_fake_image_info()
+                                         md5_mock):
+        image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
-        verify_mock.side_effect = errors.ImageChecksumError(
-            'foo', '/bar/foo', 'incorrect', 'correct')
+        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock.return_value = 'invalid-checksum'
         self.assertRaises(errors.ImageChecksumError,
                           standby._download_image,
                           image_info)
 
-    @mock.patch(OPEN_FUNCTION_NAME)
-    @mock.patch('hashlib.md5')
-    def test_verify_image_success(self, md5_mock, open_mock):
-        image_info = self._build_fake_image_info()
-        hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['checksum']
-        file_mock = mock.Mock()
-        file_mock.read.return_value = None
-        open_mock.return_value.__enter__.return_value = file_mock
+    def test_verify_image_success(self):
+        image_info = _build_fake_image_info()
         image_location = '/foo/bar'
+        checksum = image_info['checksum']
+        standby._verify_image(image_info, image_location, checksum)
 
-        verified = standby._verify_image(image_info, image_location)
-        self.assertTrue(verified)
-        self.assertEqual(1, md5_mock.call_count)
-
-    @mock.patch(OPEN_FUNCTION_NAME)
-    @mock.patch('hashlib.md5')
-    def test_verify_image_failure(self, md5_mock, open_mock):
-        image_info = self._build_fake_image_info()
-        md5_mock.return_value.hexdigest.return_value = 'wrong hash'
-        file_mock = mock.Mock()
-        file_mock.read.return_value = None
-        open_mock.return_value.__enter__.return_value = file_mock
+    def test_verify_image_failure(self):
+        image_info = _build_fake_image_info()
         image_location = '/foo/bar'
-
+        checksum = 'invalid-checksum'
         self.assertRaises(errors.ImageChecksumError,
                           standby._verify_image,
-                          image_info, image_location)
-        self.assertEqual(md5_mock.call_count, 1)
+                          image_info, image_location, checksum)
 
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
@@ -312,7 +296,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                 autospec=True)
     def test_cache_image(self, download_mock, write_mock,
                          dispatch_mock):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         download_mock.return_value = None
         write_mock.return_value = None
         dispatch_mock.return_value = 'manager'
@@ -337,7 +321,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                 autospec=True)
     def test_cache_image_force(self, download_mock, write_mock,
                                dispatch_mock):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         self.agent_extension.cached_image_id = image_info['id']
         download_mock.return_value = None
         write_mock.return_value = None
@@ -365,7 +349,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                 autospec=True)
     def test_cache_image_cached(self, download_mock, write_mock,
                                 dispatch_mock):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         self.agent_extension.cached_image_id = image_info['id']
         download_mock.return_value = None
         write_mock.return_value = None
@@ -400,7 +384,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                            write_mock,
                            dispatch_mock,
                            configdrive_copy_mock):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         location_mock.return_value = '/tmp/configdrive'
         download_mock.return_value = None
         write_mock.return_value = None
@@ -460,7 +444,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                                           write_mock,
                                           dispatch_mock,
                                           configdrive_copy_mock):
-        image_info = self._build_fake_image_info()
+        image_info = _build_fake_image_info()
         download_mock.return_value = None
         write_mock.return_value = None
         dispatch_mock.return_value = 'manager'
@@ -530,3 +514,23 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         execute_mock.assert_called_once_with(*command, check_exit_code=[0])
         self.assertEqual('FAILED', failed_result.command_status)
+
+
+class TestImageDownload(test_base.BaseTestCase):
+
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_download_image(self, requests_mock, md5_mock):
+        content = ['SpongeBob', 'SquarePants']
+        response = requests_mock.return_value
+        response.status_code = 200
+        response.iter_content.return_value = content
+
+        image_info = _build_fake_image_info()
+        md5_mock.return_value.hexdigest.return_value = image_info['checksum']
+        image_download = standby.ImageDownload(image_info)
+
+        self.assertEqual(content, list(image_download))
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              stream=True, proxies={})
+        self.assertEqual(image_info['checksum'], image_download.md5sum())
