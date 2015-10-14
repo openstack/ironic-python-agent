@@ -19,6 +19,10 @@
 from oslo_concurrency import processutils
 from oslo_log import log
 from oslo_utils import uuidutils
+try:
+    import rtslib_fb
+except ImportError:
+    import rtslib as rtslib_fb
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
@@ -33,10 +37,11 @@ def _execute(cmd, error_msg, **kwargs):
         stdout, stderr = utils.execute(*cmd, **kwargs)
     except processutils.ProcessExecutionError as e:
         LOG.error(error_msg)
-        raise errors.ISCSIError(error_msg, e.exit_code, e.stdout, e.stderr)
+        raise errors.ISCSICommandError(error_msg, e.exit_code,
+                                       e.stdout, e.stderr)
 
 
-def _wait_for_iscsi_daemon(attempts=10):
+def _wait_for_tgtd(attempts=10):
     """Wait for the ISCSI daemon to start."""
     # here, iscsi daemon is considered not running in case
     # tgtadm is not able to talk to tgtd to show iscsi targets
@@ -44,14 +49,12 @@ def _wait_for_iscsi_daemon(attempts=10):
     _execute(cmd, "ISCSI daemon didn't initialize", attempts=attempts)
 
 
-def _start_iscsi_daemon(iqn, device):
+def _start_tgtd(iqn, device):
     """Start a ISCSI target for the device."""
-    LOG.debug("Starting ISCSI target on device %(device)s", {'device': device})
-
     # Start ISCSI Target daemon
     _execute(['tgtd'], "Unable to start the ISCSI daemon")
 
-    _wait_for_iscsi_daemon()
+    _wait_for_tgtd()
 
     cmd = ['tgtadm', '--lld', 'iscsi', '--mode', 'target', '--op',
            'new', '--tid', '1', '--targetname', iqn]
@@ -67,15 +70,59 @@ def _start_iscsi_daemon(iqn, device):
                   "initiators for iqn %s" % iqn)
 
 
-class ISCSIExtension(base.BaseAgentExtension):
+def _start_lio(iqn, device):
+    try:
+        storage = rtslib_fb.BlockStorageObject(name=iqn, dev=device)
+        target = rtslib_fb.Target(rtslib_fb.FabricModule('iscsi'), iqn,
+                                  mode='create')
+        tpg = rtslib_fb.TPG(target, mode='create')
+        # disable all authentication
+        tpg.set_attribute('authentication', '0')
+        tpg.set_attribute('demo_mode_write_protect', '0')
+        tpg.set_attribute('generate_node_acls', '1')
+        # lun=1 is hardcoded in ironic
+        rtslib_fb.LUN(tpg, storage_object=storage, lun=1)
+        tpg.enable = 1
+    except rtslib_fb.utils.RTSLibError as exc:
+        msg = 'Failed to create a target: {0}'.format(exc)
+        raise errors.ISCSIError(msg)
 
+    try:
+        # bind to the default port on all interfaces
+        rtslib_fb.NetworkPortal(tpg, '0.0.0.0')
+    except rtslib_fb.utils.RTSLibError as exc:
+        msg = 'Failed to publish a target: {0}'.format(exc)
+        raise errors.ISCSIError(msg)
+
+
+class ISCSIExtension(base.BaseAgentExtension):
     @base.sync_command('start_iscsi_target')
     def start_iscsi_target(self, iqn=None):
         """Expose the disk as an ISCSI target."""
         # If iqn is not given, generate one
         if iqn is None:
-            iqn = 'iqn-' + uuidutils.generate_uuid()
+            iqn = 'iqn.2008-10.org.openstack:%s' % uuidutils.generate_uuid()
 
         device = hardware.dispatch_to_managers('get_os_install_device')
-        _start_iscsi_daemon(iqn, device)
+        LOG.debug("Starting ISCSI target with iqn %(iqn)s on device "
+                  "%(device)s", {'iqn': iqn, 'device': device})
+
+        try:
+            rts_root = rtslib_fb.RTSRoot()
+        except (EnvironmentError, rtslib_fb.RTSLibError) as exc:
+            LOG.warn('Linux-IO is not available, falling back to TGT. '
+                     'Error: %s.', exc)
+            rts_root = None
+
+        if rts_root is None:
+            _start_tgtd(iqn, device)
+        else:
+            _start_lio(iqn, device)
+            LOG.debug('Linux-IO configuration: %s', rts_root.dump())
+
+        LOG.info('Created iSCSI target with iqn %(iqn)s on device %(dev)s '
+                 'using %(method)s',
+                 {'iqn': iqn, 'dev': device,
+                  'method': 'tgtd' if rts_root is None else 'linux-io'})
+
         return {"iscsi_target_iqn": iqn}
