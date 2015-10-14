@@ -218,6 +218,7 @@ def normalize(string):
 
     Take a urlencoded value from Ironic and urldecode it.
 
+    :param string: a urlencoded string
     :returns: a normalized version of passed in string
     """
     return parse.unquote(string).lower().strip()
