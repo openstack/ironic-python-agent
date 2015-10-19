@@ -15,8 +15,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
-import time
 
 from oslo_concurrency import processutils
 from oslo_log import log
@@ -30,27 +28,20 @@ from ironic_python_agent import utils
 LOG = log.getLogger(__name__)
 
 
-def _execute(cmd, error_msg, check_exit_code=None):
-    if check_exit_code is None:
-        check_exit_code = [0]
-
+def _execute(cmd, error_msg, **kwargs):
     try:
-        stdout, stderr = utils.execute(*cmd, check_exit_code=check_exit_code)
+        stdout, stderr = utils.execute(*cmd, **kwargs)
     except processutils.ProcessExecutionError as e:
         LOG.error(error_msg)
         raise errors.ISCSIError(error_msg, e.exit_code, e.stdout, e.stderr)
 
 
-def _wait_for_iscsi_daemon(interval=1, attempts=10):
+def _wait_for_iscsi_daemon(attempts=10):
     """Wait for the ISCSI daemon to start."""
-    for attempt in range(attempts):
-        if os.path.exists("/var/run/tgtd.ipc_abstract_namespace.0"):
-            break
-        time.sleep(interval)
-    else:
-        error_msg = "ISCSI daemon didn't initialize"
-        LOG.error(error_msg)
-        raise errors.ISCSIError(error_msg, 1, '', error_msg)
+    # here, iscsi daemon is considered not running in case
+    # tgtadm is not able to talk to tgtd to show iscsi targets
+    cmd = ['tgtadm', '--lld', 'iscsi', '--mode', 'target', '--op', 'show']
+    _execute(cmd, "ISCSI daemon didn't initialize", attempts=attempts)
 
 
 def _start_iscsi_daemon(iqn, device):
