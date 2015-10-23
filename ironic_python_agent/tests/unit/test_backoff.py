@@ -21,7 +21,7 @@ from ironic_python_agent import backoff
 
 
 class TestBackOffLoopingCall(unittest.TestCase):
-    @mock.patch('random.gauss')
+    @mock.patch('random.SystemRandom.gauss')
     @mock.patch('eventlet.greenthread.sleep')
     def test_exponential_backoff(self, sleep_mock, random_mock):
         def false():
@@ -45,7 +45,7 @@ class TestBackOffLoopingCall(unittest.TestCase):
                           mock.call(109.95116277760006)]
         self.assertEqual(expected_times, sleep_mock.call_args_list)
 
-    @mock.patch('random.gauss')
+    @mock.patch('random.SystemRandom.gauss')
     @mock.patch('eventlet.greenthread.sleep')
     def test_no_backoff(self, sleep_mock, random_mock):
         random_mock.return_value = 1
@@ -60,7 +60,7 @@ class TestBackOffLoopingCall(unittest.TestCase):
         self.assertEqual(expected_times, sleep_mock.call_args_list)
         self.assertTrue(retvalue, 'return value')
 
-    @mock.patch('random.gauss')
+    @mock.patch('random.SystemRandom.gauss')
     @mock.patch('eventlet.greenthread.sleep')
     def test_no_sleep(self, sleep_mock, random_mock):
         # Any call that executes properly the first time shouldn't sleep
@@ -73,7 +73,7 @@ class TestBackOffLoopingCall(unittest.TestCase):
         self.assertFalse(sleep_mock.called)
         self.assertTrue(retvalue, 'return value')
 
-    @mock.patch('random.gauss')
+    @mock.patch('random.SystemRandom.gauss')
     @mock.patch('eventlet.greenthread.sleep')
     def test_max_interval(self, sleep_mock, random_mock):
         def false():

@@ -75,6 +75,7 @@ class BackOffLoopingCall(loopingcall.LoopingCallBase):
              timeout.
     """
 
+    _RNG = random.SystemRandom()
     _KIND = 'Dynamic backoff interval looping call'
     _RUN_ONLY_ONE_MESSAGE = ("A dynamic backoff interval looping call can"
                              " only run one function at a time")
@@ -94,7 +95,7 @@ class BackOffLoopingCall(loopingcall.LoopingCallBase):
         self._interval = starting_interval
 
         def _idle_for(success, _elapsed):
-            random_jitter = random.gauss(jitter, 0.1)
+            random_jitter = self._RNG.gauss(jitter, 0.1)
             if success:
                 # Reset error state now that it didn't error...
                 self._interval = starting_interval
