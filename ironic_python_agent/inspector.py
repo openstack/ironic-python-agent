@@ -16,12 +16,12 @@
 import base64
 import io
 import json
-import logging
 import tarfile
 
 import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import units
 import requests
