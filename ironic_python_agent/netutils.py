@@ -14,13 +14,13 @@
 
 import ctypes
 import fcntl
-import logging
 import select
 import socket
 import struct
 import sys
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 # FIXME(lucasagomes): If you don't import the agent module the tests in
 # this file will fail, it was working before because the agent module was

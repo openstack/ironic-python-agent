@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import multiprocessing
 import os
 import time
 
+from oslo_log import log as logging
 from oslotest import base as test_base
 import requests
 
