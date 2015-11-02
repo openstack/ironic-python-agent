@@ -399,7 +399,7 @@ class GenericHardwareManager(HardwareManager):
             out, _e = utils.execute("dmidecode --type memory | grep Size",
                                     shell=True)
         except (processutils.ProcessExecutionError, OSError) as e:
-            LOG.warn("Cannot get real physical memory size: %s", e)
+            LOG.warning("Cannot get real physical memory size: %s", e)
             physical = None
         else:
             physical = 0
@@ -416,8 +416,8 @@ class GenericHardwareManager(HardwareManager):
                               line, exc)
 
             if not physical:
-                LOG.warn('failed to get real physical RAM, dmidecode returned '
-                         '%s', out)
+                LOG.warning('failed to get real physical RAM, dmidecode '
+                            'returned %s', out)
 
         return Memory(total=total, physical_mb=physical)
 
@@ -601,7 +601,7 @@ class GenericHardwareManager(HardwareManager):
                 "| awk '{ print $4 }'", shell=True)
         except (processutils.ProcessExecutionError, OSError) as e:
             # Not error, because it's normal in virtual environment
-            LOG.warn("Cannot get BMC address: %s", e)
+            LOG.warning("Cannot get BMC address: %s", e)
             return
 
         return out.strip()

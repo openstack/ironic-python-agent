@@ -207,8 +207,8 @@ def discover_scheduling_properties(inventory, data, root_disk=None):
         try:
             data[key] = int(data[key])
         except (KeyError, ValueError, TypeError):
-            LOG.warn('value for %s is missing or malformed: %s',
-                     key, data.get(key))
+            LOG.warning('value for %s is missing or malformed: %s',
+                        key, data.get(key))
         else:
             LOG.info('value for %s is %s', key, data[key])
 
@@ -240,7 +240,7 @@ def collect_default(data, failures):
         root_disk = utils.guess_root_disk(inventory['disks'][:])
     except errors.DeviceNotFound:
         root_disk = None
-        LOG.warn('no suitable root device detected')
+        LOG.warning('no suitable root device detected')
     else:
         data['root_disk'] = root_disk
         LOG.debug('default root device is %s', root_disk.name)
@@ -276,7 +276,7 @@ def collect_logs(data, failures):
         out, _e = utils.execute('journalctl', '--full', '--no-pager', '-b',
                                 '-n', '10000')
     except (processutils.ProcessExecutionError, OSError):
-        LOG.warn('failed to get system journal')
+        LOG.warning('failed to get system journal')
         return
 
     journal = io.BytesIO(out.encode('utf-8'))
