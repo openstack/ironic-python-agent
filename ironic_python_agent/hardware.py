@@ -102,7 +102,9 @@ def list_all_block_devices(block_type='disk'):
             # ID_SERIAL_SHORT here to keep compatibility with the
             # bash deploy ramdisk
             extra = {key: udev.get('ID_%s' % udev_key) for key, udev_key in
-                     [('wwn', 'WWN'), ('serial', 'SERIAL_SHORT')]}
+                     [('wwn', 'WWN'), ('serial', 'SERIAL_SHORT'),
+                      ('wwn_with_extension', 'WWN_WITH_EXTENSION'),
+                      ('wwn_vendor_extension', 'WWN_VENDOR_EXTENSION')]}
 
         devices.append(BlockDevice(name=name,
                                    model=device['MODEL'],
@@ -139,7 +141,8 @@ class BlockDevice(encoding.SerializableComparable):
                            'wwn', 'serial', 'vendor')
 
     def __init__(self, name, model, size, rotational, wwn=None, serial=None,
-                 vendor=None):
+                 vendor=None, wwn_with_extension=None,
+                 wwn_vendor_extension=None):
         self.name = name
         self.model = model
         self.size = size
@@ -147,6 +150,8 @@ class BlockDevice(encoding.SerializableComparable):
         self.wwn = wwn
         self.serial = serial
         self.vendor = vendor
+        self.wwn_with_extension = wwn_with_extension
+        self.wwn_vendor_extension = wwn_vendor_extension
 
 
 class NetworkInterface(encoding.SerializableComparable):
@@ -445,7 +450,8 @@ class GenericHardwareManager(HardwareManager):
                 return True
 
             def check_device_attrs(device):
-                for key in ('model', 'wwn', 'serial', 'vendor'):
+                for key in ('model', 'wwn', 'serial', 'vendor',
+                            'wwn_with_extension', 'wwn_vendor_extension'):
                     if key not in root_device_hints:
                         continue
 

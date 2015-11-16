@@ -498,7 +498,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                              mocked_dev_vendor):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         mocked_udev.side_effect = iter([
-            {'ID_WWN': 'wwn%d' % i, 'ID_SERIAL_SHORT': 'serial%d' % i}
+            {'ID_WWN': 'wwn%d' % i, 'ID_SERIAL_SHORT': 'serial%d' % i,
+             'ID_WWN_WITH_EXTENSION': 'wwn-ext%d' % i,
+             'ID_WWN_VENDOR_EXTENSION': 'wwn-vendor-ext%d' % i}
             for i in range(4)
         ])
         mocked_dev_vendor.return_value = 'Super Vendor'
@@ -510,6 +512,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                  rotational=False,
                                  vendor='Super Vendor',
                                  wwn='wwn0',
+                                 wwn_with_extension='wwn-ext0',
+                                 wwn_vendor_extension='wwn-vendor-ext0',
                                  serial='serial0'),
             hardware.BlockDevice(name='/dev/sdb',
                                  model='Fastable SD131 7',
@@ -517,6 +521,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                  rotational=False,
                                  vendor='Super Vendor',
                                  wwn='wwn1',
+                                 wwn_with_extension='wwn-ext1',
+                                 wwn_vendor_extension='wwn-vendor-ext1',
                                  serial='serial1'),
             hardware.BlockDevice(name='/dev/sdc',
                                  model='NWD-BLP4-1600',
@@ -524,6 +530,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                  rotational=False,
                                  vendor='Super Vendor',
                                  wwn='wwn2',
+                                 wwn_with_extension='wwn-ext2',
+                                 wwn_vendor_extension='wwn-vendor-ext2',
                                  serial='serial2'),
             hardware.BlockDevice(name='/dev/sdd',
                                  model='NWD-BLP4-1600',
@@ -531,6 +539,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                  rotational=False,
                                  vendor='Super Vendor',
                                  wwn='wwn3',
+                                 wwn_with_extension='wwn-ext3',
+                                 wwn_vendor_extension='wwn-vendor-ext3',
                                  serial='serial3')
         ]
 
@@ -538,7 +548,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         for expected, device in zip(expected_devices, devices):
             # Compare all attrs of the objects
             for attr in ['name', 'model', 'size', 'rotational',
-                         'wwn', 'vendor', 'serial']:
+                         'wwn', 'vendor', 'serial', 'wwn_with_extension',
+                         'wwn_vendor_extension']:
                 self.assertEqual(getattr(expected, attr),
                                  getattr(device, attr))
 
