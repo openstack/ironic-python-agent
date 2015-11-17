@@ -16,7 +16,6 @@
 #    under the License.
 
 import mock
-import os
 import time
 
 from oslo_concurrency import processutils
@@ -39,41 +38,44 @@ class TestISCSIExtension(test_base.BaseTestCase):
         self.fake_dev = '/dev/fake'
         self.fake_iqn = 'iqn-fake'
 
-    @mock.patch.object(iscsi, '_wait_for_iscsi_daemon')
-    def test_start_iscsi_target(self, mock_wait_iscsi, mock_execute,
-                                mock_dispatch):
+    def test_start_iscsi_target(self, mock_execute, mock_dispatch):
         mock_dispatch.return_value = self.fake_dev
         mock_execute.return_value = ('', '')
         result = self.agent_extension.start_iscsi_target(iqn=self.fake_iqn)
 
-        expected = [mock.call('tgtd', check_exit_code=[0]),
+        expected = [mock.call('tgtd'),
+                    mock.call('tgtadm', '--lld', 'iscsi', '--mode',
+                              'target', '--op', 'show', attempts=10),
                     mock.call('tgtadm', '--lld', 'iscsi', '--mode',
                               'target', '--op', 'new', '--tid', '1',
-                              '--targetname', self.fake_iqn,
-                              check_exit_code=[0]),
+                              '--targetname', self.fake_iqn),
                     mock.call('tgtadm', '--lld', 'iscsi', '--mode',
                               'logicalunit', '--op', 'new', '--tid', '1',
-                              '--lun', '1', '--backing-store',
-                              self.fake_dev, check_exit_code=[0]),
+                              '--lun', '1', '--backing-store', self.fake_dev),
                     mock.call('tgtadm', '--lld', 'iscsi', '--mode', 'target',
                               '--op', 'bind', '--tid', '1',
-                              '--initiator-address', 'ALL',
-                              check_exit_code=[0])]
+                              '--initiator-address', 'ALL')]
         mock_execute.assert_has_calls(expected)
         mock_dispatch.assert_called_once_with('get_os_install_device')
-        mock_wait_iscsi.assert_called_once_with()
         self.assertEqual({'iscsi_target_iqn': self.fake_iqn},
                          result.command_result)
 
-    @mock.patch.object(os.path, 'exists', lambda x: False)
     def test_start_iscsi_target_fail_wait_daemon(self, mock_execute,
                                                  mock_dispatch):
         mock_dispatch.return_value = self.fake_dev
-        mock_execute.return_value = ('', '')
+        # side effects here:
+        # - execute tgtd: stdout=='', stderr==''
+        # - induce tgtadm failure while in _wait_for_scsi_daemon
+        mock_execute.side_effect = [('', ''),
+                                    processutils.ProcessExecutionError('blah')]
         self.assertRaises(errors.ISCSIError,
                           self.agent_extension.start_iscsi_target,
                           iqn=self.fake_iqn)
-        mock_execute.assert_called_once_with('tgtd', check_exit_code=[0])
+        expected = [mock.call('tgtd'),
+                    mock.call('tgtadm', '--lld', 'iscsi', '--mode', 'target',
+                              '--op', 'show', attempts=10)]
+
+        mock_execute.assert_has_calls(expected)
         mock_dispatch.assert_called_once_with('get_os_install_device')
 
     @mock.patch.object(iscsi, '_wait_for_iscsi_daemon')
@@ -86,10 +88,9 @@ class TestISCSIExtension(test_base.BaseTestCase):
                           self.agent_extension.start_iscsi_target,
                           iqn=self.fake_iqn)
 
-        expected = [mock.call('tgtd', check_exit_code=[0]),
+        expected = [mock.call('tgtd'),
                     mock.call('tgtadm', '--lld', 'iscsi', '--mode',
                               'target', '--op', 'new', '--tid', '1',
-                              '--targetname', self.fake_iqn,
-                              check_exit_code=[0])]
+                              '--targetname', self.fake_iqn)]
         mock_execute.assert_has_calls(expected)
         mock_dispatch.assert_called_once_with('get_os_install_device')
