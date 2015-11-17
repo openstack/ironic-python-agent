@@ -36,6 +36,7 @@ usage() {
 }
 
 MAX_DISK_PARTITIONS=128
+MAX_MBR_SIZE_MB=2097152
 
 CONFIGDRIVE="$1"
 DEVICE="$2"
@@ -86,9 +87,20 @@ else
   else
     log "Working on MBR only device $DEVICE"
 
-    # Create small partition at the end of the device
+    # get total disk size, to detect if that exceeds 2TB msdos limit
+    disksize_bytes=$(blockdev --getsize64 $DEVICE)
+    disksize_mb=$(( ${disksize_bytes%% *} / 1024 / 1024))
+
+    startlimit=-64MiB
+    endlimit=-0
+    if [ "$disksize_mb" -gt "$MAX_MBR_SIZE_MB" ]; then
+      # Create small partition at 2TB limit
+      startlimit=$(($MAX_MBR_SIZE_MB - 65))
+      endlimit=$(($MAX_MBR_SIZE_MB - 1))
+    fi
+
     log "Adding configdrive partition to $DEVICE"
-    parted -a optimal -s -- $DEVICE mkpart primary ext2 -64MiB -0 || fail "creating configdrive on ${DEVICE}"
+    parted -a optimal -s -- $DEVICE mkpart primary ext2 $startlimit $endlimit || fail "creating configdrive on ${DEVICE}"
 
     # Find partition we just created
     # Dump all partitions, ignore empty ones, then get the last partition ID
