@@ -138,7 +138,8 @@ class HardwareType(object):
 
 class BlockDevice(encoding.SerializableComparable):
     serializable_fields = ('name', 'model', 'size', 'rotational',
-                           'wwn', 'serial', 'vendor')
+                           'wwn', 'serial', 'vendor', 'wwn_with_extension',
+                           'wwn_vendor_extension')
 
     def __init__(self, name, model, size, rotational, wwn=None, serial=None,
                  vendor=None, wwn_with_extension=None,

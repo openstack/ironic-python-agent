@@ -175,6 +175,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'size': u'9001',
                     u'serial': None,
                     u'wwn': None,
+                    u'wwn_with_extension': None,
+                    u'wwn_vendor_extension': None,
                     u'vendor': None,
                 },
                 {
@@ -184,6 +186,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'size': u'9002',
                     u'serial': None,
                     u'wwn': None,
+                    u'wwn_with_extension': None,
+                    u'wwn_vendor_extension': None,
                     u'vendor': None,
                 }
             ],
@@ -306,6 +310,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'size': u'9001',
                     u'serial': None,
                     u'wwn': None,
+                    u'wwn_with_extension': None,
+                    u'wwn_vendor_extension': None,
                     u'vendor': None,
                 },
                 {
@@ -315,6 +321,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'size': u'9002',
                     u'serial': None,
                     u'wwn': None,
+                    u'wwn_with_extension': None,
+                    u'wwn_vendor_extension': None,
                     u'vendor': None,
                 }
             ],

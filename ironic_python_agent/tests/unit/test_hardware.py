@@ -319,6 +319,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                  rotational=False,
                                  vendor='Super Vendor',
                                  wwn='wwn0',
+                                 wwn_with_extension='wwn0ven0',
+                                 wwn_vendor_extension='ven0',
                                  serial='serial0'),
             hardware.BlockDevice(name='/dev/sdb',
                                  model=model,
@@ -326,6 +328,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                  rotational=False,
                                  vendor='fake-vendor',
                                  wwn='fake-wwn',
+                                 wwn_with_extension='fake-wwnven0',
+                                 wwn_vendor_extension='ven0',
                                  serial='fake-serial'),
         ]
 
