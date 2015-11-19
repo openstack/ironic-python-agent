@@ -115,42 +115,75 @@ def _write_configdrive_to_partition(configdrive, device):
              totaltime))
 
 
-def _request_url(image_info, url):
-    no_proxy = image_info.get('no_proxy')
-    if no_proxy:
-        os.environ['no_proxy'] = no_proxy
-    proxies = image_info.get('proxies', {})
-    resp = requests.get(url, stream=True, proxies=proxies)
-    if resp.status_code != 200:
-        msg = ('Received status code {0} from {1}, expected 200. Response '
-               'body: {2}').format(resp.status_code, url, resp.text)
-        raise errors.ImageDownloadError(image_info['id'], msg)
-    return resp
+class ImageDownload(object):
+    """Helper class that opens a HTTP connection to download an image.
+
+    This class opens a HTTP connection to download an image from a URL
+    and create an iterator so the image can be downloaded in chunks. The
+    MD5 hash of the image being downloaded is calculated on-the-fly.
+    """
+
+    def __init__(self, image_info, time_obj=None):
+        self._md5checksum = hashlib.md5()
+        self._time = time_obj or time.time()
+        self._request = None
+
+        for url in image_info['urls']:
+            try:
+                LOG.info("Attempting to download image from {0}".format(url))
+                self._request = self._download_file(image_info, url)
+            except errors.ImageDownloadError as e:
+                failtime = time.time() - self._time
+                log_msg = ('Image download failed. URL: {0}; time: {1} '
+                           'seconds. Error: {2}')
+                LOG.warning(log_msg.format(url, failtime, e.details))
+                continue
+            else:
+                break
+        else:
+            msg = 'Image download failed for all URLs.'
+            raise errors.ImageDownloadError(image_info['id'], msg)
+
+    def _download_file(self, image_info, url):
+        no_proxy = image_info.get('no_proxy')
+        if no_proxy:
+            os.environ['no_proxy'] = no_proxy
+        proxies = image_info.get('proxies', {})
+        resp = requests.get(url, stream=True, proxies=proxies)
+        if resp.status_code != 200:
+            msg = ('Received status code {0} from {1}, expected 200. Response '
+                   'body: {2}').format(resp.status_code, url, resp.text)
+            raise errors.ImageDownloadError(image_info['id'], msg)
+        return resp
+
+    def __iter__(self):
+        for chunk in self._request.iter_content(IMAGE_CHUNK_SIZE):
+            self._md5checksum.update(chunk)
+            yield chunk
+
+    def md5sum(self):
+        return self._md5checksum.hexdigest()
+
+
+def _verify_image(image_info, image_location, checksum):
+    LOG.debug('Verifying image at {0} against MD5 checksum '
+              '{1}'.format(image_location, checksum))
+    if checksum != image_info['checksum']:
+        LOG.error(errors.ImageChecksumError.details_str.format(
+            image_location, image_info['id'],
+            image_info['checksum'], checksum))
+        raise errors.ImageChecksumError(image_location, image_info['id'],
+                                        image_info['checksum'], checksum)
 
 
 def _download_image(image_info):
     starttime = time.time()
-    resp = None
-    for url in image_info['urls']:
-        try:
-            LOG.info("Attempting to download image from {0}".format(url))
-            resp = _request_url(image_info, url)
-        except errors.ImageDownloadError as e:
-            failtime = time.time() - starttime
-            log_msg = ('Image download failed. URL: {0}; time: {1} seconds. '
-                       'Error: {2}')
-            LOG.warning(log_msg.format(url, failtime, e.details))
-            continue
-        else:
-            break
-    if resp is None:
-        msg = 'Image download failed for all URLs.'
-        raise errors.ImageDownloadError(image_info['id'], msg)
-
     image_location = _image_location(image_info)
+    image_download = ImageDownload(image_info, time_obj=starttime)
+
     with open(image_location, 'wb') as f:
         try:
-            for chunk in resp.iter_content(IMAGE_CHUNK_SIZE):
+            for chunk in image_download:
                 f.write(chunk)
         except Exception as e:
             msg = 'Unable to write image to {0}. Error: {1}'.format(
@@ -160,30 +193,7 @@ def _download_image(image_info):
     totaltime = time.time() - starttime
     LOG.info("Image downloaded from {0} in {1} seconds".format(image_location,
                                                                totaltime))
-
-    _verify_image(image_info, image_location)
-
-
-def _verify_image(image_info, image_location):
-    checksum = image_info['checksum']
-    log_msg = 'Verifying image at {0} against MD5 checksum {1}'
-    LOG.debug(log_msg.format(image_location, checksum))
-    hash_ = hashlib.md5()
-    with open(image_location) as image:
-        while True:
-            data = image.read(IMAGE_CHUNK_SIZE)
-            if not data:
-                break
-            hash_.update(data)
-    hash_digest = hash_.hexdigest()
-    if hash_digest == checksum:
-        return True
-
-    LOG.error(errors.ImageChecksumError.details_str.format(
-        image_location, image_info['id'], checksum, hash_digest))
-
-    raise errors.ImageChecksumError(image_location, image_info['id'], checksum,
-                                    hash_digest)
+    _verify_image(image_info, image_location, image_download.md5sum())
 
 
 def _validate_image_info(ext, image_info=None, **kwargs):
