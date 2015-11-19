@@ -24,6 +24,7 @@ import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 import requests
+import six
 import stevedore
 
 from ironic_python_agent import errors
@@ -371,7 +372,13 @@ class TestCollectDefault(BaseDiscoverTest):
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestCollectLogs(unittest.TestCase):
     def test(self, mock_execute):
-        contents = 'journal contents'
+        contents = 'journal contents \xd0\xbc\xd1\x8f\xd1\x83'
+        # That's how execute() works with binary=True
+        if six.PY3:
+            contents = b'journal contents \xd0\xbc\xd1\x8f\xd1\x83'
+        else:
+            contents = 'journal contents \xd0\xbc\xd1\x8f\xd1\x83'
+        expected_contents = u'journal contents \u043c\u044f\u0443'
         mock_execute.return_value = (contents, '')
 
         data = {}
@@ -383,7 +390,11 @@ class TestCollectLogs(unittest.TestCase):
             self.assertEqual([('journal', len(contents))], members)
 
             member = tar.extractfile('journal')
-            self.assertEqual(contents, member.read().decode('utf-8'))
+            self.assertEqual(expected_contents, member.read().decode('utf-8'))
+
+        mock_execute.assert_called_once_with('journalctl', '--full',
+                                             '--no-pager', '-b',
+                                             '-n', '10000', binary=True)
 
     def test_no_journal(self, mock_execute):
         mock_execute.side_effect = OSError()

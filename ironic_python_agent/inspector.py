@@ -274,12 +274,12 @@ def collect_logs(data, failures):
     """
     try:
         out, _e = utils.execute('journalctl', '--full', '--no-pager', '-b',
-                                '-n', '10000')
+                                '-n', '10000', binary=True)
     except (processutils.ProcessExecutionError, OSError):
         LOG.warn('failed to get system journal')
         return
 
-    journal = io.BytesIO(out.encode('utf-8'))
+    journal = io.BytesIO(bytes(out))
     with io.BytesIO() as fp:
         with tarfile.open(fileobj=fp, mode='w:gz') as tar:
             tarinfo = tarfile.TarInfo('journal')
