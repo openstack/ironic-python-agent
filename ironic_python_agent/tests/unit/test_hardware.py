@@ -445,7 +445,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     def test_list_all_block_device(self, mocked_execute, mocked_udev,
                                    mocked_dev_vendor):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
-        mocked_udev.side_effect = OSError()
+        mocked_udev.side_effect = pyudev.DeviceNotFoundError()
         mocked_dev_vendor.return_value = 'Super Vendor'
         devices = hardware.list_all_block_devices()
         expected_devices = [
@@ -471,13 +471,25 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                  vendor='Super Vendor')
         ]
 
-        self.assertEqual(4, len(expected_devices))
+        self.assertEqual(4, len(devices))
         for expected, device in zip(expected_devices, devices):
             # Compare all attrs of the objects
             for attr in ['name', 'model', 'size', 'rotational',
                          'wwn', 'vendor', 'serial']:
                 self.assertEqual(getattr(expected, attr),
                                  getattr(device, attr))
+
+    @mock.patch.object(hardware, '_get_device_vendor')
+    @mock.patch.object(pyudev.Device, 'from_device_file')
+    @mock.patch.object(utils, 'execute')
+    def test_list_all_block_device_udev_17(self, mocked_execute, mocked_udev,
+                                           mocked_dev_vendor):
+        # test compatibility with pyudev < 0.18
+        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
+        mocked_udev.side_effect = OSError()
+        mocked_dev_vendor.return_value = 'Super Vendor'
+        devices = hardware.list_all_block_devices()
+        self.assertEqual(4, len(devices))
 
     @mock.patch.object(hardware, '_get_device_vendor')
     @mock.patch.object(pyudev.Device, 'from_device_file')
