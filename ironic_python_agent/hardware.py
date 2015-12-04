@@ -92,7 +92,8 @@ def list_all_block_devices(block_type='disk'):
         name = '/dev/' + device['KNAME']
         try:
             udev = pyudev.Device.from_device_file(context, name)
-        except (ValueError, EnvironmentError) as e:
+        # pyudev started raising another error in 0.18
+        except (ValueError, EnvironmentError, pyudev.DeviceNotFoundError) as e:
             LOG.warning("Device %(dev)s is inaccessible, skipping... "
                         "Error: %(error)s", {'dev': name, 'error': e})
             extra = {}
