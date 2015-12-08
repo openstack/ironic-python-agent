@@ -16,7 +16,6 @@
 #    under the License.
 
 import mock
-import time
 
 from oslo_concurrency import processutils
 from oslotest import base as test_base
@@ -29,11 +28,12 @@ from ironic_python_agent import utils
 
 @mock.patch.object(hardware, 'dispatch_to_managers')
 @mock.patch.object(utils, 'execute')
-@mock.patch.object(time, 'sleep', lambda *_: None)
-class TestISCSIExtension(test_base.BaseTestCase):
+@mock.patch.object(iscsi.rtslib_fb, 'RTSRoot',
+                   mock.Mock(side_effect=iscsi.rtslib_fb.RTSLibError()))
+class TestISCSIExtensionTgt(test_base.BaseTestCase):
 
     def setUp(self):
-        super(TestISCSIExtension, self).setUp()
+        super(TestISCSIExtensionTgt, self).setUp()
         self.agent_extension = iscsi.ISCSIExtension()
         self.fake_dev = '/dev/fake'
         self.fake_iqn = 'iqn-fake'
@@ -78,11 +78,11 @@ class TestISCSIExtension(test_base.BaseTestCase):
         mock_execute.assert_has_calls(expected)
         mock_dispatch.assert_called_once_with('get_os_install_device')
 
-    @mock.patch.object(iscsi, '_wait_for_iscsi_daemon')
+    @mock.patch.object(iscsi, '_wait_for_tgtd')
     def test_start_iscsi_target_fail_command(self, mock_wait_iscsi,
                                              mock_execute, mock_dispatch):
         mock_dispatch.return_value = self.fake_dev
-        mock_execute.side_effect = [('', ''),
+        mock_execute.side_effect = [('', ''), ('', ''),
                                     processutils.ProcessExecutionError('blah')]
         self.assertRaises(errors.ISCSIError,
                           self.agent_extension.start_iscsi_target,
@@ -94,3 +94,64 @@ class TestISCSIExtension(test_base.BaseTestCase):
                               '--targetname', self.fake_iqn)]
         mock_execute.assert_has_calls(expected)
         mock_dispatch.assert_called_once_with('get_os_install_device')
+
+
+_ORIG_UTILS = iscsi.rtslib_fb.utils
+
+
+@mock.patch.object(hardware, 'dispatch_to_managers')
+# Don't mock the utils module, as it contains exceptions
+@mock.patch.object(iscsi, 'rtslib_fb', utils=_ORIG_UTILS)
+class TestISCSIExtensionLIO(test_base.BaseTestCase):
+
+    def setUp(self):
+        super(TestISCSIExtensionLIO, self).setUp()
+        self.agent_extension = iscsi.ISCSIExtension()
+        self.fake_dev = '/dev/fake'
+        self.fake_iqn = 'iqn-fake'
+
+    def test_start_iscsi_target(self, mock_rtslib, mock_dispatch):
+        mock_dispatch.return_value = self.fake_dev
+        result = self.agent_extension.start_iscsi_target(iqn=self.fake_iqn)
+
+        self.assertEqual({'iscsi_target_iqn': self.fake_iqn},
+                         result.command_result)
+        mock_rtslib.BlockStorageObject.assert_called_once_with(
+            name=self.fake_iqn, dev=self.fake_dev)
+        mock_rtslib.Target.assert_called_once_with(mock.ANY, self.fake_iqn,
+                                                   mode='create')
+        mock_rtslib.TPG.assert_called_once_with(
+            mock_rtslib.Target.return_value, mode='create')
+        mock_rtslib.LUN.assert_called_once_with(
+            mock_rtslib.TPG.return_value,
+            storage_object=mock_rtslib.BlockStorageObject.return_value,
+            lun=1)
+        mock_rtslib.NetworkPortal.assert_called_once_with(
+            mock_rtslib.TPG.return_value, '0.0.0.0')
+
+    def test_failed_to_start_iscsi(self, mock_rtslib, mock_dispatch):
+        mock_dispatch.return_value = self.fake_dev
+        mock_rtslib.Target.side_effect = _ORIG_UTILS.RTSLibError()
+        self.assertRaisesRegexp(
+            errors.ISCSIError, 'Failed to create a target',
+            self.agent_extension.start_iscsi_target, iqn=self.fake_iqn)
+
+    def test_failed_to_bind_iscsi(self, mock_rtslib, mock_dispatch):
+        mock_dispatch.return_value = self.fake_dev
+        mock_rtslib.NetworkPortal.side_effect = _ORIG_UTILS.RTSLibError()
+        self.assertRaisesRegexp(
+            errors.ISCSIError, 'Failed to publish a target',
+            self.agent_extension.start_iscsi_target, iqn=self.fake_iqn)
+
+        mock_rtslib.BlockStorageObject.assert_called_once_with(
+            name=self.fake_iqn, dev=self.fake_dev)
+        mock_rtslib.Target.assert_called_once_with(mock.ANY, self.fake_iqn,
+                                                   mode='create')
+        mock_rtslib.TPG.assert_called_once_with(
+            mock_rtslib.Target.return_value, mode='create')
+        mock_rtslib.LUN.assert_called_once_with(
+            mock_rtslib.TPG.return_value,
+            storage_object=mock_rtslib.BlockStorageObject.return_value,
+            lun=1)
+        mock_rtslib.NetworkPortal.assert_called_once_with(
+            mock_rtslib.TPG.return_value, '0.0.0.0')
