@@ -149,7 +149,7 @@ coreos:
         After=opt-ironic\x2dpython\x2dagent-dev.mount
         After=opt-ironic\x2dpython\x2dagent-dev-pts.mount
         After=opt-ironic\x2dpython\x2dagent-sys.mount
-        After=opt-ironic\x2dpython\x2dagent-run.moun
+        After=opt-ironic\x2dpython\x2dagent-run.mount
         After=opt-ironic\x2dpython\x2dagent-mnt.mount
 
         Requires=ironic-python-agent-container-creation.service
@@ -157,7 +157,7 @@ coreos:
         Requires=opt-ironic\x2dpython\x2dagent-dev.mount
         Requires=opt-ironic\x2dpython\x2dagent-dev-pts.mount
         Requires=opt-ironic\x2dpython\x2dagent-sys.mount
-        Requires=opt-ironic\x2dpython\x2dagent-run.moun
+        Requires=opt-ironic\x2dpython\x2dagent-run.mount
         Requires=opt-ironic\x2dpython\x2dagent-mnt.mount
 
         [Service]
