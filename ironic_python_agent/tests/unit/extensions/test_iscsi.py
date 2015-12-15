@@ -155,3 +155,66 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             lun=1)
         mock_rtslib.NetworkPortal.assert_called_once_with(
             mock_rtslib.TPG.return_value, '0.0.0.0')
+
+
+@mock.patch.object(iscsi.rtslib_fb, 'RTSRoot')
+class TestISCSIExtensionCleanUp(test_base.BaseTestCase):
+
+    def setUp(self):
+        super(TestISCSIExtensionCleanUp, self).setUp()
+        self.agent_extension = iscsi.ISCSIExtension()
+        self.fake_dev = '/dev/fake'
+        self.fake_iqn = 'iqn-fake'
+
+    def test_lio_not_available(self, mock_rtslib):
+        mock_rtslib.side_effect = IOError()
+        iscsi.clean_up(self.fake_dev)
+
+    def test_device_not_found(self, mock_rtslib):
+        mock_rtslib.return_value.storage_objects = []
+        iscsi.clean_up(self.fake_dev)
+
+    def test_ok(self, mock_rtslib):
+        mock_rtslib.return_value.storage_objects = [
+            mock.Mock(udev_path='wrong path'),
+            mock.Mock(udev_path=self.fake_dev),
+            mock.Mock(udev_path='wrong path'),
+        ]
+        # mocks don't play well with name attribute
+        for i, fake_storage in enumerate(
+                mock_rtslib.return_value.storage_objects):
+            fake_storage.name = 'iqn%d' % i
+
+        mock_rtslib.return_value.targets = [
+            mock.Mock(wwn='iqn0'),
+            mock.Mock(wwn='iqn1'),
+        ]
+
+        iscsi.clean_up(self.fake_dev)
+
+        for fake_storage in mock_rtslib.return_value.storage_objects:
+            self.assertEqual(fake_storage.udev_path == self.fake_dev,
+                             fake_storage.delete.called)
+        for fake_target in mock_rtslib.return_value.targets:
+            self.assertEqual(fake_target.wwn == 'iqn1',
+                             fake_target.delete.called)
+
+    def test_delete_fails(self, mock_rtslib):
+        mock_rtslib.return_value.storage_objects = [
+            mock.Mock(udev_path='wrong path'),
+            mock.Mock(udev_path=self.fake_dev),
+            mock.Mock(udev_path='wrong path'),
+        ]
+        # mocks don't play well with name attribute
+        for i, fake_storage in enumerate(
+                mock_rtslib.return_value.storage_objects):
+            fake_storage.name = 'iqn%d' % i
+
+        mock_rtslib.return_value.targets = [
+            mock.Mock(wwn='iqn0'),
+            mock.Mock(wwn='iqn1'),
+        ]
+        mock_rtslib.return_value.targets[1].delete.side_effect = (
+            _ORIG_UTILS.RTSLibError())
+
+        self.assertRaises(errors.ISCSIError, iscsi.clean_up, self.fake_dev)
