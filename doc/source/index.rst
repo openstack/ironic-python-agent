@@ -182,7 +182,7 @@ How can I build a custom HardwareManager?
 -----------------------------------------
 Custom HardwareManagers should subclass hardware.HardwareManager or
 hardware.GenericHardwareManager. The only required method is
-evalutate_hardware_support(), which should return one of the enums
+evaluate_hardware_support(), which should return one of the enums
 in hardware.HardwareSupport. Hardware support determines which hardware
 manager is executed first for a given function (see: "`How are methods
 executed on HardwareManagers?`_" for more info). Common methods you
