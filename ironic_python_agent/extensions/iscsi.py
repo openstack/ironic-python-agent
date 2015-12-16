@@ -95,6 +95,45 @@ def _start_lio(iqn, device):
         raise errors.ISCSIError(msg)
 
 
+def clean_up(device):
+    """Clean up iSCSI for a given device."""
+    try:
+        rts_root = rtslib_fb.RTSRoot()
+    except (EnvironmentError, rtslib_fb.RTSLibError) as exc:
+        LOG.info('Linux-IO is not available, not cleaning up. Error: %s.', exc)
+        return
+
+    storage = None
+    for x in rts_root.storage_objects:
+        if x.udev_path == device:
+            storage = x
+            break
+
+    if storage is None:
+        LOG.info('Device %(dev)s not found in the current iSCSI mounts '
+                 '%(mounts)s.',
+                 {'dev': device,
+                  'mounts': [x.udev_path for x in rts_root.storage_objects]})
+        return
+    else:
+        LOG.info('Deleting iSCSI target %(target)s for device %(dev)s.',
+                 {'target': storage.name, 'dev': device})
+
+    try:
+        for x in rts_root.targets:
+            if x.wwn == storage.name:
+                x.delete()
+                break
+
+        storage.delete()
+    except rtslib_fb.utils.RTSLibError as exc:
+        msg = ('Failed to delete iSCSI target %(target)s for device %(dev)s: '
+               '%(error)s') % {'target': storage.name,
+                               'dev': device,
+                               'error': exc}
+        raise errors.ISCSIError(msg)
+
+
 class ISCSIExtension(base.BaseAgentExtension):
     @base.sync_command('start_iscsi_target')
     def start_iscsi_target(self, iqn=None):

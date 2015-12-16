@@ -25,6 +25,7 @@ from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import image
+from ironic_python_agent.extensions import iscsi
 from ironic_python_agent import hardware
 from ironic_python_agent import utils
 
@@ -45,19 +46,22 @@ class TestImageExtension(test_base.BaseTestCase):
         self.fake_efi_system_part_uuid = '45AB-2312'
         self.fake_dir = '/tmp/fake-dir'
 
+    @mock.patch.object(iscsi, 'clean_up')
     @mock.patch.object(image, '_install_grub2')
-    def test_install_bootloader_bios(self, mock_grub2, mock_execute,
-                                     mock_dispatch):
+    def test_install_bootloader_bios(self, mock_grub2, mock_iscsi_clean,
+                                     mock_execute, mock_dispatch):
         mock_dispatch.return_value = self.fake_dev
         self.agent_extension.install_bootloader(root_uuid=self.fake_root_uuid)
         mock_dispatch.assert_called_once_with('get_os_install_device')
         mock_grub2.assert_called_once_with(
             self.fake_dev, root_uuid=self.fake_root_uuid,
             efi_system_part_uuid=None)
+        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
+    @mock.patch.object(iscsi, 'clean_up')
     @mock.patch.object(image, '_install_grub2')
-    def test_install_bootloader_uefi(self, mock_grub2, mock_execute,
-                                     mock_dispatch):
+    def test_install_bootloader_uefi(self, mock_grub2, mock_iscsi_clean,
+                                     mock_execute, mock_dispatch):
         mock_dispatch.return_value = self.fake_dev
         self.agent_extension.install_bootloader(
             root_uuid=self.fake_root_uuid,
@@ -67,6 +71,7 @@ class TestImageExtension(test_base.BaseTestCase):
             self.fake_dev,
             root_uuid=self.fake_root_uuid,
             efi_system_part_uuid=self.fake_efi_system_part_uuid)
+        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
     @mock.patch.object(os, 'environ')
     @mock.patch.object(image, '_get_partition')
