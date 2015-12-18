@@ -6,4 +6,5 @@ Ironic Python Agent Release Notes
    :maxdepth: 1
 
    Current Series <current-series>
+   Mitaka <mitaka>
    Liberty <liberty>
