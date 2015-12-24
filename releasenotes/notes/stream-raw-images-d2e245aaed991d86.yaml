@@ -1,0 +1,13 @@
+---
+features:
+  - Adds support for streaming raw images directly onto
+    the disk. This avoids writing the image to a tmpfs
+    partition before writing it to disk, which also enables
+    using images larger than the usable amount of RAM on
+    the machine IPA runs on. Pass `stream_raw_images=True`
+    to the `prepare_image` command to enable this; it is
+    disabled by default.
+fixes:
+  - Raw images larger than available of RAM may now be used
+    by passing `stream_raw_images=True` to the `prepare_image`
+    command; these will be streamed directly to disk.

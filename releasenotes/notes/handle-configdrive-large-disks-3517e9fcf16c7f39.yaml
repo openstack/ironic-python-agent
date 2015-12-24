@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixes configdrive creation for MBR disks greater than
+    2TB.

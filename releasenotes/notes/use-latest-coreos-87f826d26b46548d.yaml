@@ -1,0 +1,4 @@
+---
+features:
+  - The CoreOS image builder now uses the latest CoreOS
+    stable version when building images.

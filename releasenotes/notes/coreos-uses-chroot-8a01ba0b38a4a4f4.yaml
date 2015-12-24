@@ -1,0 +1,11 @@
+---
+features:
+  - CoreOS image builder now runs IPA in a chroot, instead
+    of a container. systemd-nspawn has been adding more
+    security features that break several things IPA needs
+    to do (after all, IPA manipulates hardware), such as
+    using sysrq triggers or writing to /sys.
+upgrade:
+  - Now that IPA runs in a chroot, any operator tooling
+    built around the container may need to change (for
+    example, methods of getting a shell inside the container).

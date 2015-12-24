@@ -1,0 +1,6 @@
+---
+features:
+  - Adds support for setting proxy info for downloading
+    images. This is controlled by the `proxies` and `no_proxy`
+    keys in the `image_info` dict of the `prepare_image`
+    command.

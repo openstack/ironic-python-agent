@@ -1,0 +1,4 @@
+---
+features:
+  - Root device hints now also inspect ID_WWN_WITH_EXTENSION
+    and ID_WWN_VENDOR_EXTENSION from udev.

@@ -1,0 +1,6 @@
+---
+features:
+  - IPA now supports Linux-IO as an alternative to tgtd.
+    The iSCSI extension will try to use Linux-IO first,
+    and fall back to tgtd if Linux-IO is not found or
+    cannot be used.
