@@ -159,7 +159,7 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.agent.started_at = started_at
 
         status = self.agent.get_status()
-        self.assertTrue(isinstance(status, agent.IronicPythonAgentStatus))
+        self.assertIsInstance(status, agent.IronicPythonAgentStatus)
         self.assertEqual(started_at, status.started_at)
         self.assertEqual(pkg_resources.get_distribution('ironic-python-agent')
                          .version, status.version)

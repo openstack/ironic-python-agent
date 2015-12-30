@@ -67,8 +67,8 @@ class TestFlowExtension(test_base.BaseTestCase):
         result = self.agent_extension.start_flow(flow=FLOW_INFO)
         result.join()
         self.assertEqual(base.AgentCommandStatus.FAILED, result.command_status)
-        self.assertTrue(isinstance(result.command_error,
-                                   errors.CommandExecutionError))
+        self.assertIsInstance(result.command_error,
+                              errors.CommandExecutionError)
 
     @mock.patch('time.sleep', autospec=True)
     def test_sleep_flow_failed_on_second_command(self, sleep_mock):
@@ -76,8 +76,8 @@ class TestFlowExtension(test_base.BaseTestCase):
         result = self.agent_extension.start_flow(flow=FLOW_INFO[:4])
         result.join()
         self.assertEqual(base.AgentCommandStatus.FAILED, result.command_status)
-        self.assertTrue(isinstance(result.command_error,
-                                   errors.CommandExecutionError))
+        self.assertIsInstance(result.command_error,
+                              errors.CommandExecutionError)
         self.assertEqual(2, sleep_mock.call_count)
 
     def test_validate_exts_success(self):
