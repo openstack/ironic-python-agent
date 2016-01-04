@@ -59,4 +59,4 @@ class TestSerializableComparable(test_base.BaseTestCase):
     def test_childclass_hash(self):
         # Ensure __hash__ is None
         obj = SerializableComparableTesting('hello', 'world')
-        self.assertEqual(None, obj.__hash__)
+        self.assertIsNone(obj.__hash__)

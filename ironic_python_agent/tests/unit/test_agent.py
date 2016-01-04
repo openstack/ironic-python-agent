@@ -271,7 +271,7 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertRaises(errors.LookupAgentIPError,
                           homeless_agent.set_agent_advertise_addr)
         self.assertEqual(6, mock_get_ipv4.call_count)
-        self.assertEqual(None, homeless_agent.network_interface)
+        self.assertIsNone(homeless_agent.network_interface)
 
         # First interface eth0 has no IP, second interface eth1 has an IP
         mock_get_ipv4.side_effect = [None, '1.1.1.1']
