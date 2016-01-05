@@ -149,8 +149,8 @@ class ISCSIExtension(base.BaseAgentExtension):
         try:
             rts_root = rtslib_fb.RTSRoot()
         except (EnvironmentError, rtslib_fb.RTSLibError) as exc:
-            LOG.warn('Linux-IO is not available, falling back to TGT. '
-                     'Error: %s.', exc)
+            LOG.warning('Linux-IO is not available, falling back to TGT. '
+                        'Error: %s.', exc)
             rts_root = None
 
         if rts_root is None:
