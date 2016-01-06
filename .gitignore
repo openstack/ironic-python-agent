@@ -18,3 +18,6 @@ imagebuild/coreos/UPLOAD
 _build
 doc/source/api/
 doc/build
+
+# release notes build
+releasenotes/build
