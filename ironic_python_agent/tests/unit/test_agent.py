@@ -168,7 +168,7 @@ class TestBaseAgent(test_base.BaseTestCase):
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
     def test_run(self, mocked_list_hardware, wsgi_server_cls):
-        CONF.set_override('inspection_callback_url', '')
+        CONF.set_override('inspection_callback_url', '', enforce_type=True)
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
 
@@ -197,7 +197,8 @@ class TestBaseAgent(test_base.BaseTestCase):
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
     def test_run_with_inspection(self, mocked_list_hardware, wsgi_server_cls,
                                  mocked_inspector):
-        CONF.set_override('inspection_callback_url', 'http://foo/bar')
+        CONF.set_override('inspection_callback_url', 'http://foo/bar',
+                          enforce_type=True)
 
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
