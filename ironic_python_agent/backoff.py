@@ -14,11 +14,7 @@
 
 import random
 
-from oslo_log import log
 from oslo_service import loopingcall
-
-
-LOG = log.getLogger(__name__)
 
 
 # TODO(JoshNang) move to oslo, i18n
