@@ -121,7 +121,7 @@ class TestHeartbeater(test_base.BaseTestCase):
         # Validate expectations
         self.assertEqual(expected_poll_calls,
                          mock_poll.return_value.poll.call_args_list)
-        self.assertEqual(self.heartbeater.error_delay, 2.7)
+        self.assertEqual(2.7, self.heartbeater.error_delay)
 
 
 class TestBaseAgent(test_base.BaseTestCase):
@@ -160,10 +160,9 @@ class TestBaseAgent(test_base.BaseTestCase):
 
         status = self.agent.get_status()
         self.assertTrue(isinstance(status, agent.IronicPythonAgentStatus))
-        self.assertEqual(status.started_at, started_at)
-        self.assertEqual(status.version,
-                         pkg_resources.get_distribution('ironic-python-agent')
-                         .version)
+        self.assertEqual(started_at, status.started_at)
+        self.assertEqual(pkg_resources.get_distribution('ironic-python-agent')
+                         .version, status.version)
 
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
@@ -292,7 +291,7 @@ class TestBaseAgent(test_base.BaseTestCase):
             'command_result': None,
             'command_error': None,
         }
-        self.assertEqualEncoded(result, expected_result)
+        self.assertEqualEncoded(expected_result, result)
 
         result.start()
         result.join()
@@ -301,7 +300,7 @@ class TestBaseAgent(test_base.BaseTestCase):
         expected_result['command_result'] = {'result': ('foo_command: command '
                                                         'execution succeeded')}
 
-        self.assertEqualEncoded(result, expected_result)
+        self.assertEqualEncoded(expected_result, result)
 
     def test_async_command_failure(self):
         result = base.AsyncCommandResult('foo_command', {'fail': True},
@@ -316,7 +315,7 @@ class TestBaseAgent(test_base.BaseTestCase):
             'command_result': None,
             'command_error': None,
         }
-        self.assertEqualEncoded(result, expected_result)
+        self.assertEqualEncoded(expected_result, result)
 
         result.start()
         result.join()
@@ -325,7 +324,7 @@ class TestBaseAgent(test_base.BaseTestCase):
         expected_result['command_error'] = errors.CommandExecutionError(
             str(EXPECTED_ERROR))
 
-        self.assertEqualEncoded(result, expected_result)
+        self.assertEqualEncoded(expected_result, result)
 
     def test_get_node_uuid(self):
         self.agent.node = {'uuid': 'fake-node'}

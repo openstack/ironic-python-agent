@@ -156,7 +156,7 @@ class TestIronicAPI(test_base.BaseTestCase):
     def test_root(self):
         response = self.get_json('/', path_prefix='')
         data = response.json
-        self.assertEqual(data['name'], 'OpenStack Ironic Python Agent API')
+        self.assertEqual('OpenStack Ironic Python Agent API', data['name'])
 
     def test_v1_root(self):
         response = self.get_json('/v1', path_prefix='')
@@ -172,10 +172,10 @@ class TestIronicAPI(test_base.BaseTestCase):
         response = self.get_json('/status')
         self.mock_agent.get_status.assert_called_once_with()
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(200, response.status_code)
         data = response.json
-        self.assertEqual(data['started_at'], status.started_at)
-        self.assertEqual(data['version'], status.version)
+        self.assertEqual(status.started_at, data['started_at'])
+        self.assertEqual(status.version, data['version'])
 
     def test_execute_agent_command_success_no_wait(self):
         command = {
@@ -194,15 +194,15 @@ class TestIronicAPI(test_base.BaseTestCase):
             response = self.post_json('/commands', command)
             self.assertFalse(join_mock.called)
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(200, response.status_code)
 
-        self.assertEqual(self.mock_agent.execute_command.call_count, 1)
+        self.assertEqual(1, self.mock_agent.execute_command.call_count)
         args, kwargs = self.mock_agent.execute_command.call_args
-        self.assertEqual(args, ('do_things',))
-        self.assertEqual(kwargs, {'key': 'value'})
+        self.assertEqual(('do_things',), args)
+        self.assertEqual({'key': 'value'}, kwargs)
         expected_result = result.serialize()
         data = response.json
-        self.assertEqual(data, expected_result)
+        self.assertEqual(expected_result, data)
 
     def test_execute_agent_command_success_with_true_wait(self):
         command = {
@@ -221,14 +221,14 @@ class TestIronicAPI(test_base.BaseTestCase):
             response = self.post_json('/commands?wait=true', command)
             join_mock.assert_called_once_with()
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.mock_agent.execute_command.call_count, 1)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, self.mock_agent.execute_command.call_count)
         args, kwargs = self.mock_agent.execute_command.call_args
-        self.assertEqual(args, ('do_things',))
-        self.assertEqual(kwargs, {'key': 'value'})
+        self.assertEqual(('do_things',), args)
+        self.assertEqual({'key': 'value'}, kwargs)
         expected_result = result.serialize()
         data = response.json
-        self.assertEqual(data, expected_result)
+        self.assertEqual(expected_result, data)
 
     def test_execute_agent_command_success_with_false_wait(self):
         command = {
@@ -247,21 +247,21 @@ class TestIronicAPI(test_base.BaseTestCase):
             response = self.post_json('/commands?wait=false', command)
             self.assertFalse(join_mock.called)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(self.mock_agent.execute_command.call_count, 1)
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, self.mock_agent.execute_command.call_count)
         args, kwargs = self.mock_agent.execute_command.call_args
-        self.assertEqual(args, ('do_things',))
-        self.assertEqual(kwargs, {'key': 'value'})
+        self.assertEqual(('do_things',), args)
+        self.assertEqual({'key': 'value'}, kwargs)
         expected_result = result.serialize()
         data = response.json
-        self.assertEqual(data, expected_result)
+        self.assertEqual(expected_result, data)
 
     def test_execute_agent_command_validation(self):
         invalid_command = {}
         response = self.post_json('/commands',
                                   invalid_command,
                                   expect_errors=True)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(400, response.status_code)
         data = response.json
         msg = 'Invalid input for field/attribute name.'
         self.assertTrue(msg in data['faultstring'])
@@ -273,7 +273,7 @@ class TestIronicAPI(test_base.BaseTestCase):
         response = self.post_json('/commands',
                                   invalid_command,
                                   expect_errors=True)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(400, response.status_code)
         data = response.json
         # this message is actually much longer, but I'm ok with this
         msg = 'Invalid input for field/attribute params.'
@@ -290,12 +290,12 @@ class TestIronicAPI(test_base.BaseTestCase):
         ]
 
         response = self.get_json('/commands')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json, {
+        self.assertEqual(200, response.status_code)
+        self.assertEqual({
             u'commands': [
                 cmd_result.serialize(),
             ],
-        })
+        }, response.json)
 
     def test_get_command_result(self):
         cmd_result = base.SyncCommandResult('do_things',
@@ -307,6 +307,6 @@ class TestIronicAPI(test_base.BaseTestCase):
         self.mock_agent.get_command_result.return_value = cmd_result
 
         response = self.get_json('/commands/abc123')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(200, response.status_code)
         data = response.json
-        self.assertEqual(data, serialized_cmd_result)
+        self.assertEqual(serialized_cmd_result, data)

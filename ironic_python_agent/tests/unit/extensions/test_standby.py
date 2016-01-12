@@ -95,7 +95,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
     def test_image_location(self):
         image_info = _build_fake_image_info()
         location = standby._image_location(image_info)
-        self.assertEqual(location, '/tmp/fake_id')
+        self.assertEqual('/tmp/fake_id', location)
 
     @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
@@ -219,7 +219,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write = file_mock.write
         write.assert_any_call('some')
         write.assert_any_call('content')
-        self.assertEqual(write.call_count, 2)
+        self.assertEqual(2, write.call_count)
 
     @mock.patch('hashlib.md5')
     @mock.patch(OPEN_FUNCTION_NAME)
@@ -249,7 +249,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write = file_mock.write
         write.assert_any_call('some')
         write.assert_any_call('content')
-        self.assertEqual(write.call_count, 2)
+        self.assertEqual(2, write.call_count)
 
     @mock.patch('requests.get', autospec=True)
     def test_download_image_bad_status(self, requests_mock):
@@ -305,8 +305,8 @@ class TestStandbyExtension(test_base.BaseTestCase):
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
         dispatch_mock.assert_called_once_with('get_os_install_device')
-        self.assertEqual(self.agent_extension.cached_image_id,
-                         image_info['id'])
+        self.assertEqual(image_info['id'],
+                         self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertTrue('result' in async_result.command_result.keys())
         cmd_result = ('cache_image: image ({0}) cached to device {1}'
@@ -333,8 +333,8 @@ class TestStandbyExtension(test_base.BaseTestCase):
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
         dispatch_mock.assert_called_once_with('get_os_install_device')
-        self.assertEqual(self.agent_extension.cached_image_id,
-                         image_info['id'])
+        self.assertEqual(image_info['id'],
+                         self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertTrue('result' in async_result.command_result.keys())
         cmd_result = ('cache_image: image ({0}) cached to device {1}'
@@ -359,8 +359,8 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertFalse(download_mock.called)
         self.assertFalse(write_mock.called)
         dispatch_mock.assert_called_once_with('get_os_install_device')
-        self.assertEqual(self.agent_extension.cached_image_id,
-                         image_info['id'])
+        self.assertEqual(image_info['id'],
+                         self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertTrue('result' in async_result.command_result.keys())
         cmd_result = ('cache_image: image ({0}) already present on device {1}'
@@ -419,8 +419,8 @@ class TestStandbyExtension(test_base.BaseTestCase):
         )
         async_result.join()
 
-        self.assertEqual(download_mock.call_count, 0)
-        self.assertEqual(write_mock.call_count, 0)
+        self.assertEqual(0, download_mock.call_count)
+        self.assertEqual(0, write_mock.call_count)
         configdrive_copy_mock.assert_called_once_with('configdrive_data',
                                                       'manager')
 
@@ -460,7 +460,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write_mock.assert_called_once_with(image_info, 'manager')
         dispatch_mock.assert_called_once_with('get_os_install_device')
 
-        self.assertEqual(configdrive_copy_mock.call_count, 0)
+        self.assertEqual(0, configdrive_copy_mock.call_count)
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertTrue('result' in async_result.command_result.keys())
         cmd_result = ('prepare_image: image ({0}) written to device {1}'
