@@ -20,6 +20,7 @@ imagebuild/coreos/UPLOAD
 _build
 doc/source/api/
 doc/build
+.proxy.sh.save
 
 # release notes build
 releasenotes/build
