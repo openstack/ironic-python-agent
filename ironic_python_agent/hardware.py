@@ -269,7 +269,7 @@ class HardwareManager(object):
     def get_clean_steps(self, node, ports):
         """Get a list of clean steps with priority.
 
-        Returns a list of steps. Each step is represeted by a dict::
+        Returns a list of steps. Each step is represented by a dict::
 
           {
            'step': the HardwareManager function to call.
