@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixed incorrect invocation of "select" which could cause LLDP collection
+    to hang under certain conditions.

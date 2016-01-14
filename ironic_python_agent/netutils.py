@@ -162,13 +162,12 @@ def _get_lldp_info(interfaces):
     if not interfaces:
         return {}
 
-    socks = [interface[1] for interface in interfaces]
-
     while interfaces:
         LOG.info('Waiting on LLDP info for interfaces: %(interfaces)s, '
                  'timeout: %(timeout)s', {'interfaces': interfaces,
                                           'timeout': CONF.lldp_timeout})
 
+        socks = [interface[1] for interface in interfaces]
         # rlist is a list of sockets ready for reading
         rlist, _, _ = select.select(socks, [], [], CONF.lldp_timeout)
         if not rlist:
