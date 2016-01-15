@@ -68,8 +68,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         heartbeat_path = 'v1/nodes/deadbeef-dabb-ad00-b105-f00d00bab10c/' \
                          'vendor_passthru/heartbeat'
         request_args = self.api_client.session.request.call_args[0]
-        self.assertEqual(request_args[0], 'POST')
-        self.assertEqual(request_args[1], API_URL + heartbeat_path)
+        self.assertEqual('POST', request_args[0])
+        self.assertEqual(API_URL + heartbeat_path, request_args[1])
 
     def test_heartbeat_requests_exception(self):
         self.api_client.session.request = mock.Mock()
@@ -137,14 +137,14 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         url = '{api_url}v1/drivers/{driver}/vendor_passthru/lookup'.format(
             api_url=API_URL, driver=DRIVER)
         request_args = self.api_client.session.request.call_args[0]
-        self.assertEqual(request_args[0], 'POST')
-        self.assertEqual(request_args[1], url)
+        self.assertEqual('POST', request_args[0])
+        self.assertEqual(url, request_args[1])
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
         self.assertNotIn('node_uuid', content)
-        self.assertEqual(content['version'], self.api_client.payload_version)
-        self.assertEqual(content['inventory'], {
+        self.assertEqual(self.api_client.payload_version, content['version'])
+        self.assertEqual({
             u'interfaces': [
                 {
                     u'mac_address': u'00:0c:29:8c:11:b1',
@@ -195,7 +195,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                 u'total': u'8675309',
                 u'physical_mb': u'8675'
             },
-        })
+        }, content['inventory'])
 
     def test_do_lookup_bad_response_code(self):
         response = FakeResponse(status_code=400, content={
@@ -272,14 +272,14 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         url = '{api_url}v1/drivers/{driver}/vendor_passthru/lookup'.format(
             api_url=API_URL, driver=DRIVER)
         request_args = self.api_client.session.request.call_args[0]
-        self.assertEqual(request_args[0], 'POST')
-        self.assertEqual(request_args[1], url)
+        self.assertEqual('POST', request_args[0])
+        self.assertEqual(url, request_args[1])
 
         data = self.api_client.session.request.call_args[1]['data']
         content = json.loads(data)
-        self.assertEqual(content['node_uuid'], 'uuid')
-        self.assertEqual(content['version'], self.api_client.payload_version)
-        self.assertEqual(content['inventory'], {
+        self.assertEqual('uuid', content['node_uuid'])
+        self.assertEqual(self.api_client.payload_version, content['version'])
+        self.assertEqual({
             u'interfaces': [
                 {
                     u'mac_address': u'00:0c:29:8c:11:b1',
@@ -330,4 +330,4 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                 u'total': u'8675309',
                 u'physical_mb': u'8675'
             },
-        })
+        }, content['inventory'])

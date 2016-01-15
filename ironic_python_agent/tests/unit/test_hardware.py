@@ -278,15 +278,15 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
         interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(len(interfaces), 1)
-        self.assertEqual(interfaces[0].name, 'eth0')
-        self.assertEqual(interfaces[0].mac_address, '00:0c:29:8c:11:b1')
-        self.assertEqual(interfaces[0].ipv4_address, '192.168.1.2')
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
 
     @mock.patch.object(utils, 'execute')
     def test_get_os_install_device(self, mocked_execute):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
-        self.assertEqual(self.hardware.get_os_install_device(), '/dev/sdb')
+        self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
         mocked_execute.assert_called_once_with(
             'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
@@ -382,22 +382,22 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_execute.return_value = LSCPU_OUTPUT, ''
 
         cpus = self.hardware.get_cpus()
-        self.assertEqual(cpus.model_name,
-                         'Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz')
-        self.assertEqual(cpus.frequency, '2400.0000')
-        self.assertEqual(cpus.count, 4)
-        self.assertEqual(cpus.architecture, 'x86_64')
+        self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
+                         cpus.model_name)
+        self.assertEqual('2400.0000', cpus.frequency)
+        self.assertEqual(4, cpus.count)
+        self.assertEqual('x86_64', cpus.architecture)
 
     @mock.patch.object(utils, 'execute')
     def test_get_cpus2(self, mocked_execute):
         mocked_execute.return_value = LSCPU_OUTPUT_NO_MAX_MHZ, ''
 
         cpus = self.hardware.get_cpus()
-        self.assertEqual(cpus.model_name,
-                         'Intel(R) Xeon(R) CPU E5-1650 v3 @ 3.50GHz')
-        self.assertEqual(cpus.frequency, '1794.433')
-        self.assertEqual(cpus.count, 12)
-        self.assertEqual(cpus.architecture, 'x86_64')
+        self.assertEqual('Intel(R) Xeon(R) CPU E5-1650 v3 @ 3.50GHz',
+                         cpus.model_name)
+        self.assertEqual('1794.433', cpus.frequency)
+        self.assertEqual(12, cpus.count)
+        self.assertEqual('x86_64', cpus.architecture)
 
     @mock.patch('psutil.version_info', (2, 0))
     @mock.patch('psutil.phymem_usage', autospec=True)
@@ -411,8 +411,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         mem = self.hardware.get_memory()
 
-        self.assertEqual(mem.total, 3952 * 1024 * 1024)
-        self.assertEqual(mem.physical_mb, 4096)
+        self.assertEqual(3952 * 1024 * 1024, mem.total)
+        self.assertEqual(4096, mem.physical_mb)
 
     def test_list_hardware_info(self):
         self.hardware.list_network_interfaces = mock.Mock()
@@ -438,12 +438,12 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         ]
 
         hardware_info = self.hardware.list_hardware_info()
-        self.assertEqual(hardware_info['memory'], self.hardware.get_memory())
-        self.assertEqual(hardware_info['cpu'], self.hardware.get_cpus())
-        self.assertEqual(hardware_info['disks'],
-                         self.hardware.list_block_devices())
-        self.assertEqual(hardware_info['interfaces'],
-                         self.hardware.list_network_interfaces())
+        self.assertEqual(self.hardware.get_memory(), hardware_info['memory'])
+        self.assertEqual(self.hardware.get_cpus(), hardware_info['cpu'])
+        self.assertEqual(self.hardware.list_block_devices(),
+                         hardware_info['disks'])
+        self.assertEqual(self.hardware.list_network_interfaces(),
+                         hardware_info['interfaces'])
 
     @mock.patch.object(hardware, 'list_all_block_devices')
     def test_list_block_devices(self, list_mock):

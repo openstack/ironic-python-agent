@@ -139,7 +139,7 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
     def test__read_params_from_file_fail(self, logger_mock, open_mock):
         open_mock.side_effect = Exception
         params = utils._read_params_from_file('file-path')
-        self.assertEqual(params, {})
+        self.assertEqual({}, params)
 
     @mock.patch(OPEN_FUNCTION_NAME)
     def test__read_params_from_file(self, open_mock):
@@ -151,8 +151,8 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         params = utils._read_params_from_file('file-path')
         open_mock.assert_called_once_with('file-path')
         read_mock.assert_called_once_with()
-        self.assertEqual(params['api-url'], 'http://localhost:9999')
-        self.assertEqual(params['foo'], 'bar')
+        self.assertEqual('http://localhost:9999', params['api-url'])
+        self.assertEqual('bar', params['foo'])
         self.assertFalse('baz' in params)
 
     @mock.patch.object(utils, '_set_cached_params')
