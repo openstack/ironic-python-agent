@@ -461,7 +461,8 @@ class GenericHardwareManager(HardwareManager):
 
             def check_device_attrs(device):
                 for key in ('model', 'wwn', 'serial', 'vendor',
-                            'wwn_with_extension', 'wwn_vendor_extension'):
+                            'wwn_with_extension', 'wwn_vendor_extension',
+                            'name'):
                     if key not in root_device_hints:
                         continue
 

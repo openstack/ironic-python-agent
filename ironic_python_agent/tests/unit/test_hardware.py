@@ -304,14 +304,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
     @mock.patch.object(hardware, 'list_all_block_devices')
     @mock.patch.object(utils, 'parse_root_device_hints')
-    def test_get_os_install_device_root_device_hints(self, mock_root_device,
-                                                     mock_dev):
+    def _get_os_install_device_root_device_hints(self, hints, expected_device,
+                                                 mock_root_device, mock_dev):
         model = 'fastable sd131 7'
-        mock_root_device.return_value = {'model': model,
-                                         'wwn': 'fake-wwn',
-                                         'serial': 'fake-serial',
-                                         'vendor': 'fake-vendor',
-                                         'size': 10}
+        mock_root_device.return_value = hints
         mock_dev.return_value = [
             hardware.BlockDevice(name='/dev/sda',
                                  model='TinyUSB Drive',
@@ -333,9 +329,34 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                  serial='fake-serial'),
         ]
 
-        self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
+        self.assertEqual(expected_device,
+                         self.hardware.get_os_install_device())
         mock_root_device.assert_called_once_with()
         mock_dev.assert_called_once_with()
+
+    def test_get_os_install_device_root_device_hints_model(self):
+        self._get_os_install_device_root_device_hints(
+            {'model': 'fastable sd131 7'}, '/dev/sdb')
+
+    def test_get_os_install_device_root_device_hints_wwn(self):
+        self._get_os_install_device_root_device_hints(
+            {'wwn': 'wwn0'}, '/dev/sda')
+
+    def test_get_os_install_device_root_device_hints_serial(self):
+        self._get_os_install_device_root_device_hints(
+            {'serial': 'serial0'}, '/dev/sda')
+
+    def test_get_os_install_device_root_device_hints_size(self):
+        self._get_os_install_device_root_device_hints(
+            {'size': 10}, '/dev/sdb')
+
+    def test_get_os_install_device_root_device_hints_vendor(self):
+        self._get_os_install_device_root_device_hints(
+            {'vendor': 'fake-vendor'}, '/dev/sdb')
+
+    def test_get_os_install_device_root_device_hints_name(self):
+        self._get_os_install_device_root_device_hints(
+            {'name': '/dev/sdb'}, '/dev/sdb')
 
     @mock.patch.object(hardware, 'list_all_block_devices')
     @mock.patch.object(utils, 'parse_root_device_hints')
