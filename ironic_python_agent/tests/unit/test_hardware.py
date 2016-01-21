@@ -744,8 +744,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'shred', '--force', '--zero', '--verbose', '--iterations', '1',
             '/dev/sda')
 
+    @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device')
     @mock.patch.object(utils, 'execute')
-    def test_erase_block_device_ata_security_enabled(self, mocked_execute):
+    def test_erase_block_device_ata_security_enabled(
+            self, mocked_execute, mock_shred):
         hdparm_output = HDPARM_INFO_TEMPLATE % {
             'supported': '\tsupported',
             'enabled': '\tenabled',
@@ -754,17 +756,143 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         }
 
         mocked_execute.side_effect = [
+            (hdparm_output, ''),
+            None,
             (hdparm_output, '')
         ]
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.assertRaises(errors.BlockDeviceEraseError,
-                          self.hardware.erase_block_device,
-                          self.node, block_device)
+
+        self.assertRaises(
+            errors.IncompatibleHardwareMethodError,
+            self.hardware.erase_block_device,
+            self.node,
+            block_device)
+        self.assertFalse(mock_shred.called)
+
+    @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device')
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_ata_security_enabled_unlock_attempt(
+            self, mocked_execute, mock_shred):
+        hdparm_output = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': '\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
+        }
+
+        hdparm_output_not_enabled = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': 'not\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
+        }
+
+        mocked_execute.side_effect = [
+            (hdparm_output, ''),
+            '',
+            (hdparm_output_not_enabled, ''),
+            '',
+            '',
+            (hdparm_output_not_enabled, '')
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+
+        self.hardware.erase_block_device(self.node, block_device)
+        self.assertFalse(mock_shred.called)
 
     @mock.patch.object(utils, 'execute')
-    def test_erase_block_device_ata_frozen(self, mocked_execute):
+    def test__ata_erase_security_enabled_unlock_exception(
+            self, mocked_execute):
+        hdparm_output = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': '\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
+        }
+
+        mocked_execute.side_effect = [
+            (hdparm_output, ''),
+            processutils.ProcessExecutionError()
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware._ata_erase,
+                          block_device)
+
+    @mock.patch.object(utils, 'execute')
+    def test__ata_erase_security_enabled_set_password_exception(
+            self, mocked_execute):
+        hdparm_output = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': '\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
+        }
+
+        hdparm_output_not_enabled = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': 'not\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
+        }
+
+        mocked_execute.side_effect = [
+            (hdparm_output, ''),
+            '',
+            (hdparm_output_not_enabled, ''),
+            '',
+            processutils.ProcessExecutionError()
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware._ata_erase,
+                          block_device)
+
+    @mock.patch.object(utils, 'execute')
+    def test__ata_erase_security_erase_exec_exception(
+            self, mocked_execute):
+        hdparm_output = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': '\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
+        }
+
+        hdparm_output_not_enabled = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': 'not\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
+        }
+
+        mocked_execute.side_effect = [
+            (hdparm_output, '', '-1'),
+            '',
+            (hdparm_output_not_enabled, ''),
+            '',
+            processutils.ProcessExecutionError()
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware._ata_erase,
+                          block_device)
+
+    @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device')
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_ata_frozen(self, mocked_execute, mock_shred):
         hdparm_output = HDPARM_INFO_TEMPLATE % {
             'supported': '\tsupported',
             'enabled': 'not\tenabled',
@@ -778,12 +906,16 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.assertRaises(errors.BlockDeviceEraseError,
-                          self.hardware.erase_block_device,
-                          self.node, block_device)
+        self.assertRaises(
+            errors.IncompatibleHardwareMethodError,
+            self.hardware.erase_block_device,
+            self.node,
+            block_device)
+        self.assertFalse(mock_shred.called)
 
+    @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device')
     @mock.patch.object(utils, 'execute')
-    def test_erase_block_device_ata_failed(self, mocked_execute):
+    def test_erase_block_device_ata_failed(self, mocked_execute, mock_shred):
         hdparm_output_before = HDPARM_INFO_TEMPLATE % {
             'supported': '\tsupported',
             'enabled': 'not\tenabled',
@@ -809,9 +941,52 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-        self.assertRaises(errors.BlockDeviceEraseError,
-                          self.hardware.erase_block_device,
-                          self.node, block_device)
+
+        self.assertRaises(
+            errors.IncompatibleHardwareMethodError,
+            self.hardware.erase_block_device,
+            self.node,
+            block_device)
+        self.assertFalse(mock_shred.called)
+
+    @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device')
+    @mock.patch.object(utils, 'execute')
+    def test_erase_block_device_ata_failed_continued(
+            self,
+            mocked_execute,
+            mock_shred):
+
+        info = self.node.get('driver_internal_info')
+        info['agent_continue_if_ata_erase_failed'] = True
+
+        hdparm_output_before = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': 'not\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
+        }
+
+        # If security mode remains enabled after the erase, it is indiciative
+        # of a failed erase.
+        hdparm_output_after = HDPARM_INFO_TEMPLATE % {
+            'supported': '\tsupported',
+            'enabled': '\tenabled',
+            'frozen': 'not\tfrozen',
+            'enhanced_erase': 'not\tsupported: enhanced erase',
+        }
+
+        mocked_execute.side_effect = [
+            (hdparm_output_before, ''),
+            ('', ''),
+            ('', ''),
+            (hdparm_output_after, ''),
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+
+        self.hardware.erase_block_device(self.node, block_device)
+        self.assertTrue(mock_shred.called)
 
     def test_normal_vs_enhanced_security_erase(self):
         @mock.patch.object(utils, 'execute')

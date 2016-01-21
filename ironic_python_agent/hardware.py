@@ -568,8 +568,25 @@ class GenericHardwareManager(HardwareManager):
                      block_device.name)
             return
 
-        if self._ata_erase(block_device):
-            return
+        # Note(TheJulia) Use try/except to capture and log the failure
+        # and then revert to attempting to shred the volume if enabled.
+        try:
+            if self._ata_erase(block_device):
+                return
+        except errors.BlockDeviceEraseError as e:
+            info = node.get('driver_internal_info', {})
+            execute_shred = info.get(
+                'agent_continue_if_ata_erase_failed', False)
+            if execute_shred:
+                LOG.warning('Failed to invoke ata_erase, '
+                            'falling back to shred: %(err)s'
+                            % {'err': e})
+            else:
+                msg = ('Failed to invoke ata_erase, '
+                       'fallback to shred is not enabled: %(err)s'
+                       % {'err': e})
+                LOG.error(msg)
+                raise errors.IncompatibleHardwareMethodError(msg)
 
         if self._shred_block_device(node, block_device):
             return
@@ -644,6 +661,20 @@ class GenericHardwareManager(HardwareManager):
             return False
 
         if 'enabled' in security_lines:
+            # Attempt to unlock the drive in the event it has already been
+            # locked by a previous failed attempt.
+            try:
+                utils.execute('hdparm', '--user-master', 'u',
+                              '--security-unlock', 'NULL', block_device.name)
+                security_lines = self._get_ata_security_lines(block_device)
+            except processutils.ProcessExecutionError as e:
+                raise errors.BlockDeviceEraseError('Security password set '
+                                                   'failed for device '
+                                                   '%(name)s: %(err)s' %
+                                                   {'name': block_device.name,
+                                                    'err': e})
+
+        if 'enabled' in security_lines:
             raise errors.BlockDeviceEraseError(
                 ('Block device {0} already has a security password set'
                  ).format(block_device.name))
@@ -653,16 +684,29 @@ class GenericHardwareManager(HardwareManager):
                 ('Block device {0} is frozen and cannot be erased'
                  ).format(block_device.name))
 
-        utils.execute('hdparm', '--user-master', 'u', '--security-set-pass',
-                      'NULL', block_device.name)
+        try:
+            utils.execute('hdparm', '--user-master', 'u',
+                          '--security-set-pass', 'NULL', block_device.name)
+        except processutils.ProcessExecutionError as e:
+            raise errors.BlockDeviceEraseError('Security password set '
+                                               'failed for device '
+                                               '%(name)s: %(err)s' %
+                                               {'name': block_device.name,
+                                                'err': e})
 
         # Use the 'enhanced' security erase option if it's supported.
         erase_option = '--security-erase'
         if 'not supported: enhanced erase' not in security_lines:
             erase_option += '-enhanced'
 
-        utils.execute('hdparm', '--user-master', 'u', erase_option,
-                      'NULL', block_device.name)
+        try:
+            utils.execute('hdparm', '--user-master', 'u', erase_option,
+                          'NULL', block_device.name)
+        except processutils.ProcessExecutionError as e:
+            raise errors.BlockDeviceEraseError('Erase failed for device '
+                                               '%(name)s: %(err)s' %
+                                               {'name': block_device.name,
+                                                'err': e})
 
         # Verify that security is now 'not enabled'
         security_lines = self._get_ata_security_lines(block_device)
