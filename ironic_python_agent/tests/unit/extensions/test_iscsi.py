@@ -70,6 +70,34 @@ class TestISCSIExtensionTgt(test_base.BaseTestCase):
                          result.command_result)
         self.assertFalse(mock_destroy.called)
 
+    def test_start_iscsi_target_with_special_port(self, mock_execute,
+                                                  mock_dispatch,
+                                                  mock_destroy):
+        mock_dispatch.return_value = self.fake_dev
+        mock_execute.return_value = ('', '')
+        result = self.agent_extension.start_iscsi_target(iqn=self.fake_iqn,
+                                                         portal_port=3268)
+
+        expected = [mock.call('tgtd'),
+                    mock.call('tgtadm', '--lld', 'iscsi', '--mode',
+                              'target', '--op', 'show', attempts=10),
+                    mock.call('tgtadm', '--lld', 'iscsi', '--mode',
+                              'portal', '--op', 'new', '--param',
+                              'portal=0.0.0.0:3268'),
+                    mock.call('tgtadm', '--lld', 'iscsi', '--mode',
+                              'target', '--op', 'new', '--tid', '1',
+                              '--targetname', self.fake_iqn),
+                    mock.call('tgtadm', '--lld', 'iscsi', '--mode',
+                              'logicalunit', '--op', 'new', '--tid', '1',
+                              '--lun', '1', '--backing-store', self.fake_dev),
+                    mock.call('tgtadm', '--lld', 'iscsi', '--mode', 'target',
+                              '--op', 'bind', '--tid', '1',
+                              '--initiator-address', 'ALL')]
+        mock_execute.assert_has_calls(expected)
+        mock_dispatch.assert_called_once_with('get_os_install_device')
+        self.assertEqual({'iscsi_target_iqn': self.fake_iqn},
+                         result.command_result)
+
     def test_start_iscsi_target_fail_wait_daemon(self, mock_execute,
                                                  mock_dispatch,
                                                  mock_destroy):
@@ -142,8 +170,30 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             storage_object=mock_rtslib.BlockStorageObject.return_value,
             lun=1)
         mock_rtslib.NetworkPortal.assert_called_once_with(
-            mock_rtslib.TPG.return_value, '0.0.0.0')
+            mock_rtslib.TPG.return_value, '0.0.0.0', 3260)
         self.assertFalse(mock_destroy.called)
+
+    def test_start_iscsi_target_with_special_port(self, mock_rtslib,
+                                                  mock_dispatch,
+                                                  mock_destroy):
+        mock_dispatch.return_value = self.fake_dev
+        result = self.agent_extension.start_iscsi_target(iqn=self.fake_iqn,
+                                                         portal_port=3266)
+
+        self.assertEqual({'iscsi_target_iqn': self.fake_iqn},
+                         result.command_result)
+        mock_rtslib.BlockStorageObject.assert_called_once_with(
+            name=self.fake_iqn, dev=self.fake_dev)
+        mock_rtslib.Target.assert_called_once_with(mock.ANY, self.fake_iqn,
+                                                   mode='create')
+        mock_rtslib.TPG.assert_called_once_with(
+            mock_rtslib.Target.return_value, mode='create')
+        mock_rtslib.LUN.assert_called_once_with(
+            mock_rtslib.TPG.return_value,
+            storage_object=mock_rtslib.BlockStorageObject.return_value,
+            lun=1)
+        mock_rtslib.NetworkPortal.assert_called_once_with(
+            mock_rtslib.TPG.return_value, '0.0.0.0', 3266)
 
     def test_failed_to_start_iscsi(self, mock_rtslib, mock_dispatch,
                                    mock_destroy):
@@ -159,7 +209,8 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
         mock_rtslib.NetworkPortal.side_effect = _ORIG_UTILS.RTSLibError()
         self.assertRaisesRegexp(
             errors.ISCSIError, 'Failed to publish a target',
-            self.agent_extension.start_iscsi_target, iqn=self.fake_iqn)
+            self.agent_extension.start_iscsi_target, iqn=self.fake_iqn,
+            portal_port=None)
 
         mock_rtslib.BlockStorageObject.assert_called_once_with(
             name=self.fake_iqn, dev=self.fake_dev)
@@ -172,7 +223,7 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             storage_object=mock_rtslib.BlockStorageObject.return_value,
             lun=1)
         mock_rtslib.NetworkPortal.assert_called_once_with(
-            mock_rtslib.TPG.return_value, '0.0.0.0')
+            mock_rtslib.TPG.return_value, '0.0.0.0', 3260)
         self.assertFalse(mock_destroy.called)
 
     def test_failed_to_start_iscsi_wipe_disk_metadata(self, mock_rtslib,
