@@ -39,7 +39,7 @@ coreos:
         Type=oneshot
         RemainAfterExit=yes
         ExecStart=/usr/bin/mkdir -p /opt/ironic-python-agent
-        ExecStart=/usr/bin/tar -x \
+        ExecStart=/usr/bin/tar -x --no-xattrs \
                                -C /opt/ironic-python-agent \
                                -f /usr/share/oem/container.tar.gz
 
