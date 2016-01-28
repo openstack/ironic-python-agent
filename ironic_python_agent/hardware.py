@@ -289,8 +289,16 @@ class HardwareManager(object):
                         parameter, Ironic will consider False (non-abortable).
           }
 
-        If multiple hardware managers return the same step name, the priority
-        of the step will be the largest priority of steps with the same name.
+
+        If multiple hardware managers return the same step name, the following
+        logic will be used to determine which manager's step "wins":
+          - Keep the step that belongs to HardwareManager with highest
+            HardwareSupport (larger int) value.
+          - If equal support level, keep the step with the higher defined
+            priority (larger int).
+          - If equal support level and priority, keep the step associated
+            with the HardwareManager whose name comes earlier in the alphabet.
+
         The steps will be called using `hardware.dispatch_to_managers` and
         handled by the best suited hardware manager. If you need a step to be
         executed by only your hardware manager, ensure it has a unique step
