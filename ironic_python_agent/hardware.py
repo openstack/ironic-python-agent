@@ -188,6 +188,15 @@ class Memory(encoding.SerializableComparable):
         self.physical_mb = physical_mb
 
 
+class SystemVendorInfo(encoding.SerializableComparable):
+    serializable_fields = ('product_name', 'serial_number', 'manufacturer')
+
+    def __init__(self, product_name, serial_number, manufacturer):
+        self.product_name = product_name
+        self.serial_number = serial_number
+        self.manufacturer = manufacturer
+
+
 @six.add_metaclass(abc.ABCMeta)
 class HardwareManager(object):
     @abc.abstractmethod
@@ -264,6 +273,7 @@ class HardwareManager(object):
         hardware_info['disks'] = self.list_block_devices()
         hardware_info['memory'] = self.get_memory()
         hardware_info['bmc_address'] = self.get_bmc_address()
+        hardware_info['system_vendor'] = self.get_system_vendor_info()
         return hardware_info
 
     def get_clean_steps(self, node, ports):
@@ -491,6 +501,30 @@ class GenericHardwareManager(HardwareManager):
                 raise errors.DeviceNotFound(
                     "No suitable device was found for "
                     "deployment using these hints %s" % root_device_hints)
+
+    def get_system_vendor_info(self):
+        product_name = None
+        serial_number = None
+        manufacturer = None
+        try:
+            out, _e = utils.execute("dmidecode --type system",
+                                    shell=True)
+        except (processutils.ProcessExecutionError, OSError) as e:
+            LOG.warning("Cannot get system vendor information: %s", e)
+        else:
+            for line in out.split('\n'):
+                line_arr = line.split(':', 1)
+                if len(line_arr) != 2:
+                    continue
+                if line_arr[0].strip() == 'Product Name':
+                    product_name = line_arr[1].strip()
+                elif line_arr[0].strip() == 'Serial Number':
+                    serial_number = line_arr[1].strip()
+                elif line_arr[0].strip() == 'Manufacturer':
+                    manufacturer = line_arr[1].strip()
+        return SystemVendorInfo(product_name=product_name,
+                                serial_number=serial_number,
+                                manufacturer=manufacturer)
 
     def erase_block_device(self, node, block_device):
 

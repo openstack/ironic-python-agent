@@ -834,6 +834,41 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_execute.side_effect = processutils.ProcessExecutionError()
         self.assertIsNone(self.hardware.get_bmc_address())
 
+    @mock.patch.object(utils, 'execute')
+    def test_get_system_vendor_info(self, mocked_execute):
+        mocked_execute.return_value = (
+            '# dmidecode 2.12\n'
+            'SMBIOS 2.6 present.\n'
+            '\n'
+            'Handle 0x0001, DMI type 1, 27 bytes\n'
+            'System Information\n'
+            '\tManufacturer: NEC\n'
+            '\tProduct Name: Express5800/R120b-2 [N8100-1653]\n'
+            '\tVersion: FR1.3\n'
+            '\tSerial Number: 0800113\n'
+            '\tUUID: 00433468-26A5-DF11-8001-406186F5A681\n'
+            '\tWake-up Type: Power Switch\n'
+            '\tSKU Number: Not Specified\n'
+            '\tFamily: Not Specified\n'
+            '\n'
+            'Handle 0x002E, DMI type 12, 5 bytes\n'
+            'System Configuration Options\n'
+            '\tOption 1: CLR_CMOS: Close to clear CMOS\n'
+            '\tOption 2: BMC_FRB3: Close to stop FRB3 Timer\n'
+            '\tOption 3: BIOS_RECOVERY: Close to run BIOS Recovery\n'
+            '\tOption 4: PASS_DIS: Close to clear Password\n'
+            '\n'
+            'Handle 0x0059, DMI type 32, 11 bytes\n'
+            'System Boot Information\n'
+            '\tStatus: No errors detected\n'
+        ), ''
+        self.assertEqual('Express5800/R120b-2 [N8100-1653]',
+                         self.hardware.get_system_vendor_info().product_name)
+        self.assertEqual('0800113',
+                         self.hardware.get_system_vendor_info().serial_number)
+        self.assertEqual('NEC',
+                         self.hardware.get_system_vendor_info().manufacturer)
+
 
 class TestModuleFunctions(test_base.BaseTestCase):
 
