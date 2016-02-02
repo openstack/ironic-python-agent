@@ -267,6 +267,14 @@ class HardwareManager(object):
         return erase_results
 
     def list_hardware_info(self):
+        """Return full hardware inventory as a serializable dict.
+
+        This inventory is sent to Ironic on lookup and to Inspector on
+        inspection.
+
+        :return: a dictionary representing inventory
+        """
+        # NOTE(dtantsur): don't forget to update docs when extending inventory
         hardware_info = {}
         hardware_info['interfaces'] = self.list_network_interfaces()
         hardware_info['cpu'] = self.get_cpus()

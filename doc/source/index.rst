@@ -76,6 +76,47 @@ Make sure your DHCP environment is set to boot IPA by default.
 
 .. _Ironic Inspector: https://github.com/openstack/ironic-inspector
 
+Hardware Inventory
+------------------
+IPA collects various hardware information using its `Hardware Managers`_,
+and sends it to Ironic on lookup and to Ironic Inspector on Inspection_.
+
+The exact format of the inventory depends on the hardware manager used.
+Here is the basic format expected to be provided by all hardware managers.
+The inventory is a dictionary (JSON object), containing at least the following
+fields:
+
+``cpu``
+    CPU information: ``model_name``, ``frequency``, ``count`` and
+    ``architecture``.
+
+``memory``
+    RAM information: ``total`` (total size in bytes), ``physical_mb``
+    (physically installed memory size in MiB, optional).
+
+    .. note::
+        The difference is that the latter includes the memory region reserved
+        by the kernel and is always slightly bigger. It also matches what
+        the Nova flavor would contain for this node and thus is used by the
+        inspection process instead of ``total``.
+
+``bmc_address``
+    IP address of the node's BMC (aka IPMI address), optional.
+
+``disks``
+    list of disk block devices with fields: ``name``, ``model``,
+    ``size`` (in bytes), ``rotational`` (boolean), ``wwn``, ``serial``,
+    ``vendor``, ``wwn_with_extension``, ``wwn_vendor_extension``.
+
+``interfaces``
+    list of network interfaces with fields: ``name``, ``mac_address``,
+    ``ipv4_address``. Currently IPA also returns 2 fields ``switch_port_descr``
+    and ``switch_chassis_descr`` which are reserved for future use.
+
+``system_vendor``
+    system vendor information from SMBIOS as reported by ``dmidecode``:
+    ``product_name``, ``serial_number`` and ``manufacturer``.
+
 Image Builders
 --------------
 Unlike most other python software, you must build an IPA ramdisk image before
