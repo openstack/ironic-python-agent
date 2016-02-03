@@ -224,15 +224,15 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
     @mock.patch.object(os.path, 'exists')
     @mock.patch.object(os, 'mkdir')
     @mock.patch.object(utils, 'execute')
-    def test__get_vmedia_params_by_label(self, execute_mock, mkdir_mock,
-                                         exists_mock, read_params_mock,
-                                         mkdtemp_mock, rmtree_mock):
+    def test__get_vmedia_params_by_label_lower_case(
+            self, execute_mock, mkdir_mock, exists_mock, read_params_mock,
+            mkdtemp_mock, rmtree_mock):
         mkdtemp_mock.return_value = "/tempdir"
 
         null_output = ["", ""]
         expected_params = {'a': 'b'}
         read_params_mock.return_value = expected_params
-        exists_mock.return_value = True
+        exists_mock.side_effect = [True, False]
         execute_mock.side_effect = [null_output, null_output]
 
         returned_params = utils._get_vmedia_params()
@@ -241,6 +241,36 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
                                      "/tempdir")
         read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
         exists_mock.assert_called_once_with("/dev/disk/by-label/ir-vfd-dev")
+        execute_mock.assert_any_call('umount', "/tempdir")
+        self.assertEqual(expected_params, returned_params)
+        mkdtemp_mock.assert_called_once_with()
+        rmtree_mock.assert_called_once_with("/tempdir")
+
+    @mock.patch.object(shutil, 'rmtree', autospec=True)
+    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
+    @mock.patch.object(utils, '_read_params_from_file')
+    @mock.patch.object(os.path, 'exists')
+    @mock.patch.object(os, 'mkdir')
+    @mock.patch.object(utils, 'execute')
+    def test__get_vmedia_params_by_label_upper_case(
+            self, execute_mock, mkdir_mock, exists_mock, read_params_mock,
+            mkdtemp_mock, rmtree_mock):
+        mkdtemp_mock.return_value = "/tempdir"
+
+        null_output = ["", ""]
+        expected_params = {'a': 'b'}
+        read_params_mock.return_value = expected_params
+        exists_mock.side_effect = [False, True]
+        execute_mock.side_effect = [null_output, null_output]
+
+        returned_params = utils._get_vmedia_params()
+
+        execute_mock.assert_any_call('mount', "/dev/disk/by-label/IR-VFD-DEV",
+                                     "/tempdir")
+        read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
+        exists_mock.assert_has_calls(
+            [mock.call("/dev/disk/by-label/ir-vfd-dev"),
+             mock.call("/dev/disk/by-label/IR-VFD-DEV")])
         execute_mock.assert_any_call('umount', "/tempdir")
         self.assertEqual(expected_params, returned_params)
         mkdtemp_mock.assert_called_once_with()
@@ -262,12 +292,15 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         null_output = ["", ""]
         expected_params = {'a': 'b'}
         read_params_mock.return_value = expected_params
-        exists_mock.return_value = False
+        exists_mock.side_effect = [False, False]
         execute_mock.side_effect = [null_output, null_output]
         get_device_mock.return_value = "sda"
 
         returned_params = utils._get_vmedia_params()
 
+        exists_mock.assert_has_calls(
+            [mock.call("/dev/disk/by-label/ir-vfd-dev"),
+             mock.call("/dev/disk/by-label/IR-VFD-DEV")])
         execute_mock.assert_any_call('mount', "/dev/sda",
                                      "/tempdir")
         read_params_mock.assert_called_once_with("/tempdir/parameters.txt")

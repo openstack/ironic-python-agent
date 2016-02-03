@@ -109,8 +109,13 @@ def _get_vmedia_params():
     """
     parameters_file = "parameters.txt"
 
-    vmedia_device_file = "/dev/disk/by-label/ir-vfd-dev"
-    if not os.path.exists(vmedia_device_file):
+    vmedia_device_file_lower_case = "/dev/disk/by-label/ir-vfd-dev"
+    vmedia_device_file_upper_case = "/dev/disk/by-label/IR-VFD-DEV"
+    if os.path.exists(vmedia_device_file_lower_case):
+        vmedia_device_file = vmedia_device_file_lower_case
+    elif os.path.exists(vmedia_device_file_upper_case):
+        vmedia_device_file = vmedia_device_file_upper_case
+    else:
 
         # TODO(rameshg87): This block of code is there only for compatibility
         # reasons (so that newer agent can work with older Ironic). Remove
