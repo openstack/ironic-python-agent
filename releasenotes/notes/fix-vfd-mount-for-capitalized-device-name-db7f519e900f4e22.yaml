@@ -1,0 +1,4 @@
+fixes:
+  - This enables virtual media deploy even if virtual floppy device
+    name is capitalized to "/dev/disk/by-label/IR-VFD-DEV". see
+    https://bugs.launchpad.net/ironic/+bug/1541167 for details.
