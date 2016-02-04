@@ -18,7 +18,6 @@ from oslo_log import log
 from oslo_service import loopingcall
 import requests
 
-from ironic_python_agent import backoff
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 
@@ -80,14 +79,14 @@ class APIClient(object):
 
     def lookup_node(self, hardware_info, timeout, starting_interval,
                     node_uuid=None):
-        timer = backoff.BackOffLoopingCall(
+        timer = loopingcall.BackOffLoopingCall(
             self._do_lookup,
             hardware_info=hardware_info,
             node_uuid=node_uuid)
         try:
             node_content = timer.start(starting_interval=starting_interval,
                                        timeout=timeout).wait()
-        except backoff.LoopingCallTimeOut:
+        except loopingcall.LoopingCallTimeOut:
             raise errors.LookupNodeError('Could not look up node info. Check '
                                          'logs for details.')
         return node_content
