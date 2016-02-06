@@ -105,6 +105,9 @@ else
     # Find partition we just created
     # Dump all partitions, ignore empty ones, then get the last partition ID
     ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v ' 0,' | tail -n1 | awk '{print $1}'` || fail "finding ISO partition created on ${DEVICE}"
+
+    # Wait for udev to pick up the partition
+    udevadm settle --exit-if-exists=$ISO_PARTITION
   fi
 fi
 
