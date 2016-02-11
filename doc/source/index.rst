@@ -118,13 +118,15 @@ fields:
 
 ``interfaces``
     list of network interfaces with fields: ``name``, ``mac_address``,
-    ``ipv4_address``, ``lldp``. If configuration option ``collect_lldp`` is
-    set to True the ``lldp`` field will be populated by a list of
-    type-length-value (TLV) fields retrieved using the Link Layer Discovery
-    Protocol (LLDP). Currently IPA also returns 2 fields ``switch_port_descr``
+    ``ipv4_address``, ``lldp``, ``vendor`` and ``product``.
+    If  configuration option ``collect_lldp`` is set to True the ``lldp``
+    field will be populated by a list of type-length-value (TLV) fields
+    retrieved using the Link Layer Discovery Protocol (LLDP).
+    Currently IPA also returns 2 fields ``switch_port_descr``
     and ``switch_chassis_descr`` which were reserved for future use, these are
     now deprecated to be removed in Ocata in favor of including all LLDP data
-    in the ``lddp`` field.
+    in the ``lldp`` field.
+
 
 ``system_vendor``
     system vendor information from SMBIOS as reported by ``dmidecode``:
