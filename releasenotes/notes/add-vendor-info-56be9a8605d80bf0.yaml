@@ -1,0 +1,5 @@
+---
+features:
+  - Add new 'system_vendor' information to data - Add hardware vendor
+    information(product name, serial number, manufacturer) to data.
+    This will be able to give Ironic Inspector hints to detect driver.
