@@ -50,6 +50,7 @@ mkdir -p "$BUILDDIR/tmp/localpip"
 cd ../..
 rm -rf *.egg-info
 python setup.py sdist --dist-dir "$BUILDDIR/tmp/localpip" --quiet
+cp requirements.txt $BUILDDIR/tmp/ipa-requirements.txt
 cd $WORKDIR
 
 sudo cp /etc/resolv.conf $BUILDDIR/etc/resolv.conf
@@ -70,7 +71,8 @@ $CHROOT_CMD python /tmp/get-pip.py
 $CHROOT_CMD pip install pbr
 $CHROOT_CMD pip wheel --wheel-dir /tmp/wheels setuptools
 $CHROOT_CMD pip wheel --wheel-dir /tmp/wheels pip
-$CHROOT_CMD pip wheel --pre --wheel-dir /tmp/wheels --find-links=/tmp/localpip ironic-python-agent
+$CHROOT_CMD pip wheel --wheel-dir /tmp/wheels -r /tmp/ipa-requirements.txt
+$CHROOT_CMD pip wheel --no-index --pre --wheel-dir /tmp/wheels --find-links=/tmp/localpip --find-links=/tmp/wheels ironic-python-agent
 
 # Build tgt
 rm -rf $WORKDIR/build_files/tgt.tcz
