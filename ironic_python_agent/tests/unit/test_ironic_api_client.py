@@ -18,7 +18,6 @@ import mock
 from oslo_service import loopingcall
 from oslotest import base as test_base
 
-from ironic_python_agent import backoff
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
@@ -111,7 +110,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
     @mock.patch('eventlet.greenthread.sleep')
     @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup')
     def test_lookup_timeout(self, lookup_mock, sleep_mock):
-        lookup_mock.side_effect = backoff.LoopingCallTimeOut()
+        lookup_mock.side_effect = loopingcall.LoopingCallTimeOut()
         self.assertRaises(errors.LookupNodeError,
                           self.api_client.lookup_node,
                           hardware_info=self.hardware_info,
