@@ -421,7 +421,7 @@ class GenericHardwareManager(HardwareManager):
             total = int(psutil.phymem_usage().total)
 
         try:
-            out, _e = utils.execute("dmidecode --type memory | grep Size",
+            out, _e = utils.execute("dmidecode --type 17 | grep Size",
                                     shell=True)
         except (processutils.ProcessExecutionError, OSError) as e:
             LOG.warning("Cannot get real physical memory size: %s", e)
@@ -433,12 +433,20 @@ class GenericHardwareManager(HardwareManager):
                 if not line:
                     continue
 
+                if 'Size:' not in line:
+                    continue
+
+                value = None
                 try:
-                    value = line.split(None, 1)[1].strip()
+                    value = line.split('Size: ', 1)[1]
                     physical += int(UNIT_CONVERTER(value).to_base_units())
                 except Exception as exc:
-                    LOG.error('Cannot parse size expression %s: %s',
-                              line, exc)
+                    if (value == "No Module Installed" or
+                            value == "Not Installed"):
+                        LOG.debug('One memory slot is empty')
+                    else:
+                        LOG.error('Cannot parse size expression %s: %s',
+                                  line, exc)
 
             if not physical:
                 LOG.warning('failed to get real physical RAM, dmidecode '
