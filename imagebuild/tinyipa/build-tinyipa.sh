@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
