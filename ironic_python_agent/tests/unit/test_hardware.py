@@ -19,17 +19,11 @@ from oslo_concurrency import processutils
 from oslo_utils import units
 from oslotest import base as test_base
 import pyudev
-import six
 from stevedore import extension
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import utils
-
-if six.PY2:
-    OPEN_FUNCTION_NAME = '__builtin__.open'
-else:
-    OPEN_FUNCTION_NAME = 'builtins.open'
 
 HDPARM_INFO_TEMPLATE = (
     '/dev/sda:\n'
@@ -262,7 +256,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch('netifaces.ifaddresses')
     @mock.patch('os.listdir')
     @mock.patch('os.path.exists')
-    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('six.moves.builtins.open')
     def test_list_network_interfaces(self,
                                      mocked_open,
                                      mocked_exists,
@@ -392,7 +386,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
     def test__get_device_vendor(self):
         fileobj = mock.mock_open(read_data='fake-vendor')
-        with mock.patch(OPEN_FUNCTION_NAME, fileobj, create=True) as mock_open:
+        with mock.patch(
+                'six.moves.builtins.open', fileobj, create=True) as mock_open:
             vendor = hardware._get_device_vendor('/dev/sdfake')
             mock_open.assert_called_once_with(
                 '/sys/class/block/sdfake/device/vendor', 'r')

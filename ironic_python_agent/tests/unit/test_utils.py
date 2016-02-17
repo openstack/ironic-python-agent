@@ -23,16 +23,9 @@ import testtools
 import mock
 from oslo_concurrency import processutils
 from oslotest import base as test_base
-import six
 
 from ironic_python_agent import errors
 from ironic_python_agent import utils
-
-
-if six.PY2:
-    OPEN_FUNCTION_NAME = '__builtin__.open'
-else:
-    OPEN_FUNCTION_NAME = 'builtins.open'
 
 
 class ExecuteTestCase(testtools.TestCase):
@@ -135,13 +128,13 @@ grep foo
 class GetAgentParamsTestCase(test_base.BaseTestCase):
 
     @mock.patch('oslo_log.log.getLogger')
-    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('six.moves.builtins.open')
     def test__read_params_from_file_fail(self, logger_mock, open_mock):
         open_mock.side_effect = Exception
         params = utils._read_params_from_file('file-path')
         self.assertEqual({}, params)
 
-    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('six.moves.builtins.open')
     def test__read_params_from_file(self, open_mock):
         kernel_line = 'api-url=http://localhost:9999 baz foo=bar\n'
         open_mock.return_value.__enter__ = lambda s: s
@@ -201,7 +194,7 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         self.assertEqual(expected_params, returned_params)
         self.assertEqual(0, set_cache_mock.call_count)
 
-    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('six.moves.builtins.open')
     @mock.patch.object(glob, 'glob')
     def test__get_vmedia_device(self, glob_mock, open_mock):
 
