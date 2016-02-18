@@ -17,15 +17,9 @@ import os
 import mock
 from oslo_concurrency import processutils
 from oslotest import base as test_base
-import six
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import standby
-
-if six.PY2:
-    OPEN_FUNCTION_NAME = '__builtin__.open'
-else:
-    OPEN_FUNCTION_NAME = 'builtins.open'
 
 
 def _build_fake_image_info():
@@ -97,7 +91,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         location = standby._image_location(image_info)
         self.assertEqual('/tmp/fake_id', location)
 
-    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_write_image(self, execute_mock, open_mock):
         image_info = _build_fake_image_info()
@@ -137,7 +131,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write_mock.assert_called_once_with('data', 'filename')
 
     @mock.patch('gzip.GzipFile', autospec=True)
-    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('base64.b64decode', autospec=True)
     def test_write_configdrive_to_file(self, b64_mock, open_mock, gzip_mock):
         open_mock.return_value.__enter__ = lambda s: s
@@ -157,7 +151,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
     @mock.patch(('ironic_python_agent.extensions.standby.'
                  '_write_configdrive_to_file'),
                 autospec=True)
-    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_write_configdrive_to_partition(self, execute_mock, open_mock,
                                             configdrive_mock, stat_mock):
@@ -186,7 +180,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
     @mock.patch(('ironic_python_agent.extensions.standby.'
                  '_write_configdrive_to_file'),
                 autospec=True)
-    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_write_configdrive_too_large(self, execute_mock, open_mock,
                                          configdrive_mock, stat_mock):
@@ -200,7 +194,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           device)
 
     @mock.patch('hashlib.md5')
-    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('requests.get')
     def test_download_image(self, requests_mock, open_mock, md5_mock):
         image_info = _build_fake_image_info()
@@ -222,7 +216,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual(2, write.call_count)
 
     @mock.patch('hashlib.md5')
-    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('requests.get')
     @mock.patch.dict(os.environ, {})
     def test_download_image_proxy(
@@ -261,7 +255,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           image_info)
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch(OPEN_FUNCTION_NAME, autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_download_image_verify_fails(self, requests_mock, open_mock,
                                          md5_mock):
@@ -573,7 +567,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write_mock.assert_called_once_with(image_info, device)
 
     @mock.patch('hashlib.md5')
-    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('requests.get')
     def test_stream_raw_image_onto_device(self, requests_mock, open_mock,
                                           md5_mock):
@@ -595,7 +589,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         file_mock.write.assert_has_calls(expected_calls)
 
     @mock.patch('hashlib.md5')
-    @mock.patch(OPEN_FUNCTION_NAME)
+    @mock.patch('six.moves.builtins.open')
     @mock.patch('requests.get')
     def test_stream_raw_image_onto_device_write_error(self, requests_mock,
                                                       open_mock, md5_mock):
