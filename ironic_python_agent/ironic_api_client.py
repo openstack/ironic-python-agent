@@ -42,7 +42,6 @@ class APIClient(object):
         self.session.mount(self.api_url, adapter)
 
         self.encoder = encoding.RESTJSONEncoder()
-        self.log = log.getLogger(__name__)
 
     def _request(self, method, path, data=None):
         request_url = '{api_url}{path}'.format(api_url=self.api_url, path=path)
@@ -114,28 +113,26 @@ class APIClient(object):
         try:
             response = self._request('POST', path, data=data)
         except Exception as e:
-            self.log.warning('POST failed: %s' % str(e))
+            LOG.warning('POST failed: %s' % str(e))
             return False
 
         if response.status_code != requests.codes.OK:
-            self.log.warning('Invalid status code: %s' % response.status_code)
+            LOG.warning('Invalid status code: %s' % response.status_code)
             return False
 
         try:
             content = json.loads(response.content)
         except Exception as e:
-            self.log.warning('Error decoding response: %s' % str(e))
+            LOG.warning('Error decoding response: %s' % str(e))
             return False
 
         # Check for valid response data
         if 'node' not in content or 'uuid' not in content['node']:
-            self.log.warning('Got invalid node data from the API: %s' %
-                             content)
+            LOG.warning('Got invalid node data from the API: %s' % content)
             return False
 
         if 'heartbeat_timeout' not in content:
-            self.log.warning('Got invalid heartbeat from the API: %s' %
-                             content)
+            LOG.warning('Got invalid heartbeat from the API: %s' % content)
             return False
 
         # Got valid content

@@ -182,7 +182,6 @@ class BaseAgentExtension(object):
     def __init__(self, agent=None):
         super(BaseAgentExtension, self).__init__()
         self.agent = agent
-        self.log = log.getLogger(__name__)
         self.command_map = dict(
             (v.command_name, v)
             for k, v in inspect.getmembers(self)
