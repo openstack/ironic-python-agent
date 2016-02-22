@@ -109,6 +109,15 @@ class HeartbeatError(IronicAPIError):
         super(HeartbeatError, self).__init__(details)
 
 
+class HeartbeatConflictError(IronicAPIError):
+    """ConflictError raised when a heartbeat to the agent API fails."""
+
+    message = 'ConflictError heartbeating to agent API'
+
+    def __init__(self, details):
+        super(HeartbeatConflictError, self).__init__(details)
+
+
 class LookupNodeError(IronicAPIError):
     """Error raised when the node lookup to the Ironic API fails."""
 

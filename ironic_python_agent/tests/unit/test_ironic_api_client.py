@@ -89,6 +89,17 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
                           advertise_address=('192.0.2.1', '9999'))
 
+    def test_heartbeat_409_status_code(self):
+        response = mock.Mock()
+        response.status_code = 409
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaises(errors.HeartbeatConflictError,
+                          self.api_client.heartbeat,
+                          uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+                          advertise_address=('192.0.2.1', '9999'))
+
     @mock.patch('eventlet.greenthread.sleep')
     @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup')
     def test_lookup_node(self, lookup_mock, sleep_mock):
