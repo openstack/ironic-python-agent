@@ -35,7 +35,7 @@ LOG = log.getLogger(__name__)
 def _execute(cmd, error_msg, **kwargs):
     try:
         stdout, stderr = utils.execute(*cmd, **kwargs)
-    except processutils.ProcessExecutionError as e:
+    except (processutils.ProcessExecutionError, OSError) as e:
         LOG.error(error_msg)
         raise errors.ISCSICommandError(error_msg, e.exit_code,
                                        e.stdout, e.stderr)
