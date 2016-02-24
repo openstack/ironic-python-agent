@@ -20,12 +20,19 @@ import mock
 from oslo_concurrency import processutils
 from oslotest import base as test_base
 
+from ironic_lib import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import iscsi
 from ironic_python_agent import hardware
 from ironic_python_agent import utils
 
 
+class FakeAgent(object):
+    def get_node_uuid(self):
+        return 'my_node_uuid'
+
+
+@mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
 @mock.patch.object(hardware, 'dispatch_to_managers')
 @mock.patch.object(utils, 'execute')
 @mock.patch.object(iscsi.rtslib_fb, 'RTSRoot',
@@ -34,11 +41,13 @@ class TestISCSIExtensionTgt(test_base.BaseTestCase):
 
     def setUp(self):
         super(TestISCSIExtensionTgt, self).setUp()
-        self.agent_extension = iscsi.ISCSIExtension()
+        self.agent_extension = iscsi.ISCSIExtension(FakeAgent())
         self.fake_dev = '/dev/fake'
         self.fake_iqn = 'iqn-fake'
 
-    def test_start_iscsi_target(self, mock_execute, mock_dispatch):
+    def test_start_iscsi_target(self, mock_execute,
+                                mock_dispatch,
+                                mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         mock_execute.return_value = ('', '')
         result = self.agent_extension.start_iscsi_target(iqn=self.fake_iqn)
@@ -59,9 +68,11 @@ class TestISCSIExtensionTgt(test_base.BaseTestCase):
         mock_dispatch.assert_called_once_with('get_os_install_device')
         self.assertEqual({'iscsi_target_iqn': self.fake_iqn},
                          result.command_result)
+        self.assertFalse(mock_destroy.called)
 
     def test_start_iscsi_target_fail_wait_daemon(self, mock_execute,
-                                                 mock_dispatch):
+                                                 mock_dispatch,
+                                                 mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         # side effects here:
         # - execute tgtd: stdout=='', stderr==''
@@ -77,10 +88,12 @@ class TestISCSIExtensionTgt(test_base.BaseTestCase):
 
         mock_execute.assert_has_calls(expected)
         mock_dispatch.assert_called_once_with('get_os_install_device')
+        self.assertFalse(mock_destroy.called)
 
     @mock.patch.object(iscsi, '_wait_for_tgtd')
     def test_start_iscsi_target_fail_command(self, mock_wait_iscsi,
-                                             mock_execute, mock_dispatch):
+                                             mock_execute, mock_dispatch,
+                                             mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         mock_execute.side_effect = [('', ''), ('', ''),
                                     processutils.ProcessExecutionError('blah')]
@@ -99,6 +112,7 @@ class TestISCSIExtensionTgt(test_base.BaseTestCase):
 _ORIG_UTILS = iscsi.rtslib_fb.utils
 
 
+@mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
 @mock.patch.object(hardware, 'dispatch_to_managers')
 # Don't mock the utils module, as it contains exceptions
 @mock.patch.object(iscsi, 'rtslib_fb', utils=_ORIG_UTILS)
@@ -106,11 +120,12 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
 
     def setUp(self):
         super(TestISCSIExtensionLIO, self).setUp()
-        self.agent_extension = iscsi.ISCSIExtension()
+        self.agent_extension = iscsi.ISCSIExtension(FakeAgent())
         self.fake_dev = '/dev/fake'
         self.fake_iqn = 'iqn-fake'
 
-    def test_start_iscsi_target(self, mock_rtslib, mock_dispatch):
+    def test_start_iscsi_target(self, mock_rtslib, mock_dispatch,
+                                mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         result = self.agent_extension.start_iscsi_target(iqn=self.fake_iqn)
 
@@ -128,15 +143,18 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             lun=1)
         mock_rtslib.NetworkPortal.assert_called_once_with(
             mock_rtslib.TPG.return_value, '0.0.0.0')
+        self.assertFalse(mock_destroy.called)
 
-    def test_failed_to_start_iscsi(self, mock_rtslib, mock_dispatch):
+    def test_failed_to_start_iscsi(self, mock_rtslib, mock_dispatch,
+                                   mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         mock_rtslib.Target.side_effect = _ORIG_UTILS.RTSLibError()
         self.assertRaisesRegexp(
             errors.ISCSIError, 'Failed to create a target',
             self.agent_extension.start_iscsi_target, iqn=self.fake_iqn)
 
-    def test_failed_to_bind_iscsi(self, mock_rtslib, mock_dispatch):
+    def test_failed_to_bind_iscsi(self, mock_rtslib, mock_dispatch,
+                                  mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         mock_rtslib.NetworkPortal.side_effect = _ORIG_UTILS.RTSLibError()
         self.assertRaisesRegexp(
@@ -155,6 +173,19 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             lun=1)
         mock_rtslib.NetworkPortal.assert_called_once_with(
             mock_rtslib.TPG.return_value, '0.0.0.0')
+        self.assertFalse(mock_destroy.called)
+
+    def test_failed_to_start_iscsi_wipe_disk_metadata(self, mock_rtslib,
+                                                      mock_dispatch,
+                                                      mock_destroy):
+        mock_dispatch.return_value = self.fake_dev
+        mock_rtslib.Target.side_effect = _ORIG_UTILS.RTSLibError()
+        self.assertRaisesRegexp(
+            errors.ISCSIError, 'Failed to create a target',
+            self.agent_extension.start_iscsi_target,
+            iqn=self.fake_iqn,
+            wipe_disk_metadata=True)
+        mock_destroy.assert_called_once_with('/dev/fake', 'my_node_uuid')
 
 
 @mock.patch.object(iscsi.rtslib_fb, 'RTSRoot')

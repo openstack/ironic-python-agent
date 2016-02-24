@@ -16,6 +16,7 @@
 #    under the License.
 
 
+from ironic_lib import disk_utils
 from oslo_concurrency import processutils
 from oslo_log import log
 from oslo_utils import uuidutils
@@ -136,13 +137,23 @@ def clean_up(device):
 
 class ISCSIExtension(base.BaseAgentExtension):
     @base.sync_command('start_iscsi_target')
-    def start_iscsi_target(self, iqn=None):
-        """Expose the disk as an ISCSI target."""
+    def start_iscsi_target(self, iqn=None, wipe_disk_metadata=False):
+        """Expose the disk as an ISCSI target.
+
+        :param wipe_disk_metadata: if the disk metadata should be wiped out
+        before the disk is exposed.
+        """
         # If iqn is not given, generate one
         if iqn is None:
             iqn = 'iqn.2008-10.org.openstack:%s' % uuidutils.generate_uuid()
 
         device = hardware.dispatch_to_managers('get_os_install_device')
+
+        if wipe_disk_metadata:
+            disk_utils.destroy_disk_metadata(
+                device,
+                self.agent.get_node_uuid())
+
         LOG.debug("Starting ISCSI target with iqn %(iqn)s on device "
                   "%(device)s", {'iqn': iqn, 'device': device})
 
