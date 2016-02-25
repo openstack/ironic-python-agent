@@ -84,7 +84,7 @@ run from within a ramdisk.
 
 CoreOS
 ~~~~~~
-The only current supported ramdisk image for IPA is the CoreOS image [1]_.
+One way to build a ramdisk image for IPA is with the CoreOS image [1]_.
 Prebuilt copies of the CoreOS image, suitable for pxe, are available on
 `tarballs.openstack.org <http://tarballs.openstack.org/ironic-python-agent/coreos/files/>`__.
 
@@ -110,10 +110,11 @@ There are several methods you can use to customize the IPA ramdisk:
   additional python packages.
 * Modify the cloud-config.yml [2]_ to perform additional tasks at boot time.
 
-disk-image-builder
+diskimage-builder
 ~~~~~~~~~~~~~~~~~~
-There is currently no production-ready ironic-python-agent ramdisk images
-using disk-image-builder, but one is currently under development [3]_.
+Another way to build a ramdisk image for IPA is by using diskimage-builder
+[3]_. The ironic-agent diskimage-builder element builds the IPA ramdisk, which
+installs all the required packages and configures services as needed.
 
 ISO Images
 ~~~~~~~~~~
