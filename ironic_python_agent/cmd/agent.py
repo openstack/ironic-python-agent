@@ -16,6 +16,7 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import strutils
 
 from ironic_python_agent import agent
 from ironic_python_agent import inspector
@@ -122,6 +123,11 @@ def run():
     """Entrypoint for IronicPythonAgent."""
     log.register_options(CONF)
     CONF(args=sys.argv[1:])
+    # Debug option comes from oslo.log, allow overriding it via kernel cmdline
+    ipa_debug = APARAMS.get('ipa-debug')
+    if ipa_debug is not None:
+        ipa_debug = strutils.bool_from_string(ipa_debug)
+        CONF.set_override('debug', ipa_debug)
     log.setup(CONF, 'ironic-python-agent')
     agent.IronicPythonAgent(CONF.api_url,
                             (CONF.advertise_host, CONF.advertise_port),

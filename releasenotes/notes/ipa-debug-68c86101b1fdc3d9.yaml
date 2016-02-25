@@ -1,0 +1,3 @@
+---
+features:
+  - Debug logging can now be enabled by setting "ipa-debug" kernel parameter.
