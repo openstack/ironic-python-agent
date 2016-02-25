@@ -49,6 +49,21 @@ def _get_device_vendor(dev):
         LOG.warning("Can't find the device vendor for device %s", dev)
 
 
+def _udev_settle():
+    """Wait for the udev event queue to settle.
+
+    Wait for the udev event queue to settle to make sure all devices
+    are detected once the machine boots up.
+
+    """
+    try:
+        utils.execute('udevadm', 'settle')
+    except processutils.ProcessExecutionError as e:
+        LOG.warning('Something went wrong when waiting for udev '
+                    'to settle. Error: %s', e)
+        return
+
+
 def list_all_block_devices(block_type='disk'):
     """List all physical block devices
 
@@ -62,6 +77,8 @@ def list_all_block_devices(block_type='disk'):
     :param block_type: Type of block device to find
     :return: A list of BlockDevices
     """
+
+    _udev_settle()
 
     columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
     report = utils.execute('lsblk', '-Pbdi', '-o{}'.format(','.join(columns)),
