@@ -32,6 +32,9 @@ from ironic_python_agent import inspector
 from ironic_python_agent import ironic_api_client
 
 
+LOG = log.getLogger(__name__)
+
+
 def _time():
     """Wraps time.time() for simpler testing."""
     return time.time()
@@ -73,7 +76,6 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         self.agent = agent
         self.api = ironic_api_client.APIClient(agent.api_url,
                                                agent.driver_name)
-        self.log = log.getLogger(__name__)
         self.error_delay = self.initial_delay
         self.reader = None
         self.writer = None
@@ -81,7 +83,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
     def run(self):
         """Start the heartbeat thread."""
         # The first heartbeat happens immediately
-        self.log.info('starting heartbeater')
+        LOG.info('starting heartbeater')
         interval = 0
         self.agent.set_agent_advertise_addr()
 
@@ -100,7 +102,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
                     self.max_jitter_multiplier)
                 interval = self.agent.heartbeat_timeout * interval_multiplier
                 log_msg = 'sleeping before next heartbeat, interval: {0}'
-                self.log.info(log_msg.format(interval))
+                LOG.info(log_msg.format(interval))
         finally:
             os.close(self.reader)
             os.close(self.writer)
@@ -115,9 +117,9 @@ class IronicPythonAgentHeartbeater(threading.Thread):
                 advertise_address=self.agent.advertise_address
             )
             self.error_delay = self.initial_delay
-            self.log.info('heartbeat successful')
+            LOG.info('heartbeat successful')
         except Exception:
-            self.log.exception('error sending heartbeat')
+            LOG.exception('error sending heartbeat')
             self.error_delay = min(self.error_delay * self.backoff_factor,
                                    self.max_delay)
 
@@ -127,7 +129,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
     def stop(self):
         """Stop the heartbeat thread."""
         if self.writer is not None:
-            self.log.info('stopping heartbeater')
+            LOG.info('stopping heartbeater')
             os.write(self.writer, 'a')
             return self.join()
 
@@ -156,7 +158,6 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.api = app.VersionSelectorApplication(self)
         self.heartbeater = IronicPythonAgentHeartbeater(self)
         self.heartbeat_timeout = None
-        self.log = log.getLogger(__name__)
         self.started_at = None
         self.node = None
         # lookup timeout in seconds
@@ -308,7 +309,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         try:
             wsgi.serve_forever()
         except BaseException:
-            self.log.exception('shutting down')
+            LOG.exception('shutting down')
 
         if not self.standalone:
             self.heartbeater.stop()
