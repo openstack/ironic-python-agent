@@ -1,0 +1,5 @@
+---
+fixes:
+    - dmidecode output produces less parsing errors and logs
+      common and normal output like "No Module Installed" or
+      "Not Installed" in debug instead of error.

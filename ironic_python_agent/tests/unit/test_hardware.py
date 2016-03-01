@@ -421,7 +421,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     def test_get_memory(self, mocked_execute, mocked_usage):
         mocked_usage.return_value = mock.Mock(total=3952 * 1024 * 1024)
         mocked_execute.return_value = (
-            "Foo\nSize: 2048 MB\nSize: 2 GB\n",
+            ("Foo\nSize: 2048 MB\nSize: 2 GB\n"
+             "Installed Size: Not Installed\n"
+             "Enabled Size: Not Installed\n"
+             "Size: No Module Installed\n"),
             ""
         )
 
