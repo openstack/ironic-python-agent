@@ -16,7 +16,8 @@ as of the Kilo OpenStack release.
 Building the IPA deployment ramdisk
 ===================================
 
-See `CoreOS Image builder <https://github.com/openstack/ironic-python-agent/tree/master/imagebuild/coreos>`_.
+For more information see the `Image Builder <http://docs.openstack.org/developer/ironic-python-agent/#image-builders>`_ section of the Ironic Python Agent
+developer guide.
 
 
 Using IPA with devstack
