@@ -246,6 +246,7 @@ class TestHardwareManagerLoading(test_base.BaseTestCase):
         ])
 
 
+@mock.patch.object(hardware, '_udev_settle', lambda *_: None)
 class TestGenericHardwareManager(test_base.BaseTestCase):
     def setUp(self):
         super(TestGenericHardwareManager, self).setUp()
@@ -889,13 +890,14 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                          self.hardware.get_system_vendor_info().manufacturer)
 
 
+@mock.patch.object(utils, 'execute', autospec=True)
 class TestModuleFunctions(test_base.BaseTestCase):
 
     @mock.patch.object(hardware, '_get_device_vendor', lambda x: "FooTastic")
+    @mock.patch.object(hardware, '_udev_settle', autospec=True)
     @mock.patch.object(hardware.pyudev.Device, "from_device_file")
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test_list_all_block_devices_success(self, mocked_execute,
-                                            mocked_fromdevfile):
+    def test_list_all_block_devices_success(self, mocked_fromdevfile,
+                                            mocked_udev, mocked_execute):
         mocked_fromdevfile.return_value = {}
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
         result = hardware.list_all_block_devices()
@@ -903,19 +905,23 @@ class TestModuleFunctions(test_base.BaseTestCase):
             'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertEqual(BLK_DEVICE_TEMPLATE_SMALL_DEVICES, result)
+        mocked_udev.assert_called_once_with()
 
-    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(hardware, '_get_device_vendor', lambda x: "FooTastic")
-    def test_list_all_block_devices_wrong_block_type(self, mocked_execute):
+    @mock.patch.object(hardware, '_udev_settle', autospec=True)
+    def test_list_all_block_devices_wrong_block_type(self, mocked_udev,
+                                                     mocked_execute):
         mocked_execute.return_value = ('TYPE="foo" MODEL="model"', '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
             'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertEqual([], result)
+        mocked_udev.assert_called_once_with()
 
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test_list_all_block_devices_missing(self, mocked_execute):
+    @mock.patch.object(hardware, '_udev_settle', autospec=True)
+    def test_list_all_block_devices_missing(self, mocked_udev,
+                                            mocked_execute):
         """Test for missing values returned from lsblk"""
         mocked_execute.return_value = ('TYPE="disk" MODEL="model"', '')
         self.assertRaisesRegexp(
@@ -923,3 +929,8 @@ class TestModuleFunctions(test_base.BaseTestCase):
             r'^Block device caused unknown error: KNAME, ROTA, SIZE must be '
             r'returned by lsblk.$',
             hardware.list_all_block_devices)
+        mocked_udev.assert_called_once_with()
+
+    def test__udev_settle(self, mocked_execute):
+        hardware._udev_settle()
+        mocked_execute.assert_called_once_with('udevadm', 'settle')
