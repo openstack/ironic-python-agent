@@ -17,6 +17,24 @@ coreos:
     - name: media-configvirtfs.mount
       mask: true
 
+    - name: update-engine.service
+      mask: true
+
+    - name: update-engine-stub.service
+      mask: true
+
+    - name: resize-btrfs.service
+      mask: true
+
+    - name: locksmithd.service
+      mask: true
+
+    - name: fleet.service
+      mask: true
+
+    - name: etcd.service
+      mask: true
+
     - name: ironic-python-agent-embed-ssh-keys.service
       command: start
       content: |
