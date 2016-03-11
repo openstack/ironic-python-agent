@@ -73,7 +73,7 @@ class APIClient(object):
             raise errors.HeartbeatError(str(e))
 
         if response.status_code == requests.codes.CONFLICT:
-            data = response.json
+            data = json.loads(response.content)
             raise errors.HeartbeatConflictError(data.get('faultstring'))
         elif response.status_code != requests.codes.ACCEPTED:
             msg = 'Invalid status code: {0}'.format(response.status_code)

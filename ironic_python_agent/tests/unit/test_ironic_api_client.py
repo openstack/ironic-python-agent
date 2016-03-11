@@ -90,8 +90,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           advertise_address=('192.0.2.1', '9999'))
 
     def test_heartbeat_409_status_code(self):
-        response = mock.Mock()
-        response.status_code = 409
+        response = FakeResponse(status_code=409)
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
