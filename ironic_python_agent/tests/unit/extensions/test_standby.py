@@ -555,6 +555,19 @@ class TestStandbyExtension(test_base.BaseTestCase):
         execute_mock.assert_called_once_with(*command, check_exit_code=[0])
         self.assertEqual('FAILED', failed_result.command_status)
 
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_sync(self, execute_mock):
+        result = self.agent_extension.sync()
+        execute_mock.assert_called_once_with('sync')
+        self.assertEqual('SUCCEEDED', result.command_status)
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_sync_error(self, execute_mock):
+        execute_mock.side_effect = processutils.ProcessExecutionError
+        self.assertRaises(
+            errors.CommandExecutionError, self.agent_extension.sync)
+        execute_mock.assert_called_once_with('sync')
+
     @mock.patch('ironic_python_agent.extensions.standby._write_image',
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._download_image',
