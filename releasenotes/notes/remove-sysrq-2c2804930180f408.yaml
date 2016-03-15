@@ -1,0 +1,7 @@
+---
+fixes:
+  - Stop using SYSRQ when performing the in-band reboot or power off
+    because it has a similar effect to a hardware reset button/power
+    switch and can be problematic on some hardware types. Instead,
+    reboot/power off the node via the "poweroff" and "reboot" commands
+    (soft power action).

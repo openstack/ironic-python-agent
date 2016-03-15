@@ -14,16 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script reboots by echoing into /proc/sysrq_trigger.
-
 set -e
 
-# Make sure all functions of sysrq is enabled.
-echo "1" > /proc/sys/kernel/sysrq
+# flush file system buffers
+sync
 
-echo "s" > /proc/sysrq-trigger
 if [[ $1 = '-h' ]]; then
-    echo "o" > /proc/sysrq-trigger
+    poweroff
 elif [[ $1 = '-r' ]]; then
-    echo "b" > /proc/sysrq-trigger
+    reboot
 fi
