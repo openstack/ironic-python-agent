@@ -37,6 +37,7 @@ LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 DEFAULT_COLLECTOR = 'default'
 _COLLECTOR_NS = 'ironic_python_agent.inspector.collectors'
+_NO_LOGGING_FIELDS = ('logs',)
 
 
 def extension_manager(names):
@@ -108,7 +109,8 @@ def call_inspector(data, failures):
     data['error'] = failures.get_error()
 
     LOG.info('posting collected data to %s', CONF.inspection_callback_url)
-    LOG.debug('collected data: %s', data)
+    LOG.debug('collected data: %s',
+              {k: v for k, v in data.items() if k not in _NO_LOGGING_FIELDS})
 
     encoder = encoding.RESTJSONEncoder()
     data = encoder.encode(data)
@@ -274,7 +276,8 @@ def collect_logs(data, failures):
     """
     try:
         out, _e = utils.execute('journalctl', '--full', '--no-pager', '-b',
-                                '-n', '10000', binary=True)
+                                '-n', '10000', binary=True,
+                                log_stdout=False)
     except (processutils.ProcessExecutionError, OSError):
         LOG.warning('failed to get system journal')
         return

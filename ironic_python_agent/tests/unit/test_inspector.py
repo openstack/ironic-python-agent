@@ -394,7 +394,8 @@ class TestCollectLogs(unittest.TestCase):
 
         mock_execute.assert_called_once_with('journalctl', '--full',
                                              '--no-pager', '-b',
-                                             '-n', '10000', binary=True)
+                                             '-n', '10000', binary=True,
+                                             log_stdout=False)
 
     def test_no_journal(self, mock_execute):
         mock_execute.side_effect = OSError()

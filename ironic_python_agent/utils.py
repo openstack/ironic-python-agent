@@ -53,15 +53,18 @@ def execute(*cmd, **kwargs):
     oslo_concurrency.processutils.execute for usage.
 
     :param *cmd: positional arguments to pass to processutils.execute()
+    :param log_stdout: keyword-only argument: whether to log the output
     :param **kwargs: keyword arguments to pass to processutils.execute()
     :raises: UnknownArgumentError on receiving unknown arguments
     :raises: ProcessExecutionError
     :raises: OSError
     :returns: tuple of (stdout, stderr)
     """
+    log_stdout = kwargs.pop('log_stdout', True)
     result = processutils.execute(*cmd, **kwargs)
     LOG.debug('Execution completed, command line is "%s"', ' '.join(cmd))
-    LOG.debug('Command stdout is: "%s"', result[0])
+    if log_stdout:
+        LOG.debug('Command stdout is: "%s"', result[0])
     LOG.debug('Command stderr is: "%s"', result[1])
     return result
 
@@ -76,6 +79,7 @@ def try_execute(*cmd, **kwargs):
     returns None in case of failure.
 
     :param *cmd: positional arguments to pass to processutils.execute()
+    :param log_stdout: keyword-only argument: whether to log the output
     :param **kwargs: keyword arguments to pass to processutils.execute()
     :raises: UnknownArgumentError on receiving unknown arguments
     :returns: tuple of (stdout, stderr) or None in some error cases
