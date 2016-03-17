@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import json
+import socket
 import time
 
 import mock
+from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslotest import base as test_base
 import pkg_resources
@@ -28,6 +30,7 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
+from ironic_python_agent import utils
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
 
@@ -228,56 +231,6 @@ class TestBaseAgent(test_base.BaseTestCase):
 
         self.agent.heartbeater.start.assert_called_once_with()
 
-    @mock.patch('os.read')
-    @mock.patch('select.poll')
-    @mock.patch('time.sleep', return_value=None)
-    @mock.patch.object(hardware.GenericHardwareManager,
-                       'list_network_interfaces')
-    @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr')
-    def test_ipv4_lookup(self,
-                         mock_get_ipv4,
-                         mock_list_net,
-                         mock_time_sleep,
-                         mock_poll,
-                         mock_read):
-        homeless_agent = agent.IronicPythonAgent('https://fake_api.example.'
-                                                 'org:8081/',
-                                                 (None, 9990),
-                                                 ('192.0.2.1', 9999),
-                                                 3,
-                                                 10,
-                                                 None,
-                                                 300,
-                                                 1,
-                                                 'agent_ipmitool',
-                                                 False)
-
-        mock_poll.return_value.poll.return_value = True
-        mock_read.return_value = 'a'
-
-        # Can't find network interfaces, and therefore can't find IP
-        mock_list_net.return_value = []
-        mock_get_ipv4.return_value = None
-        self.assertRaises(errors.LookupAgentInterfaceError,
-                          homeless_agent.set_agent_advertise_addr)
-
-        # Can look up network interfaces, but not IP.  Network interface not
-        # set, because no interface yields an IP.
-        mock_ifaces = [hardware.NetworkInterface('eth0', '00:00:00:00:00:00'),
-                       hardware.NetworkInterface('eth1', '00:00:00:00:00:01')]
-        mock_list_net.return_value = mock_ifaces
-
-        self.assertRaises(errors.LookupAgentIPError,
-                          homeless_agent.set_agent_advertise_addr)
-        self.assertEqual(6, mock_get_ipv4.call_count)
-        self.assertIsNone(homeless_agent.network_interface)
-
-        # First interface eth0 has no IP, second interface eth1 has an IP
-        mock_get_ipv4.side_effect = [None, '1.1.1.1']
-        homeless_agent.heartbeater.run()
-        self.assertEqual(('1.1.1.1', 9990), homeless_agent.advertise_address)
-        self.assertEqual('eth1', homeless_agent.network_interface)
-
     def test_async_command_success(self):
         result = base.AsyncCommandResult('foo_command', {'fail': False},
                                          foo_execute)
@@ -382,3 +335,129 @@ class TestAgentStandalone(test_base.BaseTestCase):
 
         self.assertFalse(self.agent.heartbeater.called)
         self.assertFalse(self.agent.api_client.lookup_node.called)
+
+
+@mock.patch.object(socket, 'gethostbyname', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
+class TestAdvertiseAddress(test_base.BaseTestCase):
+    def setUp(self):
+        super(TestAdvertiseAddress, self).setUp()
+
+        self.agent = agent.IronicPythonAgent(
+            api_url='https://fake_api.example.org:8081/',
+            advertise_address=(None, 9990),
+            listen_address=('0.0.0.0', 9999),
+            ip_lookup_attempts=5,
+            ip_lookup_sleep=10,
+            network_interface=None,
+            lookup_timeout=300,
+            lookup_interval=1,
+            driver_name='agent_ipmitool',
+            standalone=False)
+
+    def test_advertise_address_provided(self, mock_exec, mock_gethostbyname):
+        self.agent.advertise_address = ('1.2.3.4', 9990)
+
+        self.agent.set_agent_advertise_addr()
+
+        self.assertEqual(('1.2.3.4', 9990), self.agent.advertise_address)
+        self.assertFalse(mock_exec.called)
+        self.assertFalse(mock_gethostbyname.called)
+
+    @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr',
+                       autospec=True)
+    def test_with_network_interface(self, mock_get_ipv4, mock_exec,
+                                    mock_gethostbyname):
+        self.agent.network_interface = 'em1'
+        mock_get_ipv4.return_value = '1.2.3.4'
+
+        self.agent.set_agent_advertise_addr()
+
+        self.assertEqual(('1.2.3.4', 9990), self.agent.advertise_address)
+        mock_get_ipv4.assert_called_once_with(mock.ANY, 'em1')
+        self.assertFalse(mock_exec.called)
+        self.assertFalse(mock_gethostbyname.called)
+
+    @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr',
+                       autospec=True)
+    def test_with_network_interface_failed(self, mock_get_ipv4, mock_exec,
+                                           mock_gethostbyname):
+        self.agent.network_interface = 'em1'
+        mock_get_ipv4.return_value = None
+
+        self.assertRaises(errors.LookupAgentIPError,
+                          self.agent.set_agent_advertise_addr)
+
+        mock_get_ipv4.assert_called_once_with(mock.ANY, 'em1')
+        self.assertFalse(mock_exec.called)
+        self.assertFalse(mock_gethostbyname.called)
+
+    def test_route_with_ip(self, mock_exec, mock_gethostbyname):
+        self.agent.api_url = 'http://1.2.1.2:8081/v1'
+        mock_gethostbyname.side_effect = socket.gaierror()
+        mock_exec.return_value = (
+            """1.2.1.2 via 192.168.122.1 dev eth0  src 192.168.122.56
+                cache """,
+            ""
+        )
+
+        self.agent.set_agent_advertise_addr()
+
+        self.assertEqual(('192.168.122.56', 9990),
+                         self.agent.advertise_address)
+        mock_exec.assert_called_once_with('ip', 'route', 'get', '1.2.1.2')
+        mock_gethostbyname.assert_called_once_with('1.2.1.2')
+
+    def test_route_with_host(self, mock_exec, mock_gethostbyname):
+        mock_gethostbyname.return_value = '1.2.1.2'
+        mock_exec.return_value = (
+            """1.2.1.2 via 192.168.122.1 dev eth0  src 192.168.122.56
+                cache """,
+            ""
+        )
+
+        self.agent.set_agent_advertise_addr()
+
+        self.assertEqual(('192.168.122.56', 9990),
+                         self.agent.advertise_address)
+        mock_exec.assert_called_once_with('ip', 'route', 'get', '1.2.1.2')
+        mock_gethostbyname.assert_called_once_with('fake_api.example.org')
+
+    @mock.patch.object(time, 'sleep', autospec=True)
+    def test_route_retry(self, mock_sleep, mock_exec, mock_gethostbyname):
+        mock_gethostbyname.return_value = '1.2.1.2'
+        mock_exec.side_effect = [
+            processutils.ProcessExecutionError('boom'),
+            (
+                "Error: some error text",
+                ""
+            ),
+            (
+                """1.2.1.2 via 192.168.122.1 dev eth0  src 192.168.122.56
+                    cache """,
+                ""
+            )
+        ]
+
+        self.agent.set_agent_advertise_addr()
+
+        self.assertEqual(('192.168.122.56', 9990),
+                         self.agent.advertise_address)
+        mock_exec.assert_called_with('ip', 'route', 'get', '1.2.1.2')
+        mock_gethostbyname.assert_called_once_with('fake_api.example.org')
+        mock_sleep.assert_called_with(10)
+        self.assertEqual(3, mock_exec.call_count)
+        self.assertEqual(2, mock_sleep.call_count)
+
+    @mock.patch.object(time, 'sleep', autospec=True)
+    def test_route_failed(self, mock_sleep, mock_exec, mock_gethostbyname):
+        mock_gethostbyname.return_value = '1.2.1.2'
+        mock_exec.side_effect = processutils.ProcessExecutionError('boom')
+
+        self.assertRaises(errors.LookupAgentIPError,
+                          self.agent.set_agent_advertise_addr)
+
+        mock_exec.assert_called_with('ip', 'route', 'get', '1.2.1.2')
+        mock_gethostbyname.assert_called_once_with('fake_api.example.org')
+        self.assertEqual(5, mock_exec.call_count)
+        self.assertEqual(5, mock_sleep.call_count)

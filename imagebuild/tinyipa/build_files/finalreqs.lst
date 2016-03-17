@@ -3,6 +3,7 @@ coreutils.tcz
 dmidecode.tcz
 gdisk.tcz
 hdparm.tcz
+iproute2.tcz
 parted.tcz
 python.tcz
 raid-dm-3.16.6-tinycore64.tcz

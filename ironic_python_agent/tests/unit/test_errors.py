@@ -103,7 +103,6 @@ class TestErrors(test_base.BaseTestCase):
                  (errors.HeartbeatError(DETAILS), SAME_DETAILS),
                  (errors.LookupNodeError(DETAILS), SAME_DETAILS),
                  (errors.LookupAgentIPError(DETAILS), SAME_DETAILS),
-                 (errors.LookupAgentInterfaceError(DETAILS), SAME_DETAILS),
                  (errors.ImageDownloadError('image_id', DETAILS),
                      DIFF_CL_DETAILS),
                  (errors.ImageChecksumError(

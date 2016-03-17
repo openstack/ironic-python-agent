@@ -136,15 +136,6 @@ class LookupAgentIPError(IronicAPIError):
         super(LookupAgentIPError, self).__init__(details)
 
 
-class LookupAgentInterfaceError(IronicAPIError):
-    """Error raised when agent interface lookup fails."""
-
-    message = 'Error finding network interface for Ironic Agent'
-
-    def __init__(self, details):
-        super(LookupAgentInterfaceError, self).__init__(details)
-
-
 class ImageDownloadError(RESTError):
     """Error raised when an image cannot be downloaded."""
 

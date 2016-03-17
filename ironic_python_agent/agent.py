@@ -15,11 +15,14 @@
 import os
 import random
 import select
+import socket
 import threading
 import time
 
+from oslo_concurrency import processutils
 from oslo_log import log
 import pkg_resources
+from six.moves.urllib import parse as urlparse
 from stevedore import extension
 from wsgiref import simple_server
 
@@ -30,6 +33,7 @@ from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
 from ironic_python_agent import ironic_api_client
+from ironic_python_agent import utils
 
 
 LOG = log.getLogger(__name__)
@@ -183,6 +187,21 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             version=self.version
         )
 
+    def _get_route_source(self, dest):
+        """Get the IP address to send packages to destination."""
+        try:
+            out, _err = utils.execute('ip', 'route', 'get', dest)
+        except (EnvironmentError, processutils.ProcessExecutionError) as e:
+            LOG.warning('Cannot get route to host %(dest)s: %(err)s',
+                        {'dest': dest, 'err': e})
+            return
+
+        try:
+            return out.strip().split('\n')[0].split('src')[1].strip()
+        except IndexError:
+            LOG.warning('No route to host %(dest)s, route record: %(rec)s',
+                        {'dest': dest, 'rec': out})
+
     def set_agent_advertise_addr(self):
         """Set advertised IP address for the agent, if not already set.
 
@@ -190,52 +209,38 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         find a better one.  If the agent's network interface is None, replace
         that as well.
 
-        :raises: LookupAgentInterfaceError if a valid network interface cannot
-                 be found.
         :raises: LookupAgentIPError if an IP address could not be found
         """
         if self.advertise_address[0] is not None:
             return
 
-        if self.network_interface is None:
-            ifaces = self.get_agent_network_interfaces()
+        found_ip = None
+        if self.network_interface is not None:
+            # TODO(dtantsur): deprecate this
+            found_ip = hardware.dispatch_to_managers('get_ipv4_addr',
+                                                     self.network_interface)
         else:
-            ifaces = [self.network_interface]
+            url = urlparse.urlparse(self.api_url)
+            ironic_host = url.hostname
+            # Try resolving it in case it's not an IP address
+            try:
+                ironic_host = socket.gethostbyname(ironic_host)
+            except socket.gaierror:
+                LOG.debug('Count not resolve %s, maybe no DNS', ironic_host)
 
-        attempts = 0
-        while (attempts < self.ip_lookup_attempts):
-            for iface in ifaces:
-                found_ip = hardware.dispatch_to_managers('get_ipv4_addr',
-                                                         iface)
-                if found_ip is not None:
-                    self.advertise_address = (found_ip,
-                                              self.advertise_address[1])
-                    self.network_interface = iface
-                    return
-            attempts += 1
-            time.sleep(self.ip_lookup_sleep)
+            for attempt in range(self.ip_lookup_attempts):
+                found_ip = self._get_route_source(ironic_host)
+                if found_ip:
+                    break
 
-        raise errors.LookupAgentIPError('Agent could not find a valid IP '
-                                        'address.')
+                time.sleep(self.ip_lookup_sleep)
 
-    def get_agent_network_interfaces(self):
-        """Get a list of all network interfaces available.
-
-        Excludes loopback connections.
-
-        :returns: list of network interfaces available.
-        :raises: LookupAgentInterfaceError if a valid interface could not
-                 be found.
-        """
-        iface_list = [iface.serialize()['name'] for iface in
-                      hardware.dispatch_to_managers('list_network_interfaces')]
-        iface_list = [name for name in iface_list if 'lo' not in name]
-
-        if len(iface_list) == 0:
-            raise errors.LookupAgentInterfaceError('Agent could not find a '
-                                                   'valid network interface.')
+        if found_ip:
+            self.advertise_address = (found_ip,
+                                      self.advertise_address[1])
         else:
-            return iface_list
+            raise errors.LookupAgentIPError('Agent could not find a valid IP '
+                                            'address.')
 
     def get_node_uuid(self):
         """Get UUID for Ironic node.
