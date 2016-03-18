@@ -9,7 +9,7 @@ BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-false}
 TC=1001
 STAFF=50
 
-CHROOT_PATH="/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+CHROOT_PATH="/tmp/overides:/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 CHROOT_CMD="sudo chroot $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
 TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
 
@@ -54,6 +54,9 @@ cp $WORKDIR/build_files/qemu-utils.* $FINALDIR/tmp/builtin/optional
 
 # Mount /proc for chroot commands
 sudo mount --bind /proc $FINALDIR/proc
+
+mkdir $FINALDIR/tmp/overides
+cp $WORKDIR/build_files/fakeuname $FINALDIR/tmp/overides/uname
 
 while read line; do
     $TC_CHROOT_CMD tce-load -wi $line
