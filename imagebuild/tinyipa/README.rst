@@ -3,7 +3,7 @@ Tiny Core Ironic Python Agent
 =============================
 
 .. WARNING::
-  This is experimental! Build tested on Ubuntu Server 14.04 and Debian Jessie
+  This is experimental! Build tested on Ubuntu Server 14.04, Debian Jessie and Fedora 21
 
 Build script requirements
 -------------------------
@@ -14,6 +14,7 @@ For the main build script:
 * unzip
 * sudo
 * awk
+* mksquashfs
 
 For building an ISO you'll also need:
 

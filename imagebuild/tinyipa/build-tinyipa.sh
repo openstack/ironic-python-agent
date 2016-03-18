@@ -6,8 +6,10 @@ BUILDDIR="$WORKDIR/tinyipabuild"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-false}
 
 CHROOT_PATH="/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-CHROOT_CMD="sudo chroot $BUILDDIR /usr/bin/env PATH=$CHROOT_PATH"
+CHROOT_CMD="sudo chroot $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
 
+TC=1001
+STAFF=50
 # Ensure we have an extended sudo to prevent the need to enter a password over
 # and over again.
 sudo -v
@@ -61,7 +63,7 @@ $CHROOT_CMD touch /etc/sysconfig/tcuser
 $CHROOT_CMD chmod a+rwx /etc/sysconfig/tcuser
 
 while read line; do
-    sudo chroot --userspec=tc:staff $BUILDDIR /usr/bin/env PATH=$CHROOT_PATH tce-load -wci $line
+    sudo chroot --userspec=$TC:$STAFF $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy tce-load -wci $line
 done < $WORKDIR/build_files/buildreqs.lst
 
 sudo umount $BUILDDIR/proc

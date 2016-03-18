@@ -6,9 +6,12 @@ BUILDDIR="$WORKDIR/tinyipabuild"
 FINALDIR="$WORKDIR/tinyipafinal"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-false}
 
+TC=1001
+STAFF=50
+
 CHROOT_PATH="/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-CHROOT_CMD="sudo chroot $FINALDIR /usr/bin/env PATH=$CHROOT_PATH"
-TC_CHROOT_CMD="sudo chroot --userspec=tc:staff $FINALDIR /usr/bin/env PATH=$CHROOT_PATH"
+CHROOT_CMD="sudo chroot $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
+TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
 
 sudo -v
 
