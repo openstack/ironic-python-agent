@@ -1,0 +1,5 @@
+---
+features:
+  - Add support for partition images in IPA.
+    This commit adds the ironic-lib as the
+    requirement for the IPA package.

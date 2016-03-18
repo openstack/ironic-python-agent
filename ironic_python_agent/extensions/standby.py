@@ -23,6 +23,7 @@ import time
 from oslo_concurrency import processutils
 from oslo_log import log
 
+from ironic_lib import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
@@ -46,10 +47,35 @@ def _path_to_script(script):
     return os.path.join(cwd, '..', script)
 
 
-def _write_image(image_info, device):
-    starttime = time.time()
-    image = _image_location(image_info)
+def _write_partition_image(image, image_info, device):
+    """Call disk_util to create partition and write the partition image."""
+    node_uuid = image_info['id']
+    preserve_ep = image_info['preserve_ephemeral']
+    configdrive = image_info['configdrive']
+    boot_option = image_info.get('boot_option', 'netboot')
+    boot_mode = image_info.get('deploy_boot_mode', 'bios')
+    image_mb = disk_utils.get_image_mb(image)
+    root_mb = image_info['root_mb']
+    if image_mb > int(root_mb):
+        msg = ('Root partition is too small for requested image. Image '
+               'virtual size: {0} MB, Root size: {1} MB').format(image_mb,
+                                                                 root_mb)
+        raise errors.InvalidCommandParamsError(msg)
+    try:
+        return disk_utils.work_on_disk(device, root_mb,
+                                       image_info['swap_mb'],
+                                       image_info['ephemeral_mb'],
+                                       image_info['ephemeral_format'],
+                                       image, node_uuid,
+                                       preserve_ephemeral=preserve_ep,
+                                       configdrive=configdrive,
+                                       boot_option=boot_option,
+                                       boot_mode=boot_mode)
+    except processutils.ProcessExecutionError as e:
+        raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
 
+
+def _write_whole_disk_image(image, image_info, device):
     script = _path_to_script('shell/write_image.sh')
     command = ['/bin/bash', script, image, device]
     LOG.info('Writing image with command: {0}'.format(' '.join(command)))
@@ -57,9 +83,20 @@ def _write_image(image_info, device):
         stdout, stderr = utils.execute(*command, check_exit_code=[0])
     except processutils.ProcessExecutionError as e:
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
+
+
+def _write_image(image_info, device):
+    starttime = time.time()
+    image = _image_location(image_info)
+    uuids = {}
+    if image_info.get('image_type') == 'partition':
+        uuids = _write_partition_image(image, image_info, device)
+    else:
+        _write_whole_disk_image(image, image_info, device)
     totaltime = time.time() - starttime
     LOG.info('Image {0} written to device {1} in {2} seconds'.format(
              image, device, totaltime))
+    return uuids
 
 
 def _configdrive_is_url(configdrive):
@@ -113,6 +150,27 @@ def _write_configdrive_to_partition(configdrive, device):
              filename,
              device,
              totaltime))
+
+
+def _message_format(msg, image_info, device, partition_uuids):
+    """Helper method to get and populate different messages."""
+    message = None
+    result_msg = msg
+    if image_info.get('image_type') == 'partition':
+        root_uuid = partition_uuids.get('root uuid')
+        efi_system_partition_uuid = (
+            partition_uuids.get('efi system partition uuid'))
+        if image_info.get('deploy_boot_mode') == 'uefi':
+            result_msg = msg + 'root_uuid={2} efi_system_partition_uuid={3}'
+            message = result_msg.format(image_info['id'], device,
+                                        root_uuid,
+                                        efi_system_partition_uuid)
+        else:
+            result_msg = msg + 'root_uuid={2}'
+            message = result_msg.format(image_info['id'], device, root_uuid)
+    else:
+        message = result_msg.format(image_info['id'], device)
+    return message
 
 
 class ImageDownload(object):
@@ -219,10 +277,11 @@ class StandbyExtension(base.BaseAgentExtension):
         super(StandbyExtension, self).__init__(agent=agent)
 
         self.cached_image_id = None
+        self.partition_uuids = None
 
     def _cache_and_write_image(self, image_info, device):
         _download_image(image_info)
-        _write_image(image_info, device)
+        self.partition_uuids = _write_image(image_info, device)
         self.cached_image_id = image_info['id']
 
     def _stream_raw_image_onto_device(self, image_info, device):
@@ -249,17 +308,19 @@ class StandbyExtension(base.BaseAgentExtension):
         LOG.debug('Caching image %s', image_info['id'])
         device = hardware.dispatch_to_managers('get_os_install_device')
 
-        result_msg = 'image ({0}) already present on device {1}'
+        msg = 'image ({0}) already present on device {1} '
 
         if self.cached_image_id != image_info['id'] or force:
             LOG.debug('Already had %s cached, overwriting',
                       self.cached_image_id)
             self._cache_and_write_image(image_info, device)
-            result_msg = 'image ({0}) cached to device {1}'
+            msg = 'image ({0}) cached to device {1} '
 
-        msg = result_msg.format(image_info['id'], device)
-        LOG.info(msg)
-        return msg
+        result_msg = _message_format(msg, image_info, device,
+                                     self.partition_uuids)
+
+        LOG.info(result_msg)
+        return result_msg
 
     @base.async_command('prepare_image', _validate_image_info)
     def prepare_image(self,
@@ -277,18 +338,23 @@ class StandbyExtension(base.BaseAgentExtension):
                 LOG.debug('Already had %s cached, overwriting',
                           self.cached_image_id)
 
-            if stream_raw_images and disk_format == 'raw':
+            if (stream_raw_images and disk_format == 'raw' and
+                image_info.get('image_type') != 'partition'):
                 self._stream_raw_image_onto_device(image_info, device)
             else:
                 self._cache_and_write_image(image_info, device)
 
-        if configdrive is not None:
-            _write_configdrive_to_partition(configdrive, device)
+        # the configdrive creation is taken care by ironic-lib's
+        # work_on_disk().
+        if image_info.get('image_type') != 'partition':
+            if configdrive is not None:
+                _write_configdrive_to_partition(configdrive, device)
 
-        msg = ('image ({0}) written to device {1}'.format(
-            image_info['id'], device))
-        LOG.info(msg)
-        return msg
+        msg = 'image ({0}) written to device {1} '
+        result_msg = _message_format(msg, image_info, device,
+                                     self.partition_uuids)
+        LOG.info(result_msg)
+        return result_msg
 
     def _run_shutdown_script(self, parameter):
         script = _path_to_script('shell/shutdown.sh')
