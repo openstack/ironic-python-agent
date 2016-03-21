@@ -1,0 +1,104 @@
+#!/bin/sh
+S="Linux"
+N="box"
+R="3.16.6-tinycore64"
+P="unknown"
+V="#777 SMP (2016-02-29)"
+M="x86_64"
+I="unknown"
+O="GNU/Linux"
+
+OPT_A=false
+OPT_S=false
+OPT_N=false
+OPT_R=false
+OPT_P=false
+OPT_V=false
+OPT_M=false
+OPT_I=false
+OPT_O=false
+
+if [ -z "$1" ]; then
+  echo "-ASNRPVMIO"
+  exit 1
+fi
+
+while :; do
+  case $1 in
+    -a)
+      OPT_A=true
+      shift
+      ;;
+    -s)
+      OPT_S=true
+      shift
+      ;;
+    -n)
+      OPT_N=true
+      shift
+      ;;
+    -r)
+      OPT_R=true
+      shift
+      ;;
+    -p)
+      OPT_P=true
+      shift
+      ;;
+    -v)
+      OPT_V=true
+      shift
+      ;;
+    -m)
+      OPT_M=true
+      shift
+      ;;
+    -i)
+      OPT_I=true
+      shift
+      ;;
+    -o)
+      OPT_O=true
+      shift
+      ;;
+    *)
+      if [ ! -z "$1" ]; then
+        echo "uname -asnrpvmio"
+        exit 1
+      fi
+      break
+     ;;
+  esac
+done
+
+if $OPT_A; then
+    echo "$S $N $R $V $M $O"
+    exit 0
+fi
+
+string=''
+if $OPT_S; then
+    string="$string $S"
+fi
+if $OPT_N; then
+    string="$string $N"
+fi
+if $OPT_R; then
+    string="$string $R"
+fi
+if $OPT_P; then
+    string="$string $P"
+fi
+if $OPT_V; then
+    string="$string $V"
+fi
+if $OPT_M; then
+    string="$string $M"
+fi
+if $OPT_I; then
+    string="$string $I"
+fi
+if $OPT_O; then
+    string="$string $O"
+fi
+echo $string
