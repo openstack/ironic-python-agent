@@ -852,9 +852,24 @@ class TestStandbyExtension(test_base.BaseTestCase):
                         '/dev/fake root_uuid=root_uuid')
         self.assertEqual(expected_msg, result_msg)
 
-    def test__message_format_partition_uefi(self):
+    def test__message_format_partition_uefi_netboot(self):
         image_info = _build_fake_partition_image_info()
         image_info['deploy_boot_mode'] = 'uefi'
+        image_info['boot_option'] = 'netboot'
+        msg = ('image ({0}) already present on device {1} ')
+        device = '/dev/fake'
+        partition_uuids = {'root uuid': 'root_uuid',
+                           'efi system partition uuid': None}
+        result_msg = standby._message_format(msg, image_info,
+                                             device, partition_uuids)
+        expected_msg = ('image (fake_id) already present on device '
+                        '/dev/fake root_uuid=root_uuid')
+        self.assertEqual(expected_msg, result_msg)
+
+    def test__message_format_partition_uefi_localboot(self):
+        image_info = _build_fake_partition_image_info()
+        image_info['deploy_boot_mode'] = 'uefi'
+        image_info['boot_option'] = 'local'
         msg = ('image ({0}) already present on device {1} ')
         device = '/dev/fake'
         partition_uuids = {'root uuid': 'root_uuid',
