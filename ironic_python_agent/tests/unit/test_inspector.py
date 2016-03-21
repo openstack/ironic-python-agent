@@ -67,8 +67,9 @@ class TestMisc(unittest.TestCase):
 class TestInspect(unittest.TestCase):
     def setUp(self):
         super(TestInspect, self).setUp()
-        CONF.set_override('inspection_callback_url', 'http://foo/bar')
-        CONF.set_override('inspection_collectors', '')
+        CONF.set_override('inspection_callback_url', 'http://foo/bar',
+                          enforce_type=True)
+        CONF.set_override('inspection_collectors', '', enforce_type=True)
         self.mock_collect = AcceptingFailure()
         self.mock_ext = mock.Mock(spec=['plugin', 'name'],
                                   plugin=self.mock_collect)
@@ -85,7 +86,8 @@ class TestInspect(unittest.TestCase):
         mock_setup_ipmi.assert_called_once_with(mock_call.return_value)
 
     def test_collectors_option(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
-        CONF.set_override('inspection_collectors', 'foo,bar')
+        CONF.set_override('inspection_collectors', 'foo,bar',
+                          enforce_type=True)
         mock_ext_mgr.return_value = [
             mock.Mock(spec=['name', 'plugin'], plugin=AcceptingFailure()),
             mock.Mock(spec=['name', 'plugin'], plugin=AcceptingFailure()),
@@ -109,7 +111,8 @@ class TestInspect(unittest.TestCase):
         self.assertFalse(mock_setup_ipmi.called)
 
     def test_extensions_failed(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
-        CONF.set_override('inspection_collectors', 'foo,bar')
+        CONF.set_override('inspection_collectors', 'foo,bar',
+                          enforce_type=True)
         mock_ext_mgr.side_effect = RuntimeError('boom')
 
         self.assertRaisesRegexp(RuntimeError, 'boom', inspector.inspect)
@@ -133,7 +136,8 @@ class TestInspect(unittest.TestCase):
 class TestCallInspector(unittest.TestCase):
     def setUp(self):
         super(TestCallInspector, self).setUp()
-        CONF.set_override('inspection_callback_url', 'url')
+        CONF.set_override('inspection_callback_url', 'url',
+                          enforce_type=True)
 
     def test_ok(self, mock_post):
         failures = utils.AccumulatedFailures()
