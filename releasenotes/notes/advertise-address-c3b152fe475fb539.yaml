@@ -1,0 +1,5 @@
+---
+fixes:
+  - IPA will now advertise IP address via which the Ironic API is routed
+    instead of using the first available.
+    See https://bugs.launchpad.net/ironic-python-agent/+bug/1558956.
