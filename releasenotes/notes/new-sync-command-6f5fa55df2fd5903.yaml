@@ -1,0 +1,5 @@
+---
+features:
+  - Add a new sync() command to the standby extension. When invoked,
+    the new command is responsible for flushing the file system buffers
+    to the disk.

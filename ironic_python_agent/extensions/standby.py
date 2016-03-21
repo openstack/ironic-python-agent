@@ -374,3 +374,17 @@ class StandbyExtension(base.BaseAgentExtension):
     def power_off(self):
         LOG.info('Powering off system')
         self._run_shutdown_script('-h')
+
+    @base.sync_command('sync')
+    def sync(self):
+        """Flush file system buffers forcing changed blocks to disk.
+
+        :raises: CommandExecutionError if flushing file system buffers fails.
+        """
+        LOG.debug('Flushing file system buffers')
+        try:
+            utils.execute('sync')
+        except processutils.ProcessExecutionError as e:
+            error_msg = 'Flushing file system buffers failed. Error: %s' % e
+            LOG.error(error_msg)
+            raise errors.CommandExecutionError(error_msg)
