@@ -38,6 +38,7 @@ def _build_fake_partition_image_info():
         'urls': [
             'http://example.org',
         ],
+        'node_uuid': 'node_uuid',
         'checksum': 'abc123',
         'root_mb': '10',
         'swap_mb': '10',
@@ -47,6 +48,7 @@ def _build_fake_partition_image_info():
         'configdrive': 'configdrive',
         'image_type': 'partition',
         'boot_option': 'netboot',
+        'disk_label': 'msdos',
         'deploy_boot_mode': 'bios'}
 
 
@@ -146,11 +148,12 @@ class TestStandbyExtension(test_base.BaseTestCase):
         swap_mb = image_info['swap_mb']
         ephemeral_mb = image_info['ephemeral_mb']
         ephemeral_format = image_info['ephemeral_format']
-        node_uuid = image_info['id']
+        node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
         configdrive = image_info['configdrive']
         boot_mode = image_info['deploy_boot_mode']
         boot_option = image_info['boot_option']
+        disk_label = image_info['disk_label']
 
         image_path = standby._image_location(image_info)
 
@@ -170,7 +173,53 @@ class TestStandbyExtension(test_base.BaseTestCase):
                                                   configdrive=configdrive,
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
-                                                  boot_option=boot_option)
+                                                  boot_option=boot_option,
+                                                  disk_label=disk_label)
+
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
+    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
+    def test_write_partition_image_no_node_uuid(self, work_on_disk_mock,
+                                                image_mb_mock,
+                                                execute_mock, open_mock):
+        image_info = _build_fake_partition_image_info()
+        image_info['node_uuid'] = None
+        device = '/dev/sda'
+        root_mb = image_info['root_mb']
+        swap_mb = image_info['swap_mb']
+        ephemeral_mb = image_info['ephemeral_mb']
+        ephemeral_format = image_info['ephemeral_format']
+        node_uuid = image_info.get('node_uuid')
+        pr_ep = image_info['preserve_ephemeral']
+        configdrive = image_info['configdrive']
+        boot_mode = image_info['deploy_boot_mode']
+        boot_option = image_info['boot_option']
+        disk_label = image_info['disk_label']
+
+        image_path = standby._image_location(image_info)
+
+        image_mb_mock.return_value = 1
+        uuids = {'root uuid': 'root_uuid'}
+        expected_uuid = {'root uuid': 'root_uuid'}
+        image_mb_mock.return_value = 1
+        work_on_disk_mock.return_value = uuids
+
+        standby._write_image(image_info, device)
+        image_mb_mock.assert_called_once_with(image_path)
+        work_on_disk_mock.assert_called_once_with(device, root_mb, swap_mb,
+                                                  ephemeral_mb,
+                                                  ephemeral_format,
+                                                  image_path,
+                                                  node_uuid,
+                                                  configdrive=configdrive,
+                                                  preserve_ephemeral=pr_ep,
+                                                  boot_mode=boot_mode,
+                                                  boot_option=boot_option,
+                                                  disk_label=disk_label)
+
+        self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
+        self.assertIsNone(node_uuid)
 
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
@@ -205,11 +254,12 @@ class TestStandbyExtension(test_base.BaseTestCase):
         swap_mb = image_info['swap_mb']
         ephemeral_mb = image_info['ephemeral_mb']
         ephemeral_format = image_info['ephemeral_format']
-        node_uuid = image_info['id']
+        node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
         configdrive = image_info['configdrive']
         boot_mode = image_info['deploy_boot_mode']
         boot_option = image_info['boot_option']
+        disk_label = image_info['disk_label']
 
         image_path = standby._image_location(image_info)
         uuids = {'root uuid': 'root_uuid'}
@@ -227,7 +277,8 @@ class TestStandbyExtension(test_base.BaseTestCase):
                                                   configdrive=configdrive,
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
-                                                  boot_option=boot_option)
+                                                  boot_option=boot_option,
+                                                  disk_label=disk_label)
 
         self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
 
