@@ -49,11 +49,12 @@ def _path_to_script(script):
 
 def _write_partition_image(image, image_info, device):
     """Call disk_util to create partition and write the partition image."""
-    node_uuid = image_info['id']
+    node_uuid = image_info.get('node_uuid')
     preserve_ep = image_info['preserve_ephemeral']
     configdrive = image_info['configdrive']
     boot_option = image_info.get('boot_option', 'netboot')
     boot_mode = image_info.get('deploy_boot_mode', 'bios')
+    disk_label = image_info.get('disk_label', 'msdos')
     image_mb = disk_utils.get_image_mb(image)
     root_mb = image_info['root_mb']
     if image_mb > int(root_mb):
@@ -70,7 +71,8 @@ def _write_partition_image(image, image_info, device):
                                        preserve_ephemeral=preserve_ep,
                                        configdrive=configdrive,
                                        boot_option=boot_option,
-                                       boot_mode=boot_mode)
+                                       boot_mode=boot_mode,
+                                       disk_label=disk_label)
     except processutils.ProcessExecutionError as e:
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
 
