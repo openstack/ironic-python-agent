@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
-import gzip
 import hashlib
 import os
 import requests
@@ -142,88 +140,6 @@ def _write_image(image_info, device):
     LOG.info('Image {} written to device {} in {} seconds'.format(
              image, device, totaltime))
     return uuids
-
-
-def _configdrive_is_url(configdrive):
-    """Determine if the configdrive location looks like an HTTP(S) URL.
-
-    :param configdrive: Location of the configdrive as a string.
-    :returns: True if configdrive looks like an HTTP(S) URL, False otherwise.
-    """
-    return (configdrive.startswith('http://')
-            or configdrive.startswith('https://'))
-
-
-def _download_configdrive_to_file(configdrive, filename):
-    """Download the configdrive to a local file.
-
-    :param configdrive: The URL of the configdrive.
-    :param filename: The filename of where to store the configdrive locally.
-    """
-    content = requests.get(configdrive).content
-    _write_configdrive_to_file(content, filename)
-
-
-def _write_configdrive_to_file(configdrive, filename):
-    """Writes the configdrive to a file.
-
-    Note that the contents of the configdrive are expected to be gzipped and
-    base64 encoded.
-
-    :param configdrive: Contents of the configdrive file.
-    :param filename: The filename of where to write the configdrive.
-    """
-    LOG.debug('Writing configdrive to {}'.format(filename))
-    # configdrive data is base64'd, decode it first
-    data = six.StringIO(base64.b64decode(configdrive))
-    gunzipped = gzip.GzipFile('configdrive', 'rb', 9, data)
-    with open(filename, 'wb') as f:
-        f.write(gunzipped.read())
-    gunzipped.close()
-
-
-def _write_configdrive_to_partition(configdrive, device):
-    """Writes the configdrive to a partition on the given device.
-
-    :param configdrive: A string containing the location of the config drive
-                        as a URL OR the contents of the configdrive which
-                        must be gzipped and base64 encoded.
-    :param device: The disk name, as a string, on which to store the image.
-                   Example: '/dev/sda'
-
-    :raises: ConfigDriveTooLargeError if the configdrive contents are too
-             large to store on the given device.
-    """
-    filename = _configdrive_location()
-    if _configdrive_is_url(configdrive):
-        _download_configdrive_to_file(configdrive, filename)
-    else:
-        _write_configdrive_to_file(configdrive, filename)
-
-    # check configdrive size before writing it
-    filesize = os.stat(filename).st_size
-    if filesize > (64 * 1024 * 1024):
-        raise errors.ConfigDriveTooLargeError(filename, filesize)
-
-    starttime = time.time()
-    script = _path_to_script('shell/copy_configdrive_to_disk.sh')
-    command = ['/bin/bash', script, filename, device]
-    LOG.info('copying configdrive to disk with command {}'.format(
-             ' '.join(command)))
-
-    try:
-        stdout, stderr = utils.execute(*command, check_exit_code=[0])
-    except processutils.ProcessExecutionError as e:
-        raise errors.ConfigDriveWriteError(device,
-                                           e.exit_code,
-                                           e.stdout,
-                                           e.stderr)
-
-    totaltime = time.time() - starttime
-    LOG.info('configdrive copied from {} to {} in {} seconds'.format(
-             filename,
-             device,
-             totaltime))
 
 
 def _message_format(msg, image_info, device, partition_uuids):
@@ -527,7 +443,7 @@ class StandbyExtension(base.BaseAgentExtension):
         :raises: ImageChecksumError if the checksum of the local image does not
              match the checksum as reported by glance in image_info.
         :raises: ImageWriteError if writing the image fails.
-        :raises: ConfigDriveTooLargeError if the configdrive contents are too
+        :raises: InstanceDeployFailure if failed to create config drive.
              large to store on the given device.
         """
         LOG.debug('Preparing image %s', image_info['id'])
@@ -551,8 +467,18 @@ class StandbyExtension(base.BaseAgentExtension):
         # work_on_disk().
         if image_info.get('image_type') != 'partition':
             if configdrive is not None:
-                _write_configdrive_to_partition(configdrive, device)
-
+                # Will use dummy value of 'local' for 'node_uuid',
+                # if it is not available. This is to handle scenario
+                # wherein new IPA is being used with older version
+                # of Ironic that did not pass 'node_uuid' in 'image_info'
+                node_uuid = image_info.get('node_uuid', 'local')
+                starttime = time.time()
+                disk_utils.create_config_drive_partition(node_uuid,
+                                                         device,
+                                                         configdrive)
+                totaltime = time.time() - starttime
+                LOG.info('configdrive copied to {0} in {1} '
+                         'seconds.'.format(device, totaltime))
         msg = 'image ({}) written to device {} '
         result_msg = _message_format(msg, image_info, device,
                                      self.partition_uuids)

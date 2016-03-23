@@ -25,6 +25,7 @@ from ironic_python_agent.extensions import standby
 def _build_fake_image_info():
     return {
         'id': 'fake_id',
+        'node_uuid': '1be26c0b-03f2-4d2e-ae87-c02d7f33c123',
         'urls': [
             'http://example.org',
         ],
@@ -282,84 +283,6 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
 
-    def test_configdrive_is_url(self):
-        self.assertTrue(standby._configdrive_is_url('http://some/url'))
-        self.assertTrue(standby._configdrive_is_url('https://some/url'))
-        self.assertFalse(standby._configdrive_is_url('ftp://some/url'))
-        self.assertFalse(standby._configdrive_is_url('binary-blob'))
-
-    @mock.patch.object(standby, '_write_configdrive_to_file')
-    @mock.patch('requests.get', autospec=True)
-    def test_download_configdrive_to_file(self, get_mock, write_mock):
-        url = 'http://swift/configdrive'
-        get_mock.return_value.content = 'data'
-        standby._download_configdrive_to_file(url, 'filename')
-        get_mock.assert_called_once_with(url)
-        write_mock.assert_called_once_with('data', 'filename')
-
-    @mock.patch('gzip.GzipFile', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    @mock.patch('base64.b64decode', autospec=True)
-    def test_write_configdrive_to_file(self, b64_mock, open_mock, gzip_mock):
-        open_mock.return_value.__enter__ = lambda s: s
-        open_mock.return_value.__exit__ = mock.Mock()
-        write_mock = open_mock.return_value.write
-        gzip_read_mock = gzip_mock.return_value.read
-        gzip_read_mock.return_value = 'ungzipped'
-        b64_mock.return_value = 'configdrive_data'
-        filename = standby._configdrive_location()
-
-        standby._write_configdrive_to_file('b64data', filename)
-        open_mock.assert_called_once_with(filename, 'wb')
-        gzip_read_mock.assert_called_once_with()
-        write_mock.assert_called_once_with('ungzipped')
-
-    @mock.patch('os.stat', autospec=True)
-    @mock.patch(('ironic_python_agent.extensions.standby.'
-                 '_write_configdrive_to_file'),
-                autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_write_configdrive_to_partition(self, execute_mock, open_mock,
-                                            configdrive_mock, stat_mock):
-        device = '/dev/sda'
-        configdrive = standby._configdrive_location()
-        script = standby._path_to_script('shell/copy_configdrive_to_disk.sh')
-        command = ['/bin/bash', script, configdrive, device]
-        execute_mock.return_value = ('', '')
-        stat_mock.return_value.st_size = 5
-
-        standby._write_configdrive_to_partition(configdrive, device)
-        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
-
-        execute_mock.reset_mock()
-        execute_mock.return_value = ('', '')
-        execute_mock.side_effect = processutils.ProcessExecutionError
-
-        self.assertRaises(errors.ConfigDriveWriteError,
-                          standby._write_configdrive_to_partition,
-                          configdrive,
-                          device)
-
-        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
-
-    @mock.patch('os.stat', autospec=True)
-    @mock.patch(('ironic_python_agent.extensions.standby.'
-                 '_write_configdrive_to_file'),
-                autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_write_configdrive_too_large(self, execute_mock, open_mock,
-                                         configdrive_mock, stat_mock):
-        device = '/dev/sda'
-        configdrive = standby._configdrive_location()
-        stat_mock.return_value.st_size = 65 * 1024 * 1024
-
-        self.assertRaises(errors.ConfigDriveTooLargeError,
-                          standby._write_configdrive_to_partition,
-                          configdrive,
-                          device)
-
     @mock.patch('hashlib.md5')
     @mock.patch('six.moves.builtins.open')
     @mock.patch('requests.get')
@@ -554,8 +477,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                       '{} ').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
-    @mock.patch(('ironic_python_agent.extensions.standby.'
-                 '_write_configdrive_to_partition'),
+    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
@@ -587,8 +509,9 @@ class TestStandbyExtension(test_base.BaseTestCase):
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
         dispatch_mock.assert_called_once_with('get_os_install_device')
-        configdrive_copy_mock.assert_called_once_with('configdrive_data',
-                                                      'manager')
+        configdrive_copy_mock.assert_called_once_with(image_info['node_uuid'],
+                                                      'manager',
+                                                      'configdrive_data')
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertIn('result', async_result.command_result)
@@ -596,29 +519,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                       '{} ').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
-        download_mock.reset_mock()
-        write_mock.reset_mock()
-        configdrive_copy_mock.reset_mock()
-        # image is now cached, make sure download/write doesn't happen
-        async_result = self.agent_extension.prepare_image(
-            image_info=image_info,
-            configdrive='configdrive_data'
-        )
-        async_result.join()
-
-        self.assertEqual(0, download_mock.call_count)
-        self.assertEqual(0, write_mock.call_count)
-        configdrive_copy_mock.assert_called_once_with('configdrive_data',
-                                                      'manager')
-
-        self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertIn('result', async_result.command_result)
-        cmd_result = ('prepare_image: image ({}) written to device '
-                      '{} ').format(image_info['id'], 'manager')
-        self.assertEqual(cmd_result, async_result.command_result['result'])
-
-    @mock.patch(('ironic_python_agent.extensions.standby.'
-                 '_write_configdrive_to_partition'),
+    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
@@ -680,8 +581,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
             image_info['id'], 'manager', 'root_uuid')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
-    @mock.patch(('ironic_python_agent.extensions.standby.'
-                 '_write_configdrive_to_partition'),
+    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
@@ -717,8 +617,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                       '{} ').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
-    @mock.patch(('ironic_python_agent.extensions.standby.'
-                 '_write_configdrive_to_partition'),
+    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
