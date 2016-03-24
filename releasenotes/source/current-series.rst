@@ -1,5 +1,5 @@
 ===========================
-Mitaka Series Release Notes
+Newton Series Release Notes
 ===========================
 
 .. release-notes::
