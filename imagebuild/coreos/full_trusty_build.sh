@@ -5,7 +5,9 @@
 #
 if [ -x "/usr/bin/apt-get" ]; then
     sudo -E apt-get update
-    sudo -E apt-get install -y docker.io
+    # apparmor is an undeclared dependency for docker on ubuntu
+    # https://github.com/docker/docker/issues/9745
+    sudo -E apt-get install -y docker.io apparmor
 elif [ -x "/usr/bin/yum" ]; then
     sudo -E yum install -y docker-io gpg
 else
