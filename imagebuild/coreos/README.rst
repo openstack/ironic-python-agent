@@ -61,9 +61,13 @@ Download
 
 If you don't want to build your own image, you can download a copy of
 ironic-python-agent ramdisk and kernel, built using CoreOS, at:
-http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe.vmlinuz
+http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe-master.vmlinuz
 and
-http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe_image-oem.cpio.gz
+http://tarballs.openstack.org/ironic-python-agent/coreos/files/coreos_production_pxe_image-oem-master.cpio.gz
+
+"master" may be replaced with "stable-$branch" (e.g. "stable-mitaka") to
+download an image built from the stable/$branch (e.g. stable/mitaka) version
+of ironic-python-agent.
 
 Build instructions
 ------------------
