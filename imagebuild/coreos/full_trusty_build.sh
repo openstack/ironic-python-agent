@@ -12,8 +12,7 @@ if [ -x "/usr/bin/apt-get" ]; then
     sudo -E apt-get update
     # apparmor is an undeclared dependency for docker on ubuntu
     # https://github.com/docker/docker/issues/9745
-    sudo -E apt-get install -y docker.io apparmor cgroupfs-mount
-    sudo cgroupfs-mount
+    sudo -E apt-get install -y docker.io apparmor lxc
 elif [ -x "/usr/bin/dnf" ]; then
     sudo -E dnf install -y $REDHAT_PACKAGES
 elif [ -x "/usr/bin/yum" ]; then
