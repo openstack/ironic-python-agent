@@ -1,0 +1,4 @@
+---
+features:
+  - Add new portal_port argument into iscsi.start_iscsi_target
+    to support iscsi portal port customization.
