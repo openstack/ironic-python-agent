@@ -56,10 +56,11 @@ class BaseCommandResult(encoding.SerializableComparable):
         self.command_result = None
 
     def __str__(self):
-        return ("Command ID: %(id)s, Name: %(name)s "
-                "Params: %(params)s Status: %(status)s (%(result)s)" %
-                {"id": self.id, "name": self.command_name,
-                 "params": self.command_params, "status": self.command_status,
+        return ("Command name: %(name)s, "
+                "params: %(params)s, status: %(status)s, result: "
+                "%(result)s." %
+                {"name": self.command_name, "params": self.command_params,
+                 "status": self.command_status,
                  "result": self.command_result})
 
     def is_done(self):
