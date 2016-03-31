@@ -183,9 +183,9 @@ class ISCSIExtension(base.BaseAgentExtension):
             _start_lio(iqn, portal_port, device)
             LOG.debug('Linux-IO configuration: %s', rts_root.dump())
 
-        LOG.info('Created iSCSI target with iqn %(iqn)s, portal_port %(port)d,'
+        LOG.info('Created iSCSI target with iqn %(iqn)s, portal port %(port)d,'
                  ' on device %(dev)s using %(method)s',
-                 {'iqn': iqn, 'portal_port': portal_port, 'dev': device,
+                 {'iqn': iqn, 'port': portal_port, 'dev': device,
                   'method': 'tgtd' if rts_root is None else 'linux-io'})
 
         return {"iscsi_target_iqn": iqn}
