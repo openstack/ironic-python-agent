@@ -327,7 +327,7 @@ Generated Developer Documentation
 
 References
 ==========
-.. [0] Enabling Drivers - http://docs.openstack.org/developer/ironic/deploy/drivers.html#ironic-python-agent-agent
+.. [0] Enabling Drivers - http://docs.openstack.org/developer/ironic/drivers/ipa.html#ipa
 .. [1] CoreOS PXE Images - https://coreos.com/docs/running-coreos/bare-metal/booting-with-pxe/
 .. [2] CoreOS Cloud Init - https://coreos.com/docs/cluster-management/setup/cloudinit-cloud-config/
 .. [3] DIB Element for IPA - https://github.com/openstack/diskimage-builder/tree/master/elements/ironic-agent
