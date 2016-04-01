@@ -17,6 +17,7 @@ import base64
 import io
 import json
 import tarfile
+import time
 
 import netaddr
 from oslo_concurrency import processutils
@@ -36,6 +37,9 @@ from ironic_python_agent import utils
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 DEFAULT_COLLECTOR = 'default'
+DEFAULT_DHCP_WAIT_TIMEOUT = 60
+
+_DHCP_RETRY_INTERVAL = 2
 _COLLECTOR_NS = 'ironic_python_agent.inspector.collectors'
 _NO_LOGGING_FIELDS = ('logs',)
 
@@ -215,6 +219,38 @@ def discover_scheduling_properties(inventory, data, root_disk=None):
             LOG.info('value for %s is %s', key, data[key])
 
 
+def wait_for_dhcp():
+    """Wait until all NIC's get their IP addresses via DHCP or timeout happens.
+
+    Ignores interfaces which do not even have a carrier.
+
+    Note: only supports IPv4 addresses for now.
+
+    :return: True if all NIC's got IP addresses, False if timeout happened.
+             Also returns True if waiting is disabled via configuration.
+    """
+    if not CONF.inspection_dhcp_wait_timeout:
+        return True
+
+    threshold = time.time() + CONF.inspection_dhcp_wait_timeout
+    while time.time() <= threshold:
+        interfaces = hardware.dispatch_to_managers('list_network_interfaces')
+        missing = [iface.name for iface in interfaces
+                   if iface.has_carrier and not iface.ipv4_address]
+        if not missing:
+            return True
+
+        LOG.debug('Still waiting for interfaces %s to get IP addresses',
+                  missing)
+        time.sleep(_DHCP_RETRY_INTERVAL)
+
+    LOG.warning('Not all network interfaces received IP addresses in '
+                '%(timeout)d seconds: %(missing)s',
+                {'timeout': CONF.inspection_dhcp_wait_timeout,
+                 'missing': missing})
+    return False
+
+
 def collect_default(data, failures):
     """The default inspection collector.
 
@@ -229,6 +265,7 @@ def collect_default(data, failures):
     :param data: mutable data that we'll send to inspector
     :param failures: AccumulatedFailures object
     """
+    wait_for_dhcp()
     inventory = hardware.dispatch_to_managers('list_hardware_info')
 
     # In the future we will only need the current version of inventory,

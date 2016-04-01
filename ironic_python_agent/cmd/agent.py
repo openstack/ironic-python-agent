@@ -114,6 +114,13 @@ cli_opts = [
                help='Comma-separated list of plugins providing additional '
                     'hardware data for inspection, empty value gives '
                     'a minimum required set of plugins.'),
+
+    cfg.IntOpt('inspection_dhcp_wait_timeout',
+               default=APARAMS.get('ipa-inspection-dhcp-wait-timeout',
+                                   inspector.DEFAULT_DHCP_WAIT_TIMEOUT),
+               help='Maximum time (in seconds) to wait for all NIC\'s '
+                    'to get their IP addresses via DHCP before inspection. '
+                    'Set to 0 to disable waiting completely.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

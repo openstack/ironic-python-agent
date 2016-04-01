@@ -1,0 +1,7 @@
+---
+features:
+  - The "has_carrier" flag was added to the network interface information.
+fixes:
+  - Inspection code now waits up to 1 minute for all NICs to get their IP addresses.
+    Otherwise inspection fails for some users due to race between DIB DHCP code
+    and IPA startup. See https://bugs.launchpad.net/bugs/1564954 for details.
