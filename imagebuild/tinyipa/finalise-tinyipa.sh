@@ -86,8 +86,18 @@ sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
 # Disable ZSwap
 sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"
 
+# Allow an extension to be added to the generated files by specifying
+# $BRANCH_PATH e.g. export BRANCH_PATH=master results in tinyipa-master.gz etc
+branch_ext=''
+if [ -n "$BRANCH_PATH" ]; then
+    branch_ext="-$BRANCH_PATH"
+fi
+
 # Rebuild build directory into gz file
-( cd "$FINALDIR" && sudo find | sudo cpio -o -H newc | gzip -9 > "$WORKDIR/tinyipa.gz" )
+( cd "$FINALDIR" && sudo find | sudo cpio -o -H newc | gzip -9 > "$WORKDIR/tinyipa${branch_ext}.gz" )
 
 # Copy vmlinuz to new name
-cp "$WORKDIR/build_files/vmlinuz64" "$WORKDIR/tinyipa.vmlinuz"
+cp "$WORKDIR/build_files/vmlinuz64" "$WORKDIR/tinyipa${branch_ext}.vmlinuz"
+
+# Create tar.gz containing tinyipa files
+tar czf tinyipa${branch_ext}.tar.gz tinyipa${branch_ext}.gz tinyipa${branch_ext}.vmlinuz
