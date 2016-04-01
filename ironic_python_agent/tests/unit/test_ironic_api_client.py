@@ -160,14 +160,16 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'name': u'eth0',
                     u'ipv4_address': None,
                     u'switch_chassis_descr': None,
-                    u'switch_port_descr': None
+                    u'switch_port_descr': None,
+                    u'has_carrier': True,
                 },
                 {
                     u'mac_address': u'00:0c:29:8c:11:b2',
                     u'name': u'eth1',
                     u'ipv4_address': None,
                     u'switch_chassis_descr': None,
-                    'switch_port_descr': None
+                    u'switch_port_descr': None,
+                    u'has_carrier': True,
                 }
             ],
             u'cpu': {
@@ -295,14 +297,16 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'name': u'eth0',
                     u'ipv4_address': None,
                     u'switch_chassis_descr': None,
-                    u'switch_port_descr': None
+                    u'switch_port_descr': None,
+                    u'has_carrier': True,
                 },
                 {
                     u'mac_address': u'00:0c:29:8c:11:b2',
                     u'name': u'eth1',
                     u'ipv4_address': None,
                     u'switch_chassis_descr': None,
-                    'switch_port_descr': None
+                    u'switch_port_descr': None,
+                    u'has_carrier': True,
                 }
             ],
             u'cpu': {
