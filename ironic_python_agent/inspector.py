@@ -17,6 +17,7 @@ import base64
 import io
 import json
 import tarfile
+import time
 
 import netaddr
 from oslo_concurrency import processutils
@@ -287,6 +288,7 @@ def collect_logs(data, failures):
         with tarfile.open(fileobj=fp, mode='w:gz') as tar:
             tarinfo = tarfile.TarInfo('journal')
             tarinfo.size = len(out)
+            tarinfo.mtime = time.time()
             tar.addfile(tarinfo, journal)
 
         fp.seek(0)

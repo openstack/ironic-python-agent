@@ -386,12 +386,13 @@ class TestCollectLogs(unittest.TestCase):
         mock_execute.return_value = (contents, '')
 
         data = {}
-        inspector.collect_logs(data, None)
+        with mock.patch('time.time', return_value=42):
+            inspector.collect_logs(data, None)
         res = io.BytesIO(base64.b64decode(data['logs']))
 
         with tarfile.open(fileobj=res) as tar:
-            members = [(m.name, m.size) for m in tar]
-            self.assertEqual([('journal', len(contents))], members)
+            members = [(m.name, m.size, m.mtime) for m in tar]
+            self.assertEqual([('journal', len(contents), 42)], members)
 
             member = tar.extractfile('journal')
             self.assertEqual(expected_contents, member.read().decode('utf-8'))
