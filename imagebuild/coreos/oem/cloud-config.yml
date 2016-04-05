@@ -157,6 +157,19 @@ coreos:
         Type=none
         Options=bind
 
+    - name: opt-ironic\x2dpython\x2dagent-etc-resolvconf.service
+      command: start
+      content: |
+        [Unit]
+        Description="Provide host resolv.conf to chroot"
+        After=ironic-python-agent-container-creation.service
+        Requires=ironic-python-agent-container-creation.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/bin/ln -f /etc/resolv.conf /opt/ironic-python-agent/etc/resolv.conf
+
     - name: ironic-python-agent.service
       command: start
       content: |
@@ -169,6 +182,7 @@ coreos:
         After=opt-ironic\x2dpython\x2dagent-sys.mount
         After=opt-ironic\x2dpython\x2dagent-run.mount
         After=opt-ironic\x2dpython\x2dagent-mnt.mount
+        After=opt-ironic\x2dpython\x2dagent-etc-resolvconf.service
 
         Requires=ironic-python-agent-container-creation.service
         Requires=opt-ironic\x2dpython\x2dagent-proc.mount
@@ -177,6 +191,7 @@ coreos:
         Requires=opt-ironic\x2dpython\x2dagent-sys.mount
         Requires=opt-ironic\x2dpython\x2dagent-run.mount
         Requires=opt-ironic\x2dpython\x2dagent-mnt.mount
+        Requires=opt-ironic\x2dpython\x2dagent-etc-resolvconf.service
 
         [Service]
         ExecStart=/usr/bin/chroot /opt/ironic-python-agent \
