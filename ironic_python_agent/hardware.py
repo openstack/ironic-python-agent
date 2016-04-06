@@ -175,12 +175,14 @@ class BlockDevice(encoding.SerializableComparable):
 
 class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'switch_port_descr',
-                           'switch_chassis_descr', 'ipv4_address')
+                           'switch_chassis_descr', 'ipv4_address',
+                           'has_carrier')
 
-    def __init__(self, name, mac_addr, ipv4_address=None):
+    def __init__(self, name, mac_addr, ipv4_address=None, has_carrier=True):
         self.name = name
         self.mac_address = mac_addr
         self.ipv4_address = ipv4_address
+        self.has_carrier = has_carrier
         # TODO(russellhaering): Pull these from LLDP
         self.switch_port_descr = None
         self.switch_chassis_descr = None
@@ -402,7 +404,8 @@ class GenericHardwareManager(HardwareManager):
 
         return NetworkInterface(
             interface_name, mac_addr,
-            ipv4_address=self.get_ipv4_addr(interface_name))
+            ipv4_address=self.get_ipv4_addr(interface_name),
+            has_carrier=self._interface_has_carrier(interface_name))
 
     def get_ipv4_addr(self, interface_id):
         try:
@@ -411,6 +414,17 @@ class GenericHardwareManager(HardwareManager):
         except (ValueError, IndexError, KeyError):
             # No default IPv4 address found
             return None
+
+    def _interface_has_carrier(self, interface_name):
+        path = '{0}/class/net/{1}/carrier'.format(self.sys_path,
+                                                  interface_name)
+        try:
+            with open(path, 'rt') as fp:
+                return fp.read().strip() == '1'
+        except EnvironmentError:
+            LOG.debug('No carrier information for interface %s',
+                      interface_name)
+            return False
 
     def _is_device(self, interface_name):
         device_path = '{0}/class/net/{1}/device'.format(self.sys_path,
