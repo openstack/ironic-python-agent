@@ -324,6 +324,7 @@ def collect_logs(data, failures):
         with tarfile.open(fileobj=fp, mode='w:gz') as tar:
             tarinfo = tarfile.TarInfo('journal')
             tarinfo.size = len(out)
+            tarinfo.mtime = time.time()
             tar.addfile(tarinfo, journal)
 
         fp.seek(0)
