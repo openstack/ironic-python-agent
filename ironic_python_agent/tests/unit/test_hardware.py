@@ -607,17 +607,15 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_success(self, mocked_execute):
-        hdparm_info_fields = {
-            'supported': '\tsupported',
-            'enabled': 'not\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
         mocked_execute.side_effect = [
-            (HDPARM_INFO_TEMPLATE % hdparm_info_fields, ''),
+            (create_hdparm_info(
+                supported=True, enabled=False, frozen=False,
+                enhanced_erase=False), ''),
             ('', ''),
             ('', ''),
-            (HDPARM_INFO_TEMPLATE % hdparm_info_fields, ''),
+            (create_hdparm_info(
+                supported=True, enabled=False, frozen=False,
+                enhanced_erase=False), ''),
         ]
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
@@ -654,12 +652,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_notsupported_shred(self, mocked_execute):
-        hdparm_output = HDPARM_INFO_TEMPLATE % {
-            'supported': 'not\tsupported',
-            'enabled': 'not\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output = create_hdparm_info(
+            supported=False, enabled=False, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
@@ -748,12 +742,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_security_enabled(
             self, mocked_execute, mock_shred):
-        hdparm_output = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': '\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output = create_hdparm_info(
+            supported=True, enabled=True, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
@@ -775,19 +765,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_security_enabled_unlock_attempt(
             self, mocked_execute, mock_shred):
-        hdparm_output = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': '\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
-
-        hdparm_output_not_enabled = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': 'not\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output = create_hdparm_info(
+            supported=True, enabled=True, frozen=False, enhanced_erase=False)
+        hdparm_output_not_enabled = create_hdparm_info(
+            supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
@@ -807,12 +788,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(utils, 'execute')
     def test__ata_erase_security_enabled_unlock_exception(
             self, mocked_execute):
-        hdparm_output = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': '\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output = create_hdparm_info(
+            supported=True, enabled=True, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
@@ -829,19 +806,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(utils, 'execute')
     def test__ata_erase_security_enabled_set_password_exception(
             self, mocked_execute):
-        hdparm_output = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': '\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
-
-        hdparm_output_not_enabled = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': 'not\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output = create_hdparm_info(
+            supported=True, enabled=True, frozen=False, enhanced_erase=False)
+        hdparm_output_not_enabled = create_hdparm_info(
+            supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
@@ -861,19 +829,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(utils, 'execute')
     def test__ata_erase_security_erase_exec_exception(
             self, mocked_execute):
-        hdparm_output = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': '\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
-
-        hdparm_output_not_enabled = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': 'not\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output = create_hdparm_info(
+            supported=True, enabled=True, frozen=False, enhanced_erase=False)
+        hdparm_output_not_enabled = create_hdparm_info(
+            supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output, '', '-1'),
@@ -893,12 +852,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device')
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_frozen(self, mocked_execute, mock_shred):
-        hdparm_output = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': 'not\tenabled',
-            'frozen': '\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output = create_hdparm_info(
+            supported=True, enabled=False, frozen=True, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output, '')
@@ -916,21 +871,13 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device')
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_failed(self, mocked_execute, mock_shred):
-        hdparm_output_before = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': 'not\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output_before = create_hdparm_info(
+            supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
-        # If security mode remains enabled after the erase, it is indiciative
+        # If security mode remains enabled after the erase, it is indicative
         # of a failed erase.
-        hdparm_output_after = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': '\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output_after = create_hdparm_info(
+            supported=True, enabled=True, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output_before, ''),
@@ -952,28 +899,18 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device')
     @mock.patch.object(utils, 'execute')
     def test_erase_block_device_ata_failed_continued(
-            self,
-            mocked_execute,
-            mock_shred):
+            self, mocked_execute, mock_shred):
 
         info = self.node.get('driver_internal_info')
         info['agent_continue_if_ata_erase_failed'] = True
 
-        hdparm_output_before = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': 'not\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output_before = create_hdparm_info(
+            supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
-        # If security mode remains enabled after the erase, it is indiciative
+        # If security mode remains enabled after the erase, it is indicative
         # of a failed erase.
-        hdparm_output_after = HDPARM_INFO_TEMPLATE % {
-            'supported': '\tsupported',
-            'enabled': '\tenabled',
-            'frozen': 'not\tfrozen',
-            'enhanced_erase': 'not\tsupported: enhanced erase',
-        }
+        hdparm_output_after = create_hdparm_info(
+            supported=True, enabled=True, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output_before, ''),
@@ -991,20 +928,18 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     def test_normal_vs_enhanced_security_erase(self):
         @mock.patch.object(utils, 'execute')
         def test_security_erase_option(test_case,
-                                       enhanced_erase_string,
+                                       enhanced_erase,
                                        expected_option,
                                        mocked_execute):
-            hdparm_parameters = {
-                'supported': '\tsupported',
-                'enabled': 'not\tenabled',
-                'frozen': 'not\tfrozen',
-                'enhanced_erase': enhanced_erase_string,
-            }
             mocked_execute.side_effect = [
-                (HDPARM_INFO_TEMPLATE % hdparm_parameters, ''),
+                (create_hdparm_info(
+                    supported=True, enabled=False, frozen=False,
+                    enhanced_erase=enhanced_erase), ''),
                 ('', ''),
                 ('', ''),
-                (HDPARM_INFO_TEMPLATE % hdparm_parameters, ''),
+                (create_hdparm_info(
+                    supported=True, enabled=False, frozen=False,
+                    enhanced_erase=enhanced_erase), ''),
             ]
 
             block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
@@ -1015,9 +950,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                            'NULL', '/dev/sda')
 
         test_security_erase_option(
-            self, '\tsupported: enhanced erase', '--security-erase-enhanced')
+            self, True, '--security-erase-enhanced')
         test_security_erase_option(
-            self, '\tnot\tsupported: enhanced erase', '--security-erase')
+            self, False, '--security-erase')
 
     @mock.patch.object(utils, 'execute')
     def test_get_bmc_address(self, mocked_execute):
@@ -1109,3 +1044,25 @@ class TestModuleFunctions(test_base.BaseTestCase):
     def test__udev_settle(self, mocked_execute):
         hardware._udev_settle()
         mocked_execute.assert_called_once_with('udevadm', 'settle')
+
+
+def create_hdparm_info(supported=False, enabled=False, frozen=False,
+                       enhanced_erase=False):
+
+    def update_values(values, state, key):
+        if not state:
+            values[key] = 'not' + values[key]
+
+    values = {
+        'supported': '\tsupported',
+        'enabled': '\tenabled',
+        'frozen': '\tfrozen',
+        'enhanced_erase': '\tsupported: enhanced erase',
+    }
+
+    update_values(values, supported, 'supported')
+    update_values(values, enabled, 'enabled')
+    update_values(values, frozen, 'frozen')
+    update_values(values, enhanced_erase, 'enhanced_erase')
+
+    return HDPARM_INFO_TEMPLATE % values
