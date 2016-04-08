@@ -1,0 +1,14 @@
+---
+features:
+  - The driver_internal_info internal setting
+    ``agent_continue_if_ata_erase_failed`` allows operators
+    to enable disk cleaning operations to fallback from a failed
+    ata_erase operation to disk shredding operations.
+fixes:
+  - IPA will now attempt to unlock a security locked drive
+    with a 'NULL' password if it is found to be enabled,
+    however this will only work if the password was previously
+    set to a 'NULL' value, such as if a failure during a previous
+    ata_erase sequence.
+  - Potential command failures in the secure erase process are
+    now captured and raised as BlockDeviceEraseError exceptions.
