@@ -5,10 +5,10 @@ hacking<0.11,>=0.10.0
 coverage>=3.6 # Apache-2.0
 discover # BSD
 mock>=1.2 # BSD
-testrepository>=0.0.18 # Apache-2.0/BSD
 testtools>=1.4.0 # MIT
 python-subunit>=0.0.18 # Apache-2.0/BSD
 oslotest>=1.10.0 # Apache-2.0
+os-testr>=0.4.1 # Apache-2.0
 
 # Doc requirements
 doc8 # Apache-2.0
