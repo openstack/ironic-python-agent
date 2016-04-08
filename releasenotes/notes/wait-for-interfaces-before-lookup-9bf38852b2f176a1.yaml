@@ -1,0 +1,6 @@
+---
+fixes:
+  - Ensures the node look up is attempted with valid interfaces information
+    to avoid exception log messages in the conductor log. IPA tries to
+    retrieve interfaces information every 5 seconds until either at least
+    one of the interfaces is up or 60 seconds is lapsed.
