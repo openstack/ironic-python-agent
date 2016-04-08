@@ -1,6 +1,10 @@
-default: build finalise
+.PHONY: default all dependencies build finalise iso clean clean_build clean_iso
+default: dependencies build finalise
 
-all: build finalise iso
+all: dependencies build finalise iso
+
+dependencies:
+	./install-deps.sh
 
 build:
 	./build-tinyipa.sh
