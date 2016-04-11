@@ -1,7 +1,7 @@
 #!/bin/sh
 
 set -ex
-WORKDIR=$(realpath $0 | xargs dirname)
+WORKDIR=$(readlink -f $0 | xargs dirname)
 
 cd $WORKDIR/build_files
 wget -N https://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-4.06.tar.gz && tar zxf syslinux-4.06.tar.gz

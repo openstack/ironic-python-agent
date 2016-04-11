@@ -10,6 +10,9 @@ CHROOT_CMD="sudo chroot $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$
 
 TC=1001
 STAFF=50
+
+echo "Building tinyipa:"
+
 # Ensure we have an extended sudo to prevent the need to enter a password over
 # and over again.
 sudo -v
