@@ -619,9 +619,15 @@ class GenericHardwareManager(HardwareManager):
         """
         info = node.get('driver_internal_info', {})
         npasses = info.get('agent_erase_devices_iterations', 1)
+        args = ('shred', '--force')
+
+        if info.get('agent_erase_devices_zeroize', True):
+            args += ('--zero', )
+
+        args += ('--verbose', '--iterations', str(npasses), block_device.name)
+
         try:
-            utils.execute('shred', '--force', '--zero', '--verbose',
-                          '--iterations', str(npasses), block_device.name)
+            utils.execute(*args)
         except (processutils.ProcessExecutionError, OSError) as e:
             msg = ("Erasing block device %(dev)s failed with error %(err)s ",
                    {'dev': block_device.name, 'err': e})
