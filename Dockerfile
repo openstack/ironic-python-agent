@@ -5,9 +5,8 @@ FROM debian:jessie
 # different it will not cache this layer
 ADD . /tmp/ironic-python-agent
 
-# Add 'testing' for qemu-utils
-RUN echo 'APT::Default-Release "jessie";' > /etc/apt/apt.conf.d/10default && \
-    sed -e 's/jessie/testing/g' /etc/apt/sources.list > /etc/apt/sources.list.d/testing.list
+# Add 'backports' for qemu-utils
+RUN echo 'deb http://httpredir.debian.org/debian jessie-backports main' > /etc/apt/sources.list.d/backports.list
 
 # Install requirements: Python for ironic-python-agent, others for putting an
 # image on disk
@@ -16,7 +15,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends gdisk python2.7 python2.7-dev \
         python-pip qemu-utils parted hdparm util-linux genisoimage git gcc \
         bash coreutils tgt dmidecode ipmitool && \
-    apt-get --only-upgrade -t testing install -y qemu-utils
+    apt-get --only-upgrade -t jessie-backports install -y qemu-utils
 
 # Some cleanup
 RUN apt-get -y autoremove && \
