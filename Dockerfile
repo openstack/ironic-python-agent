@@ -13,9 +13,8 @@ ADD . /tmp/ironic-python-agent
 # 1.6. Using the ARG command will be a much cleaner solution.
 COPY proxy.sh /usr/bin/proxy.sh
 
-# Add 'testing' for qemu-utils
-RUN echo 'APT::Default-Release "jessie";' > /etc/apt/apt.conf.d/10default && \
-    sed -e 's/jessie/testing/g' /etc/apt/sources.list > /etc/apt/sources.list.d/testing.list
+# Add 'backports' for qemu-utils
+RUN echo 'deb http://httpredir.debian.org/debian jessie-backports main' > /etc/apt/sources.list.d/backports.list
 
 # Install requirements: Python for ironic-python-agent, others for putting an
 # image on disk
@@ -24,7 +23,7 @@ RUN proxy.sh apt-get update && \
     proxy.sh apt-get install -y --no-install-recommends gdisk python2.7 python2.7-dev \
         python-pip qemu-utils parted hdparm util-linux genisoimage git gcc \
         bash coreutils tgt dmidecode ipmitool psmisc dosfstools && \
-    proxy.sh apt-get --only-upgrade -t testing install -y qemu-utils
+    proxy.sh apt-get --only-upgrade -t jessie-backports install -y qemu-utils
 
 # Some cleanup
 RUN proxy.sh apt-get -y autoremove && \
