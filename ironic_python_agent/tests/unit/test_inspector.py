@@ -18,6 +18,7 @@ import collections
 import copy
 import io
 import tarfile
+import time
 import unittest
 
 import mock
@@ -328,11 +329,13 @@ class TestDiscoverSchedulingProperties(BaseDiscoverTest):
 
 @mock.patch.object(utils, 'get_agent_params',
                    lambda: {'BOOTIF': 'boot:if'})
+@mock.patch.object(inspector, 'wait_for_dhcp', autospec=True)
 @mock.patch.object(inspector, 'discover_scheduling_properties', autospec=True)
 @mock.patch.object(inspector, 'discover_network_properties', autospec=True)
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
 class TestCollectDefault(BaseDiscoverTest):
-    def test_ok(self, mock_dispatch, mock_discover_net, mock_discover_sched):
+    def test_ok(self, mock_dispatch, mock_discover_net, mock_discover_sched,
+                mock_wait_for_dhcp):
         mock_dispatch.return_value = self.inventory
 
         inspector.collect_default(self.data, self.failures)
@@ -351,9 +354,10 @@ class TestCollectDefault(BaseDiscoverTest):
         mock_discover_sched.assert_called_once_with(
             self.inventory, self.data,
             root_disk=self.inventory['disks'][0])
+        mock_wait_for_dhcp.assert_called_once_with()
 
     def test_no_root_disk(self, mock_dispatch, mock_discover_net,
-                          mock_discover_sched):
+                          mock_discover_sched, mock_wait_for_dhcp):
         mock_dispatch.return_value = self.inventory
         self.inventory['disks'] = []
 
@@ -371,6 +375,7 @@ class TestCollectDefault(BaseDiscoverTest):
                                                   self.failures)
         mock_discover_sched.assert_called_once_with(
             self.inventory, self.data, root_disk=None)
+        mock_wait_for_dhcp.assert_called_once_with()
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
@@ -453,3 +458,56 @@ class TestCollectExtraHardware(unittest.TestCase):
         self.assertNotIn('data', self.data)
         self.assertTrue(self.failures)
         mock_execute.assert_called_once_with('hardware-detect')
+
+
+@mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+class TestWaitForDhcp(unittest.TestCase):
+    def setUp(self):
+        super(TestWaitForDhcp, self).setUp()
+        CONF.set_override('inspection_dhcp_wait_timeout',
+                          inspector.DEFAULT_DHCP_WAIT_TIMEOUT)
+
+    @mock.patch.object(time, 'sleep', autospec=True)
+    def test_ok(self, mocked_sleep, mocked_dispatch):
+        mocked_dispatch.side_effect = [
+            [hardware.NetworkInterface(name='em0', mac_addr='abcd',
+                                       ipv4_address=None),
+             hardware.NetworkInterface(name='em1', mac_addr='abcd',
+                                       ipv4_address='1.2.3.4')],
+            [hardware.NetworkInterface(name='em0', mac_addr='abcd',
+                                       ipv4_address=None),
+             hardware.NetworkInterface(name='em1', mac_addr='abcd',
+                                       ipv4_address='1.2.3.4')],
+            [hardware.NetworkInterface(name='em0', mac_addr='abcd',
+                                       ipv4_address='1.1.1.1'),
+             hardware.NetworkInterface(name='em1', mac_addr='abcd',
+                                       ipv4_address='1.2.3.4')],
+        ]
+
+        self.assertTrue(inspector.wait_for_dhcp())
+
+        mocked_dispatch.assert_called_with('list_network_interfaces')
+        self.assertEqual(2, mocked_sleep.call_count)
+        self.assertEqual(3, mocked_dispatch.call_count)
+
+    @mock.patch.object(inspector, '_DHCP_RETRY_INTERVAL', 0.01)
+    def test_timeout(self, mocked_dispatch):
+        CONF.set_override('inspection_dhcp_wait_timeout', 0.02)
+
+        mocked_dispatch.return_value = [
+            hardware.NetworkInterface(name='em0', mac_addr='abcd',
+                                      ipv4_address=None),
+            hardware.NetworkInterface(name='em1', mac_addr='abcd',
+                                      ipv4_address='1.2.3.4'),
+        ]
+
+        self.assertFalse(inspector.wait_for_dhcp())
+
+        mocked_dispatch.assert_called_with('list_network_interfaces')
+
+    def test_disabled(self, mocked_dispatch):
+        CONF.set_override('inspection_dhcp_wait_timeout', 0)
+
+        self.assertTrue(inspector.wait_for_dhcp())
+
+        self.assertFalse(mocked_dispatch.called)
