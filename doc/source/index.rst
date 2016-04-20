@@ -117,6 +117,11 @@ fields:
     system vendor information from SMBIOS as reported by ``dmidecode``:
     ``product_name``, ``serial_number`` and ``manufacturer``.
 
+``boot``
+    boot information with fields: ``current_boot_mode`` (boot mode used for
+    the current boot - BIOS or UEFI) and ``pxe_interface`` (interface used
+    for PXE booting, if any).
+
 Image Builders
 --------------
 Unlike most other python software, you must build an IPA ramdisk image before

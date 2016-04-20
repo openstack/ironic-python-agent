@@ -306,7 +306,7 @@ def collect_default(data, failures):
         LOG.debug('default root device is %s', root_disk.name)
     # Both boot interface and IPMI address might not be present,
     # we don't count it as failure
-    data['boot_interface'] = utils.get_agent_params().get('BOOTIF')
+    data['boot_interface'] = inventory['boot'].pxe_interface
     LOG.debug('boot devices was %s', data['boot_interface'])
     data['ipmi_address'] = inventory.get('bmc_address')
     LOG.debug('BMC IP address: %s', data['ipmi_address'])

@@ -220,6 +220,14 @@ class SystemVendorInfo(encoding.SerializableComparable):
         self.manufacturer = manufacturer
 
 
+class BootInfo(encoding.SerializableComparable):
+    serializable_fields = ('current_boot_mode', 'pxe_interface')
+
+    def __init__(self, current_boot_mode, pxe_interface=None):
+        self.current_boot_mode = current_boot_mode
+        self.pxe_interface = pxe_interface
+
+
 @six.add_metaclass(abc.ABCMeta)
 class HardwareManager(object):
     @abc.abstractmethod
@@ -242,6 +250,9 @@ class HardwareManager(object):
         raise errors.IncompatibleHardwareMethodError
 
     def get_bmc_address(self):
+        raise errors.IncompatibleHardwareMethodError()
+
+    def get_boot_info(self):
         raise errors.IncompatibleHardwareMethodError()
 
     def erase_block_device(self, node, block_device):
@@ -305,6 +316,7 @@ class HardwareManager(object):
         hardware_info['memory'] = self.get_memory()
         hardware_info['bmc_address'] = self.get_bmc_address()
         hardware_info['system_vendor'] = self.get_system_vendor_info()
+        hardware_info['boot'] = self.get_boot_info()
         return hardware_info
 
     def get_clean_steps(self, node, ports):
@@ -596,6 +608,13 @@ class GenericHardwareManager(HardwareManager):
         return SystemVendorInfo(product_name=product_name,
                                 serial_number=serial_number,
                                 manufacturer=manufacturer)
+
+    def get_boot_info(self):
+        boot_mode = 'uefi' if os.path.isdir('/sys/firmware/efi') else 'bios'
+        LOG.debug('The current boot mode is %s', boot_mode)
+        pxe_interface = utils.get_agent_params().get('BOOTIF')
+        return BootInfo(current_boot_mode=boot_mode,
+                        pxe_interface=pxe_interface)
 
     def erase_block_device(self, node, block_device):
 
