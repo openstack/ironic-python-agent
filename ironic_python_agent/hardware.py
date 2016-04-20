@@ -189,13 +189,16 @@ class NetworkInterface(encoding.SerializableComparable):
 
 
 class CPU(encoding.SerializableComparable):
-    serializable_fields = ('model_name', 'frequency', 'count', 'architecture')
+    serializable_fields = ('model_name', 'frequency', 'count', 'architecture',
+                           'flags')
 
-    def __init__(self, model_name, frequency, count, architecture):
+    def __init__(self, model_name, frequency, count, architecture,
+                 flags=None):
         self.model_name = model_name
         self.frequency = frequency
         self.count = count
         self.architecture = architecture
+        self.flags = flags or []
 
 
 class Memory(encoding.SerializableComparable):
@@ -446,11 +449,25 @@ class GenericHardwareManager(HardwareManager):
         # Current CPU frequency can be different from maximum one on modern
         # processors
         freq = cpu_info.get('cpu max mhz', cpu_info.get('cpu mhz'))
+
+        flags = []
+        out = utils.try_execute('grep', '-Em1', '^flags', '/proc/cpuinfo')
+        if out:
+            try:
+                # Example output (much longer for a real system):
+                # flags           : fpu vme de pse
+                flags = out[0].strip().split(':', 1)[1].strip().split()
+            except (IndexError, ValueError):
+                LOG.warning('Malformed CPU flags information: %s', out)
+        else:
+            LOG.warning('Failed to get CPU flags')
+
         return CPU(model_name=cpu_info.get('model name'),
                    frequency=freq,
                    # this includes hyperthreading cores
                    count=int(cpu_info.get('cpu(s)')),
-                   architecture=cpu_info.get('architecture'))
+                   architecture=cpu_info.get('architecture'),
+                   flags=flags)
 
     def get_memory(self):
         # psutil returns a long, so we force it to an int

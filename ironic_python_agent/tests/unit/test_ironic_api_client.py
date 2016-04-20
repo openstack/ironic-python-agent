@@ -176,7 +176,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                 u'model_name': u'Awesome Jay CPU x10 9001',
                 u'frequency': u'9001',
                 u'count': u'10',
-                u'architecture': u'ARMv9'
+                u'architecture': u'ARMv9',
+                u'flags': [],
             },
             u'disks': [
                 {
@@ -313,7 +314,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                 u'model_name': u'Awesome Jay CPU x10 9001',
                 u'frequency': u'9001',
                 u'count': u'10',
-                u'architecture': u'ARMv9'
+                u'architecture': u'ARMv9',
+                u'flags': [],
             },
             u'disks': [
                 {

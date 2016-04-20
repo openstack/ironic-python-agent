@@ -224,6 +224,11 @@ L3 cache:              15360K
 NUMA node0 CPU(s):     0-11
 """
 
+# NOTE(dtanstur): flags list stripped down for sanity reasons
+CPUINFO_FLAGS_OUTPUT = """
+flags           : fpu vme de pse
+"""
+
 
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
@@ -437,7 +442,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
     @mock.patch.object(utils, 'execute')
     def test_get_cpus(self, mocked_execute):
-        mocked_execute.return_value = LSCPU_OUTPUT, ''
+        mocked_execute.side_effect = [
+            (LSCPU_OUTPUT, ''),
+            (CPUINFO_FLAGS_OUTPUT, '')
+        ]
 
         cpus = self.hardware.get_cpus()
         self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
@@ -445,10 +453,14 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual('2400.0000', cpus.frequency)
         self.assertEqual(4, cpus.count)
         self.assertEqual('x86_64', cpus.architecture)
+        self.assertEqual(['fpu', 'vme', 'de', 'pse'], cpus.flags)
 
     @mock.patch.object(utils, 'execute')
     def test_get_cpus2(self, mocked_execute):
-        mocked_execute.return_value = LSCPU_OUTPUT_NO_MAX_MHZ, ''
+        mocked_execute.side_effect = [
+            (LSCPU_OUTPUT_NO_MAX_MHZ, ''),
+            (CPUINFO_FLAGS_OUTPUT, '')
+        ]
 
         cpus = self.hardware.get_cpus()
         self.assertEqual('Intel(R) Xeon(R) CPU E5-1650 v3 @ 3.50GHz',
@@ -456,6 +468,37 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual('1794.433', cpus.frequency)
         self.assertEqual(12, cpus.count)
         self.assertEqual('x86_64', cpus.architecture)
+        self.assertEqual(['fpu', 'vme', 'de', 'pse'], cpus.flags)
+
+    @mock.patch.object(utils, 'execute')
+    def test_get_cpus_no_flags(self, mocked_execute):
+        mocked_execute.side_effect = [
+            (LSCPU_OUTPUT, ''),
+            processutils.ProcessExecutionError()
+        ]
+
+        cpus = self.hardware.get_cpus()
+        self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
+                         cpus.model_name)
+        self.assertEqual('2400.0000', cpus.frequency)
+        self.assertEqual(4, cpus.count)
+        self.assertEqual('x86_64', cpus.architecture)
+        self.assertEqual([], cpus.flags)
+
+    @mock.patch.object(utils, 'execute')
+    def test_get_cpus_illegal_flags(self, mocked_execute):
+        mocked_execute.side_effect = [
+            (LSCPU_OUTPUT, ''),
+            ('I am not a flag', '')
+        ]
+
+        cpus = self.hardware.get_cpus()
+        self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
+                         cpus.model_name)
+        self.assertEqual('2400.0000', cpus.frequency)
+        self.assertEqual(4, cpus.count)
+        self.assertEqual('x86_64', cpus.architecture)
+        self.assertEqual([], cpus.flags)
 
     @mock.patch('psutil.version_info', (2, 0))
     @mock.patch('psutil.phymem_usage', autospec=True)

@@ -1,0 +1,3 @@
+---
+features:
+  - Return CPU flags with the CPU inventory.

@@ -87,8 +87,8 @@ The inventory is a dictionary (JSON object), containing at least the following
 fields:
 
 ``cpu``
-    CPU information: ``model_name``, ``frequency``, ``count`` and
-    ``architecture``.
+    CPU information: ``model_name``, ``frequency``, ``count``,
+    ``architecture`` and ``flags``.
 
 ``memory``
     RAM information: ``total`` (total size in bytes), ``physical_mb``
