@@ -22,3 +22,7 @@ sudo -E pip install -r requirements.txt
 cd imagebuild/coreos
 sudo -E make clean
 sudo -E make
+
+# Output of make is owned by root, so convert owner to user who started the script
+me=`whoami`
+sudo chown -R $me: UPLOAD
