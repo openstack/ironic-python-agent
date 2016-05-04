@@ -4,7 +4,7 @@ set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
 BUILDDIR="$WORKDIR/tinyipabuild"
 FINALDIR="$WORKDIR/tinyipafinal"
-BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-false}
+BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-true}
 
 TC=1001
 STAFF=50
@@ -61,11 +61,11 @@ mkdir $FINALDIR/tmp/overides
 cp $WORKDIR/build_files/fakeuname $FINALDIR/tmp/overides/uname
 
 while read line; do
-    $TC_CHROOT_CMD tce-load -wi $line
+    $TC_CHROOT_CMD tce-load -wic $line
 done < $WORKDIR/build_files/finalreqs.lst
 
-echo "tgt.tcz" | $TC_CHROOT_CMD tee -a /tmp/builtin/onboot.lst
-echo "qemu-utils.tcz" | $TC_CHROOT_CMD tee -a /tmp/builtin/onboot.lst
+$TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/tgt.tcz
+$TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/qemu-utils.tcz
 
 # If flag is set install the python now
 if $BUILD_AND_INSTALL_TINYIPA ; then
@@ -75,7 +75,7 @@ fi
 
 # Unmount /proc and clean up everything
 sudo umount $FINALDIR/proc
-sudo umount $FINALDIR/tmp/tcloop/*
+sudo rm -rf $FINALDIR/tmp/builtin
 sudo rm -rf $FINALDIR/tmp/tcloop
 sudo rm -rf $FINALDIR/usr/local/tce.installed
 sudo mv $FINALDIR/etc/resolv.conf.old $FINALDIR/etc/resolv.conf
