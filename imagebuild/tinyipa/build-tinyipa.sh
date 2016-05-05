@@ -43,7 +43,7 @@ mkdir "$BUILDDIR"
 
 # Download TGT and Qemu-utils source
 git clone https://github.com/fujita/tgt.git $BUILDDIR/tmp/tgt --depth=1 --branch v1.0.62
-git clone git://git.qemu-project.org/qemu.git $BUILDDIR/tmp/qemu --depth=1 --branch v2.5.0
+git clone https://github.com/qemu/qemu.git $BUILDDIR/tmp/qemu --depth=1 --branch v2.5.0
 
 # Create directory for python local mirror
 mkdir -p "$BUILDDIR/tmp/localpip"
