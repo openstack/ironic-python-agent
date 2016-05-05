@@ -17,5 +17,9 @@ if ! type "ironic-python-agent" > /dev/null ; then
   python /tmp/get-pip.py --no-wheel --no-index --find-links=file:///tmp/wheelhouse ironic_python_agent
 fi
 
+export PYTHONOPTIMIZE=1
+
 # Run IPA
+echo "Starting Ironic Python Agent:"
+date
 ironic-python-agent
