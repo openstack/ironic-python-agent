@@ -118,9 +118,17 @@ cli_opts = [
     cfg.IntOpt('inspection_dhcp_wait_timeout',
                default=APARAMS.get('ipa-inspection-dhcp-wait-timeout',
                                    inspector.DEFAULT_DHCP_WAIT_TIMEOUT),
-               help='Maximum time (in seconds) to wait for all NIC\'s '
-                    'to get their IP addresses via DHCP before inspection. '
+               help='Maximum time (in seconds) to wait for the PXE NIC '
+                    '(or all NICs if inspection_dhcp_all_interfaces is True) '
+                    'to get its IP address via DHCP before inspection. '
                     'Set to 0 to disable waiting completely.'),
+
+    cfg.BoolOpt('inspection_dhcp_all_interfaces',
+                default=APARAMS.get('ipa-inspection-dhcp-all-interfaces',
+                                    False),
+                help='Whether to wait for all interfaces to get their IP '
+                     'addresses before inspection. If set to false '
+                     '(the default), only waits for the PXE interface.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

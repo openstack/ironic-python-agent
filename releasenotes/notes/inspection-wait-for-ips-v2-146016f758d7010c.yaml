@@ -1,0 +1,8 @@
+---
+fixes:
+  - During inspection wait only for a PXE booting NIC to get its IP by default.
+    Introduce a new "inspection_dhcp_all_interfaces" option to enable waiting
+    for all interfaces instead.
+  - Stop checking the "has_carrier" field when waiting for NIC's to get IP
+    addresses, as it might be set to "False" when the interface is being
+    configured.
