@@ -460,6 +460,7 @@ class TestCollectExtraHardware(unittest.TestCase):
         mock_execute.assert_called_once_with('hardware-detect')
 
 
+@mock.patch.object(utils, 'get_agent_params', lambda: {'BOOTIF': '01-cdef'})
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
 class TestWaitForDhcp(unittest.TestCase):
     def setUp(self):
@@ -468,20 +469,29 @@ class TestWaitForDhcp(unittest.TestCase):
                           inspector.DEFAULT_DHCP_WAIT_TIMEOUT)
 
     @mock.patch.object(time, 'sleep', autospec=True)
-    def test_ok(self, mocked_sleep, mocked_dispatch):
+    def test_all(self, mocked_sleep, mocked_dispatch):
+        CONF.set_override('inspection_dhcp_all_interfaces', True)
+        # We used to rely on has_carrier check, but we've found it unreliable
+        # in the DIB image, so we ignore its value.
         mocked_dispatch.side_effect = [
             [hardware.NetworkInterface(name='em0', mac_addr='abcd',
-                                       ipv4_address=None),
-             hardware.NetworkInterface(name='em1', mac_addr='abcd',
-                                       ipv4_address='1.2.3.4')],
+                                       ipv4_address=None,
+                                       has_carrier=False),
+             hardware.NetworkInterface(name='em1', mac_addr='cdef',
+                                       ipv4_address='1.2.3.4',
+                                       has_carrier=False)],
             [hardware.NetworkInterface(name='em0', mac_addr='abcd',
-                                       ipv4_address=None),
-             hardware.NetworkInterface(name='em1', mac_addr='abcd',
-                                       ipv4_address='1.2.3.4')],
+                                       ipv4_address=None,
+                                       has_carrier=True),
+             hardware.NetworkInterface(name='em1', mac_addr='cdef',
+                                       ipv4_address='1.2.3.4',
+                                       has_carrier=True)],
             [hardware.NetworkInterface(name='em0', mac_addr='abcd',
-                                       ipv4_address='1.1.1.1'),
-             hardware.NetworkInterface(name='em1', mac_addr='abcd',
-                                       ipv4_address='1.2.3.4')],
+                                       ipv4_address='1.1.1.1',
+                                       has_carrier=True),
+             hardware.NetworkInterface(name='em1', mac_addr='cdef',
+                                       ipv4_address='1.2.3.4',
+                                       has_carrier=True)],
         ]
 
         self.assertTrue(inspector.wait_for_dhcp())
@@ -490,8 +500,33 @@ class TestWaitForDhcp(unittest.TestCase):
         self.assertEqual(2, mocked_sleep.call_count)
         self.assertEqual(3, mocked_dispatch.call_count)
 
+    @mock.patch.object(time, 'sleep', autospec=True)
+    def test_boot_only(self, mocked_sleep, mocked_dispatch):
+        CONF.set_override('inspection_dhcp_all_interfaces', False)
+        mocked_dispatch.side_effect = [
+            [hardware.NetworkInterface(name='em0', mac_addr='abcd',
+                                       ipv4_address=None,
+                                       has_carrier=False),
+             hardware.NetworkInterface(name='em1', mac_addr='cdef',
+                                       ipv4_address=None,
+                                       has_carrier=False)],
+            [hardware.NetworkInterface(name='em0', mac_addr='abcd',
+                                       ipv4_address=None,
+                                       has_carrier=True),
+             hardware.NetworkInterface(name='em1', mac_addr='cdef',
+                                       ipv4_address='1.2.3.4',
+                                       has_carrier=True)],
+        ]
+
+        self.assertTrue(inspector.wait_for_dhcp())
+
+        mocked_dispatch.assert_called_with('list_network_interfaces')
+        self.assertEqual(1, mocked_sleep.call_count)
+        self.assertEqual(2, mocked_dispatch.call_count)
+
     @mock.patch.object(inspector, '_DHCP_RETRY_INTERVAL', 0.01)
     def test_timeout(self, mocked_dispatch):
+        CONF.set_override('inspection_dhcp_all_interfaces', True)
         CONF.set_override('inspection_dhcp_wait_timeout', 0.02)
 
         mocked_dispatch.return_value = [
@@ -511,3 +546,13 @@ class TestWaitForDhcp(unittest.TestCase):
         self.assertTrue(inspector.wait_for_dhcp())
 
         self.assertFalse(mocked_dispatch.called)
+
+
+class TestNormalizeMac(unittest.TestCase):
+    def test_correct_mac(self):
+        self.assertEqual('11:22:33:aa:bb:cc',
+                         inspector._normalize_mac('11:22:33:aa:BB:cc'))
+
+    def test_pxelinux_mac(self):
+        self.assertEqual('11:22:33:aa:bb:cc',
+                         inspector._normalize_mac('01-11-22-33-aa-BB-cc'))

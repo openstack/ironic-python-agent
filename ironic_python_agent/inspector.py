@@ -219,10 +219,20 @@ def discover_scheduling_properties(inventory, data, root_disk=None):
             LOG.info('value for %s is %s', key, data[key])
 
 
-def wait_for_dhcp():
-    """Wait until all NIC's get their IP addresses via DHCP or timeout happens.
+def _normalize_mac(mac):
+    """Convert MAC to a well-known format aa:bb:cc:dd:ee:ff."""
+    if '-' in mac:
+        # pxelinux format is 01-aa-bb-cc-dd-ee-ff
+        mac = mac.split('-', 1)[1]
+        mac = mac.replace('-', ':')
+    return mac.lower()
 
-    Ignores interfaces which do not even have a carrier.
+
+def wait_for_dhcp():
+    """Wait until NIC's get their IP addresses via DHCP or timeout happens.
+
+    Depending on the value of inspection_dhcp_all_interfaces configuration
+    option will wait for either all or only PXE booting NIC.
 
     Note: only supports IPv4 addresses for now.
 
@@ -232,11 +242,22 @@ def wait_for_dhcp():
     if not CONF.inspection_dhcp_wait_timeout:
         return True
 
+    pxe_mac = utils.get_agent_params().get('BOOTIF')
+    if pxe_mac:
+        pxe_mac = _normalize_mac(pxe_mac)
+    elif not CONF.inspection_dhcp_all_interfaces:
+        LOG.warning('No PXE boot interface known - not waiting for it '
+                    'to get the IP address')
+        return False
+
     threshold = time.time() + CONF.inspection_dhcp_wait_timeout
     while time.time() <= threshold:
         interfaces = hardware.dispatch_to_managers('list_network_interfaces')
+        interfaces = [iface for iface in interfaces
+                      if CONF.inspection_dhcp_all_interfaces
+                      or iface.mac_address.lower() == pxe_mac]
         missing = [iface.name for iface in interfaces
-                   if iface.has_carrier and not iface.ipv4_address]
+                   if not iface.ipv4_address]
         if not missing:
             return True
 
