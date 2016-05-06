@@ -87,10 +87,14 @@ $CHROOT_CMD pip wheel --no-index --pre --wheel-dir /tmp/wheels --find-links=/tmp
 # Build tgt
 rm -rf $WORKDIR/build_files/tgt.tcz
 $CHROOT_CMD /bin/sh -c "cd /tmp/tgt && make && make install-programs install-conf install-scripts DESTDIR=/tmp/tgt-installed"
+find $BUILDDIR/tmp/tgt-installed/ -type f -executable | xargs file | awk -F ':' '/ELF/ {print $1}' | sudo xargs strip
 cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/tgt-installed tgt.tcz && md5sum tgt.tcz > tgt.tcz.md5.txt
+
 # Build qemu-utils
 rm -rf $WORKDIR/build_files/qemu-utils.tcz
-$CHROOT_CMD /bin/sh -c "cd /tmp/qemu && ./configure --disable-system --disable-user --disable-linux-user --disable-bsd-user --disable-guest-agent && make && make install DESTDIR=/tmp/qemu-utils"
+$CHROOT_CMD /bin/sh -c "cd /tmp/qemu && ./configure --disable-system --disable-user --disable-linux-user --disable-bsd-user --disable-guest-agent --disable-blobs && make && make install DESTDIR=/tmp/qemu-utils"
+find $BUILDDIR/tmp/qemu-utils/ -type f -executable | xargs file | awk -F ':' '/ELF/ {print $1}' | sudo xargs strip
 cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/qemu-utils qemu-utils.tcz && md5sum qemu-utils.tcz > qemu-utils.tcz.md5.txt
+
 # Create qemu-utils.tcz.dep
 echo "glib2.tcz" > qemu-utils.tcz.dep
