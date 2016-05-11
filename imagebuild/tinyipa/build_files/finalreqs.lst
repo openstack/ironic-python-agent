@@ -5,9 +5,10 @@ gdisk.tcz
 hdparm.tcz
 iproute2.tcz
 parted.tcz
+popt.tcz
 python.tcz
-raid-dm-3.16.6-tinycore64.tcz
-scsi-3.16.6-tinycore64.tcz
+raid-dm-4.2.9-tinycore64.tcz
+scsi-4.2.9-tinycore64.tcz
 udev-lib.tcz
 util-linux.tcz
 glib2.tcz
