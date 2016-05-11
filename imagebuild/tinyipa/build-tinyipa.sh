@@ -27,8 +27,8 @@ fi
 ##############################################
 
 cd $WORKDIR/build_files
-wget -N http://distro.ibiblio.org/tinycorelinux/6.x/x86_64/release/distribution_files/corepure64.gz
-wget -N http://distro.ibiblio.org/tinycorelinux/6.x/x86_64/release/distribution_files/vmlinuz64
+wget -N http://distro.ibiblio.org/tinycorelinux/7.x/x86_64/release/distribution_files/corepure64.gz
+wget -N http://distro.ibiblio.org/tinycorelinux/7.x/x86_64/release/distribution_files/vmlinuz64
 cd $WORKDIR
 
 ########################################################
@@ -59,7 +59,11 @@ cp requirements.txt $BUILDDIR/tmp/ipa-requirements.txt
 cd $WORKDIR
 
 sudo cp /etc/resolv.conf $BUILDDIR/etc/resolv.conf
+
+trap "sudo umount $BUILDDIR/proc; sudo umount $BUILDDIR/dev/pts" EXIT
 sudo mount --bind /proc $BUILDDIR/proc
+sudo mount --bind /dev/pts $BUILDDIR/dev/pts
+
 $CHROOT_CMD mkdir /etc/sysconfig/tcedir
 $CHROOT_CMD chmod a+rwx /etc/sysconfig/tcedir
 $CHROOT_CMD touch /etc/sysconfig/tcuser
@@ -71,8 +75,6 @@ cp $WORKDIR/build_files/fakeuname $BUILDDIR/tmp/overides/uname
 while read line; do
     sudo chroot --userspec=$TC:$STAFF $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy tce-load -wci $line
 done < $WORKDIR/build_files/buildreqs.lst
-
-sudo umount $BUILDDIR/proc
 
 # Build python wheels
 $CHROOT_CMD python /tmp/get-pip.py
