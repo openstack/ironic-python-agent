@@ -7,8 +7,8 @@ hdparm.tcz
 parted.tcz
 python.tcz
 python-dev.tcz
-raid-dm-3.16.6-tinycore64.tcz
-scsi-3.16.6-tinycore64.tcz
+raid-dm-4.2.9-tinycore64.tcz
+scsi-4.2.9-tinycore64.tcz
 udev-lib.tcz
 util-linux.tcz
 pkg-config.tcz
