@@ -4,6 +4,7 @@ set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
 BUILDDIR="$WORKDIR/tinyipabuild"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-false}
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
 
 CHROOT_PATH="/tmp/overides:/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 CHROOT_CMD="sudo chroot $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
@@ -27,8 +28,8 @@ fi
 ##############################################
 
 cd $WORKDIR/build_files
-wget -N http://distro.ibiblio.org/tinycorelinux/7.x/x86_64/release/distribution_files/corepure64.gz
-wget -N http://distro.ibiblio.org/tinycorelinux/7.x/x86_64/release/distribution_files/vmlinuz64
+wget -N $TINYCORE_MIRROR_URL/7.x/x86_64/release/distribution_files/corepure64.gz
+wget -N $TINYCORE_MIRROR_URL/7.x/x86_64/release/distribution_files/vmlinuz64
 cd $WORKDIR
 
 ########################################################
@@ -40,6 +41,9 @@ mkdir "$BUILDDIR"
 
 # Extract rootfs from .gz file
 ( cd "$BUILDDIR" && zcat $WORKDIR/build_files/corepure64.gz | sudo cpio -i -H newc -d )
+
+# Configure mirror
+sudo sh -c "echo $TINYCORE_MIRROR_URL > $BUILDDIR/opt/tcemirror"
 
 # Download get-pip into ramdisk
 ( cd "$BUILDDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
