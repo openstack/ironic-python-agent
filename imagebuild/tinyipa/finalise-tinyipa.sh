@@ -118,4 +118,4 @@ tar czf tinyipa${branch_ext}.tar.gz tinyipa${branch_ext}.gz tinyipa${branch_ext}
 
 # Output files with sizes created by this script
 echo "Produced files:"
-du -h tinyipa.gz tinyipa.tar.gz tinyipa.vmlinuz
+du -h tinyipa${branch_ext}.gz tinyipa${branch_ext}.tar.gz tinyipa${branch_ext}.vmlinuz
