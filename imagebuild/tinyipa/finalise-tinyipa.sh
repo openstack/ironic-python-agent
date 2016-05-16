@@ -67,6 +67,9 @@ done < $WORKDIR/build_files/finalreqs.lst
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/tgt.tcz
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/qemu-utils.tcz
 
+# Ensure tinyipa picks up installed kernel modules
+$CHROOT_CMD depmod -a `$WORKDIR/build_files/fakeuname -r`
+
 # If flag is set install the python now
 if $BUILD_AND_INSTALL_TINYIPA ; then
     $CHROOT_CMD python /tmp/get-pip.py --no-wheel --no-index --find-links=file:///tmp/wheelhouse ironic_python_agent
