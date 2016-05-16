@@ -5,6 +5,7 @@ WORKDIR=$(readlink -f $0 | xargs dirname)
 BUILDDIR="$WORKDIR/tinyipabuild"
 FINALDIR="$WORKDIR/tinyipafinal"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-true}
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
 
 TC=1001
 STAFF=50
@@ -35,6 +36,9 @@ mkdir "$FINALDIR"
 
 sudo cp /etc/resolv.conf $FINALDIR/etc/resolv.conf.old
 sudo cp /etc/resolv.conf $FINALDIR/etc/resolv.conf
+
+sudo cp -a $FINALDIR/opt/tcemirror $FINALDIR/opt/tcemirror.old
+sudo sh -c "echo $TINYCORE_MIRROR_URL > $FINALDIR/opt/tcemirror"
 
 # Modify ldconfig for x86-64
 $CHROOT_CMD cp /sbin/ldconfig /sbin/ldconfigold
@@ -79,6 +83,7 @@ sudo umount $FINALDIR/proc
 sudo rm -rf $FINALDIR/tmp/builtin
 sudo rm -rf $FINALDIR/tmp/tcloop
 sudo rm -rf $FINALDIR/usr/local/tce.installed
+sudo mv $FINALDIR/opt/tcemirror.old $FINALDIR/opt/tcemirror
 sudo mv $FINALDIR/etc/resolv.conf.old $FINALDIR/etc/resolv.conf
 sudo rm $FINALDIR/etc/sysconfig/tcuser
 sudo rm $FINALDIR/etc/sysconfig/tcedir
