@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import time
+
 import mock
 import netifaces
-import os
 from oslo_concurrency import processutils
 from oslo_utils import units
 from oslotest import base as test_base
@@ -1083,6 +1085,66 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                          self.hardware.get_system_vendor_info().serial_number)
         self.assertEqual('NEC',
                          self.hardware.get_system_vendor_info().manufacturer)
+
+
+@mock.patch.object(time, 'sleep', autospec=True)
+@mock.patch.object(hardware.GenericHardwareManager,
+                   'get_os_install_device', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
+class TestGenericHardwareManagerInitializeHardware(test_base.BaseTestCase):
+    def setUp(self):
+        super(TestGenericHardwareManagerInitializeHardware, self).setUp()
+        self.hardware = hardware.GenericHardwareManager()
+
+    def test_ok(self, mocked_execute, mocked_os_dev, mocked_sleep):
+        self.hardware.initialize_hardware()
+
+        expected_execute_calls = [
+            mock.call('modprobe', mod)
+            for mod in self.hardware._PRELOADED_MODULES
+        ]
+        expected_execute_calls.append(mock.call('udevadm', 'settle'))
+        self.assertEqual(expected_execute_calls, mocked_execute.call_args_list)
+        mocked_os_dev.assert_called_once_with(mock.ANY)
+        self.assertFalse(mocked_sleep.called)
+
+    def test_disk_delayed(self, mocked_execute, mocked_os_dev, mocked_sleep):
+        mocked_os_dev.side_effect = [
+            errors.DeviceNotFound(''),
+            errors.DeviceNotFound(''),
+            None
+        ]
+
+        self.hardware.initialize_hardware()
+
+        expected_execute_calls = [
+            mock.call('modprobe', mod)
+            for mod in self.hardware._PRELOADED_MODULES
+        ]
+        expected_execute_calls.append(mock.call('udevadm', 'settle'))
+        self.assertEqual(expected_execute_calls, mocked_execute.call_args_list)
+        mocked_os_dev.assert_called_with(mock.ANY)
+        self.assertEqual(3, mocked_os_dev.call_count)
+        self.assertEqual(2, mocked_sleep.call_count)
+
+    @mock.patch.object(hardware.LOG, 'warning', autospec=True)
+    def test_no_disk(self, mocked_warn, mocked_execute, mocked_os_dev,
+                     mocked_sleep):
+        mocked_os_dev.side_effect = errors.DeviceNotFound('')
+
+        self.hardware.initialize_hardware()
+
+        expected_execute_calls = [
+            mock.call('modprobe', mod)
+            for mod in self.hardware._PRELOADED_MODULES
+        ]
+        expected_execute_calls.append(mock.call('udevadm', 'settle'))
+        self.assertEqual(expected_execute_calls, mocked_execute.call_args_list)
+        mocked_os_dev.assert_called_with(mock.ANY)
+        self.assertEqual(hardware._DISK_WAIT_ATTEMPTS,
+                         mocked_os_dev.call_count)
+        self.assertEqual(hardware._DISK_WAIT_ATTEMPTS, mocked_sleep.call_count)
+        self.assertTrue(mocked_warn.called)
 
 
 @mock.patch.object(utils, 'execute', autospec=True)

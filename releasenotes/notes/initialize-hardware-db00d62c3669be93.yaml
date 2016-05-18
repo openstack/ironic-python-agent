@@ -1,0 +1,7 @@
+---
+features:
+  - Add a new hardware manager method "initialize_hardware" which can be
+    overriden to provide early oneshot hardware initialization, such as loading
+    kernel modules or probing hardware. The generic implementation loads the
+    IPMI modules, calls "udev settle" and waits for at least one suitable disk
+    to appear in the "lsblk" output.
