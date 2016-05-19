@@ -1,0 +1,4 @@
+---
+features:
+  - Add a configurable (and disabled by default) sleep before IPA does any
+    actions.

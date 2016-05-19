@@ -129,6 +129,11 @@ cli_opts = [
                 help='Whether to wait for all interfaces to get their IP '
                      'addresses before inspection. If set to false '
                      '(the default), only waits for the PXE interface.'),
+
+    cfg.IntOpt('hardware_initialization_delay',
+               default=APARAMS.get('ipa-hardware-initialization-delay', 0),
+               help='How much time (in seconds) to wait for hardware to '
+                    'initialize before proceeding with any actions.'),
 ]
 
 CONF.register_cli_opts(cli_opts)
@@ -153,4 +158,5 @@ def run():
                             CONF.lookup_timeout,
                             CONF.lookup_interval,
                             CONF.driver_name,
-                            CONF.standalone).run()
+                            CONF.standalone,
+                            CONF.hardware_initialization_delay).run()
