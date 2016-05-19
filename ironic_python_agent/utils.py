@@ -233,44 +233,6 @@ def normalize(string):
     return parse.unquote(string).lower().strip()
 
 
-def parse_root_device_hints():
-    """Parse the root device hints.
-
-    Parse the root device hints given by Ironic via kernel cmdline
-    or vmedia.
-
-    :returns: A dict with the hints or an empty dict if no hints are
-              passed.
-    :raises: DeviceNotFound if there are unsupported hints.
-
-    """
-    root_device = get_agent_params().get('root_device')
-    if not root_device:
-        return {}
-
-    hints = dict((item.split('=') for item in root_device.split(',')))
-
-    # Find invalid hints for logging
-    not_supported = set(hints) - SUPPORTED_ROOT_DEVICE_HINTS
-    if not_supported:
-        error_msg = ('No device can be found because the following hints: '
-                     '"%(not_supported)s" are not supported by this version '
-                     'of IPA. Supported hints are: "%(supported)s"',
-                     {'not_supported': ', '.join(not_supported),
-                      'supported': ', '.join(SUPPORTED_ROOT_DEVICE_HINTS)})
-        raise errors.DeviceNotFound(error_msg)
-
-    # Normalise the values
-    hints = {k: normalize(v) for k, v in hints.items()}
-
-    if 'size' in hints:
-        # NOTE(lucasagomes): Ironic should validate before passing to
-        # the deploy ramdisk
-        hints['size'] = int(hints['size'])
-
-    return hints
-
-
 class AccumulatedFailures(object):
     """Object to accumulate failures without raising exception."""
 

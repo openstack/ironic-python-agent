@@ -36,6 +36,7 @@ class CleanExtension(base.BaseAgentExtension):
         """
         LOG.debug('Getting clean steps, called with node: %(node)s, '
                   'ports: %(ports)s', {'node': node, 'ports': ports})
+        hardware.cache_node(node)
         # Results should be a dict, not a list
         candidate_steps = hardware.dispatch_to_all_managers('get_clean_steps',
                                                             node, ports)
@@ -65,6 +66,7 @@ class CleanExtension(base.BaseAgentExtension):
         """
         # Ensure the agent is still the same version, or raise an exception
         LOG.debug('Executing clean step %s', step)
+        hardware.cache_node(node)
         _check_clean_version(clean_version)
 
         if 'step' not in step:

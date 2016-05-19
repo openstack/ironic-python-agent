@@ -1,0 +1,6 @@
+---
+features:
+  - IPA now gets the root device hints directly from the node object
+    representation instead of the kernel command line. This is a required
+    work in order to support a more complex syntax for the hints in
+    the future.

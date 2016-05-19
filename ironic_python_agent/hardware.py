@@ -42,6 +42,8 @@ UNIT_CONVERTER.define('GB = 1024 MB')
 _DISK_WAIT_ATTEMPTS = 10
 _DISK_WAIT_DELAY = 3
 
+NODE = None
+
 
 def _get_device_vendor(dev):
     """Get the vendor name of a given device."""
@@ -520,9 +522,12 @@ class GenericHardwareManager(HardwareManager):
         return list_all_block_devices()
 
     def get_os_install_device(self):
-        block_devices = self.list_block_devices()
-        root_device_hints = utils.parse_root_device_hints()
+        cached_node = get_cached_node()
+        root_device_hints = None
+        if cached_node is not None:
+            root_device_hints = cached_node['properties'].get('root_device')
 
+        block_devices = self.list_block_devices()
         if not root_device_hints:
             return utils.guess_root_disk(block_devices).name
         else:
@@ -917,3 +922,20 @@ def load_managers():
     :raises HardwareManagerNotFound: if no valid hardware managers found
     """
     _get_managers()
+
+
+def cache_node(node):
+    """Store the node object in the hardware module.
+
+    Stores the node object in the hardware module to facilitate the
+    access of a node information in the hardware extensions.
+
+    :param node: Ironic node object
+    """
+    global NODE
+    NODE = node
+
+
+def get_cached_node():
+    """Guard function around the module variable NODE."""
+    return NODE
