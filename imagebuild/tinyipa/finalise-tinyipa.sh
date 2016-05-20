@@ -71,6 +71,7 @@ $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/qemu-utils.tcz
 if $BUILD_AND_INSTALL_TINYIPA ; then
     $CHROOT_CMD python /tmp/get-pip.py --no-wheel --no-index --find-links=file:///tmp/wheelhouse ironic_python_agent
     rm -rf $FINALDIR/tmp/wheelhouse
+    rm -rf $FINALDIR/tmp/get-pip.py
 fi
 
 # Unmount /proc and clean up everything
@@ -96,6 +97,9 @@ set -e
 find $FINALDIR/usr/local/lib/python2.7 -name "*.py" -not -path "*ironic_python_agent/api/config.py" | sudo xargs rm
 find $FINALDIR/usr/local/lib/python2.7 -name "*.pyc" | sudo xargs rm
 
+# Delete unnecessary Babel .dat files
+find $FINALDIR -path "*babel/locale-data/*.dat" -not -path "*en_US*" | sudo xargs rm
+
 # Allow an extension to be added to the generated files by specifying
 # $BRANCH_PATH e.g. export BRANCH_PATH=master results in tinyipa-master.gz etc
 branch_ext=''
@@ -111,3 +115,7 @@ cp "$WORKDIR/build_files/vmlinuz64" "$WORKDIR/tinyipa${branch_ext}.vmlinuz"
 
 # Create tar.gz containing tinyipa files
 tar czf tinyipa${branch_ext}.tar.gz tinyipa${branch_ext}.gz tinyipa${branch_ext}.vmlinuz
+
+# Output files with sizes created by this script
+echo "Produced files:"
+du -h tinyipa${branch_ext}.gz tinyipa${branch_ext}.tar.gz tinyipa${branch_ext}.vmlinuz
