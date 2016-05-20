@@ -87,6 +87,14 @@ sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
 
 # Disable ZSwap
 sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"
+# sudo cp $WORKDIR/build_files/tc-config $FINALDIR/etc/init.d/tc-config
+
+# Precompile all python
+set +e
+$CHROOT_CMD /bin/bash -c "python -OO -m compileall /usr/local/lib/python2.7"
+set -e
+find $FINALDIR/usr/local/lib/python2.7 -name "*.py" -not -path "*ironic_python_agent/api/config.py" | sudo xargs rm
+find $FINALDIR/usr/local/lib/python2.7 -name "*.pyc" | sudo xargs rm
 
 # Allow an extension to be added to the generated files by specifying
 # $BRANCH_PATH e.g. export BRANCH_PATH=master results in tinyipa-master.gz etc

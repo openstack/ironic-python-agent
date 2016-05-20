@@ -34,6 +34,7 @@ def get_pecan_config():
     :returns: pecan configuration object.
     """
     filename = config.__file__.replace('.pyc', '.py')
+    filename = filename.replace('.pyo', '.py')
     return pecan.configuration.conf_from_file(filename)
 
 
