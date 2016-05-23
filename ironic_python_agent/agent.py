@@ -289,8 +289,6 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         # Cached hw managers at runtime, not load time. See bug 1490008.
         hardware.load_managers()
-        # Request the hw manager to do long initializations
-        hardware.dispatch_to_managers('initialize_hardware')
 
         if not self.standalone:
             # Inspection should be started before call to lookup, otherwise

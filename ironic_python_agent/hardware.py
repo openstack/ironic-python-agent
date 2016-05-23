@@ -16,7 +16,6 @@ import abc
 import functools
 import os
 import shlex
-import time
 
 import netifaces
 from oslo_concurrency import processutils
@@ -38,9 +37,6 @@ LOG = log.getLogger()
 UNIT_CONVERTER = pint.UnitRegistry(filename=None)
 UNIT_CONVERTER.define('MB = []')
 UNIT_CONVERTER.define('GB = 1024 MB')
-
-_DISK_WAIT_ATTEMPTS = 5
-_DISK_WAIT_DELAY = 3
 
 
 def _get_device_vendor(dev):
@@ -389,56 +385,16 @@ class HardwareManager(object):
             'version': getattr(self, 'HARDWARE_MANAGER_VERSION', '1.0')
         }
 
-    def initialize_hardware(self):
-        """Initialize hardware on the agent start up.
-
-        This method will be called once on start up before any calls
-        to list_hardware_info are made.
-
-        The default implementation does nothing.
-        """
-
 
 class GenericHardwareManager(HardwareManager):
     HARDWARE_MANAGER_NAME = 'generic_hardware_manager'
     HARDWARE_MANAGER_VERSION = '1.0'
-
-    # These modules are rarely loaded automatically
-    _PRELOADED_MODULES = ['ipmi_msghandler', 'ipmi_devintf', 'ipmi_si']
 
     def __init__(self):
         self.sys_path = '/sys'
 
     def evaluate_hardware_support(self):
         return HardwareSupport.GENERIC
-
-    def initialize_hardware(self):
-        LOG.debug('Initializing hardware')
-        self._preload_modules()
-        _udev_settle()
-        self._wait_for_disks()
-
-    def _preload_modules(self):
-        # TODO(dtantsur): try to load as many kernel modules for present
-        # hardware as it's possible.
-        for mod in self._PRELOADED_MODULES:
-            utils.try_execute('modprobe', mod)
-
-    def _wait_for_disks(self):
-        # Wait for at least one suitable disk to show up, otherwise neither
-        # inspection not deployment have any chances to succeed.
-        for attempt in range(_DISK_WAIT_ATTEMPTS):
-            try:
-                self.get_os_install_device()
-            except errors.DeviceNotFound:
-                LOG.debug('Still waiting for at least one disk to appear, '
-                          'attempt %d of %d', attempt + 1, _DISK_WAIT_ATTEMPTS)
-                time.sleep(_DISK_WAIT_DELAY)
-            else:
-                break
-        else:
-            LOG.warning('No disks detected in %d seconds',
-                        _DISK_WAIT_DELAY * _DISK_WAIT_ATTEMPTS)
 
     def _get_interface_info(self, interface_name):
         addr_path = '{0}/class/net/{1}/address'.format(self.sys_path,
@@ -782,6 +738,11 @@ class GenericHardwareManager(HardwareManager):
         return True
 
     def get_bmc_address(self):
+        # These modules are rarely loaded automatically
+        utils.try_execute('modprobe', 'ipmi_msghandler')
+        utils.try_execute('modprobe', 'ipmi_devintf')
+        utils.try_execute('modprobe', 'ipmi_si')
+
         try:
             out, _e = utils.execute(
                 "ipmitool lan print | grep -e 'IP Address [^S]' "
