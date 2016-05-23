@@ -167,9 +167,12 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertEqual(pkg_resources.get_distribution('ironic-python-agent')
                          .version, status.version)
 
+    @mock.patch.object(hardware.GenericHardwareManager, 'initialize_hardware',
+                       autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
-    def test_run(self, mocked_list_hardware, wsgi_server_cls):
+    def test_run(self, mocked_list_hardware, wsgi_server_cls,
+                 mocked_init_hardware):
         CONF.set_override('inspection_callback_url', '', enforce_type=True)
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
@@ -193,12 +196,15 @@ class TestBaseAgent(test_base.BaseTestCase):
         wsgi_server.serve_forever.assert_called_once_with()
 
         self.agent.heartbeater.start.assert_called_once_with()
+        mocked_init_hardware.assert_called_once_with(mock.ANY)
 
     @mock.patch.object(inspector, 'inspect', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager, 'initialize_hardware',
+                       autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
     def test_run_with_inspection(self, mocked_list_hardware, wsgi_server_cls,
-                                 mocked_inspector):
+                                 mocked_init_hardware, mocked_inspector):
         CONF.set_override('inspection_callback_url', 'http://foo/bar',
                           enforce_type=True)
 
@@ -231,6 +237,7 @@ class TestBaseAgent(test_base.BaseTestCase):
             self.agent.api_client.lookup_node.call_args[1]['node_uuid'])
 
         self.agent.heartbeater.start.assert_called_once_with()
+        mocked_init_hardware.assert_called_once_with(mock.ANY)
 
     def test_async_command_success(self):
         result = base.AsyncCommandResult('foo_command', {'fail': False},
