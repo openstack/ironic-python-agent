@@ -1,0 +1,5 @@
+---
+fixes:
+  - On start up wait up to 30 seconds for the first disk device suitable for
+    deployment to appear. This is to fix both inspection and deployment on
+    hardware that takes long to initialize (e.g. some RAID devices).

@@ -127,6 +127,8 @@ class TestHeartbeater(test_base.BaseTestCase):
         self.assertEqual(2.7, self.heartbeater.error_delay)
 
 
+@mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
+                   lambda self: None)
 class TestBaseAgent(test_base.BaseTestCase):
 
     def setUp(self):
@@ -294,6 +296,8 @@ class TestBaseAgent(test_base.BaseTestCase):
                           self.agent.get_node_uuid)
 
 
+@mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
+                   lambda self: None)
 class TestAgentStandalone(test_base.BaseTestCase):
 
     def setUp(self):
@@ -338,6 +342,8 @@ class TestAgentStandalone(test_base.BaseTestCase):
         self.assertFalse(self.agent.api_client.lookup_node.called)
 
 
+@mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
+                   lambda self: None)
 @mock.patch.object(socket, 'gethostbyname', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestAdvertiseAddress(test_base.BaseTestCase):
