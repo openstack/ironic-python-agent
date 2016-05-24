@@ -16,6 +16,7 @@ import abc
 import functools
 import os
 import shlex
+import time
 
 import netifaces
 from oslo_concurrency import processutils
@@ -37,6 +38,9 @@ LOG = log.getLogger()
 UNIT_CONVERTER = pint.UnitRegistry(filename=None)
 UNIT_CONVERTER.define('MB = []')
 UNIT_CONVERTER.define('GB = 1024 MB')
+
+_DISK_WAIT_ATTEMPTS = 10
+_DISK_WAIT_DELAY = 3
 
 
 def _get_device_vendor(dev):
@@ -394,7 +398,26 @@ class GenericHardwareManager(HardwareManager):
         self.sys_path = '/sys'
 
     def evaluate_hardware_support(self):
+        # Do some initialization before we declare ourself ready
+        self._wait_for_disks()
         return HardwareSupport.GENERIC
+
+    def _wait_for_disks(self):
+        # Wait for at least one suitable disk to show up, otherwise neither
+        # inspection not deployment have any chances to succeed.
+        for attempt in range(_DISK_WAIT_ATTEMPTS):
+            try:
+                block_devices = self.list_block_devices()
+                utils.guess_root_disk(block_devices)
+            except errors.DeviceNotFound:
+                LOG.debug('Still waiting for at least one disk to appear, '
+                          'attempt %d of %d', attempt + 1, _DISK_WAIT_ATTEMPTS)
+                time.sleep(_DISK_WAIT_DELAY)
+            else:
+                break
+        else:
+            LOG.warning('No disks detected in %d seconds',
+                        _DISK_WAIT_DELAY * _DISK_WAIT_ATTEMPTS)
 
     def _get_interface_info(self, interface_name):
         addr_path = '{0}/class/net/{1}/address'.format(self.sys_path,
