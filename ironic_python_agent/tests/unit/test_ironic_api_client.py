@@ -41,7 +41,10 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.hardware_info = {
             'interfaces': [
                 hardware.NetworkInterface('eth0', '00:0c:29:8c:11:b1'),
-                hardware.NetworkInterface('eth1', '00:0c:29:8c:11:b2'),
+                hardware.NetworkInterface(
+                    'eth1', '00:0c:29:8c:11:b2',
+                    lldp=[(1, '04885a92ec5459'),
+                          (2, '0545746865726e6574312f3138')]),
             ],
             'cpu': hardware.CPU('Awesome Jay CPU x10 9001', '9001', '10',
                                 'ARMv9'),
@@ -162,6 +165,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'switch_chassis_descr': None,
                     u'switch_port_descr': None,
                     u'has_carrier': True,
+                    u'lldp': None,
                 },
                 {
                     u'mac_address': u'00:0c:29:8c:11:b2',
@@ -170,6 +174,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'switch_chassis_descr': None,
                     u'switch_port_descr': None,
                     u'has_carrier': True,
+                    u'lldp': [[1, u'04885a92ec5459'],
+                              [2, u'0545746865726e6574312f3138']],
                 }
             ],
             u'cpu': {
@@ -300,6 +306,7 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'switch_chassis_descr': None,
                     u'switch_port_descr': None,
                     u'has_carrier': True,
+                    u'lldp': None,
                 },
                 {
                     u'mac_address': u'00:0c:29:8c:11:b2',
@@ -308,6 +315,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'switch_chassis_descr': None,
                     u'switch_port_descr': None,
                     u'has_carrier': True,
+                    u'lldp': [[1, u'04885a92ec5459'],
+                              [2, u'0545746865726e6574312f3138']],
                 }
             ],
             u'cpu': {

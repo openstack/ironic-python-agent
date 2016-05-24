@@ -1,0 +1,12 @@
+---
+features:
+  - Add support for LLDP data in the returned inventory when option
+    collect_lldp is set to True. Each interface returned in the inventory that
+    receives an LLDP packet will contain the whole LLDP packet represented as a
+    list of TLVs in the field 'lldp'.
+upgrade:
+  - Deprecated reserved fields switch_port_descr and switch_chassis_descr in
+    favor of returning the whole LLDP packet for each interface so that IPA
+    processing of this data remains generic and full processing can be
+    customised server side instead of having to create custom ramdisks. These
+    fields will be removed in Ocata.

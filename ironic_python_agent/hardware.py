@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import abc
+import binascii
 import functools
 import os
 import shlex
@@ -31,6 +32,7 @@ import stevedore
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
+from ironic_python_agent import netutils
 from ironic_python_agent import utils
 
 _global_managers = None
@@ -181,14 +183,17 @@ class BlockDevice(encoding.SerializableComparable):
 class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'switch_port_descr',
                            'switch_chassis_descr', 'ipv4_address',
-                           'has_carrier')
+                           'has_carrier', 'lldp')
 
-    def __init__(self, name, mac_addr, ipv4_address=None, has_carrier=True):
+    def __init__(self, name, mac_addr, ipv4_address=None, has_carrier=True,
+                 lldp=None):
         self.name = name
         self.mac_address = mac_addr
         self.ipv4_address = ipv4_address
         self.has_carrier = has_carrier
-        # TODO(russellhaering): Pull these from LLDP
+        self.lldp = lldp
+        # TODO(sambetts) Remove these fields in Ocata, they have been
+        # superseded by self.lldp
         self.switch_port_descr = None
         self.switch_chassis_descr = None
 
@@ -412,6 +417,7 @@ class GenericHardwareManager(HardwareManager):
 
     def __init__(self):
         self.sys_path = '/sys'
+        self.lldp_data = {}
 
     def evaluate_hardware_support(self):
         # Do some initialization before we declare ourself ready
@@ -441,6 +447,32 @@ class GenericHardwareManager(HardwareManager):
             LOG.warning('No disks detected in %d seconds',
                         CONF.disk_wait_delay * CONF.disk_wait_attempts)
 
+    def _cache_lldp_data(self, interface_names):
+        interface_names = [name for name in interface_names if name != 'lo']
+        try:
+            raw_lldp_data = netutils.get_lldp_info(interface_names)
+        except Exception:
+            # NOTE(sambetts) The get_lldp_info function will log this exception
+            # and we don't invalidate any existing data in the cache if we fail
+            # to get data to replace it so just return.
+            return
+        for ifname, tlvs in raw_lldp_data.items():
+            # NOTE(sambetts) Convert each tlv value to hex so that it can be
+            # serialised safely
+            processed_tlvs = []
+            for typ, data in tlvs:
+                try:
+                    processed_tlvs.append((typ,
+                                           binascii.hexlify(data).decode()))
+                except (binascii.Error, binascii.Incomplete) as e:
+                    LOG.warning('An error occurred while processing TLV type '
+                                '%s for interface %s: %s', (typ, ifname, e))
+            self.lldp_data[ifname] = processed_tlvs
+
+    def _get_lldp_data(self, interface_name):
+        if self.lldp_data:
+            return self.lldp_data.get(interface_name)
+
     def _get_interface_info(self, interface_name):
         addr_path = '{0}/class/net/{1}/address'.format(self.sys_path,
                                                        interface_name)
@@ -450,7 +482,8 @@ class GenericHardwareManager(HardwareManager):
         return NetworkInterface(
             interface_name, mac_addr,
             ipv4_address=self.get_ipv4_addr(interface_name),
-            has_carrier=self._interface_has_carrier(interface_name))
+            has_carrier=self._interface_has_carrier(interface_name),
+            lldp=self._get_lldp_data(interface_name))
 
     def get_ipv4_addr(self, interface_id):
         try:
@@ -478,9 +511,12 @@ class GenericHardwareManager(HardwareManager):
 
     def list_network_interfaces(self):
         iface_names = os.listdir('{0}/class/net'.format(self.sys_path))
-        return [self._get_interface_info(name)
-                for name in iface_names
-                if self._is_device(name)]
+        iface_names = [name for name in iface_names if self._is_device(name)]
+
+        if CONF.collect_lldp:
+            self._cache_lldp_data(iface_names)
+
+        return [self._get_interface_info(name) for name in iface_names]
 
     def get_cpus(self):
         lines = utils.execute('lscpu')[0]
