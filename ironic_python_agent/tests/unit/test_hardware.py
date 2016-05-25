@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import time
+
 import mock
 import netifaces
-import os
 from oslo_concurrency import processutils
 from oslo_utils import units
 from oslotest import base as test_base
@@ -1083,6 +1085,40 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                          self.hardware.get_system_vendor_info().serial_number)
         self.assertEqual('NEC',
                          self.hardware.get_system_vendor_info().manufacturer)
+
+    @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
+                       autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(utils, 'guess_root_disk', autospec=True)
+    def test_evaluate_hw_waits_for_disks(self, mocked_root_dev, mocked_sleep,
+                                         mocked_block_dev):
+        mocked_root_dev.side_effect = [
+            errors.DeviceNotFound('boom'),
+            None
+        ]
+
+        result = self.hardware.evaluate_hardware_support()
+
+        self.assertEqual(hardware.HardwareSupport.GENERIC, result)
+        mocked_root_dev.assert_called_with(mocked_block_dev.return_value)
+        self.assertEqual(2, mocked_root_dev.call_count)
+        mocked_sleep.assert_called_once_with(hardware._DISK_WAIT_DELAY)
+
+    @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
+                       autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(utils, 'guess_root_disk', autospec=True)
+    def test_evaluate_hw_disks_timeout(self, mocked_root_dev, mocked_sleep,
+                                       mocked_block_dev):
+        mocked_root_dev.side_effect = errors.DeviceNotFound('boom')
+
+        result = self.hardware.evaluate_hardware_support()
+
+        self.assertEqual(hardware.HardwareSupport.GENERIC, result)
+        mocked_root_dev.assert_called_with(mocked_block_dev.return_value)
+        self.assertEqual(hardware._DISK_WAIT_ATTEMPTS,
+                         mocked_root_dev.call_count)
+        mocked_sleep.assert_called_with(hardware._DISK_WAIT_DELAY)
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
