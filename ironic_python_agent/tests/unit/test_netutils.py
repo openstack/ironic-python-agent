@@ -15,6 +15,7 @@
 import binascii
 
 import mock
+from oslo_config import cfg
 from oslotest import base as test_base
 
 from ironic_python_agent import netutils
@@ -27,6 +28,8 @@ FAKE_LLDP_PACKET = binascii.unhexlify(
     '040d0545746865726e6574312f3138'
     '06020078'
 )
+
+cfg.CONF.import_opt('lldp_timeout', 'ironic_python_agent.config')
 
 
 class TestNetutils(test_base.BaseTestCase):
