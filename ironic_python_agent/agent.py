@@ -147,7 +147,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
     def __init__(self, api_url, advertise_address, listen_address,
                  ip_lookup_attempts, ip_lookup_sleep, network_interface,
-                 lookup_timeout, lookup_interval, driver_name, standalone):
+                 lookup_timeout, lookup_interval, driver_name, standalone,
+                 hardware_initialization_delay=0):
         super(IronicPythonAgent, self).__init__()
         self.ext_mgr = extension.ExtensionManager(
             namespace='ironic_python_agent.extensions',
@@ -175,6 +176,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.ip_lookup_sleep = ip_lookup_sleep
         self.network_interface = network_interface
         self.standalone = standalone
+        self.hardware_initialization_delay = hardware_initialization_delay
 
     def get_status(self):
         """Retrieve a serializable status.
@@ -289,6 +291,12 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         # Cached hw managers at runtime, not load time. See bug 1490008.
         hardware.load_managers()
+        # Operator-settable delay before hardware actually comes up.
+        # Helps with slow RAID drivers - see bug 1582797.
+        if self.hardware_initialization_delay > 0:
+            LOG.info('Waiting %d seconds before proceeding',
+                     self.hardware_initialization_delay)
+            time.sleep(self.hardware_initialization_delay)
 
         if not self.standalone:
             # Inspection should be started before call to lookup, otherwise
