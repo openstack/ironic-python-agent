@@ -39,6 +39,7 @@ RUN apt-mark manual python-minimal
 # Install requirements separately, because pip understands a git+https url
 # while setuptools doesn't
 RUN proxy.sh pip install --upgrade pip
+# TODO(jroll) use upper-constraints here
 RUN proxy.sh pip install --no-cache-dir -r /tmp/ironic-python-agent/requirements.txt
 
 # This will succeed because all the dependencies were installed previously
