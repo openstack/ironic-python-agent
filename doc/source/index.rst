@@ -74,7 +74,7 @@ full endpoint of Ironic Inspector, for example::
 
 Make sure your DHCP environment is set to boot IPA by default.
 
-.. _Ironic Inspector: https://github.com/openstack/ironic-inspector
+.. _Ironic Inspector: http://docs.openstack.org/developer/ironic-inspector/
 
 Hardware Inventory
 ------------------
@@ -330,9 +330,9 @@ References
 .. [0] Enabling Drivers - http://docs.openstack.org/developer/ironic/drivers/ipa.html#ipa
 .. [1] CoreOS PXE Images - https://coreos.com/docs/running-coreos/bare-metal/booting-with-pxe/
 .. [2] CoreOS Cloud Init - https://coreos.com/docs/cluster-management/setup/cloudinit-cloud-config/
-.. [3] DIB Element for IPA - https://github.com/openstack/diskimage-builder/tree/master/elements/ironic-agent
+.. [3] DIB Element for IPA - http://docs.openstack.org/developer/diskimage-builder/elements/ironic-agent/README.html
 .. [4] Ironic Cleaning - http://docs.openstack.org/developer/ironic/deploy/cleaning.html
-.. [5] cloud-config.yaml - https://github.com/openstack/ironic-python-agent/blob/master/imagebuild/coreos/oem/cloud-config.yml
+.. [5] cloud-config.yaml - https://git.openstack.org/cgit/openstack/ironic-python-agent/tree/imagebuild/coreos/oem/cloud-config.yml
 
 Indices and tables
 ==================
