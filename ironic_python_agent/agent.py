@@ -311,6 +311,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                 node_uuid=uuid)
 
             self.node = content['node']
+            hardware.cache_node(self.node)
             self.heartbeat_timeout = content['heartbeat_timeout']
 
         wsgi = simple_server.make_server(

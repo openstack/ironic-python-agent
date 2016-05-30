@@ -403,42 +403,6 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         mkdtemp_mock.assert_called_once_with()
         rmtree_mock.assert_called_once_with("/tempdir")
 
-    @mock.patch.object(utils, 'get_agent_params')
-    def test_parse_root_device_hints(self, mock_get_params):
-        mock_get_params.return_value = {
-            'root_device': 'vendor=SpongeBob,model=Square%20Pants',
-            'ipa-api-url': 'http://1.2.3.4:1234'
-        }
-        expected = {'vendor': 'spongebob', 'model': 'square pants'}
-        result = utils.parse_root_device_hints()
-        self.assertEqual(expected, result)
-
-    @mock.patch.object(utils, 'get_agent_params')
-    def test_parse_root_device_hints_no_hints(self, mock_get_params):
-        mock_get_params.return_value = {
-            'ipa-api-url': 'http://1.2.3.4:1234'
-        }
-        result = utils.parse_root_device_hints()
-        self.assertEqual({}, result)
-
-    @mock.patch.object(utils, 'get_agent_params')
-    def test_parse_root_device_size(self, mock_get_params):
-        mock_get_params.return_value = {
-            'root_device': 'size=12345',
-            'ipa-api-url': 'http://1.2.3.4:1234'
-        }
-        result = utils.parse_root_device_hints()
-        self.assertEqual(12345, result['size'])
-
-    @mock.patch.object(utils, 'get_agent_params')
-    def test_parse_root_device_not_supported(self, mock_get_params):
-        mock_get_params.return_value = {
-            'root_device': 'foo=bar,size=12345',
-            'ipa-api-url': 'http://1.2.3.4:1234'
-        }
-        self.assertRaises(errors.DeviceNotFound,
-                          utils.parse_root_device_hints)
-
 
 class TestFailures(testtools.TestCase):
     def test_get_error(self):

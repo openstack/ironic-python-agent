@@ -321,17 +321,23 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
         self.assertFalse(interfaces[0].has_carrier)
 
+    @mock.patch.object(hardware, 'get_cached_node')
     @mock.patch.object(utils, 'execute')
-    def test_get_os_install_device(self, mocked_execute):
+    def test_get_os_install_device(self, mocked_execute, mock_cached_node):
+        mock_cached_node.return_value = None
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
         mocked_execute.assert_called_once_with(
             'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
+        mock_cached_node.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'get_cached_node')
     @mock.patch.object(utils, 'execute')
-    def test_get_os_install_device_fails(self, mocked_execute):
+    def test_get_os_install_device_fails(self, mocked_execute,
+                                         mock_cached_node):
         """Fail to find device >=4GB w/o root device hints"""
+        mock_cached_node.return_value = None
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
         ex = self.assertRaises(errors.DeviceNotFound,
                                self.hardware.get_os_install_device)
@@ -339,13 +345,14 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertIn(str(4 * units.Gi), ex.details)
+        mock_cached_node.assert_called_once_with()
 
     @mock.patch.object(hardware, 'list_all_block_devices')
-    @mock.patch.object(utils, 'parse_root_device_hints')
+    @mock.patch.object(hardware, 'get_cached_node')
     def _get_os_install_device_root_device_hints(self, hints, expected_device,
-                                                 mock_root_device, mock_dev):
+                                                 mock_cached_node, mock_dev):
+        mock_cached_node.return_value = {'properties': {'root_device': hints}}
         model = 'fastable sd131 7'
-        mock_root_device.return_value = hints
         mock_dev.return_value = [
             hardware.BlockDevice(name='/dev/sda',
                                  model='TinyUSB Drive',
@@ -369,7 +376,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         self.assertEqual(expected_device,
                          self.hardware.get_os_install_device())
-        mock_root_device.assert_called_once_with()
+        mock_cached_node.assert_called_once_with()
         mock_dev.assert_called_once_with()
 
     def test_get_os_install_device_root_device_hints_model(self):
@@ -397,15 +404,18 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             {'name': '/dev/sdb'}, '/dev/sdb')
 
     @mock.patch.object(hardware, 'list_all_block_devices')
-    @mock.patch.object(utils, 'parse_root_device_hints')
+    @mock.patch.object(hardware, 'get_cached_node')
     def test_get_os_install_device_root_device_hints_no_device_found(
-            self, mock_root_device, mock_dev):
+            self, mock_cached_node, mock_dev):
         model = 'fastable sd131 7'
-        mock_root_device.return_value = {'model': model,
-                                         'wwn': 'fake-wwn',
-                                         'serial': 'fake-serial',
-                                         'vendor': 'fake-vendor',
-                                         'size': 10}
+        mock_cached_node.return_value = {
+            'properties': {
+                'root_device': {
+                    'model': model,
+                    'wwn': 'fake-wwn',
+                    'serial': 'fake-serial',
+                    'vendor': 'fake-vendor',
+                    'size': 10}}}
         # Model is different here
         mock_dev.return_value = [
             hardware.BlockDevice(name='/dev/sda',
@@ -425,7 +435,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         ]
         self.assertRaises(errors.DeviceNotFound,
                           self.hardware.get_os_install_device)
-        mock_root_device.assert_called_once_with()
+        mock_cached_node.assert_called_once_with()
         mock_dev.assert_called_once_with()
 
     def test__get_device_vendor(self):
