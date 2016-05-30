@@ -173,6 +173,22 @@ coreos:
         RemainAfterExit=yes
         ExecStart=/bin/ln -f /etc/resolv.conf /opt/ironic-python-agent/etc/resolv.conf
 
+    - name: opt-ironic\x2dpython\x2dagent-run-log.mount
+      command: start
+      content: |
+        [Unit]
+        DefaultDependencies=no
+        Conflicts=umount.target
+        Before=umount.target
+        After=ironic-python-agent-container-creation.service
+        Requires=ironic-python-agent-container-creation.service
+
+        [Mount]
+        What=/run/log
+        Where=/opt/ironic-python-agent/run/log
+        Type=none
+        Options=bind
+
     - name: ironic-python-agent.service
       command: start
       content: |
@@ -186,6 +202,7 @@ coreos:
         After=opt-ironic\x2dpython\x2dagent-run.mount
         After=opt-ironic\x2dpython\x2dagent-mnt.mount
         After=opt-ironic\x2dpython\x2dagent-etc-resolvconf.service
+        After=opt-ironic\x2dpython\x2dagent-run-log.mount
 
         Requires=ironic-python-agent-container-creation.service
         Requires=opt-ironic\x2dpython\x2dagent-proc.mount
@@ -195,6 +212,7 @@ coreos:
         Requires=opt-ironic\x2dpython\x2dagent-run.mount
         Requires=opt-ironic\x2dpython\x2dagent-mnt.mount
         Requires=opt-ironic\x2dpython\x2dagent-etc-resolvconf.service
+        Requires=opt-ironic\x2dpython\x2dagent-run-log.mount
 
         [Service]
         ExecStart=/usr/bin/chroot /opt/ironic-python-agent \

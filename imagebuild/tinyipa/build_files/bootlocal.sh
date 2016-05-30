@@ -22,4 +22,4 @@ export PYTHONOPTIMIZE=1
 # Run IPA
 echo "Starting Ironic Python Agent:"
 date
-ironic-python-agent
+ironic-python-agent 2>&1 | tee /var/log/ironic-python-agent.log

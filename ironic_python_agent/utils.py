@@ -12,11 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import copy
+import errno
 import glob
+import io
 import os
 import shutil
+import subprocess
+import tarfile
 import tempfile
+import time
 
 from oslo_concurrency import processutils
 from oslo_log import log as logging
@@ -42,6 +48,14 @@ LOG = logging.getLogger(__name__)
 # agent parameters that was passed (by proc/cmdline and/or virtual media)
 # when we read it for the first time, and then use this cache.
 AGENT_PARAMS_CACHED = dict()
+
+
+COLLECT_LOGS_COMMANDS = {
+    'ps': ['ps', '-ax'],
+    'df': ['df', '-a'],
+    'iptables': ['iptables', '-L'],
+    'ip_addr': ['ip', 'addr'],
+}
 
 
 def execute(*cmd, **kwargs):
@@ -305,3 +319,114 @@ def guess_root_disk(block_devices, min_size_required=4 * units.Gi):
     for device in block_devices:
         if device.size >= min_size_required:
             return device
+
+
+def is_journalctl_present():
+    """Check if the journalctl command is present.
+
+    :returns: True if journalctl is present, False if not.
+    """
+    try:
+        devnull = open(os.devnull)
+        subprocess.check_call(['journalctl', '--version'], stdout=devnull,
+                              stderr=devnull)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            return False
+    return True
+
+
+def get_command_output(command):
+    """Return the output of a given command.
+
+    :param command: The command to be executed.
+    :raises: CommandExecutionError if the execution of the command fails.
+    :returns: A BytesIO string with the output.
+    """
+    try:
+        out, _ = execute(*command, binary=True, log_stdout=False)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        error_msg = ('Failed to get the output of the command "%(command)s". '
+                     'Error: %(error)s' % {'command': command, 'error': e})
+        LOG.error(error_msg)
+        raise errors.CommandExecutionError(error_msg)
+    return io.BytesIO(out)
+
+
+def get_journalctl_output(lines=None, units=None):
+    """Query the contents of the systemd journal.
+
+    :param lines: Maximum number of lines to retrieve from the
+                  logs. If None, return everything.
+    :param units: A list with the names of the units we should
+                  retrieve the logs from. If None retrieve the logs
+                  for everything.
+    :returns: A log string.
+    """
+    cmd = ['journalctl', '--full', '--no-pager', '-b']
+    if lines is not None:
+        cmd.extend(['-n', str(lines)])
+    if units is not None:
+        [cmd.extend(['-u', u]) for u in units]
+
+    return get_command_output(cmd)
+
+
+def gzip_and_b64encode(io_dict=None, file_list=None):
+    """Gzip and base64 encode files and BytesIO buffers.
+
+    :param io_dict: A dictionary containg whose the keys are the file
+        names and the value a BytesIO object.
+    :param file_list: A list of file path.
+    :returns: A gzipped and base64 encoded string.
+    """
+    io_dict = io_dict or {}
+    file_list = file_list or []
+
+    with io.BytesIO() as fp:
+        with tarfile.open(fileobj=fp, mode='w:gz') as tar:
+            for fname in io_dict:
+                ioobj = io_dict[fname]
+                tarinfo = tarfile.TarInfo(name=fname)
+                tarinfo.size = ioobj.seek(0, 2)
+                tarinfo.mtime = time.time()
+                ioobj.seek(0)
+                tar.addfile(tarinfo, ioobj)
+
+            for f in file_list:
+                tar.add(f)
+
+        fp.seek(0)
+        return base64.b64encode(fp.getvalue())
+
+
+def collect_system_logs(journald_max_lines=None):
+    """Collect system logs.
+
+    Collect system logs, for distributions using systemd the logs will
+    come from journald. On other distributions the logs will come from
+    the /var/log directory and dmesg output.
+
+    :param journald_max_lines: Maximum number of lines to retrieve from
+                               the journald. if None, return everything.
+    :returns: A tar, gzip base64 encoded string with the logs.
+    """
+
+    def try_get_command_output(io_dict, file_name, command):
+        try:
+            io_dict[file_name] = get_command_output(command)
+        except errors.CommandExecutionError:
+            pass
+
+    io_dict = {}
+    file_list = []
+    if is_journalctl_present():
+        io_dict['journal'] = get_journalctl_output(lines=journald_max_lines)
+    else:
+        try_get_command_output(io_dict, 'dmesg', ['dmesg'])
+        file_list.append('/var/log')
+
+    for name, cmd in COLLECT_LOGS_COMMANDS.items():
+        try_get_command_output(io_dict, name, cmd)
+
+    return gzip_and_b64encode(io_dict=io_dict, file_list=file_list)
