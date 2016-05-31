@@ -28,8 +28,6 @@ from ironic_python_agent import errors
 LOG = logging.getLogger(__name__)
 
 
-SUPPORTED_ROOT_DEVICE_HINTS = set(('size', 'model', 'wwn', 'serial', 'vendor'))
-
 # Agent parameters can be passed by kernel command-line arguments and/or
 # by virtual media. Virtual media parameters passed would be available
 # when the agent is started, but might not be available for re-reading
