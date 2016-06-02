@@ -258,6 +258,8 @@ class BaseDiscoverTest(unittest.TestCase):
                                      rotational=True)
             ],
             'bmc_address': '1.2.3.4',
+            'boot': hardware.BootInfo(current_boot_mode='bios',
+                                      pxe_interface='boot:if')
         }
         self.failures = utils.AccumulatedFailures()
         self.data = {}
@@ -327,8 +329,6 @@ class TestDiscoverSchedulingProperties(BaseDiscoverTest):
                          self.data)
 
 
-@mock.patch.object(utils, 'get_agent_params',
-                   lambda: {'BOOTIF': 'boot:if'})
 @mock.patch.object(inspector, 'wait_for_dhcp', autospec=True)
 @mock.patch.object(inspector, 'discover_scheduling_properties', autospec=True)
 @mock.patch.object(inspector, 'discover_network_properties', autospec=True)

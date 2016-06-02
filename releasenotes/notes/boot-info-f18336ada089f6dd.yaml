@@ -1,0 +1,4 @@
+---
+features:
+  - Introduced "boot" field into the inventory, with "current_boot_mode" and
+    "pxe_interface" fields. Both will be used for inspection.

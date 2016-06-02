@@ -553,6 +553,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
         ]
 
+        self.hardware.get_boot_info = mock.Mock()
+        self.hardware.get_boot_info.return_value = hardware.BootInfo(
+            current_boot_mode='bios', pxe_interface='boot:if')
+
         hardware_info = self.hardware.list_hardware_info()
         self.assertEqual(self.hardware.get_memory(), hardware_info['memory'])
         self.assertEqual(self.hardware.get_cpus(), hardware_info['cpu'])
@@ -560,6 +564,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                          hardware_info['disks'])
         self.assertEqual(self.hardware.list_network_interfaces(),
                          hardware_info['interfaces'])
+        self.assertEqual(self.hardware.get_boot_info(),
+                         hardware_info['boot'])
 
     @mock.patch.object(hardware, 'list_all_block_devices')
     def test_list_block_devices(self, list_mock):
@@ -1172,6 +1178,30 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual(hardware._DISK_WAIT_ATTEMPTS,
                          mocked_root_dev.call_count)
         mocked_sleep.assert_called_with(hardware._DISK_WAIT_DELAY)
+
+    @mock.patch.object(utils, 'get_agent_params',
+                       lambda: {'BOOTIF': 'boot:if'})
+    @mock.patch.object(os.path, 'isdir', autospec=True)
+    def test_get_boot_info_pxe_interface(self, mocked_isdir):
+        mocked_isdir.return_value = False
+        result = self.hardware.get_boot_info()
+        self.assertEqual(hardware.BootInfo(current_boot_mode='bios',
+                                           pxe_interface='boot:if'),
+                         result)
+
+    @mock.patch.object(os.path, 'isdir', autospec=True)
+    def test_get_boot_info_bios(self, mocked_isdir):
+        mocked_isdir.return_value = False
+        result = self.hardware.get_boot_info()
+        self.assertEqual(hardware.BootInfo(current_boot_mode='bios'), result)
+        mocked_isdir.assert_called_once_with('/sys/firmware/efi')
+
+    @mock.patch.object(os.path, 'isdir', autospec=True)
+    def test_get_boot_info_uefi(self, mocked_isdir):
+        mocked_isdir.return_value = True
+        result = self.hardware.get_boot_info()
+        self.assertEqual(hardware.BootInfo(current_boot_mode='uefi'), result)
+        mocked_isdir.assert_called_once_with('/sys/firmware/efi')
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
