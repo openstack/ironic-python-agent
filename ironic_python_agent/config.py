@@ -58,7 +58,7 @@ cli_opts = [
     cfg.IntOpt('ip_lookup_sleep',
                default=int(APARAMS.get('ipa-ip-lookup-timeout', 10)),
                deprecated_name='ip-lookup-sleep',
-               help='The amaount of time to sleep between attempts'
+               help='The amount of time to sleep between attempts'
                     'to determine IP address.'),
 
     cfg.StrOpt('network_interface',
@@ -88,7 +88,8 @@ cli_opts = [
                help='The Ironic driver in use for this node'),
 
     cfg.FloatOpt('lldp_timeout',
-                 default=APARAMS.get('lldp-timeout', 30.0),
+                 default=APARAMS.get('ipa-lldp-timeout',
+                                     APARAMS.get('lldp-timeout', 30.0)),
                  help='The amount of seconds to wait for LLDP packets.'),
 
     cfg.BoolOpt('standalone',
