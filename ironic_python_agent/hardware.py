@@ -20,6 +20,7 @@ import time
 
 import netifaces
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import units
 import pint
@@ -34,13 +35,11 @@ from ironic_python_agent import utils
 
 _global_managers = None
 LOG = log.getLogger()
+CONF = cfg.CONF
 
 UNIT_CONVERTER = pint.UnitRegistry(filename=None)
 UNIT_CONVERTER.define('MB = []')
 UNIT_CONVERTER.define('GB = 1024 MB')
-
-_DISK_WAIT_ATTEMPTS = 10
-_DISK_WAIT_DELAY = 3
 
 NODE = None
 
@@ -408,21 +407,27 @@ class GenericHardwareManager(HardwareManager):
         return HardwareSupport.GENERIC
 
     def _wait_for_disks(self):
-        # Wait for at least one suitable disk to show up, otherwise neither
-        # inspection not deployment have any chances to succeed.
-        for attempt in range(_DISK_WAIT_ATTEMPTS):
+        """Wait for disk to appear
+
+        Wait for at least one suitable disk to show up, otherwise neither
+        inspection not deployment have any chances to succeed.
+
+        """
+
+        for attempt in range(CONF.disk_wait_attempts):
             try:
                 block_devices = self.list_block_devices()
                 utils.guess_root_disk(block_devices)
             except errors.DeviceNotFound:
                 LOG.debug('Still waiting for at least one disk to appear, '
-                          'attempt %d of %d', attempt + 1, _DISK_WAIT_ATTEMPTS)
-                time.sleep(_DISK_WAIT_DELAY)
+                          'attempt %d of %d', attempt + 1,
+                          CONF.disk_wait_attempts)
+                time.sleep(CONF.disk_wait_delay)
             else:
                 break
         else:
             LOG.warning('No disks detected in %d seconds',
-                        _DISK_WAIT_DELAY * _DISK_WAIT_ATTEMPTS)
+                        CONF.disk_wait_delay * CONF.disk_wait_attempts)
 
     def _get_interface_info(self, interface_name):
         addr_path = '{0}/class/net/{1}/address'.format(self.sys_path,
