@@ -16,6 +16,7 @@
 import base64
 import io
 import json
+import os
 import tarfile
 import time
 
@@ -381,3 +382,52 @@ def collect_extra_hardware(data, failures):
     except ValueError as exc:
         msg = 'JSON returned from hardware-detect cannot be decoded: %s'
         failures.add(msg, exc)
+
+
+def collect_pci_devices_info(data, failures):
+    """Collect a list of PCI devices.
+
+    Each PCI device entry in list is a dictionary containing vendor_id and
+    product_id keys, which will be then used by the ironic inspector to
+    distinguish various PCI devices.
+
+    The data is gathered from /sys/bus/pci/devices directory.
+
+    :param data: mutable data that we'll send to inspector
+    :param failures: AccumulatedFailures object
+    """
+    pci_devices_path = '/sys/bus/pci/devices'
+    pci_devices_info = []
+    try:
+        subdirs = os.listdir(pci_devices_path)
+    except OSError as exc:
+        msg = 'Failed to get list of PCI devices: %s'
+        failures.add(msg, exc)
+        return
+    for subdir in subdirs:
+        if not os.path.isdir(os.path.join(pci_devices_path, subdir)):
+            continue
+        try:
+            # note(sborkows): ids located in files inside PCI devices
+            # directory are stored in hex format (0x1234 for example) and
+            # we only need that part after 'x' delimiter
+            with open(os.path.join(pci_devices_path, subdir,
+                                   'vendor')) as vendor_file:
+                vendor = vendor_file.read().strip().split('x')[1]
+            with open(os.path.join(pci_devices_path, subdir,
+                                   'device')) as vendor_device:
+                device = vendor_device.read().strip().split('x')[1]
+        except IOError as exc:
+            LOG.warning('Failed to gather vendor id or product id '
+                        'from PCI device %s: %s', subdir, exc)
+            continue
+        except IndexError as exc:
+            LOG.warning('Wrong format of vendor id or product id in PCI '
+                        'device %s: %s', subdir, exc)
+            continue
+        LOG.debug(
+            'Found a PCI device with vendor id %s and product id %s',
+            vendor, device)
+        pci_devices_info.append({'vendor_id': vendor,
+                                 'product_id': device})
+    data['pci_devices'] = pci_devices_info

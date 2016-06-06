@@ -1,0 +1,9 @@
+---
+features:
+  - Adds new PCI devices collector named "pci_devices"
+    to inspector module.
+    Data is gathered from /sys/bus/pci/devices directory
+    and is stored under "pci_devices" key as a dictionary
+    containing "vendor_id" and "product_id" keys, which
+    then will be used by the inspector to distinguish
+    various PCI devices.
