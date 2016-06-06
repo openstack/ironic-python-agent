@@ -1,0 +1,5 @@
+---
+fixes:
+  - Every other Ironic python agent kernel parameter is prefixed with "ipa-".
+    This patch allows users to use the old "lldp-timeout" parameter or the
+    new "ipa-lldp-timeout" parameter.
