@@ -69,6 +69,27 @@ def _udev_settle():
         return
 
 
+def _check_for_iscsi():
+    """Connect iSCSI shared connected via iBFT or OF.
+
+    iscsistart -f will print the iBFT or OF info.
+    In case such connection exists, we would like to issue
+    iscsistart -b to create a session to the target.
+    - if no connection is detected we simply return.
+    """
+    try:
+        utils.execute('iscsistart', '-f')
+    except (processutils.ProcessExecutionError, EnvironmentError) as e:
+        LOG.debug("No iscsi connection detected. Skipping iscsi. "
+                  "Error: %s", e)
+        return
+    try:
+        utils.execute('iscsistart', '-b')
+    except processutils.ProcessExecutionError as e:
+        LOG.warning("Something went wrong executing 'iscsistart -b' "
+                    "Error: %s", e)
+
+
 def list_all_block_devices(block_type='disk'):
     """List all physical block devices
 
@@ -82,7 +103,6 @@ def list_all_block_devices(block_type='disk'):
     :param block_type: Type of block device to find
     :return: A list of BlockDevices
     """
-
     _udev_settle()
 
     columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
@@ -415,6 +435,7 @@ class GenericHardwareManager(HardwareManager):
 
     def evaluate_hardware_support(self):
         # Do some initialization before we declare ourself ready
+        _check_for_iscsi()
         self._wait_for_disks()
         return HardwareSupport.GENERIC
 
