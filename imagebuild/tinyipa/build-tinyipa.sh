@@ -12,6 +12,11 @@ CHROOT_CMD="sudo chroot $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$
 TC=1001
 STAFF=50
 
+# NOTE(moshele): Git < 1.7.10 requires a separate checkout, see LP #1590912
+function clone_and_checkout {
+    git clone $1 $2 --depth=1 --branch $3; cd $2; git checkout $3; cd -
+}
+
 echo "Building tinyipa:"
 
 # Ensure we have an extended sudo to prevent the need to enter a password over
@@ -49,8 +54,8 @@ sudo sh -c "echo $TINYCORE_MIRROR_URL > $BUILDDIR/opt/tcemirror"
 ( cd "$BUILDDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
 
 # Download TGT and Qemu-utils source
-git clone https://github.com/fujita/tgt.git $BUILDDIR/tmp/tgt --depth=1 --branch v1.0.62
-git clone https://github.com/qemu/qemu.git $BUILDDIR/tmp/qemu --depth=1 --branch v2.5.0
+clone_and_checkout "https://github.com/fujita/tgt.git" "${BUILDDIR}/tmp/tgt" "v1.0.62"
+clone_and_checkout "https://github.com/qemu/qemu.git" "${BUILDDIR}/tmp/qemu" "v2.5.0"
 
 # Create directory for python local mirror
 mkdir -p "$BUILDDIR/tmp/localpip"
