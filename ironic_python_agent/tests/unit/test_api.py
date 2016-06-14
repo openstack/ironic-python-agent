@@ -31,13 +31,13 @@ class TestIronicAPI(test_base.BaseTestCase):
     def setUp(self):
         super(TestIronicAPI, self).setUp()
         self.mock_agent = mock.MagicMock()
-        self.app = self._make_app(self.mock_agent)
+        self.app = self._make_app()
 
     def tearDown(self):
         super(TestIronicAPI, self).tearDown()
         pecan.set_config({}, overwrite=True)
 
-    def _make_app(self, enable_acl=False):
+    def _make_app(self):
         self.config = {
             'app': {
                 'root': 'ironic_python_agent.api.controllers.root.'
