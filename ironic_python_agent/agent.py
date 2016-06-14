@@ -38,6 +38,13 @@ from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)
 
+# Time(in seconds) to wait for any of the interfaces to be up
+# before lookup of the node is attempted
+NETWORK_WAIT_TIMEOUT = 60
+
+# Time(in seconds) to wait before reattempt
+NETWORK_WAIT_RETRY = 5
+
 
 def _time():
     """Wraps time.time() for simpler testing."""
@@ -283,6 +290,24 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         if not self.standalone:
             self.heartbeater.force_heartbeat()
 
+    def _wait_for_interface(self):
+        """Wait until at least one interface is up."""
+
+        wait_till = time.time() + NETWORK_WAIT_TIMEOUT
+        while time.time() < wait_till:
+            interfaces = hardware.dispatch_to_managers(
+                'list_network_interfaces')
+            if not any(ifc.mac_address for ifc in interfaces):
+                LOG.debug('Network is not up yet. '
+                          'No valid interfaces found, retrying ...')
+                time.sleep(NETWORK_WAIT_RETRY)
+            else:
+                break
+
+        else:
+            LOG.warning("No valid network interfaces found. "
+                        "Node lookup will probably fail.")
+
     def run(self):
         """Run the Ironic Python Agent."""
         # Get the UUID so we can heartbeat to Ironic. Raises LookupNodeError
@@ -303,6 +328,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             # lookup will fail due to unknown MAC.
             uuid = inspector.inspect()
 
+            self._wait_for_interface()
             content = self.api_client.lookup_node(
                 hardware_info=hardware.dispatch_to_managers(
                     'list_hardware_info'),

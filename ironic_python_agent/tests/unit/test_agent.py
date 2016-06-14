@@ -150,6 +150,8 @@ class TestBaseAgent(test_base.BaseTestCase):
             make_test_instance([extension.Extension('fake', None,
                                                     FakeExtension,
                                                     FakeExtension())])
+        self.sample_nw_iface = hardware.NetworkInterface(
+            "eth9", "AA:BB:CC:DD:EE:FF", "1.2.3.4", True)
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
@@ -169,9 +171,11 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertEqual(pkg_resources.get_distribution('ironic-python-agent')
                          .version, status.version)
 
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface')
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
-    def test_run(self, mocked_list_hardware, wsgi_server_cls):
+    def test_run(self, wsgi_server_cls, mocked_dispatch, mocked_wait):
         CONF.set_override('inspection_callback_url', '', enforce_type=True)
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
@@ -193,14 +197,19 @@ class TestBaseAgent(test_base.BaseTestCase):
             self.agent.api,
             server_class=simple_server.WSGIServer)
         wsgi_server.serve_forever.assert_called_once_with()
-
+        mocked_wait.assert_called_once_with()
+        mocked_dispatch.assert_called_once_with("list_hardware_info")
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface')
     @mock.patch.object(inspector, 'inspect', autospec=True)
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
     def test_run_with_inspection(self, mocked_list_hardware, wsgi_server_cls,
-                                 mocked_inspector):
+                                 mocked_dispatch, mocked_inspector,
+                                 mocked_wait):
         CONF.set_override('inspection_callback_url', 'http://foo/bar',
                           enforce_type=True)
 
@@ -232,7 +241,33 @@ class TestBaseAgent(test_base.BaseTestCase):
             'uuid',
             self.agent.api_client.lookup_node.call_args[1]['node_uuid'])
 
+        mocked_wait.assert_called_once_with()
+        mocked_dispatch.assert_called_once_with("list_hardware_info")
         self.agent.heartbeater.start.assert_called_once_with()
+
+    @mock.patch.object(time, 'time', autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    def test__wait_for_interface(self, mocked_dispatch, mocked_sleep,
+                                 mock_time):
+        mocked_dispatch.return_value = [self.sample_nw_iface, {}]
+        mock_time.return_value = 10
+        self.agent._wait_for_interface()
+        mocked_dispatch.assert_called_once_with('list_network_interfaces')
+        self.assertFalse(mocked_sleep.called)
+
+    @mock.patch.object(time, 'time', autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    def test__wait_for_interface_expired(self, mocked_dispatch, mocked_sleep,
+                                         mock_time):
+        mock_time.side_effect = [10, 11, 20, 25, 30]
+        mocked_dispatch.side_effect = [[], [], [self.sample_nw_iface], {}]
+        expected_sleep_calls = [mock.call(agent.NETWORK_WAIT_RETRY)] * 2
+        expected_dispatch_calls = [mock.call("list_network_interfaces")] * 3
+        self.agent._wait_for_interface()
+        mocked_dispatch.assert_has_calls(expected_dispatch_calls)
+        mocked_sleep.assert_has_calls(expected_sleep_calls)
 
     @mock.patch.object(time, 'sleep', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
