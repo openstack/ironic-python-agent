@@ -146,7 +146,7 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         read_mock.assert_called_once_with()
         self.assertEqual('http://localhost:9999', params['api-url'])
         self.assertEqual('bar', params['foo'])
-        self.assertFalse('baz' in params)
+        self.assertNotIn('baz', params)
 
     @mock.patch.object(utils, '_set_cached_params')
     @mock.patch.object(utils, '_read_params_from_file')
