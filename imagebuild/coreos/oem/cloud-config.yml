@@ -17,6 +17,9 @@ coreos:
     - name: media-configvirtfs.mount
       mask: true
 
+    - name: usr-share-oem.mount
+      mask: true
+
     - name: ironic-python-agent-embed-ssh-keys.service
       command: start
       content: |
