@@ -118,7 +118,8 @@ class TestIronicAPI(test_base.BaseTestCase):
                                   status=status, method="post")
 
     def get_json(self, path, expect_errors=False, headers=None,
-                 extra_environ=None, q=[], path_prefix=PATH_PREFIX, **params):
+                 extra_environ=None, q=None, path_prefix=PATH_PREFIX,
+                 **params):
         """Sends simulated HTTP GET request to Pecan test app.
 
         :param path: url path of target service
@@ -137,6 +138,7 @@ class TestIronicAPI(test_base.BaseTestCase):
                         'q.value': [],
                         'q.op': [],
                         }
+        q = [] if q is None else q
         for query in q:
             for name in ['field', 'op', 'value']:
                 query_params['q.%s' % name].append(query.get(name, ''))
