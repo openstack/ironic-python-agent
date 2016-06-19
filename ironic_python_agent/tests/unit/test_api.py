@@ -161,8 +161,8 @@ class TestIronicAPI(test_base.BaseTestCase):
     def test_v1_root(self):
         response = self.get_json('/v1', path_prefix='')
         data = response.json
-        self.assertTrue('status' in data.keys())
-        self.assertTrue('commands' in data.keys())
+        self.assertIn('status', data)
+        self.assertIn('commands', data)
 
     def test_get_agent_status(self):
         status = agent.IronicPythonAgentStatus(time.time(),
@@ -264,9 +264,9 @@ class TestIronicAPI(test_base.BaseTestCase):
         self.assertEqual(400, response.status_code)
         data = response.json
         msg = 'Invalid input for field/attribute name.'
-        self.assertTrue(msg in data['faultstring'])
+        self.assertIn(msg, data['faultstring'])
         msg = 'Mandatory field missing'
-        self.assertTrue(msg in data['faultstring'])
+        self.assertIn(msg, data['faultstring'])
 
     def test_execute_agent_command_params_validation(self):
         invalid_command = {'name': 'do_things', 'params': []}
@@ -277,7 +277,7 @@ class TestIronicAPI(test_base.BaseTestCase):
         data = response.json
         # this message is actually much longer, but I'm ok with this
         msg = 'Invalid input for field/attribute params.'
-        self.assertTrue(msg in data['faultstring'])
+        self.assertIn(msg, data['faultstring'])
 
     def test_list_command_results(self):
         cmd_result = base.SyncCommandResult(u'do_things',

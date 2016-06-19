@@ -469,7 +469,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual(image_info['id'],
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertTrue('result' in async_result.command_result.keys())
+        self.assertIn('result', async_result.command_result)
         cmd_result = ('cache_image: image ({0}) cached to device '
                       '{1} ').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
@@ -494,7 +494,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual(image_info['id'],
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertTrue('result' in async_result.command_result.keys())
+        self.assertIn('result', async_result.command_result)
         cmd_result = ('cache_image: image ({0}) cached to device {1} '
                       'root_uuid={2}').format(image_info['id'], 'manager',
                                               'root_uuid')
@@ -523,7 +523,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual(image_info['id'],
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertTrue('result' in async_result.command_result.keys())
+        self.assertIn('result', async_result.command_result)
         cmd_result = ('cache_image: image ({0}) cached to device '
                       '{1} ').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
@@ -549,7 +549,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual(image_info['id'],
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertTrue('result' in async_result.command_result.keys())
+        self.assertIn('result', async_result.command_result)
         cmd_result = ('cache_image: image ({0}) already present on device '
                       '{1} ').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
@@ -591,7 +591,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                                                       'manager')
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertTrue('result' in async_result.command_result.keys())
+        self.assertIn('result', async_result.command_result)
         cmd_result = ('prepare_image: image ({0}) written to device '
                       '{1} ').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
@@ -612,7 +612,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                                                       'manager')
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertTrue('result' in async_result.command_result.keys())
+        self.assertIn('result', async_result.command_result)
         cmd_result = ('prepare_image: image ({0}) written to device '
                       '{1} ').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
@@ -653,7 +653,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertFalse(configdrive_copy_mock.called)
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertTrue('result' in async_result.command_result.keys())
+        self.assertIn('result', async_result.command_result)
         cmd_result = ('prepare_image: image ({0}) written to device {1} '
                       'root_uuid={2}').format(
             image_info['id'], 'manager', 'root_uuid')
@@ -674,7 +674,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertFalse(configdrive_copy_mock.called)
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertTrue('result' in async_result.command_result.keys())
+        self.assertIn('result', async_result.command_result)
         cmd_result = ('prepare_image: image ({0}) written to device {1} '
                       'root_uuid={2}').format(
             image_info['id'], 'manager', 'root_uuid')
@@ -712,7 +712,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         self.assertEqual(0, configdrive_copy_mock.call_count)
         self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertTrue('result' in async_result.command_result.keys())
+        self.assertIn('result', async_result.command_result)
         cmd_result = ('prepare_image: image ({0}) written to device '
                       '{1} ').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
