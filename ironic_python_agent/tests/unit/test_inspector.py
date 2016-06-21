@@ -19,11 +19,11 @@ import copy
 import io
 import tarfile
 import time
-import unittest
 
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslotest import base as test_base
 import requests
 import six
 import stevedore
@@ -49,23 +49,23 @@ class AcceptingFailure(mock.Mock):
             failure, expect_error)
 
 
-class TestMisc(unittest.TestCase):
+class TestMisc(test_base.BaseTestCase):
     def test_default_collector_loadable(self):
         ext = inspector.extension_manager([inspector.DEFAULT_COLLECTOR])
         self.assertIs(ext[inspector.DEFAULT_COLLECTOR].plugin,
                       inspector.collect_default)
 
     def test_raise_on_wrong_collector(self):
-        self.assertRaisesRegexp(errors.InspectionError,
-                                'foobar',
-                                inspector.extension_manager,
-                                ['foobar'])
+        self.assertRaisesRegex(errors.InspectionError,
+                               'foobar',
+                               inspector.extension_manager,
+                               ['foobar'])
 
 
 @mock.patch.object(inspector, 'setup_ipmi_credentials', autospec=True)
 @mock.patch.object(inspector, 'call_inspector', new_callable=AcceptingFailure)
 @mock.patch.object(stevedore, 'NamedExtensionManager', autospec=True)
-class TestInspect(unittest.TestCase):
+class TestInspect(test_base.BaseTestCase):
     def setUp(self):
         super(TestInspect, self).setUp()
         CONF.set_override('inspection_callback_url', 'http://foo/bar',
@@ -104,8 +104,8 @@ class TestInspect(unittest.TestCase):
         mock_ext_mgr.return_value = [self.mock_ext]
         self.mock_collect.side_effect = RuntimeError('boom')
 
-        self.assertRaisesRegexp(errors.InspectionError,
-                                'boom', inspector.inspect)
+        self.assertRaisesRegex(errors.InspectionError,
+                               'boom', inspector.inspect)
 
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure(expect_error=True)
@@ -116,7 +116,7 @@ class TestInspect(unittest.TestCase):
                           enforce_type=True)
         mock_ext_mgr.side_effect = RuntimeError('boom')
 
-        self.assertRaisesRegexp(RuntimeError, 'boom', inspector.inspect)
+        self.assertRaisesRegex(RuntimeError, 'boom', inspector.inspect)
 
         mock_call.assert_called_with_failure(expect_error=True)
         self.assertFalse(mock_setup_ipmi.called)
@@ -134,7 +134,7 @@ class TestInspect(unittest.TestCase):
 
 
 @mock.patch.object(requests, 'post', autospec=True)
-class TestCallInspector(unittest.TestCase):
+class TestCallInspector(test_base.BaseTestCase):
     def setUp(self):
         super(TestCallInspector, self).setUp()
         CONF.set_override('inspection_callback_url', 'url',
@@ -176,7 +176,7 @@ class TestCallInspector(unittest.TestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestSetupIpmiCredentials(unittest.TestCase):
+class TestSetupIpmiCredentials(test_base.BaseTestCase):
     def setUp(self):
         super(TestSetupIpmiCredentials, self).setUp()
         self.resp = {'ipmi_username': 'user',
@@ -227,7 +227,7 @@ class TestSetupIpmiCredentials(unittest.TestCase):
         self.assertEqual(expected, mock_call.call_args_list)
 
 
-class BaseDiscoverTest(unittest.TestCase):
+class BaseDiscoverTest(test_base.BaseTestCase):
     def setUp(self):
         super(BaseDiscoverTest, self).setUp()
         self.inventory = {
@@ -379,7 +379,7 @@ class TestCollectDefault(BaseDiscoverTest):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestCollectLogs(unittest.TestCase):
+class TestCollectLogs(test_base.BaseTestCase):
     def test(self, mock_execute):
         contents = 'journal contents \xd0\xbc\xd1\x8f\xd1\x83'
         # That's how execute() works with binary=True
@@ -416,7 +416,7 @@ class TestCollectLogs(unittest.TestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestCollectExtraHardware(unittest.TestCase):
+class TestCollectExtraHardware(test_base.BaseTestCase):
     def setUp(self):
         super(TestCollectExtraHardware, self).setUp()
         self.data = {}
@@ -463,7 +463,7 @@ class TestCollectExtraHardware(unittest.TestCase):
 
 @mock.patch.object(utils, 'get_agent_params', lambda: {'BOOTIF': '01-cdef'})
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-class TestWaitForDhcp(unittest.TestCase):
+class TestWaitForDhcp(test_base.BaseTestCase):
     def setUp(self):
         super(TestWaitForDhcp, self).setUp()
         CONF.set_override('inspection_dhcp_wait_timeout',
@@ -549,7 +549,7 @@ class TestWaitForDhcp(unittest.TestCase):
         self.assertFalse(mocked_dispatch.called)
 
 
-class TestNormalizeMac(unittest.TestCase):
+class TestNormalizeMac(test_base.BaseTestCase):
     def test_correct_mac(self):
         self.assertEqual('11:22:33:aa:bb:cc',
                          inspector._normalize_mac('11:22:33:aa:BB:cc'))

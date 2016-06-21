@@ -1238,7 +1238,7 @@ class TestModuleFunctions(test_base.BaseTestCase):
                                             mocked_execute):
         """Test for missing values returned from lsblk"""
         mocked_execute.return_value = ('TYPE="disk" MODEL="model"', '')
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             errors.BlockDeviceError,
             r'^Block device caused unknown error: KNAME, ROTA, SIZE must be '
             r'returned by lsblk.$',
