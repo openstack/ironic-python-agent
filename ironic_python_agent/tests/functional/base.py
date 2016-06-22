@@ -21,6 +21,9 @@ from oslotest import base as test_base
 import requests
 
 from ironic_python_agent import agent
+# NOTE(lucasagomes): This import is needed so we can register the
+# configuration options prior to IPA prior to starting the service
+from ironic_python_agent import config  # noqa
 
 
 class FunctionalBase(test_base.BaseTestCase):
