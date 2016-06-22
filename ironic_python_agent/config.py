@@ -92,6 +92,11 @@ cli_opts = [
                                      APARAMS.get('lldp-timeout', 30.0)),
                  help='The amount of seconds to wait for LLDP packets.'),
 
+    cfg.BoolOpt('collect_lldp',
+                default=APARAMS.get('ipa-collect-lldp', False),
+                help='Whether IPA should attempt to receive LLDP packets for '
+                     'each network interface it discovers in the inventory.'),
+
     cfg.BoolOpt('standalone',
                 default=APARAMS.get('ipa-standalone', False),
                 help='Note: for debugging only. Start the Agent but suppress '

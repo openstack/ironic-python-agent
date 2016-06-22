@@ -307,6 +307,75 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual(None, interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+
+    @mock.patch('ironic_python_agent.netutils.get_lldp_info')
+    @mock.patch('netifaces.ifaddresses')
+    @mock.patch('os.listdir')
+    @mock.patch('os.path.exists')
+    @mock.patch('six.moves.builtins.open')
+    def test_list_network_interfaces_with_lldp(self,
+                                               mocked_open,
+                                               mocked_exists,
+                                               mocked_listdir,
+                                               mocked_ifaddresses,
+                                               mocked_lldp_info):
+        CONF.set_override('collect_lldp', True)
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['00:0c:29:8c:11:b1\n', '1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+        }
+        mocked_lldp_info.return_value = {'eth0': [
+            (0, b''),
+            (1, b'\x04\x88Z\x92\xecTY'),
+            (2, b'\x05Ethernet1/18'),
+            (3, b'\x00x')]
+        }
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        expected_lldp_info = [
+            (0, ''),
+            (1, '04885a92ec5459'),
+            (2, '0545746865726e6574312f3138'),
+            (3, '0078'),
+        ]
+        self.assertEqual(expected_lldp_info, interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+
+    @mock.patch('ironic_python_agent.netutils.get_lldp_info')
+    @mock.patch('netifaces.ifaddresses')
+    @mock.patch('os.listdir')
+    @mock.patch('os.path.exists')
+    @mock.patch('six.moves.builtins.open')
+    def test_list_network_interfaces_with_lldp_error(
+            self, mocked_open, mocked_exists, mocked_listdir,
+            mocked_ifaddresses, mocked_lldp_info):
+        CONF.set_override('collect_lldp', True)
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['00:0c:29:8c:11:b1\n', '1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+        }
+        mocked_lldp_info.side_effect = Exception('Boom!')
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual(None, interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
 
     @mock.patch('netifaces.ifaddresses')
