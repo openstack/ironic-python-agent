@@ -1,0 +1,8 @@
+---
+features:
+  - Added `ipa-disk-wait-attempts` configuration option to configure the
+    number of times to try and check to see if at least one suitable disk
+    has appeared in inventory before proceeding with any actions.
+  - Added `ipa-disk-wait-delay` configuration option to configure how many
+    seconds to wait between attempts to check if at least one suitable disk
+    has appeared in inventory.

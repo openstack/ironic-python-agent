@@ -18,6 +18,7 @@ import time
 import mock
 import netifaces
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_utils import units
 from oslotest import base as test_base
 import pyudev
@@ -26,6 +27,11 @@ from stevedore import extension
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import utils
+
+CONF = cfg.CONF
+
+CONF.import_opt('disk_wait_attempts', 'ironic_python_agent.config')
+CONF.import_opt('disk_wait_delay', 'ironic_python_agent.config')
 
 HDPARM_INFO_TEMPLATE = (
     '/dev/sda:\n'
@@ -275,6 +281,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.hardware = hardware.GenericHardwareManager()
         self.node = {'uuid': 'dda135fb-732d-4742-8e72-df8f3199d244',
                      'driver_internal_info': {}}
+        CONF.clear_override('disk_wait_attempts')
+        CONF.clear_override('disk_wait_delay')
 
     @mock.patch('netifaces.ifaddresses')
     @mock.patch('os.listdir')
@@ -1161,7 +1169,83 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual(hardware.HardwareSupport.GENERIC, result)
         mocked_root_dev.assert_called_with(mocked_block_dev.return_value)
         self.assertEqual(2, mocked_root_dev.call_count)
-        mocked_sleep.assert_called_once_with(hardware._DISK_WAIT_DELAY)
+        mocked_sleep.assert_called_once_with(CONF.disk_wait_delay)
+
+    @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
+                       autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(utils, 'guess_root_disk', autospec=True)
+    def test_evaluate_hw_waits_for_disks_nonconfigured(self, mocked_root_dev,
+                                                       mocked_sleep,
+                                                       mocked_block_dev):
+        mocked_root_dev.side_effect = [
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            None
+        ]
+
+        self.hardware.evaluate_hardware_support()
+
+        mocked_root_dev.assert_called_with(mocked_block_dev.return_value)
+        self.assertEqual(10, mocked_root_dev.call_count)
+
+    @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
+                       autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(utils, 'guess_root_disk', autospec=True)
+    def test_evaluate_hw_waits_for_disks_configured(self, mocked_root_dev,
+                                                    mocked_sleep,
+                                                    mocked_block_dev):
+        CONF.set_override('disk_wait_attempts', '2', enforce_type=True)
+
+        mocked_root_dev.side_effect = [
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            errors.DeviceNotFound('boom'),
+            None
+        ]
+
+        self.hardware.evaluate_hardware_support()
+
+        mocked_root_dev.assert_called_with(mocked_block_dev.return_value)
+        self.assertEqual(2, mocked_root_dev.call_count)
+
+    @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
+                       autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(utils, 'guess_root_disk', autospec=True)
+    def test_evaluate_hw_disks_timeout_unconfigured(self, mocked_root_dev,
+                                                    mocked_sleep,
+                                                    mocked_block_dev):
+        mocked_root_dev.side_effect = errors.DeviceNotFound('boom')
+
+        self.hardware.evaluate_hardware_support()
+
+        mocked_sleep.assert_called_with(3)
+
+    @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
+                       autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(utils, 'guess_root_disk', autospec=True)
+    def test_evaluate_hw_disks_timeout_configured(self, mocked_root_dev,
+                                                  mocked_sleep,
+                                                  mocked_block_dev):
+        CONF.set_override('disk_wait_delay', '5', enforce_type=True)
+        mocked_root_dev.side_effect = errors.DeviceNotFound('boom')
+
+        self.hardware.evaluate_hardware_support()
+
+        mocked_sleep.assert_called_with(5)
 
     @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
                        autospec=True)
@@ -1175,9 +1259,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         self.assertEqual(hardware.HardwareSupport.GENERIC, result)
         mocked_root_dev.assert_called_with(mocked_block_dev.return_value)
-        self.assertEqual(hardware._DISK_WAIT_ATTEMPTS,
+        self.assertEqual(CONF.disk_wait_attempts,
                          mocked_root_dev.call_count)
-        mocked_sleep.assert_called_with(hardware._DISK_WAIT_DELAY)
+        mocked_sleep.assert_called_with(CONF.disk_wait_delay)
 
     @mock.patch.object(utils, 'get_agent_params',
                        lambda: {'BOOTIF': 'boot:if'})

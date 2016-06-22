@@ -129,6 +129,18 @@ cli_opts = [
                default=APARAMS.get('ipa-hardware-initialization-delay', 0),
                help='How much time (in seconds) to wait for hardware to '
                     'initialize before proceeding with any actions.'),
+
+    cfg.IntOpt('disk_wait_attempts',
+               default=APARAMS.get('ipa-disk-wait-attempts', 10),
+               help='The number of times to try and check to see if '
+                    'at least one suitable disk has appeared in inventory '
+                    'before proceeding with any actions.'),
+
+    cfg.IntOpt('disk_wait_delay',
+               default=APARAMS.get('ipa-disk-wait-delay', 3),
+               help='How much time (in seconds) to wait between attempts '
+                    'to check if at least one suitable disk has appeared '
+                    'in inventory.'),
 ]
 
 CONF.register_cli_opts(cli_opts)
