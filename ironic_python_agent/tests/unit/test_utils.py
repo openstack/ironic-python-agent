@@ -425,4 +425,4 @@ class TestFailures(testtools.TestCase):
         f = utils.AccumulatedFailures(exc_class=FakeException)
         self.assertIsNone(f.raise_if_needed())
         f.add('foo')
-        self.assertRaisesRegexp(FakeException, 'foo', f.raise_if_needed)
+        self.assertRaisesRegex(FakeException, 'foo', f.raise_if_needed)

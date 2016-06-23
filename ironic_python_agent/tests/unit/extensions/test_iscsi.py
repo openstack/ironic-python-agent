@@ -199,7 +199,7 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
                                    mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         mock_rtslib.Target.side_effect = _ORIG_UTILS.RTSLibError()
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             errors.ISCSIError, 'Failed to create a target',
             self.agent_extension.start_iscsi_target, iqn=self.fake_iqn)
 
@@ -207,7 +207,7 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
                                   mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         mock_rtslib.NetworkPortal.side_effect = _ORIG_UTILS.RTSLibError()
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             errors.ISCSIError, 'Failed to publish a target',
             self.agent_extension.start_iscsi_target, iqn=self.fake_iqn,
             portal_port=None)
@@ -231,7 +231,7 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
                                                       mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         mock_rtslib.Target.side_effect = _ORIG_UTILS.RTSLibError()
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             errors.ISCSIError, 'Failed to create a target',
             self.agent_extension.start_iscsi_target,
             iqn=self.fake_iqn,
