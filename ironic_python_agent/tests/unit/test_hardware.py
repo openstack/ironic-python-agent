@@ -851,7 +851,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         hdparm_output = create_hdparm_info(
             supported=False, enabled=False, frozen=False, enhanced_erase=False)
 
-        info = self.node.get('driver_internal_info')
+        info = self.node['driver_internal_info']
         info['agent_erase_devices_iterations'] = 2
         info['agent_erase_devices_zeroize'] = False
 
@@ -874,7 +874,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         hdparm_output = create_hdparm_info(
             supported=False, enabled=False, frozen=False, enhanced_erase=False)
 
-        info = self.node.get('driver_internal_info')
+        info = self.node['driver_internal_info']
         info['agent_erase_devices_iterations'] = 0
         info['agent_erase_devices_zeroize'] = False
 
@@ -1124,7 +1124,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     def test_erase_block_device_ata_failed_continued(
             self, mocked_execute, mock_shred):
 
-        info = self.node.get('driver_internal_info')
+        info = self.node['driver_internal_info']
         info['agent_continue_if_ata_erase_failed'] = True
 
         hdparm_output_before = create_hdparm_info(

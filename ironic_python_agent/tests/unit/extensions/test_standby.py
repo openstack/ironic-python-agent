@@ -190,7 +190,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         swap_mb = image_info['swap_mb']
         ephemeral_mb = image_info['ephemeral_mb']
         ephemeral_format = image_info['ephemeral_format']
-        node_uuid = image_info.get('node_uuid')
+        node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
         configdrive = image_info['configdrive']
         boot_mode = image_info['deploy_boot_mode']
