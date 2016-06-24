@@ -457,8 +457,8 @@ class GenericHardwareManager(HardwareManager):
             # to get data to replace it so just return.
             return
         for ifname, tlvs in raw_lldp_data.items():
-            # NOTE(sambetts) Convert each tlv value to hex so that it can be
-            # serialised safely
+            # NOTE(sambetts) Convert each type-length-value (TLV) value to hex
+            # so that it can be serialised safely
             processed_tlvs = []
             for typ, data in tlvs:
                 try:
