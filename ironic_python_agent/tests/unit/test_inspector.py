@@ -17,6 +17,7 @@ import base64
 import collections
 import copy
 import io
+import os
 import tarfile
 import time
 
@@ -459,6 +460,60 @@ class TestCollectExtraHardware(test_base.BaseTestCase):
         self.assertNotIn('data', self.data)
         self.assertTrue(self.failures)
         mock_execute.assert_called_once_with('hardware-detect')
+
+
+@mock.patch.object(os, 'listdir', autospec=True)
+class TestCollectPciDevicesInfo(test_base.BaseTestCase):
+    def setUp(self):
+        super(TestCollectPciDevicesInfo, self).setUp()
+        self.data = {}
+        self.failures = utils.AccumulatedFailures()
+
+    @mock.patch.object(os.path, 'isdir', autospec=True)
+    def test_success(self, mock_isdir, mock_listdir):
+        subdirs = ['foo', 'bar']
+        mock_listdir.return_value = subdirs
+        mock_isdir.return_value = True
+        reads = ['0x1234', '0x5678', '0x9876', '0x5432']
+        expected_pci_devices = [{'vendor_id': '1234', 'product_id': '5678'},
+                                {'vendor_id': '9876', 'product_id': '5432'}]
+
+        mock_open = mock.mock_open()
+        with mock.patch('six.moves.builtins.open', mock_open):
+            mock_read = mock_open.return_value.read
+            mock_read.side_effect = reads
+            inspector.collect_pci_devices_info(self.data, self.failures)
+
+        self.assertEqual(2 * len(subdirs), mock_open.call_count)
+        self.assertListEqual(expected_pci_devices, self.data['pci_devices'])
+
+    def test_wrong_path(self, mock_listdir):
+        mock_listdir.side_effect = OSError()
+
+        inspector.collect_pci_devices_info(self.data, self.failures)
+
+        self.assertFalse('pci_devices' in self.data)
+        self.assertEqual(1, len(self.failures._failures))
+
+    @mock.patch.object(os.path, 'isdir', autospec=True)
+    def test_bad_pci_device_info(self, mock_isdir, mock_listdir):
+        subdirs = ['foo', 'bar', 'baz']
+        mock_listdir.return_value = subdirs
+        mock_isdir.return_value = True
+        reads = ['0x1234', '0x5678', '0x9876', IOError, IndexError,
+                 '0x5432']
+        expected_pci_devices = [{'vendor_id': '1234', 'product_id': '5678'}]
+
+        mock_open = mock.mock_open()
+        with mock.patch('six.moves.builtins.open', mock_open):
+            mock_read = mock_open.return_value.read
+            mock_read.side_effect = reads
+            inspector.collect_pci_devices_info(self.data, self.failures)
+
+        # note(sborkows): due to throwing IOError, the corresponding mock_open
+        # will not be called, so there are 5 mock_open calls in total
+        self.assertEqual(5, mock_open.call_count)
+        self.assertListEqual(expected_pci_devices, self.data['pci_devices'])
 
 
 @mock.patch.object(utils, 'get_agent_params', lambda: {'BOOTIF': '01-cdef'})
