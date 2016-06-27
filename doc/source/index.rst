@@ -42,7 +42,7 @@ Lookup
 ~~~~~~
 On startup, the agent performs a lookup in Ironic to determine its node UUID
 by sending a hardware profile to the Ironic vendor_passthru lookup endpoint:
-``/v1/nodes/{node_ident}/vendor_passthru/lookup``.
+``/v1/drivers/{driver}/vendor_passthru/lookup``.
 
 Heartbeat
 ~~~~~~~~~
