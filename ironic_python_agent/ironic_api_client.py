@@ -28,6 +28,15 @@ LOG = log.getLogger(__name__)
 class APIClient(object):
     api_version = 'v1'
     payload_version = '2'
+    use_ramdisk_api = True
+    lookup_api = '/%s/lookup' % api_version
+    heartbeat_api = '/%s/heartbeat/{uuid}' % api_version
+    # TODO(dtanstur): drop support for old passthru in Ocata
+    lookup_passthru = ('/%s/drivers/{driver}/vendor_passthru/lookup'
+                       % api_version)
+    heartbeat_passthru = ('/%s/nodes/{uuid}/vendor_passthru/heartbeat'
+                          % api_version)
+    ramdisk_api_headers = {'X-OpenStack-Ironic-API-Version': '1.22'}
 
     def __init__(self, api_url, driver_name):
         self.api_url = api_url.rstrip('/')
@@ -43,32 +52,40 @@ class APIClient(object):
 
         self.encoder = encoding.RESTJSONEncoder()
 
-    def _request(self, method, path, data=None):
+    def _request(self, method, path, data=None, headers=None, **kwargs):
         request_url = '{api_url}{path}'.format(api_url=self.api_url, path=path)
 
         if data is not None:
             data = self.encoder.encode(data)
 
-        request_headers = {
+        headers = headers or {}
+        headers.update({
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-        }
+        })
 
         return self.session.request(method,
                                     request_url,
-                                    headers=request_headers,
-                                    data=data)
+                                    headers=headers,
+                                    data=data,
+                                    **kwargs)
+
+    def _heartbeat_request(self, uuid, agent_url):
+        if self.use_ramdisk_api:
+            path = self.heartbeat_api.format(uuid=uuid)
+            data = {'callback_url': agent_url}
+            headers = self.ramdisk_api_headers
+        else:
+            path = self.heartbeat_passthru.format(uuid=uuid)
+            data = {'agent_url': agent_url}
+            headers = None
+
+        return self._request('POST', path, data=data, headers=headers)
 
     def heartbeat(self, uuid, advertise_address):
-        path = '/{api_version}/nodes/{uuid}/vendor_passthru/heartbeat'.format(
-            api_version=self.api_version,
-            uuid=uuid
-        )
-        data = {
-            'agent_url': self._get_agent_url(advertise_address)
-        }
+        agent_url = self._get_agent_url(advertise_address)
         try:
-            response = self._request('POST', path, data=data)
+            response = self._heartbeat_request(uuid, agent_url)
         except Exception as e:
             raise errors.HeartbeatError(str(e))
 
@@ -93,15 +110,29 @@ class APIClient(object):
                                          'logs for details.')
         return node_content
 
-    def _do_lookup(self, hardware_info, node_uuid):
-        """The actual call to lookup a node.
+    def _do_new_lookup(self, hardware_info, node_uuid):
+        params = {
+            'addresses': ','.join(iface.mac_address
+                                  for iface in hardware_info['interfaces']
+                                  if iface.mac_address)
+        }
+        if node_uuid:
+            params['node_uuid'] = node_uuid
 
-        Should be called as a `loopingcall.BackOffLoopingCall`.
-        """
-        path = '/{api_version}/drivers/{driver}/vendor_passthru/lookup'.format(
-            api_version=self.api_version,
-            driver=self.driver_name
-        )
+        response = self._request('GET', self.lookup_api,
+                                 headers=self.ramdisk_api_headers,
+                                 params=params)
+        if response.status_code == requests.codes.NOT_FOUND:
+            # Assume that new API is not available and retry
+            LOG.warning('New API is not available, falling back to old '
+                        'agent vendor passthru')
+            self.use_ramdisk_api = False
+            return self._do_passthru_lookup(hardware_info, node_uuid)
+
+        return response
+
+    def _do_passthru_lookup(self, hardware_info, node_uuid):
+        path = self.lookup_passthru.format(driver=self.driver_name)
         # This hardware won't be saved on the node currently, because of
         # how driver_vendor_passthru is implemented (no node saving).
         data = {
@@ -113,20 +144,30 @@ class APIClient(object):
 
         # Make the POST, make sure we get back normal data/status codes and
         # content
+        return self._request('POST', path, data=data)
+
+    def _do_lookup(self, hardware_info, node_uuid):
+        """The actual call to lookup a node.
+
+        Should be called as a `loopingcall.BackOffLoopingCall`.
+        """
         try:
-            response = self._request('POST', path, data=data)
-        except Exception as e:
-            LOG.warning('POST failed: %s' % str(e))
+            response = (self._do_new_lookup(hardware_info, node_uuid)
+                        if self.use_ramdisk_api
+                        else self._do_passthru_lookup(hardware_info,
+                                                      node_uuid))
+        except Exception:
+            LOG.exception('Lookup failed')
             return False
 
         if response.status_code != requests.codes.OK:
-            LOG.warning('Invalid status code: %s' % response.status_code)
+            LOG.warning('Failure status code: %s', response.status_code)
             return False
 
         try:
             content = json.loads(response.content)
         except Exception as e:
-            LOG.warning('Error decoding response: %s' % str(e))
+            LOG.warning('Error decoding response: %s', e)
             return False
 
         # Check for valid response data
@@ -134,9 +175,14 @@ class APIClient(object):
             LOG.warning('Got invalid node data from the API: %s' % content)
             return False
 
-        if 'heartbeat_timeout' not in content:
-            LOG.warning('Got invalid heartbeat from the API: %s' % content)
-            return False
+        if 'config' not in content:
+            # Old API
+            try:
+                content['config'] = {'heartbeat_timeout':
+                                     content.pop('heartbeat_timeout')}
+            except KeyError:
+                LOG.warning('Got invalid heartbeat from the API: %s' % content)
+                return False
 
         # Got valid content
         raise loopingcall.LoopingCallDone(retvalue=content)

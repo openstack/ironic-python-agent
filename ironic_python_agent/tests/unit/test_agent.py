@@ -186,7 +186,9 @@ class TestBaseAgent(test_base.BaseTestCase):
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             },
-            'heartbeat_timeout': 300
+            'config': {
+                'heartbeat_timeout': 300
+            }
         }
         self.agent.run()
 
@@ -224,7 +226,9 @@ class TestBaseAgent(test_base.BaseTestCase):
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             },
-            'heartbeat_timeout': 300,
+            'config': {
+                'heartbeat_timeout': 300,
+            }
         }
         self.agent.run()
 
@@ -285,7 +289,9 @@ class TestBaseAgent(test_base.BaseTestCase):
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             },
-            'heartbeat_timeout': 300
+            'config': {
+                'heartbeat_timeout': 300
+            }
         }
         self.agent.run()
 
@@ -392,7 +398,9 @@ class TestAgentStandalone(test_base.BaseTestCase):
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             },
-            'heartbeat_timeout': 300
+            'config': {
+                'heartbeat_timeout': 300
+            }
         }
         self.agent.run()
 

@@ -336,9 +336,11 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                 starting_interval=self.lookup_interval,
                 node_uuid=uuid)
 
+            LOG.debug('Received lookup results: %s', content)
             self.node = content['node']
+            LOG.info('Lookup succeeded, node UUID is %s', self.node['uuid'])
             hardware.cache_node(self.node)
-            self.heartbeat_timeout = content['heartbeat_timeout']
+            self.heartbeat_timeout = content['config']['heartbeat_timeout']
 
         wsgi = simple_server.make_server(
             self.listen_address[0],
