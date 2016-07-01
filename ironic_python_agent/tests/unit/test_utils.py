@@ -13,10 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import base64
 import errno
 import glob
+import io
 import os
 import shutil
+import subprocess
+import tarfile
 import tempfile
 import testtools
 
@@ -426,3 +430,115 @@ class TestFailures(testtools.TestCase):
         self.assertIsNone(f.raise_if_needed())
         f.add('foo')
         self.assertRaisesRegex(FakeException, 'foo', f.raise_if_needed)
+
+
+class TestUtils(testtools.TestCase):
+
+    def _get_journalctl_output(self, mock_execute, lines=None, units=None):
+        contents = b'Krusty Krab'
+        mock_execute.return_value = (contents, '')
+        data = utils.get_journalctl_output(lines=lines, units=units)
+
+        cmd = ['journalctl', '--full', '--no-pager', '-b']
+        if lines is not None:
+            cmd.extend(['-n', str(lines)])
+        if units is not None:
+            [cmd.extend(['-u', u]) for u in units]
+
+        mock_execute.assert_called_once_with(*cmd, binary=True,
+                                             log_stdout=False)
+        self.assertEqual(contents, data.read())
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_journalctl_output(self, mock_execute):
+        self._get_journalctl_output(mock_execute)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_journalctl_output_with_lines(self, mock_execute):
+        self._get_journalctl_output(mock_execute, lines=123)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_journalctl_output_with_units(self, mock_execute):
+        self._get_journalctl_output(mock_execute, units=['fake-unit1',
+                                                         'fake-unit2'])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_journalctl_output_fail(self, mock_execute):
+        mock_execute.side_effect = processutils.ProcessExecutionError()
+        self.assertRaises(errors.CommandExecutionError,
+                          self._get_journalctl_output, mock_execute)
+
+    def test_gzip_and_b64encode(self):
+        contents = b'Squidward Tentacles'
+        io_dict = {'fake-name': io.BytesIO(bytes(contents))}
+        data = utils.gzip_and_b64encode(io_dict=io_dict)
+
+        res = io.BytesIO(base64.b64decode(data))
+        with tarfile.open(fileobj=res) as tar:
+            members = [(m.name, m.size) for m in tar]
+            self.assertEqual([('fake-name', len(contents))], members)
+
+            member = tar.extractfile('fake-name')
+            self.assertEqual(contents, member.read())
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_command_output(self, mock_execute):
+        contents = b'Sandra Sandy Cheeks'
+        mock_execute.return_value = (contents, '')
+        data = utils.get_command_output(['foo'])
+
+        mock_execute.assert_called_once_with(
+            'foo', binary=True, log_stdout=False)
+        self.assertEqual(contents, data.read())
+
+    @mock.patch.object(subprocess, 'check_call')
+    def test_is_journalctl_present(self, mock_call):
+        self.assertTrue(utils.is_journalctl_present())
+
+    @mock.patch.object(subprocess, 'check_call')
+    def test_is_journalctl_present_false(self, mock_call):
+        os_error = OSError()
+        os_error.errno = errno.ENOENT
+        mock_call.side_effect = os_error
+        self.assertFalse(utils.is_journalctl_present())
+
+    @mock.patch.object(utils, 'gzip_and_b64encode')
+    @mock.patch.object(utils, 'is_journalctl_present')
+    @mock.patch.object(utils, 'get_command_output')
+    @mock.patch.object(utils, 'get_journalctl_output')
+    def test_collect_system_logs_journald(
+            self, mock_logs, mock_outputs, mock_journalctl, mock_gzip_b64):
+        mock_journalctl.return_value = True
+        ret = 'Patrick Star'
+        mock_gzip_b64.return_value = ret
+
+        logs_string = utils.collect_system_logs()
+        self.assertEqual(ret, logs_string)
+        mock_logs.assert_called_once_with(lines=None)
+        calls = [mock.call(['ps', '-ax']), mock.call(['df', '-a']),
+                 mock.call(['iptables', '-L']), mock.call(['ip', 'addr'])]
+        mock_outputs.assert_has_calls(calls, any_order=True)
+        mock_gzip_b64.assert_called_once_with(
+            file_list=[],
+            io_dict={'journal': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
+                     'df': mock.ANY, 'iptables': mock.ANY})
+
+    @mock.patch.object(utils, 'gzip_and_b64encode')
+    @mock.patch.object(utils, 'is_journalctl_present')
+    @mock.patch.object(utils, 'get_command_output')
+    def test_collect_system_logs_non_journald(
+            self, mock_outputs, mock_journalctl, mock_gzip_b64):
+        mock_journalctl.return_value = False
+        ret = 'SpongeBob SquarePants'
+        mock_gzip_b64.return_value = ret
+
+        logs_string = utils.collect_system_logs()
+        self.assertEqual(ret, logs_string)
+        calls = [mock.call(['dmesg']), mock.call(['ps', '-ax']),
+                 mock.call(['df', '-a']), mock.call(['iptables', '-L']),
+                 mock.call(['ip', 'addr'])]
+        mock_outputs.assert_has_calls(calls, any_order=True)
+        mock_gzip_b64.assert_called_once_with(
+            file_list=['/var/log'],
+            io_dict={'iptables': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
+                     'dmesg': mock.ANY, 'df': mock.ANY})

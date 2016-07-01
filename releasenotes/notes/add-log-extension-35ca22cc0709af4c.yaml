@@ -1,0 +1,6 @@
+---
+features:
+  - A new "log" extension has been added and can be used to retrieve
+    the system logs via the IPA API.
+fixes:
+  - The "logs" inspection collector now works with the TinyIPA image.

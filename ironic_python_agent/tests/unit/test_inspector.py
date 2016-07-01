@@ -13,12 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import collections
 import copy
-import io
 import os
-import tarfile
 import time
 
 import mock
@@ -26,7 +23,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslotest import base as test_base
 import requests
-import six
 import stevedore
 
 from ironic_python_agent import errors
@@ -379,41 +375,22 @@ class TestCollectDefault(BaseDiscoverTest):
         mock_wait_for_dhcp.assert_called_once_with()
 
 
-@mock.patch.object(utils, 'execute', autospec=True)
+@mock.patch.object(utils, 'collect_system_logs', autospec=True)
 class TestCollectLogs(test_base.BaseTestCase):
-    def test(self, mock_execute):
-        contents = 'journal contents \xd0\xbc\xd1\x8f\xd1\x83'
-        # That's how execute() works with binary=True
-        if six.PY3:
-            contents = b'journal contents \xd0\xbc\xd1\x8f\xd1\x83'
-        else:
-            contents = 'journal contents \xd0\xbc\xd1\x8f\xd1\x83'
-        expected_contents = u'journal contents \u043c\u044f\u0443'
-        mock_execute.return_value = (contents, '')
 
+    def test(self, mock_collect):
         data = {}
-        with mock.patch('time.time', return_value=42):
-            inspector.collect_logs(data, None)
-        res = io.BytesIO(base64.b64decode(data['logs']))
+        ret = 'SpongeBob SquarePants'
+        mock_collect.return_value = ret
 
-        with tarfile.open(fileobj=res) as tar:
-            members = [(m.name, m.size, m.mtime) for m in tar]
-            self.assertEqual([('journal', len(contents), 42)], members)
-
-            member = tar.extractfile('journal')
-            self.assertEqual(expected_contents, member.read().decode('utf-8'))
-
-        mock_execute.assert_called_once_with('journalctl', '--full',
-                                             '--no-pager', '-b',
-                                             '-n', '10000', binary=True,
-                                             log_stdout=False)
-
-    def test_no_journal(self, mock_execute):
-        mock_execute.side_effect = OSError()
-
-        data = {}
         inspector.collect_logs(data, None)
-        self.assertFalse(data)
+        self.assertEqual({'logs': ret}, data)
+
+    def test_fail(self, mock_collect):
+        data = {}
+        mock_collect.side_effect = errors.CommandExecutionError('boom')
+        self.assertIsNone(inspector.collect_logs(data, None))
+        self.assertNotIn('logs', data)
 
 
 @mock.patch.object(utils, 'execute', autospec=True)

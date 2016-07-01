@@ -13,11 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
-import io
 import json
 import os
-import tarfile
 import time
 
 import netaddr
@@ -319,7 +316,7 @@ def collect_default(data, failures):
 
 
 def collect_logs(data, failures):
-    """Collect journald logs from the ramdisk.
+    """Collect system logs from the ramdisk.
 
     As inspection runs before any nodes details are known, it's handy to have
     logs returned with data. This collector sends logs to inspector in format
@@ -334,23 +331,10 @@ def collect_logs(data, failures):
     :param failures: AccumulatedFailures object
     """
     try:
-        out, _e = utils.execute('journalctl', '--full', '--no-pager', '-b',
-                                '-n', '10000', binary=True,
-                                log_stdout=False)
-    except (processutils.ProcessExecutionError, OSError):
+        data['logs'] = utils.collect_system_logs(journald_max_lines=10000)
+    except errors.CommandExecutionError:
         LOG.warning('failed to get system journal')
         return
-
-    journal = io.BytesIO(bytes(out))
-    with io.BytesIO() as fp:
-        with tarfile.open(fileobj=fp, mode='w:gz') as tar:
-            tarinfo = tarfile.TarInfo('journal')
-            tarinfo.size = len(out)
-            tarinfo.mtime = time.time()
-            tar.addfile(tarinfo, journal)
-
-        fp.seek(0)
-        data['logs'] = base64.b64encode(fp.getvalue())
 
 
 def collect_extra_hardware(data, failures):
