@@ -448,7 +448,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             hardware.BlockDevice(name='/dev/sdb',
                                  model=model,
                                  size=10737418240,
-                                 rotational=False,
+                                 rotational=True,
                                  vendor='fake-vendor',
                                  wwn='fake-wwn',
                                  wwn_with_extension='fake-wwnven0',
@@ -484,6 +484,11 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     def test_get_os_install_device_root_device_hints_name(self):
         self._get_os_install_device_root_device_hints(
             {'name': '/dev/sdb'}, '/dev/sdb')
+
+    def test_get_os_install_device_root_device_hints_rotational(self):
+        for value in (True, 'true', 'on', 'y', 'yes'):
+            self._get_os_install_device_root_device_hints(
+                {'rotational': value}, '/dev/sdb')
 
     @mock.patch.object(hardware, 'list_all_block_devices')
     @mock.patch.object(hardware, 'get_cached_node')

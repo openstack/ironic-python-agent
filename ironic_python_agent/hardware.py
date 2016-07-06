@@ -19,10 +19,12 @@ import os
 import shlex
 import time
 
+
 import netifaces
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import strutils
 from oslo_utils import units
 import pint
 import psutil
@@ -604,6 +606,10 @@ class GenericHardwareManager(HardwareManager):
 
             def match(hint, current_value, device):
                 hint_value = root_device_hints[hint]
+
+                if hint == 'rotational':
+                    hint_value = strutils.bool_from_string(hint_value)
+
                 if hint_value != current_value:
                     LOG.debug("Root device hint %(hint)s=%(value)s does not "
                               "match the device %(device)s value of "
@@ -617,14 +623,17 @@ class GenericHardwareManager(HardwareManager):
             def check_device_attrs(device):
                 for key in ('model', 'wwn', 'serial', 'vendor',
                             'wwn_with_extension', 'wwn_vendor_extension',
-                            'name'):
+                            'name', 'rotational'):
                     if key not in root_device_hints:
                         continue
 
                     value = getattr(device, key)
-                    if not value:
+                    if value is None:
                         return False
-                    value = utils.normalize(value)
+
+                    if isinstance(value, six.string_types):
+                        value = utils.normalize(value)
+
                     if not match(key, value, device.name):
                         return False
 
