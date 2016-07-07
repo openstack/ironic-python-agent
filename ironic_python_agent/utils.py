@@ -51,7 +51,7 @@ AGENT_PARAMS_CACHED = dict()
 
 
 COLLECT_LOGS_COMMANDS = {
-    'ps': ['ps', '-ax'],
+    'ps': ['ps', 'au'],
     'df': ['df', '-a'],
     'iptables': ['iptables', '-L'],
     'ip_addr': ['ip', 'addr'],

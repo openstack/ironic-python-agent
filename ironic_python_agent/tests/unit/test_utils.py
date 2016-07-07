@@ -515,7 +515,7 @@ class TestUtils(testtools.TestCase):
         logs_string = utils.collect_system_logs()
         self.assertEqual(ret, logs_string)
         mock_logs.assert_called_once_with(lines=None)
-        calls = [mock.call(['ps', '-ax']), mock.call(['df', '-a']),
+        calls = [mock.call(['ps', 'au']), mock.call(['df', '-a']),
                  mock.call(['iptables', '-L']), mock.call(['ip', 'addr'])]
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
@@ -534,7 +534,7 @@ class TestUtils(testtools.TestCase):
 
         logs_string = utils.collect_system_logs()
         self.assertEqual(ret, logs_string)
-        calls = [mock.call(['dmesg']), mock.call(['ps', '-ax']),
+        calls = [mock.call(['dmesg']), mock.call(['ps', 'au']),
                  mock.call(['df', '-a']), mock.call(['iptables', '-L']),
                  mock.call(['ip', 'addr'])]
         mock_outputs.assert_has_calls(calls, any_order=True)
