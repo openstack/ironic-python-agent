@@ -23,3 +23,6 @@ docker_clean:
 
 iso: docker coreos
 	./iso-image-create -o $(BUILD_DIR)/ipa-coreos.iso -i $(INITRD) -k $(KERNEL)
+
+pin_latest:
+	./pin_latest_coreos.sh
