@@ -42,13 +42,14 @@ _COLLECTOR_NS = 'ironic_python_agent.inspector.collectors'
 _NO_LOGGING_FIELDS = ('logs',)
 
 
+def _extension_manager_err_callback(names):
+    raise errors.InspectionError('Failed to load collector %s' % names)
+
+
 def extension_manager(names):
-    try:
-        return stevedore.NamedExtensionManager(_COLLECTOR_NS,
-                                               names=names,
-                                               name_order=True)
-    except KeyError as exc:
-        raise errors.InspectionError('Failed to load collector %s' % exc)
+    return stevedore.NamedExtensionManager(
+        _COLLECTOR_NS, names=names, name_order=True,
+        on_missing_entrypoints_callback=_extension_manager_err_callback)
 
 
 def inspect():
