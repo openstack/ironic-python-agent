@@ -12,6 +12,13 @@ provisioning servers.
 Throughout the remainder of the document, Ironic Python Agent will be
 abbreviated to IPA.
 
+Index
+=====
+
+.. toctree::
+
+   troubleshooting
+
 How it works
 ============
 
@@ -350,4 +357,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-* :ref:`troubleshooting`

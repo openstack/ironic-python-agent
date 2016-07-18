@@ -151,7 +151,7 @@ class ISCSIExtension(base.BaseAgentExtension):
         """Expose the disk as an ISCSI target.
 
         :param wipe_disk_metadata: if the disk metadata should be wiped out
-        before the disk is exposed.
+                                   before the disk is exposed.
         """
         # If iqn is not given, generate one
         if iqn is None:
