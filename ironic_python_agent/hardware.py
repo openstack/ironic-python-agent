@@ -612,6 +612,16 @@ class GenericHardwareManager(HardwareManager):
                 if hint == 'rotational':
                     hint_value = strutils.bool_from_string(hint_value)
 
+                elif hint == 'size':
+                    try:
+                        hint_value = int(hint_value)
+                    except (ValueError, TypeError):
+                        LOG.warning(
+                            'Root device hint "size" is not an integer. '
+                            'Current value: "%(value)s"; and type: "%(type)s"',
+                            {'value': hint_value, 'type': type(hint_value)})
+                        return False
+
                 if hint_value != current_value:
                     LOG.debug("Root device hint %(hint)s=%(value)s does not "
                               "match the device %(device)s value of "
@@ -625,7 +635,7 @@ class GenericHardwareManager(HardwareManager):
             def check_device_attrs(device):
                 for key in ('model', 'wwn', 'serial', 'vendor',
                             'wwn_with_extension', 'wwn_vendor_extension',
-                            'name', 'rotational'):
+                            'name', 'rotational', 'size'):
                     if key not in root_device_hints:
                         continue
 
@@ -636,21 +646,17 @@ class GenericHardwareManager(HardwareManager):
                     if isinstance(value, six.string_types):
                         value = utils.normalize(value)
 
+                    if key == 'size':
+                        # Since we don't support units yet we expect the size
+                        # in GiB for now
+                        value = value / units.Gi
+
                     if not match(key, value, device.name):
                         return False
 
                 return True
 
             for dev in block_devices:
-                # TODO(lucasagomes): Add support for operators <, >, =, etc...
-                # to better deal with sizes.
-                if 'size' in root_device_hints:
-                    # Since we don't support units yet we expect the size
-                    # in GiB for now
-                    size = dev.size / units.Gi
-                    if not match('size', size, dev.name):
-                        continue
-
                 if check_device_attrs(dev):
                     return dev.name
 
