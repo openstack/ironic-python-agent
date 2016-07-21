@@ -1,0 +1,3 @@
+---
+fixes:
+  - If iscsi connection present, connect an iSCSI target share before detecting disks.

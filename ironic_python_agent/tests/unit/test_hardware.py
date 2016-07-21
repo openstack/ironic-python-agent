@@ -1241,9 +1241,11 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
     @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
                        autospec=True)
+    @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
     @mock.patch.object(utils, 'guess_root_disk', autospec=True)
     def test_evaluate_hw_waits_for_disks(self, mocked_root_dev, mocked_sleep,
+                                         mocked_check_for_iscsi,
                                          mocked_block_dev):
         mocked_root_dev.side_effect = [
             errors.DeviceNotFound('boom'),
@@ -1252,6 +1254,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         result = self.hardware.evaluate_hardware_support()
 
+        self.assertTrue(mocked_check_for_iscsi.called)
         self.assertEqual(hardware.HardwareSupport.GENERIC, result)
         mocked_root_dev.assert_called_with(mocked_block_dev.return_value)
         self.assertEqual(2, mocked_root_dev.call_count)
@@ -1335,9 +1338,11 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
     @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
                        autospec=True)
+    @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
     @mock.patch.object(utils, 'guess_root_disk', autospec=True)
     def test_evaluate_hw_disks_timeout(self, mocked_root_dev, mocked_sleep,
+                                       mocked_check_for_iscsi,
                                        mocked_block_dev):
         mocked_root_dev.side_effect = errors.DeviceNotFound('boom')
 
@@ -1418,6 +1423,18 @@ class TestModuleFunctions(test_base.BaseTestCase):
     def test__udev_settle(self, mocked_execute):
         hardware._udev_settle()
         mocked_execute.assert_called_once_with('udevadm', 'settle')
+
+    def test__check_for_iscsi(self, mocked_execute):
+        hardware._check_for_iscsi()
+        mocked_execute.assert_has_calls([
+            mock.call('iscsistart', '-f'),
+            mock.call('iscsistart', '-b')])
+
+    def test__check_for_iscsi_no_iscsi(self, mocked_execute):
+        mocked_execute.side_effect = processutils.ProcessExecutionError()
+        hardware._check_for_iscsi()
+        mocked_execute.assert_has_calls([
+            mock.call('iscsistart', '-f')])
 
 
 def create_hdparm_info(supported=False, enabled=False, frozen=False,

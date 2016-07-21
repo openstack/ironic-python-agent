@@ -271,9 +271,10 @@ class TestBaseAgent(test_base.BaseTestCase):
 
     @mock.patch.object(time, 'sleep', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
+    @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
-    def test_run_with_sleep(self, mocked_list_hardware, wsgi_server_cls,
-                            mocked_sleep):
+    def test_run_with_sleep(self, mock_check_for_iscsi, mocked_list_hardware,
+                            wsgi_server_cls, mocked_sleep):
         CONF.set_override('inspection_callback_url', '', enforce_type=True)
         wsgi_server = wsgi_server_cls.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
@@ -299,6 +300,7 @@ class TestBaseAgent(test_base.BaseTestCase):
 
         self.agent.heartbeater.start.assert_called_once_with()
         mocked_sleep.assert_called_once_with(10)
+        self.assertTrue(mock_check_for_iscsi.called)
 
     def test_async_command_success(self):
         result = base.AsyncCommandResult('foo_command', {'fail': False},
@@ -437,10 +439,11 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr',
                        autospec=True)
-    def test_with_network_interface(self, mock_get_ipv4, mock_exec,
-                                    mock_gethostbyname):
+    def test_with_network_interface(self, mock_get_ipv4, mock_check_for_iscsi,
+                                    mock_exec, mock_gethostbyname):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = '1.2.3.4'
 
@@ -450,10 +453,14 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
         mock_get_ipv4.assert_called_once_with(mock.ANY, 'em1')
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
+        self.assertTrue(mock_check_for_iscsi.called)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr',
                        autospec=True)
-    def test_with_network_interface_failed(self, mock_get_ipv4, mock_exec,
+    def test_with_network_interface_failed(self, mock_get_ipv4,
+                                           mock_check_for_iscsi,
+                                           mock_exec,
                                            mock_gethostbyname):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = None
@@ -464,6 +471,7 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
         mock_get_ipv4.assert_called_once_with(mock.ANY, 'em1')
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
+        self.assertTrue(mock_check_for_iscsi.called)
 
     def test_route_with_ip(self, mock_exec, mock_gethostbyname):
         self.agent.api_url = 'http://1.2.1.2:8081/v1'
