@@ -79,7 +79,7 @@ def _check_for_iscsi():
     iscsistart -f will print the iBFT or OF info.
     In case such connection exists, we would like to issue
     iscsistart -b to create a session to the target.
-    - if no connection is detected we simply return.
+    - If no connection is detected we simply return.
     """
     try:
         utils.execute('iscsistart', '-f')

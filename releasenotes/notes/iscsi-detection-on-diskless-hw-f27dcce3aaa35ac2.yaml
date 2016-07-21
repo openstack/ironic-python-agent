@@ -1,3 +1,5 @@
 ---
 fixes:
-  - If iscsi connection present, connect an iSCSI target share before detecting disks.
+  - Upon initialization of the agent, an attempt to identify and
+    initialize any configured hardware iSCSI initiators is performed
+    prior to detecting disks.
