@@ -34,7 +34,7 @@ mkdir "$FINALDIR"
 # Setup Final Dir
 #####################################
 
-sudo cp /etc/resolv.conf $FINALDIR/etc/resolv.conf.old
+sudo cp $FINALDIR/etc/resolv.conf $FINALDIR/etc/resolv.conf.old
 sudo cp /etc/resolv.conf $FINALDIR/etc/resolv.conf
 
 sudo cp -a $FINALDIR/opt/tcemirror $FINALDIR/opt/tcemirror.old
