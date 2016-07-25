@@ -16,6 +16,7 @@ import abc
 import binascii
 import functools
 import json
+from multiprocessing.pool import ThreadPool
 import os
 import shlex
 import time
@@ -355,7 +356,7 @@ class HardwareManager(object):
         """Attempt to erase a block device.
 
         Implementations should detect the type of device and erase it in the
-        most appropriate way possible.  Generic implementations should support
+        most appropriate way possible. Generic implementations should support
         common erase mechanisms such as ATA secure erase, or multi-pass random
         writes. Operators with more specific needs should override this method
         in order to detect and handle "interesting" cases, or delegate to the
@@ -366,6 +367,9 @@ class HardwareManager(object):
         proprietary tool to erase that, otherwise call this method on their
         parent class. Upstream submissions of common functionality are
         encouraged.
+
+        This interface could be called concurrently to speed up erasure, as
+        such, it should be implemented in a thread-safe way.
 
         :param node: Ironic node object
         :param block_device: a BlockDevice indicating a device to be erased.
@@ -390,10 +394,23 @@ class HardwareManager(object):
         """
         erase_results = {}
         block_devices = self.list_block_devices()
+        if not len(block_devices):
+            return {}
+
+        info = node.get('driver_internal_info', {})
+        max_pool_size = info.get('disk_erasure_concurrency', 1)
+
+        thread_pool = ThreadPool(min(max_pool_size, len(block_devices)))
         for block_device in block_devices:
-            result = dispatch_to_managers(
-                'erase_block_device', node=node, block_device=block_device)
-            erase_results[block_device.name] = result
+            params = {'node': node, 'block_device': block_device}
+            erase_results[block_device.name] = thread_pool.apply_async(
+                dispatch_to_managers, ('erase_block_device',), params)
+        thread_pool.close()
+        thread_pool.join()
+
+        for device_name, result in erase_results.items():
+            erase_results[device_name] = result.get()
+
         return erase_results
 
     def wait_for_disks(self):

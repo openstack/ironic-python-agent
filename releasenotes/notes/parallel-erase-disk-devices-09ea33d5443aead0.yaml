@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Support parallel disk device erasure. This is controlled by the
+    ``driver_internal_info['agent_enable_parallel_erasure']`` passed
+    by ironic.
+other:
+  - |
+    The ``HardwareManager.erase_block_device`` interface could be called
+    concurrently to support the feature of parallel disk device erasure,
+    it should be implemented in a thread-safe way.
