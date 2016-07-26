@@ -410,6 +410,7 @@ class TestAgentStandalone(test_base.BaseTestCase):
         self.assertFalse(self.agent.api_client.lookup_node.called)
 
 
+@mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
                    lambda self: None)
 @mock.patch.object(socket, 'gethostbyname', autospec=True)
@@ -439,11 +440,10 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
 
-    @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr',
                        autospec=True)
-    def test_with_network_interface(self, mock_get_ipv4, mock_check_for_iscsi,
-                                    mock_exec, mock_gethostbyname):
+    def test_with_network_interface(self, mock_get_ipv4, mock_exec,
+                                    mock_gethostbyname):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = '1.2.3.4'
 
@@ -453,13 +453,10 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
         mock_get_ipv4.assert_called_once_with(mock.ANY, 'em1')
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
-        self.assertTrue(mock_check_for_iscsi.called)
 
-    @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr',
                        autospec=True)
     def test_with_network_interface_failed(self, mock_get_ipv4,
-                                           mock_check_for_iscsi,
                                            mock_exec,
                                            mock_gethostbyname):
         self.agent.network_interface = 'em1'
@@ -471,7 +468,6 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
         mock_get_ipv4.assert_called_once_with(mock.ANY, 'em1')
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
-        self.assertTrue(mock_check_for_iscsi.called)
 
     def test_route_with_ip(self, mock_exec, mock_gethostbyname):
         self.agent.api_url = 'http://1.2.1.2:8081/v1'
