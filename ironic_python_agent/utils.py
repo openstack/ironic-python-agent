@@ -24,6 +24,7 @@ import tarfile
 import tempfile
 import time
 
+from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_utils import units
@@ -59,26 +60,11 @@ COLLECT_LOGS_COMMANDS = {
 
 
 def execute(*cmd, **kwargs):
-    """Convenience wrapper around oslo's execute() method.
+    """Convenience wrapper around ironic_lib's execute() method.
 
-    Executes and logs results from a system command. See docs for
-    oslo_concurrency.processutils.execute for usage.
-
-    :param *cmd: positional arguments to pass to processutils.execute()
-    :param log_stdout: keyword-only argument: whether to log the output
-    :param **kwargs: keyword arguments to pass to processutils.execute()
-    :raises: UnknownArgumentError on receiving unknown arguments
-    :raises: ProcessExecutionError
-    :raises: OSError
-    :returns: tuple of (stdout, stderr)
+    Executes and logs results from a system command.
     """
-    log_stdout = kwargs.pop('log_stdout', True)
-    result = processutils.execute(*cmd, **kwargs)
-    LOG.debug('Execution completed, command line is "%s"', ' '.join(cmd))
-    if log_stdout:
-        LOG.debug('Command stdout is: "%s"', result[0])
-    LOG.debug('Command stderr is: "%s"', result[1])
-    return result
+    return ironic_utils.execute(*cmd, **kwargs)
 
 
 def try_execute(*cmd, **kwargs):
