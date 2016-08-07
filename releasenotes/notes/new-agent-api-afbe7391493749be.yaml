@@ -1,0 +1,3 @@
+---
+features:
+  - Use new Ironic agent API (added in API version 1.22) when it's available.
