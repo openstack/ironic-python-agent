@@ -17,7 +17,8 @@ Index
 
 .. toctree::
 
-   troubleshooting
+    troubleshooting
+    metrics
 
 How it works
 ============

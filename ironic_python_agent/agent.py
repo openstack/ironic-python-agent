@@ -20,6 +20,7 @@ import threading
 import time
 
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_log import log
 import pkg_resources
 from six.moves.urllib import parse as urlparse
@@ -35,7 +36,6 @@ from ironic_python_agent import inspector
 from ironic_python_agent import ironic_api_client
 from ironic_python_agent import utils
 
-
 LOG = log.getLogger(__name__)
 
 # Time(in seconds) to wait for any of the interfaces to be up
@@ -44,6 +44,9 @@ NETWORK_WAIT_TIMEOUT = 60
 
 # Time(in seconds) to wait before reattempt
 NETWORK_WAIT_RETRY = 5
+
+cfg.CONF.import_group('metrics', 'ironic_lib.metrics_utils')
+cfg.CONF.import_group('metrics_statsd', 'ironic_lib.metrics_statsd')
 
 
 def _time():
@@ -341,6 +344,15 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             LOG.info('Lookup succeeded, node UUID is %s', self.node['uuid'])
             hardware.cache_node(self.node)
             self.heartbeat_timeout = content['config']['heartbeat_timeout']
+
+            # Update config with values from Ironic
+            config = content.get('config', {})
+            if config.get('metrics'):
+                for opt, val in config.items():
+                    setattr(cfg.CONF.metrics, opt, val)
+            if config.get('metrics_statsd'):
+                for opt, val in config.items():
+                    setattr(cfg.CONF.metrics_statsd, opt, val)
 
         wsgi = simple_server.make_server(
             self.listen_address[0],

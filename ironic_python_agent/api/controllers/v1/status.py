@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from ironic_lib import metrics_utils
 import pecan
 from pecan import rest
 from wsme import types
@@ -48,6 +49,7 @@ class StatusController(rest.RestController):
     @wsme_pecan.wsexpose(AgentStatus)
     def get_all(self):
         """Get current status of the running agent."""
-        agent = pecan.request.agent
-        status = agent.get_status()
-        return AgentStatus.from_agent_status(status)
+        with metrics_utils.get_metrics_logger(__name__).timer('get_all'):
+            agent = pecan.request.agent
+            status = agent.get_status()
+            return AgentStatus.from_agent_status(status)

@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from ironic_lib import metrics_utils
 import pecan
 from pecan import rest
 from wsme import types
@@ -78,9 +79,10 @@ class CommandController(rest.RestController):
     @wsme_pecan.wsexpose(CommandResultList)
     def get_all(self):
         """Get all command results."""
-        agent = pecan.request.agent
-        results = agent.list_command_results()
-        return CommandResultList.from_results(results)
+        with metrics_utils.get_metrics_logger(__name__).timer('get_all'):
+            agent = pecan.request.agent
+            results = agent.list_command_results()
+            return CommandResultList.from_results(results)
 
     @wsme_pecan.wsexpose(CommandResult, types.text, types.text)
     def get_one(self, result_id, wait=None):
@@ -91,13 +93,14 @@ class CommandController(rest.RestController):
         :returns: a :class:`ironic_python_agent.api.controller.v1.command.
                   CommandResult` object.
         """
-        agent = pecan.request.agent
-        result = agent.get_command_result(result_id)
+        with metrics_utils.get_metrics_logger(__name__).timer('get_one'):
+            agent = pecan.request.agent
+            result = agent.get_command_result(result_id)
 
-        if wait and wait.lower() == 'true':
-            result.join()
+            if wait and wait.lower() == 'true':
+                result.join()
 
-        return CommandResult.from_result(result)
+            return CommandResult.from_result(result)
 
     @wsme_pecan.wsexpose(CommandResult, types.text, body=Command)
     def post(self, wait=None, command=None):
@@ -109,14 +112,15 @@ class CommandController(rest.RestController):
         :returns: a :class:`ironic_python_agent.api.controller.v1.command.
                   CommandResult` object.
         """
-        # the POST body is always the last arg,
-        # so command must be a kwarg here
-        if command is None:
-            command = Command()
-        agent = pecan.request.agent
-        result = agent.execute_command(command.name, **command.params)
+        with metrics_utils.get_metrics_logger(__name__).timer('post'):
+            # the POST body is always the last arg,
+            # so command must be a kwarg here
+            if command is None:
+                command = Command()
+            agent = pecan.request.agent
+            result = agent.execute_command(command.name, **command.params)
 
-        if wait and wait.lower() == 'true':
-            result.join()
+            if wait and wait.lower() == 'true':
+                result.join()
 
-        return result
+            return result

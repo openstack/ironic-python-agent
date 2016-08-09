@@ -12,9 +12,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+from ironic_lib import metrics_utils
 import pecan
 from pecan import rest
-
 from wsme import types as wtypes
 import wsmeext.pecan as wsme_pecan
 
@@ -81,7 +81,8 @@ class RootController(rest.RestController):
         # NOTE: The reason why convert() it's being called for every
         #       request is because we need to get the host url from
         #       the request object to make the links.
-        return Root.convert()
+        with metrics_utils.get_metrics_logger(__name__).timer('get'):
+            return Root.convert()
 
     @pecan.expose()
     def _route(self, args):
