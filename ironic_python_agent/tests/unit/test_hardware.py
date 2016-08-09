@@ -15,6 +15,7 @@
 import os
 import time
 
+from ironic_lib import disk_utils
 import mock
 import netifaces
 from oslo_concurrency import processutils
@@ -283,6 +284,26 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                      'driver_internal_info': {}}
         CONF.clear_override('disk_wait_attempts')
         CONF.clear_override('disk_wait_delay')
+
+    def test_get_clean_steps(self):
+        expected_clean_steps = [
+            {
+                'step': 'erase_devices',
+                'priority': 10,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'erase_devices_metadata',
+                'priority': 99,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            }
+        ]
+        clean_steps = self.hardware.get_clean_steps(self.node, [])
+        self.assertEqual(expected_clean_steps, clean_steps)
 
     @mock.patch('netifaces.ifaddresses')
     @mock.patch('os.listdir')
@@ -1193,6 +1214,64 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
             self, True, '--security-erase-enhanced')
         test_security_erase_option(
             self, False, '--security-erase')
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_virtual_media_device', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'list_block_devices', autospec=True)
+    @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
+    def test_erase_devices_metadata(
+            self, mock_metadata, mock_list_devs, mock__is_vmedia):
+        block_devices = [
+            hardware.BlockDevice('/dev/sr0', 'vmedia', 12345, True),
+            hardware.BlockDevice('/dev/sda', 'small', 65535, False),
+        ]
+        mock_list_devs.return_value = block_devices
+        mock__is_vmedia.side_effect = (True, False)
+
+        self.hardware.erase_devices_metadata(self.node, [])
+        mock_metadata.assert_called_once_with(
+            '/dev/sda', self.node['uuid'])
+        mock_list_devs.assert_called_once_with(mock.ANY)
+        mock__is_vmedia.assert_has_calls([
+            mock.call(mock.ANY, block_devices[0]),
+            mock.call(mock.ANY, block_devices[1])
+        ])
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_virtual_media_device', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'list_block_devices', autospec=True)
+    @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
+    def test_erase_devices_metadata_error(
+            self, mock_metadata, mock_list_devs, mock__is_vmedia):
+        block_devices = [
+            hardware.BlockDevice('/dev/sda', 'small', 65535, False),
+            hardware.BlockDevice('/dev/sdb', 'big', 10737418240, True),
+        ]
+        mock__is_vmedia.return_value = False
+        mock_list_devs.return_value = block_devices
+        # Simulate /dev/sda failing and /dev/sdb succeeding
+        error_output = 'Booo00000ooommmmm'
+        mock_metadata.side_effect = (
+            processutils.ProcessExecutionError(error_output),
+            None,
+        )
+
+        self.assertRaisesRegex(errors.BlockDeviceEraseError, error_output,
+                               self.hardware.erase_devices_metadata,
+                               self.node, [])
+        # Assert all devices are erased independent if one of them
+        # failed previously
+        mock_metadata.assert_has_calls([
+            mock.call('/dev/sda', self.node['uuid']),
+            mock.call('/dev/sdb', self.node['uuid']),
+        ])
+        mock_list_devs.assert_called_once_with(mock.ANY)
+        mock__is_vmedia.assert_has_calls([
+            mock.call(mock.ANY, block_devices[0]),
+            mock.call(mock.ANY, block_devices[1])
+        ])
 
     @mock.patch.object(utils, 'execute')
     def test_get_bmc_address(self, mocked_execute):

@@ -1,0 +1,6 @@
+---
+features:
+  - Add a new cleaning step called "erase_devices_metadata" to the generic
+    hardware manager which is responsible for destroying the metadata
+    on the disk devices (partition tables, signatures, file-system
+    identifications, etc...).

@@ -19,7 +19,7 @@ import os
 import shlex
 import time
 
-
+from ironic_lib import disk_utils
 import netifaces
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -399,15 +399,7 @@ class HardwareManager(object):
                  dict as defined above
 
         """
-        return [
-            {
-                'step': 'erase_devices',
-                'priority': 10,
-                'interface': 'deploy',
-                'reboot_requested': False,
-                'abortable': True
-            }
-        ]
+        return []
 
     def get_version(self):
         """Get a name and version for this hardware manager.
@@ -437,7 +429,8 @@ class HardwareManager(object):
 
 class GenericHardwareManager(HardwareManager):
     HARDWARE_MANAGER_NAME = 'generic_hardware_manager'
-    HARDWARE_MANAGER_VERSION = '1.0'
+    # 1.1 - Added new clean step called erase_devices_metadata
+    HARDWARE_MANAGER_VERSION = '1.1'
 
     def __init__(self):
         self.sys_path = '/sys'
@@ -753,6 +746,35 @@ class GenericHardwareManager(HardwareManager):
         LOG.error(msg)
         raise errors.IncompatibleHardwareMethodError(msg)
 
+    def erase_devices_metadata(self, node, ports):
+        """Attempt to erase the disk devices metadata.
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        :raises BlockDeviceEraseError when there's an error erasing the
+                block device
+        """
+        block_devices = self.list_block_devices()
+        erase_errors = {}
+        for dev in block_devices:
+            if self._is_virtual_media_device(dev):
+                LOG.info("Skipping the erase of virtual media device %s",
+                         dev.name)
+                continue
+
+            try:
+                disk_utils.destroy_disk_metadata(dev.name, node['uuid'])
+            except processutils.ProcessExecutionError as e:
+                LOG.error('Failed to erase the metadata on device "%(dev)s". '
+                          'Error: %(error)s', {'dev': dev.name, 'error': e})
+                erase_errors[dev.name] = e
+
+        if erase_errors:
+            excpt_msg = ('Failed to erase the metadata on the device(s): %s' %
+                         '; '.join(['"%s": %s' % (k, v)
+                                    for k, v in erase_errors.items()]))
+            raise errors.BlockDeviceEraseError(excpt_msg)
+
     def _shred_block_device(self, node, block_device):
         """Erase a block device using shred.
 
@@ -896,6 +918,24 @@ class GenericHardwareManager(HardwareManager):
             return
 
         return out.strip()
+
+    def get_clean_steps(self, node, ports):
+        return [
+            {
+                'step': 'erase_devices',
+                'priority': 10,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'erase_devices_metadata',
+                'priority': 99,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            }
+        ]
 
 
 def _compare_extensions(ext1, ext2):
