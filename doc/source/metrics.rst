@@ -21,13 +21,13 @@ Using a context manager
 Using the context manager is the recommended way for sending metrics that time
 or count sections of code. However, given that you cannot cache the
 MetricsLogger, you have to explicitly call get_metrics_logger() from
-ironic-lib every time. For example:
+ironic-lib every time. For example::
 
   from ironic_lib import metrics_utils
 
   def my_method():
-    with metrics_utils.get_metrics_logger(__name__).timer():
-      return _do_work()
+      with metrics_utils.get_metrics_logger(__name__).timer():
+          return _do_work()
 
 As a note, these metric collectors do work for custom HardwareManagers as
 well, however, you may want to metric the portions of a method that determine
@@ -39,13 +39,13 @@ Explicitly sending metrics
 A feature that may be particularly helpful for deployers writing custom
 HardwareManagers is the ability to explicitly send metrics. As an example,
 you could add a cleaning step which would retrieve metrics about a device and
-ship them using the provided metrics library. For example:
+ship them using the provided metrics library. For example::
 
   from ironic_lib import metrics_utils
 
   def my_cleaning_step():
-    for name, value in _get_smart_data():
-      metrics_utils.get_metrics_logger(__name__).send_gauge(name, value)
+      for name, value in _get_smart_data():
+          metrics_utils.get_metrics_logger(__name__).send_gauge(name, value)
 
 References
 ==========
