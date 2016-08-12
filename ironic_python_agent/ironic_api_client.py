@@ -122,7 +122,8 @@ class APIClient(object):
         response = self._request('GET', self.lookup_api,
                                  headers=self.ramdisk_api_headers,
                                  params=params)
-        if response.status_code == requests.codes.NOT_FOUND:
+        if response.status_code in (requests.codes.NOT_FOUND,
+                                    requests.codes.UNAUTHORIZED):
             # Assume that new API is not available and retry
             LOG.warning('New API is not available, falling back to old '
                         'agent vendor passthru')

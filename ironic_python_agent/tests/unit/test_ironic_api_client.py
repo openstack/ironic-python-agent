@@ -17,6 +17,7 @@ import json
 import mock
 from oslo_service import loopingcall
 from oslotest import base as test_base
+import requests
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
@@ -259,8 +260,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
         self.assertFalse(error)
 
-    def test_do_lookup_fallback(self):
-        response0 = FakeResponse(status_code=404)
+    def _test_do_lookup_fallback(self, error_code):
+        response0 = FakeResponse(status_code=error_code)
         response = FakeResponse(status_code=200, content={
             'node': {
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
@@ -346,3 +347,9 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
             },
         }, content['inventory'])
         self.assertFalse(self.api_client.use_ramdisk_api)
+
+    def test_do_lookup_fallback_not_found(self):
+        self._test_do_lookup_fallback(error_code=requests.codes.NOT_FOUND)
+
+    def test_do_lookup_fallback_unauthorized(self):
+        self._test_do_lookup_fallback(error_code=requests.codes.UNAUTHORIZED)
