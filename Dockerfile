@@ -28,11 +28,10 @@ RUN apt-mark manual python-minimal
 # Install requirements separately, because pip understands a git+https url
 # while setuptools doesn't
 RUN pip install --upgrade pip
-# TODO(jroll) use upper-constraints here
-RUN pip install -r /tmp/ironic-python-agent/requirements.txt
+RUN pip install -c /tmp/ironic-python-agent/upper-constraints.txt -r /tmp/ironic-python-agent/requirements.txt
 
 # This will succeed because all the dependencies were installed previously
-RUN pip install /tmp/ironic-python-agent
+RUN pip install -c /tmp/ironic-python-agent/upper-constraints.txt /tmp/ironic-python-agent
 
 # Remove no longer needed packages
 RUN apt-get -y purge gcc-4.6 gcc python2.7-dev git && \
