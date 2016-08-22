@@ -24,3 +24,6 @@ doc/build
 
 # release notes build
 releasenotes/build
+
+# upper-constraints handling for image builds
+upper-constraints.txt
