@@ -7,6 +7,7 @@
 set -e
 
 OUTPUT_FILE="oem/container.tar.gz"
+IPA_ROOT=$(readlink -f $(dirname $0)/../../)
 
 # If there's already a container.tar.gz, don't overwrite it -- instead, bail
 if [[ -e "${OUTPUT_FILE}" ]]; then
@@ -15,7 +16,10 @@ if [[ -e "${OUTPUT_FILE}" ]]; then
 fi
 
 # Build the docker image
-cd ../../
+# Everything from ${IPA_ROOT} will be available under /tmp/ironic-python-agent in Docker
+cd ${IPA_ROOT}
+
+imagebuild/common/generate_upper_constraints.sh ${IPA_ROOT}/upper-constraints.txt
 
 # TODO(jlvilla): Once Docker 1.9 is widely deployed, switch to using the 'ARG'
 # command which was added in Docker 1.9. Currently Ubuntu 14.04 uses Docker

@@ -39,11 +39,10 @@ RUN apt-mark manual python-minimal
 # Install requirements separately, because pip understands a git+https url
 # while setuptools doesn't
 RUN proxy.sh pip install --upgrade pip
-# TODO(jroll) use upper-constraints here
-RUN proxy.sh pip install --no-cache-dir -r /tmp/ironic-python-agent/requirements.txt
+RUN proxy.sh pip install -c /tmp/ironic-python-agent/upper-constraints.txt --no-cache-dir -r /tmp/ironic-python-agent/requirements.txt
 
 # This will succeed because all the dependencies were installed previously
-RUN proxy.sh pip install --no-cache-dir /tmp/ironic-python-agent
+RUN proxy.sh pip install -c /tmp/ironic-python-agent/upper-constraints.txt --no-cache-dir /tmp/ironic-python-agent
 
 # Remove no longer needed packages
 # NOTE(jroll) leave git to avoid strange apt issues in downstream Dockerfiles
