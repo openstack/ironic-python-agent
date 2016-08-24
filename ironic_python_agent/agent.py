@@ -88,8 +88,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         """
         super(IronicPythonAgentHeartbeater, self).__init__()
         self.agent = agent
-        self.api = ironic_api_client.APIClient(agent.api_url,
-                                               agent.driver_name)
+        self.api = agent.api_client
         self.error_delay = self.initial_delay
         self.reader = None
         self.writer = None
