@@ -353,3 +353,6 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
     def test_do_lookup_fallback_unauthorized(self):
         self._test_do_lookup_fallback(error_code=requests.codes.UNAUTHORIZED)
+
+    def test_do_lookup_fallback_not_acceptable(self):
+        self._test_do_lookup_fallback(error_code=requests.codes.NOT_ACCEPTABLE)
