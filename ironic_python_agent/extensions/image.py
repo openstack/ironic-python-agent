@@ -81,6 +81,8 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
     """Install GRUB2 bootloader on a given device."""
     LOG.debug("Installing GRUB2 bootloader on device %s", device)
     root_partition = _get_partition(device, uuid=root_uuid)
+    efi_partition = None
+    efi_partition_mount_point = None
 
     try:
         # Mount the partition and binds
@@ -89,9 +91,6 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
         if efi_system_part_uuid:
             efi_partition = _get_partition(device, uuid=efi_system_part_uuid)
             efi_partition_mount_point = os.path.join(path, "boot/efi")
-        else:
-            efi_partition = None
-            efi_partition_mount_point = None
 
         utils.execute('mount', root_partition, path)
         for fs in BIND_MOUNTS:
