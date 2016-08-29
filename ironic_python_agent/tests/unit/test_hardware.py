@@ -328,7 +328,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual(None, interfaces[0].lldp)
+        self.assertIsNone(interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
 
     @mock.patch('ironic_python_agent.netutils.get_lldp_info')
@@ -396,7 +396,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual(None, interfaces[0].lldp)
+        self.assertIsNone(interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
 
     @mock.patch('netifaces.ifaddresses')
