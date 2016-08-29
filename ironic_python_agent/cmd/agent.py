@@ -35,8 +35,10 @@ def run():
         CONF.set_override('debug', ipa_debug)
     log.setup(CONF, 'ironic-python-agent')
     agent.IronicPythonAgent(CONF.api_url,
-                            (CONF.advertise_host, CONF.advertise_port),
-                            (CONF.listen_host, CONF.listen_port),
+                            agent.Host(hostname=CONF.advertise_host,
+                                       port=CONF.advertise_port),
+                            agent.Host(hostname=CONF.listen_host,
+                                       port=CONF.listen_port),
                             CONF.ip_lookup_attempts,
                             CONF.ip_lookup_sleep,
                             CONF.network_interface,

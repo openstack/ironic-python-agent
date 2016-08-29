@@ -137,8 +137,8 @@ class TestBaseAgent(test_base.BaseTestCase):
 
         self.agent = agent.IronicPythonAgent('https://fake_api.example.'
                                              'org:8081/',
-                                             ('203.0.113.1', 9990),
-                                             ('192.0.2.1', 9999),
+                                             agent.Host('203.0.113.1', 9990),
+                                             agent.Host('192.0.2.1', 9999),
                                              3,
                                              10,
                                              'eth0',
@@ -192,10 +192,10 @@ class TestBaseAgent(test_base.BaseTestCase):
         }
         self.agent.run()
 
-        listen_addr = ('192.0.2.1', 9999)
+        listen_addr = agent.Host('192.0.2.1', 9999)
         wsgi_server_cls.assert_called_once_with(
-            listen_addr[0],
-            listen_addr[1],
+            listen_addr.hostname,
+            listen_addr.port,
             self.agent.api,
             server_class=simple_server.WSGIServer)
         wsgi_server.serve_forever.assert_called_once_with()
@@ -232,10 +232,10 @@ class TestBaseAgent(test_base.BaseTestCase):
         }
         self.agent.run()
 
-        listen_addr = ('192.0.2.1', 9999)
+        listen_addr = agent.Host('192.0.2.1', 9999)
         wsgi_server_cls.assert_called_once_with(
-            listen_addr[0],
-            listen_addr[1],
+            listen_addr.hostname,
+            listen_addr.port,
             self.agent.api,
             server_class=simple_server.WSGIServer)
         wsgi_server.serve_forever.assert_called_once_with()
@@ -296,10 +296,10 @@ class TestBaseAgent(test_base.BaseTestCase):
         }
         self.agent.run()
 
-        listen_addr = ('192.0.2.1', 9999)
+        listen_addr = agent.Host('192.0.2.1', 9999)
         wsgi_server_cls.assert_called_once_with(
-            listen_addr[0],
-            listen_addr[1],
+            listen_addr.hostname,
+            listen_addr.port,
             self.agent.api,
             server_class=simple_server.WSGIServer)
         wsgi_server.serve_forever.assert_called_once_with()
@@ -378,8 +378,10 @@ class TestAgentStandalone(test_base.BaseTestCase):
         super(TestAgentStandalone, self).setUp()
         self.agent = agent.IronicPythonAgent('https://fake_api.example.'
                                              'org:8081/',
-                                             ('203.0.113.1', 9990),
-                                             ('192.0.2.1', 9999),
+                                             agent.Host(hostname='203.0.113.1',
+                                                        port=9990),
+                                             agent.Host(hostname='192.0.2.1',
+                                                        port=9999),
                                              3,
                                              10,
                                              'eth0',
@@ -406,10 +408,10 @@ class TestAgentStandalone(test_base.BaseTestCase):
         }
         self.agent.run()
 
-        listen_addr = ('192.0.2.1', 9999)
+        listen_addr = agent.Host('192.0.2.1', 9999)
         wsgi_server_cls.assert_called_once_with(
-            listen_addr[0],
-            listen_addr[1],
+            listen_addr.hostname,
+            listen_addr.port,
             self.agent.api,
             server_class=simple_server.WSGIServer)
         wsgi_server.serve_forever.assert_called_once_with()
@@ -429,8 +431,8 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
 
         self.agent = agent.IronicPythonAgent(
             api_url='https://fake_api.example.org:8081/',
-            advertise_address=(None, 9990),
-            listen_address=('0.0.0.0', 9999),
+            advertise_address=agent.Host(None, 9990),
+            listen_address=agent.Host('0.0.0.0', 9999),
             ip_lookup_attempts=5,
             ip_lookup_sleep=10,
             network_interface=None,
@@ -440,7 +442,7 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
             standalone=False)
 
     def test_advertise_address_provided(self, mock_exec, mock_gethostbyname):
-        self.agent.advertise_address = ('1.2.3.4', 9990)
+        self.agent.advertise_address = agent.Host('1.2.3.4', 9990)
 
         self.agent.set_agent_advertise_addr()
 
@@ -457,7 +459,8 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
 
         self.agent.set_agent_advertise_addr()
 
-        self.assertEqual(('1.2.3.4', 9990), self.agent.advertise_address)
+        self.assertEqual(agent.Host('1.2.3.4', 9990),
+                         self.agent.advertise_address)
         mock_get_ipv4.assert_called_once_with(mock.ANY, 'em1')
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)

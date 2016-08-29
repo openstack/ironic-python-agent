@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import os
 import random
 import select
@@ -47,6 +48,8 @@ NETWORK_WAIT_RETRY = 5
 
 cfg.CONF.import_group('metrics', 'ironic_lib.metrics_utils')
 cfg.CONF.import_group('metrics_statsd', 'ironic_lib.metrics_statsd')
+
+Host = collections.namedtuple('Host', ['hostname', 'port'])
 
 
 def _time():
@@ -222,7 +225,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         :raises: LookupAgentIPError if an IP address could not be found
         """
-        if self.advertise_address[0] is not None:
+        if self.advertise_address.hostname is not None:
             return
 
         found_ip = None
@@ -247,8 +250,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                 time.sleep(self.ip_lookup_sleep)
 
         if found_ip:
-            self.advertise_address = (found_ip,
-                                      self.advertise_address[1])
+            self.advertise_address = Host(hostname=found_ip,
+                                          port=self.advertise_address.port)
         else:
             raise errors.LookupAgentIPError('Agent could not find a valid IP '
                                             'address.')
@@ -354,8 +357,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                     setattr(cfg.CONF.metrics_statsd, opt, val)
 
         wsgi = simple_server.make_server(
-            self.listen_address[0],
-            self.listen_address[1],
+            self.listen_address.hostname,
+            self.listen_address.port,
             self.api,
             server_class=simple_server.WSGIServer)
 
