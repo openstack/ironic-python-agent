@@ -469,7 +469,7 @@ class TestCollectPciDevicesInfo(test_base.BaseTestCase):
 
         inspector.collect_pci_devices_info(self.data, self.failures)
 
-        self.assertFalse('pci_devices' in self.data)
+        self.assertNotIn('pci_devices', self.data)
         self.assertEqual(1, len(self.failures._failures))
 
     @mock.patch.object(os.path, 'isdir', autospec=True)
