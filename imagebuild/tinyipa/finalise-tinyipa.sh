@@ -76,7 +76,9 @@ $CHROOT_CMD depmod -a `$WORKDIR/build_files/fakeuname -r`
 
 # If flag is set install the python now
 if $BUILD_AND_INSTALL_TINYIPA ; then
-    $CHROOT_CMD python /tmp/get-pip.py --no-wheel --no-index --find-links=file:///tmp/wheelhouse ironic_python_agent
+    cp -a $BUILDDIR/tmp/upper-constraints.txt $FINALDIR/tmp/upper-constraints.txt
+    $CHROOT_CMD python /tmp/get-pip.py -c /tmp/upper-constraints.txt --no-wheel --no-index --find-links=file:///tmp/wheelhouse ironic_python_agent
+    rm -rf $FINALDIR/tmp/upper-constraints.txt
     rm -rf $FINALDIR/tmp/wheelhouse
     rm -rf $FINALDIR/tmp/get-pip.py
 fi
