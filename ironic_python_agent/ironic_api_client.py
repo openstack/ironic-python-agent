@@ -123,7 +123,8 @@ class APIClient(object):
                                  headers=self.ramdisk_api_headers,
                                  params=params)
         if response.status_code in (requests.codes.NOT_FOUND,
-                                    requests.codes.UNAUTHORIZED):
+                                    requests.codes.UNAUTHORIZED,
+                                    requests.codes.NOT_ACCEPTABLE):
             # Assume that new API is not available and retry
             LOG.warning('New API is not available, falling back to old '
                         'agent vendor passthru')
