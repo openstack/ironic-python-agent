@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fix two root device hints, 'wwn_with_extension' and 'wwn_vendor_extension',
+    that were implemented and documented, but were not added to the list of
+    supported root device hints, and thus fail validation.

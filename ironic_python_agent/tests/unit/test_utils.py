@@ -414,6 +414,18 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         self.assertEqual(expected, result)
 
     @mock.patch.object(utils, 'get_agent_params')
+    def test_parse_root_device_hints_wwn(self, mock_get_params):
+        mock_get_params.return_value = {
+            'root_device': 'wwn=abcd,wwn_vendor_extension=ext,'
+            'wwn_with_extension=abcd_ext',
+            'ipa-api-url': 'http://1.2.3.4:1234'
+        }
+        expected = {'wwn': 'abcd', 'wwn_vendor_extension': 'ext',
+                    'wwn_with_extension': 'abcd_ext'}
+        result = utils.parse_root_device_hints()
+        self.assertEqual(expected, result)
+
+    @mock.patch.object(utils, 'get_agent_params')
     def test_parse_root_device_hints_no_hints(self, mock_get_params):
         mock_get_params.return_value = {
             'ipa-api-url': 'http://1.2.3.4:1234'
