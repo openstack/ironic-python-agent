@@ -531,13 +531,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self._get_os_install_device_root_device_hints(
             {'size': '10'}, '/dev/sdb')
 
-    @mock.patch.object(hardware.LOG, 'warning')
-    def test_get_os_install_device_root_device_hints_size_not_int(
-            self, mock_log):
+    def test_get_os_install_device_root_device_hints_size_not_int(self):
         self.assertRaises(errors.DeviceNotFound,
                           self._get_os_install_device_root_device_hints,
                           {'size': 'not-int'}, '/dev/sdb')
-        self.assertTrue(mock_log.called)
 
     def test_get_os_install_device_root_device_hints_vendor(self):
         self._get_os_install_device_root_device_hints(
