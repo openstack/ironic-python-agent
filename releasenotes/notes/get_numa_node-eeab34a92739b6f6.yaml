@@ -1,0 +1,3 @@
+---
+features:
+  - Adds numa_node id when collecting pci device info during inspection.

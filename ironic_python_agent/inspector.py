@@ -357,6 +357,16 @@ def collect_pci_devices_info(data, failures):
                 LOG.warning('Wrong format of PCI revision in PCI '
                             'device %s: %s', subdir, exc)
 
+        pci_numa_node_id = None
+        pci_numa_path = os.path.join(pci_devices_path, subdir, 'numa_node')
+        if os.path.isfile(pci_numa_path):
+            try:
+                with open(pci_numa_path) as vendor_numa_node:
+                    pci_numa_node_id = vendor_numa_node.read().strip()
+            except IOError as exc:
+                LOG.warning('Failed to gather numa_node id '
+                            'from PCI device %s: %s', subdir, exc)
+
         LOG.debug(
             'Found a PCI device with vendor id %s, product id %s, class %s '
             'and revision %s', vendor, device, pci_class, pci_revision)
@@ -364,7 +374,9 @@ def collect_pci_devices_info(data, failures):
                                  'product_id': device,
                                  'class': pci_class,
                                  'revision': pci_revision,
-                                 'bus': subdir})
+                                 'bus': subdir,
+                                 'numa_node_id': pci_numa_node_id})
+
     data['pci_devices'] = pci_devices_info
 
 
