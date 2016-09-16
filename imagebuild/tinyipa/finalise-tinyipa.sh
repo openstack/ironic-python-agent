@@ -6,6 +6,8 @@ BUILDDIR="$WORKDIR/tinyipabuild"
 FINALDIR="$WORKDIR/tinyipafinal"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-true}
 TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-"http://repo.tinycorelinux.net/"}
+ENABLE_SSH=${ENABLE_SSH:-false}
+SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 
 TC=1001
 STAFF=50
@@ -15,6 +17,27 @@ CHROOT_CMD="sudo chroot $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$
 TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
 
 echo "Finalising tinyipa:"
+
+if $ENABLE_SSH ; then
+    echo "Validating location of public SSH key"
+    if [ -n "$SSH_PUBLIC_KEY" ]; then
+        if [ -f "$SSH_PUBLIC_KEY" ]; then
+            _found_ssh_key="$SSH_PUBLIC_KEY"
+        fi
+    else
+        for fmt in rsa dsa; do
+            if [ -f "$HOME/.ssh/id_$fmt.pub" ]; then
+                _found_ssh_key="$HOME/.ssh/id_$fmt.pub"
+                break
+            fi
+        done
+    fi
+
+    if [ -z $_found_ssh_key ]; then
+        echo "Failed to find neither provided nor default SSH key"
+        exit 1
+    fi
+fi
 
 sudo -v
 
@@ -67,6 +90,30 @@ cp $WORKDIR/build_files/fakeuname $FINALDIR/tmp/overides/uname
 while read line; do
     $TC_CHROOT_CMD tce-load -wic $line
 done < $WORKDIR/build_files/finalreqs.lst
+
+if $ENABLE_SSH ; then
+    # Install and configure bare minimum for SSH access
+    $TC_CHROOT_CMD tce-load -wic openssh
+    # Configure OpenSSH
+    $CHROOT_CMD cp /usr/local/etc/ssh/sshd_config.orig /usr/local/etc/ssh/sshd_config
+    echo "PasswordAuthentication no" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+    # Generate and configure host keys - RSA, DSA, Ed25519
+    # NOTE(pas-ha) ECDSA host key will still be re-generated fresh on every image boot
+    $CHROOT_CMD ssh-keygen -t rsa -N "" -f /usr/local/etc/ssh/ssh_host_rsa_key
+    $CHROOT_CMD ssh-keygen -t dsa -N "" -f /usr/local/etc/ssh/ssh_host_dsa_key
+    $CHROOT_CMD ssh-keygen -t ed25519 -N "" -f /usr/local/etc/ssh/ssh_host_ed25519_key
+    echo "HostKey /usr/local/etc/ssh/ssh_host_rsa_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+    echo "HostKey /usr/local/etc/ssh/ssh_host_dsa_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+    echo "HostKey /usr/local/etc/ssh/ssh_host_ed25519_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+
+    # setup user and SSH keys
+    $CHROOT_CMD mkdir -p /home/tc
+    $CHROOT_CMD chown -R tc.staff /home/tc
+    $TC_CHROOT_CMD mkdir -p /home/tc/.ssh
+    cat $_found_ssh_key | $TC_CHROOT_CMD tee /home/tc/.ssh/authorized_keys
+    $CHROOT_CMD chown tc.staff /home/tc/.ssh/authorized_keys
+    $TC_CHROOT_CMD chmod 600 /home/tc/.ssh/authorized_keys
+fi
 
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/tgt.tcz
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/qemu-utils.tcz
