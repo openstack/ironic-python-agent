@@ -277,21 +277,25 @@ class ImageDownload(object):
         self._md5checksum = hashlib.md5()
         self._time = time_obj or time.time()
         self._request = None
-
+        details = []
         for url in image_info['urls']:
             try:
                 LOG.info("Attempting to download image from {0}".format(url))
                 self._request = self._download_file(image_info, url)
             except errors.ImageDownloadError as e:
                 failtime = time.time() - self._time
-                log_msg = ('Image download failed. URL: {0}; time: {1} '
-                           'seconds. Error: {2}')
-                LOG.warning(log_msg.format(url, failtime, e.details))
+                log_msg = ('URL: {0}; time: {1} '
+                           'seconds. Error: {2}').format(
+                    url, failtime, e.details)
+                LOG.warning('Image download failed. %s', log_msg)
+                details += log_msg
                 continue
             else:
                 break
         else:
-            msg = 'Image download failed for all URLs.'
+            details = '/n'.join(details)
+            msg = ('Image download failed for all URLs with following errors: '
+                   '{}'.format(details))
             raise errors.ImageDownloadError(image_info['id'], msg)
 
     def _download_file(self, image_info, url):
