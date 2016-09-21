@@ -423,6 +423,35 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
         self.assertFalse(interfaces[0].has_carrier)
+        self.assertIsNone(interfaces[0].vendor)
+
+    @mock.patch('netifaces.ifaddresses')
+    @mock.patch('os.listdir')
+    @mock.patch('os.path.exists')
+    @mock.patch('six.moves.builtins.open')
+    def test_list_network_interfaces_with_vendor_info(self,
+                                                      mocked_open,
+                                                      mocked_exists,
+                                                      mocked_listdir,
+                                                      mocked_ifaddresses):
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        mac = '00:0c:29:8c:11:b1'
+        read_mock.side_effect = [mac + '\n', '1', '0x15b3\n', '0x1014\n']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+        }
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual(mac, interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('0x15b3', interfaces[0].vendor)
+        self.assertEqual('0x1014', interfaces[0].product)
 
     @mock.patch.object(hardware, 'get_cached_node')
     @mock.patch.object(utils, 'execute')
@@ -558,11 +587,12 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mock_cached_node.assert_called_once_with()
         mock_dev.assert_called_once_with()
 
-    def test__get_device_vendor(self):
+    def test__get_device_info(self):
         fileobj = mock.mock_open(read_data='fake-vendor')
         with mock.patch(
                 'six.moves.builtins.open', fileobj, create=True) as mock_open:
-            vendor = hardware._get_device_vendor('/dev/sdfake')
+            vendor = hardware._get_device_info(
+                '/dev/sdfake', 'block', 'vendor')
             mock_open.assert_called_once_with(
                 '/sys/class/block/sdfake/device/vendor', 'r')
             self.assertEqual('fake-vendor', vendor)
@@ -692,7 +722,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         list_mock.assert_called_once_with()
 
-    @mock.patch.object(hardware, '_get_device_vendor')
+    @mock.patch.object(hardware, '_get_device_info')
     @mock.patch.object(pyudev.Device, 'from_device_file')
     @mock.patch.object(utils, 'execute')
     def test_list_all_block_device(self, mocked_execute, mocked_udev,
@@ -732,7 +762,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                 self.assertEqual(getattr(expected, attr),
                                  getattr(device, attr))
 
-    @mock.patch.object(hardware, '_get_device_vendor')
+    @mock.patch.object(hardware, '_get_device_info')
     @mock.patch.object(pyudev.Device, 'from_device_file')
     @mock.patch.object(utils, 'execute')
     def test_list_all_block_device_udev_17(self, mocked_execute, mocked_udev,
@@ -744,7 +774,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         devices = hardware.list_all_block_devices()
         self.assertEqual(4, len(devices))
 
-    @mock.patch.object(hardware, '_get_device_vendor')
+    @mock.patch.object(hardware, '_get_device_info')
     @mock.patch.object(pyudev.Device, 'from_device_file')
     @mock.patch.object(utils, 'execute')
     def test_list_all_block_device_with_udev(self, mocked_execute, mocked_udev,
@@ -1461,7 +1491,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestModuleFunctions(test_base.BaseTestCase):
 
-    @mock.patch.object(hardware, '_get_device_vendor', lambda x: "FooTastic")
+    @mock.patch.object(hardware, '_get_device_info',
+                       lambda x, y, z: 'FooTastic')
     @mock.patch.object(hardware, '_udev_settle', autospec=True)
     @mock.patch.object(hardware.pyudev.Device, "from_device_file")
     def test_list_all_block_devices_success(self, mocked_fromdevfile,
@@ -1475,7 +1506,8 @@ class TestModuleFunctions(test_base.BaseTestCase):
         self.assertEqual(BLK_DEVICE_TEMPLATE_SMALL_DEVICES, result)
         mocked_udev.assert_called_once_with()
 
-    @mock.patch.object(hardware, '_get_device_vendor', lambda x: "FooTastic")
+    @mock.patch.object(hardware, '_get_device_info',
+                       lambda x, y: "FooTastic")
     @mock.patch.object(hardware, '_udev_settle', autospec=True)
     def test_list_all_block_devices_wrong_block_type(self, mocked_udev,
                                                      mocked_execute):

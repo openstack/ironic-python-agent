@@ -41,11 +41,14 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         self.api_client = ironic_api_client.APIClient(API_URL, DRIVER)
         self.hardware_info = {
             'interfaces': [
-                hardware.NetworkInterface('eth0', '00:0c:29:8c:11:b1'),
+                hardware.NetworkInterface(
+                    'eth0', '00:0c:29:8c:11:b1', vendor='0x15b3',
+                    product='0x1014'),
                 hardware.NetworkInterface(
                     'eth1', '00:0c:29:8c:11:b2',
                     lldp=[(1, '04885a92ec5459'),
-                          (2, '0545746865726e6574312f3138')]),
+                          (2, '0545746865726e6574312f3138')],
+                    vendor='0x15b3', product='0x1014'),
             ],
             'cpu': hardware.CPU('Awesome Jay CPU x10 9001', '9001', '10',
                                 'ARMv9'),
@@ -298,6 +301,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'switch_port_descr': None,
                     u'has_carrier': True,
                     u'lldp': None,
+                    u'vendor': u'0x15b3',
+                    u'product': u'0x1014'
                 },
                 {
                     u'mac_address': u'00:0c:29:8c:11:b2',
@@ -308,6 +313,8 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                     u'has_carrier': True,
                     u'lldp': [[1, u'04885a92ec5459'],
                               [2, u'0545746865726e6574312f3138']],
+                    u'vendor': u'0x15b3',
+                    u'product': u'0x1014'
                 }
             ],
             u'cpu': {

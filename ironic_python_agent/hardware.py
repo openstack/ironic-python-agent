@@ -48,14 +48,17 @@ UNIT_CONVERTER.define('GB = 1024 MB')
 NODE = None
 
 
-def _get_device_vendor(dev):
-    """Get the vendor name of a given device."""
+def _get_device_info(dev, devclass, field):
+    """Get the device info according to device class and field."""
     try:
         devname = os.path.basename(dev)
-        with open('/sys/class/block/%s/device/vendor' % devname, 'r') as f:
+        with open('/sys/class/%s/%s/device/%s' % (devclass, devname, field),
+                  'r') as f:
             return f.read().strip()
     except IOError:
-        LOG.warning("Can't find the device vendor for device %s", dev)
+        LOG.warning(
+            "Can't find field {0} for device {1} in device class {2}".format(
+                field, dev, devclass))
 
 
 def _udev_settle():
@@ -157,7 +160,8 @@ def list_all_block_devices(block_type='disk'):
                                    model=device['MODEL'],
                                    size=int(device['SIZE']),
                                    rotational=bool(int(device['ROTA'])),
-                                   vendor=_get_device_vendor(device['KNAME']),
+                                   vendor=_get_device_info(device['KNAME'],
+                                                           'block', 'vendor'),
                                    **extra))
     return devices
 
@@ -205,15 +209,17 @@ class BlockDevice(encoding.SerializableComparable):
 class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'switch_port_descr',
                            'switch_chassis_descr', 'ipv4_address',
-                           'has_carrier', 'lldp')
+                           'has_carrier', 'lldp', 'vendor', 'product')
 
     def __init__(self, name, mac_addr, ipv4_address=None, has_carrier=True,
-                 lldp=None):
+                 lldp=None, vendor=None, product=None):
         self.name = name
         self.mac_address = mac_addr
         self.ipv4_address = ipv4_address
         self.has_carrier = has_carrier
         self.lldp = lldp
+        self.vendor = vendor
+        self.product = product
         # TODO(sambetts) Remove these fields in Ocata, they have been
         # superseded by self.lldp
         self.switch_port_descr = None
@@ -501,7 +507,9 @@ class GenericHardwareManager(HardwareManager):
             interface_name, mac_addr,
             ipv4_address=self.get_ipv4_addr(interface_name),
             has_carrier=self._interface_has_carrier(interface_name),
-            lldp=self._get_lldp_data(interface_name))
+            lldp=self._get_lldp_data(interface_name),
+            vendor=_get_device_info(interface_name, 'net', 'vendor'),
+            product=_get_device_info(interface_name, 'net', 'device'))
 
     def get_ipv4_addr(self, interface_id):
         try:
