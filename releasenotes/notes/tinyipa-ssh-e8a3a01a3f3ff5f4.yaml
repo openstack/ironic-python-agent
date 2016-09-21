@@ -1,0 +1,6 @@
+---
+other:
+  - When building the TinyIPA ramdisk, it is now possible to enable SSH
+    access to it.
+    Use ``ENABLE_SSH`` and ``SSH_PUBLIC_KEY`` environment variables
+    for that (see TinyIPA's README for more details).

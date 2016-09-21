@@ -9,6 +9,12 @@ date
 
 export HOME=/root
 
+# Start SSHd
+if [ -f /usr/local/etc/init.d/openssh ]; then
+    echo "Starting OpenSSH server:"
+    /usr/local/etc/init.d/openssh start
+fi
+
 # Maybe save some RAM?
 #rm -rf /tmp/builtin
 

@@ -77,3 +77,14 @@ instead of loading some things at runtime (this results in a slightly bigger
 ramdisk), before running make or build-tinyipa.sh run::
 
   export BUILD_AND_INSTALL_TINYIPA=true
+
+If you want to enable SSH access to the image, set ``ENABLE_SSH`` variable in
+your shell before building the tinyipa::
+
+  export ENABLE_SSH=true
+
+By default it will use public RSA or DSA keys of the user running the build.
+To provide other public SSH key, export path to it in your shell before
+building tinyipa as follows::
+
+  export SSH_PUBLIC_KEY=<full-path-to-public-key>
