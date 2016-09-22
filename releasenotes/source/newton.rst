@@ -1,6 +1,6 @@
-===========================
-Newton Series Release Notes
-===========================
+============================
+ Newton Series Release Notes
+============================
 
 .. release-notes::
-   :branch: origin/master
+   :branch: origin/stable/newton
