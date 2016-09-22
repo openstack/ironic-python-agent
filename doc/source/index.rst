@@ -177,6 +177,26 @@ Another way to build a ramdisk image for IPA is by using diskimage-builder
 [3]_. The ironic-agent diskimage-builder element builds the IPA ramdisk, which
 installs all the required packages and configures services as needed.
 
+tinyipa
+~~~~~~~
+
+Ironic Python Agent repo also provides a set of scripts to build a
+Tiny Core Linux-based deployment kernel and ramdisk (code name ``tinyipa``)
+under ``imagebuild/tinyipa`` folder.
+
+`Tiny Core Linux <http://tinycorelinux.net/>`_
+is a very minimalistic Linux distribution.
+Due to its small size and decreased RAM requirements
+it is mostly suitable for usage in CI with virtualized hardware,
+and is already used on a number of gate jobs in projects under
+OpenStack Baremetal program.
+On the other hand, due to its generally newer Linux kernel it also known to
+work on real hardware if the kernel supports all necessary components
+installed.
+
+Please refer to ``imagebuild/tinyipa/README.rst`` for more information and
+build instructions.
+
 ISO Images
 ~~~~~~~~~~
 Additionally, the IPA ramdisk can be packaged inside of an ISO for use with

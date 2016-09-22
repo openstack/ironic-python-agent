@@ -46,6 +46,27 @@ devuser element example::
   export DIB_DEV_USER_AUTHORIZED_KEYS=$HOME/.ssh/id_rsa.pub
   disk-image-create -o /path/to/custom-ipa debian ironic-agent devuser
 
+tinyipa
+~~~~~~~
+
+If you want to enable SSH access to the image,
+set ``ENABLE_SSH`` variable in your shell to ``true`` before building
+the tinyipa image::
+
+  export ENABLE_SSH=true
+
+By default it will use default public RSA (or, if not available, DSA)
+key of the user running the build (``~/.ssh/id_{rsa,dsa}.pub``).
+
+To provide other public SSH key, export full path to it in your shell
+before building tinyipa as follows::
+
+  export SSH_PUBLIC_KEY=/path/to/other/ssh/public/key
+
+The user to use for access is default Tiny Core Linux user ``tc``.
+This user has no password and has password-less ``sudo`` permissions.
+Installed SSH server is configured to disable Password authentication.
+
 Access via console
 ------------------
 If you need to use console access, passwords must be enabled there are a
@@ -112,6 +133,13 @@ Example::
   export DIB_DEV_USER_PASSWORD=PASSWORD
   disk-image-create -o /path/to/custom-ipa debian ironic-agent devuser
 
+tinyipa
+~~~~~~~
+
+The image built with scripts provided in ``imagebuild/tinyipa`` folder
+of Ironic Python Agent repository by default auto-logins the default
+Tiny Core Linux user ``tc`` to the console.
+This user has no password and has password-less ``sudo`` permissions.
 
 Set IPA to debug logging
 ========================
