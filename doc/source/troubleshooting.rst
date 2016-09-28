@@ -137,7 +137,7 @@ This essentially boils down to the following steps:
    ExecStart setting for the ironic-python-agent.service unit.
 #. Execute ``make`` to complete the build process.
 
-If the the system is ruuning and uses systemd then editing the services file
+If the system is running and uses systemd then editing the services file
 will be required.
 
 - ``systemctl edit ironic-python-agent.service``
