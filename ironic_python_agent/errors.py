@@ -87,7 +87,7 @@ class InvalidCommandParamsError(InvalidContentError):
 
 class RequestedObjectNotFoundError(NotFound):
     def __init__(self, type_descr, obj_id):
-        details = '{0} with id {1} not found.'.format(type_descr, obj_id)
+        details = '{} with id {} not found.'.format(type_descr, obj_id)
         super(RequestedObjectNotFoundError, self).__init__(details)
 
 
@@ -142,7 +142,7 @@ class ImageDownloadError(RESTError):
     message = 'Error downloading image'
 
     def __init__(self, image_id, msg):
-        details = 'Download of image id {0} failed: {1}'.format(image_id, msg)
+        details = 'Download of image id {} failed: {}'.format(image_id, msg)
         super(ImageDownloadError, self).__init__(details)
 
 
@@ -150,9 +150,9 @@ class ImageChecksumError(RESTError):
     """Error raised when an image fails to verify against its checksum."""
 
     message = 'Error verifying image checksum'
-    details_str = ('Image failed to verify against checksum. location: {0}; '
-                   'image ID: {1}; image checksum: {2}; verification '
-                   'checksum: {3}')
+    details_str = ('Image failed to verify against checksum. location: {}; '
+                   'image ID: {}; image checksum: {}; verification '
+                   'checksum: {}')
 
     def __init__(self, image_id, image_location, checksum,
                  calculated_checksum):
@@ -167,8 +167,8 @@ class ImageWriteError(RESTError):
     message = 'Error writing image to device'
 
     def __init__(self, device, exit_code, stdout, stderr):
-        details = ('Writing image to device {0} failed with exit code '
-                   '{1}. stdout: {2}. stderr: {3}')
+        details = ('Writing image to device {} failed with exit code '
+                   '{}. stdout: {}. stderr: {}')
         details = details.format(device, exit_code, stdout, stderr)
         super(ImageWriteError, self).__init__(details)
 
@@ -179,7 +179,7 @@ class ConfigDriveTooLargeError(RESTError):
     message = 'Configdrive is too large for intended partition'
 
     def __init__(self, filename, filesize):
-        details = ('Configdrive at {0} has size {1}, which is larger than '
+        details = ('Configdrive at {} has size {}, which is larger than '
                    'the intended partition.').format(filename, filesize)
         super(ConfigDriveTooLargeError, self).__init__(details)
 
@@ -190,8 +190,8 @@ class ConfigDriveWriteError(RESTError):
     message = 'Error writing configdrive to device'
 
     def __init__(self, device, exit_code, stdout, stderr):
-        details = ('Writing configdrive to device {0} failed with exit code '
-                   '{1}. stdout: {2}. stderr: {3}.')
+        details = ('Writing configdrive to device {} failed with exit code '
+                   '{}. stdout: {}. stderr: {}.')
         details = details.format(device, exit_code, stdout, stderr)
         super(ConfigDriveWriteError, self).__init__(details)
 
@@ -202,8 +202,8 @@ class SystemRebootError(RESTError):
     message = 'Error rebooting system'
 
     def __init__(self, exit_code, stdout, stderr):
-        details = ('Reboot script failed with exit code {0}. stdout: '
-                   '{1}. stderr: {2}.')
+        details = ('Reboot script failed with exit code {}. stdout: '
+                   '{}. stderr: {}.')
         details = details.format(exit_code, stdout, stderr)
         super(SystemRebootError, self).__init__(details)
 
@@ -263,7 +263,7 @@ class HardwareManagerMethodNotFound(RESTError):
     message = 'No HardwareManager found to handle method'
 
     def __init__(self, method):
-        details = 'Could not find method: {0}'.format(method)
+        details = 'Could not find method: {}'.format(method)
         super(HardwareManagerMethodNotFound, self).__init__(details)
 
 
@@ -291,7 +291,7 @@ class CleanVersionMismatch(RESTError):
 
     def __init__(self, agent_version, node_version):
         self.status_code = 409
-        details = ('Agent clean version: {0}, node clean version: {1}'
+        details = ('Agent clean version: {}, node clean version: {}'
                    .format(agent_version, node_version))
         super(CleanVersionMismatch, self).__init__(details)
 
@@ -311,7 +311,7 @@ class ISCSIError(RESTError):
     message = 'Error starting iSCSI target'
 
     def __init__(self, error_msg):
-        details = 'Error starting iSCSI target: {0}'.format(error_msg)
+        details = 'Error starting iSCSI target: {}'.format(error_msg)
         super(ISCSIError, self).__init__(details)
 
 
@@ -319,7 +319,7 @@ class ISCSICommandError(ISCSIError):
     """Error executing TGT command."""
 
     def __init__(self, error_msg, exit_code, stdout, stderr):
-        details = ('{0}. Failed with exit code {1}. stdout: {2}. stderr: {3}')
+        details = ('{}. Failed with exit code {}. stdout: {}. stderr: {}')
         details = details.format(error_msg, exit_code, stdout, stderr)
         super(ISCSICommandError, self).__init__(details)
 
