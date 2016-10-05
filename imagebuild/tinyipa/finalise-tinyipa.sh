@@ -5,7 +5,7 @@ WORKDIR=$(readlink -f $0 | xargs dirname)
 BUILDDIR="$WORKDIR/tinyipabuild"
 FINALDIR="$WORKDIR/tinyipafinal"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-true}
-TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-"http://repo.tinycorelinux.net/"}
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-"http://repo.tinycorelinux.net"}
 ENABLE_SSH=${ENABLE_SSH:-false}
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 
