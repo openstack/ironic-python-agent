@@ -5,6 +5,7 @@ AUTHORS
 ChangeLog
 *.egg*
 .tox/*
+.idea
 devenv/*
 cover
 .coverage
