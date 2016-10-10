@@ -119,7 +119,7 @@ class AsyncCommandResult(BaseCommandResult):
         self.execute_method = execute_method
         self.command_state_lock = threading.Lock()
 
-        thread_name = 'agent-command-{0}'.format(self.id)
+        thread_name = 'agent-command-{}'.format(self.id)
         self.execution_thread = threading.Thread(target=self.run,
                                                  name=thread_name)
 
@@ -200,14 +200,14 @@ class BaseAgentExtension(object):
         cmd = self.command_map.get(command_name)
         if cmd is None:
             raise errors.InvalidCommandError(
-                'Unknown command: {0}'.format(command_name))
+                'Unknown command: {}'.format(command_name))
         return cmd(**kwargs)
 
     def check_cmd_presence(self, ext_obj, ext, cmd):
         if not (hasattr(ext_obj, 'execute') and hasattr(ext_obj, 'command_map')
                 and cmd in ext_obj.command_map):
             raise errors.InvalidCommandParamsError(
-                "Extension {0} doesn't provide {1} method".format(ext, cmd))
+                "Extension {} doesn't provide {} method".format(ext, cmd))
 
 
 class ExecuteCommandMixin(object):

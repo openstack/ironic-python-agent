@@ -93,7 +93,7 @@ class APIClient(object):
             data = json.loads(response.content)
             raise errors.HeartbeatConflictError(data.get('faultstring'))
         elif response.status_code != requests.codes.ACCEPTED:
-            msg = 'Invalid status code: {0}'.format(response.status_code)
+            msg = 'Invalid status code: {}'.format(response.status_code)
             raise errors.HeartbeatError(msg)
 
     def lookup_node(self, hardware_info, timeout, starting_interval,
@@ -190,5 +190,5 @@ class APIClient(object):
         raise loopingcall.LoopingCallDone(retvalue=content)
 
     def _get_agent_url(self, advertise_address):
-        return 'http://{0}:{1}'.format(advertise_address[0],
-                                       advertise_address[1])
+        return 'http://{}:{}'.format(advertise_address[0],
+                                     advertise_address[1])

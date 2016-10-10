@@ -57,7 +57,7 @@ def _get_device_info(dev, devclass, field):
             return f.read().strip()
     except IOError:
         LOG.warning(
-            "Can't find field {0} for device {1} in device class {2}".format(
+            "Can't find field {} for device {} in device class {}".format(
                 field, dev, devclass))
 
 
@@ -498,8 +498,8 @@ class GenericHardwareManager(HardwareManager):
             return self.lldp_data.get(interface_name)
 
     def _get_interface_info(self, interface_name):
-        addr_path = '{0}/class/net/{1}/address'.format(self.sys_path,
-                                                       interface_name)
+        addr_path = '{}/class/net/{}/address'.format(self.sys_path,
+                                                     interface_name)
         with open(addr_path) as addr_file:
             mac_addr = addr_file.read().strip()
 
@@ -520,8 +520,8 @@ class GenericHardwareManager(HardwareManager):
             return None
 
     def _interface_has_carrier(self, interface_name):
-        path = '{0}/class/net/{1}/carrier'.format(self.sys_path,
-                                                  interface_name)
+        path = '{}/class/net/{}/carrier'.format(self.sys_path,
+                                                interface_name)
         try:
             with open(path, 'rt') as fp:
                 return fp.read().strip() == '1'
@@ -531,12 +531,12 @@ class GenericHardwareManager(HardwareManager):
             return False
 
     def _is_device(self, interface_name):
-        device_path = '{0}/class/net/{1}/device'.format(self.sys_path,
-                                                        interface_name)
+        device_path = '{}/class/net/{}/device'.format(self.sys_path,
+                                                      interface_name)
         return os.path.exists(device_path)
 
     def list_network_interfaces(self):
-        iface_names = os.listdir('{0}/class/net'.format(self.sys_path))
+        iface_names = os.listdir('{}/class/net'.format(self.sys_path))
         iface_names = [name for name in iface_names if self._is_device(name)]
 
         if CONF.collect_lldp:
@@ -749,7 +749,7 @@ class GenericHardwareManager(HardwareManager):
         if self._shred_block_device(node, block_device):
             return
 
-        msg = ('Unable to erase block device {0}: device is unsupported.'
+        msg = ('Unable to erase block device {}: device is unsupported.'
                ).format(block_device.name)
         LOG.error(msg)
         raise errors.IncompatibleHardwareMethodError(msg)
@@ -869,12 +869,12 @@ class GenericHardwareManager(HardwareManager):
 
         if 'enabled' in security_lines:
             raise errors.BlockDeviceEraseError(
-                ('Block device {0} already has a security password set'
+                ('Block device {} already has a security password set'
                  ).format(block_device.name))
 
         if 'not frozen' not in security_lines:
             raise errors.BlockDeviceEraseError(
-                ('Block device {0} is frozen and cannot be erased'
+                ('Block device {} is frozen and cannot be erased'
                  ).format(block_device.name))
 
         try:
@@ -905,7 +905,7 @@ class GenericHardwareManager(HardwareManager):
         security_lines = self._get_ata_security_lines(block_device)
         if 'not enabled' not in security_lines:
             raise errors.BlockDeviceEraseError(
-                ('An unknown error occurred erasing block device {0}'
+                ('An unknown error occurred erasing block device {}'
                  ).format(block_device.name))
 
         return True
@@ -982,7 +982,7 @@ def _get_managers():
         for extension in extensions:
             if extension.obj.evaluate_hardware_support() > 0:
                 preferred_managers.append(extension.obj)
-                LOG.info('Hardware manager found: {0}'.format(
+                LOG.info('Hardware manager found: {}'.format(
                     extension.entry_point_target))
 
         if not preferred_managers:
@@ -1019,7 +1019,7 @@ def dispatch_to_all_managers(method, *args, **kwargs):
             try:
                 response = getattr(manager, method)(*args, **kwargs)
             except errors.IncompatibleHardwareMethodError:
-                LOG.debug('HardwareManager {0} does not support {1}'
+                LOG.debug('HardwareManager {} does not support {}'
                           .format(manager, method))
                 continue
             except Exception as e:
@@ -1029,7 +1029,7 @@ def dispatch_to_all_managers(method, *args, **kwargs):
                 raise
             responses[manager.__class__.__name__] = response
         else:
-            LOG.debug('HardwareManager {0} does not have method {1}'
+            LOG.debug('HardwareManager {} does not have method {}'
                       .format(manager, method))
 
     if responses == {}:
@@ -1061,7 +1061,7 @@ def dispatch_to_managers(method, *args, **kwargs):
             try:
                 return getattr(manager, method)(*args, **kwargs)
             except(errors.IncompatibleHardwareMethodError):
-                LOG.debug('HardwareManager {0} does not support {1}'
+                LOG.debug('HardwareManager {} does not support {}'
                           .format(manager, method))
             except Exception as e:
                 LOG.exception('Unexpected error dispatching %(method)s to '
@@ -1069,7 +1069,7 @@ def dispatch_to_managers(method, *args, **kwargs):
                               {'method': method, 'manager': manager, 'e': e})
                 raise
         else:
-            LOG.debug('HardwareManager {0} does not have method {1}'
+            LOG.debug('HardwareManager {} does not have method {}'
                       .format(manager, method))
 
     raise errors.HardwareManagerMethodNotFound(method)

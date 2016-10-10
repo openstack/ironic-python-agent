@@ -117,7 +117,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
                     self.min_jitter_multiplier,
                     self.max_jitter_multiplier)
                 interval = self.agent.heartbeat_timeout * interval_multiplier
-                log_msg = 'sleeping before next heartbeat, interval: {0}'
+                log_msg = 'sleeping before next heartbeat, interval: {}'
                 LOG.info(log_msg.format(interval))
         finally:
             os.close(self.reader)

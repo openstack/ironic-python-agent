@@ -48,7 +48,7 @@ def _image_location(image_info):
     :param image_info: Image information dictionary.
     :returns: The full, absolute path to the image as a string.
     """
-    return '/tmp/{0}'.format(image_info['id'])
+    return '/tmp/{}'.format(image_info['id'])
 
 
 def _path_to_script(script):
@@ -83,8 +83,8 @@ def _write_partition_image(image, image_info, device):
     root_mb = image_info['root_mb']
     if image_mb > int(root_mb):
         msg = ('Root partition is too small for requested image. Image '
-               'virtual size: {0} MB, Root size: {1} MB').format(image_mb,
-                                                                 root_mb)
+               'virtual size: {} MB, Root size: {} MB').format(image_mb,
+                                                               root_mb)
         raise errors.InvalidCommandParamsError(msg)
     try:
         return disk_utils.work_on_disk(device, root_mb,
@@ -115,7 +115,7 @@ def _write_whole_disk_image(image, image_info, device):
     """
     script = _path_to_script('shell/write_image.sh')
     command = ['/bin/bash', script, image, device]
-    LOG.info('Writing image with command: {0}'.format(' '.join(command)))
+    LOG.info('Writing image with command: {}'.format(' '.join(command)))
     try:
         stdout, stderr = utils.execute(*command, check_exit_code=[0])
     except processutils.ProcessExecutionError as e:
@@ -139,7 +139,7 @@ def _write_image(image_info, device):
     else:
         _write_whole_disk_image(image, image_info, device)
     totaltime = time.time() - starttime
-    LOG.info('Image {0} written to device {1} in {2} seconds'.format(
+    LOG.info('Image {} written to device {} in {} seconds'.format(
              image, device, totaltime))
     return uuids
 
@@ -173,7 +173,7 @@ def _write_configdrive_to_file(configdrive, filename):
     :param configdrive: Contents of the configdrive file.
     :param filename: The filename of where to write the configdrive.
     """
-    LOG.debug('Writing configdrive to {0}'.format(filename))
+    LOG.debug('Writing configdrive to {}'.format(filename))
     # configdrive data is base64'd, decode it first
     data = six.StringIO(base64.b64decode(configdrive))
     gunzipped = gzip.GzipFile('configdrive', 'rb', 9, data)
@@ -208,7 +208,7 @@ def _write_configdrive_to_partition(configdrive, device):
     starttime = time.time()
     script = _path_to_script('shell/copy_configdrive_to_disk.sh')
     command = ['/bin/bash', script, filename, device]
-    LOG.info('copying configdrive to disk with command {0}'.format(
+    LOG.info('copying configdrive to disk with command {}'.format(
              ' '.join(command)))
 
     try:
@@ -220,7 +220,7 @@ def _write_configdrive_to_partition(configdrive, device):
                                            e.stderr)
 
     totaltime = time.time() - starttime
-    LOG.info('configdrive copied from {0} to {1} in {2} seconds'.format(
+    LOG.info('configdrive copied from {} to {} in {} seconds'.format(
              filename,
              device,
              totaltime))
@@ -236,12 +236,12 @@ def _message_format(msg, image_info, device, partition_uuids):
             partition_uuids.get('efi system partition uuid'))
         if (image_info.get('deploy_boot_mode') == 'uefi' and
                 image_info.get('boot_option') == 'local'):
-            result_msg = msg + 'root_uuid={2} efi_system_partition_uuid={3}'
+            result_msg = msg + 'root_uuid={} efi_system_partition_uuid={}'
             message = result_msg.format(image_info['id'], device,
                                         root_uuid,
                                         efi_system_partition_uuid)
         else:
-            result_msg = msg + 'root_uuid={2}'
+            result_msg = msg + 'root_uuid={}'
             message = result_msg.format(image_info['id'], device, root_uuid)
     else:
         message = result_msg.format(image_info['id'], device)
@@ -280,12 +280,12 @@ class ImageDownload(object):
         details = []
         for url in image_info['urls']:
             try:
-                LOG.info("Attempting to download image from {0}".format(url))
+                LOG.info("Attempting to download image from {}".format(url))
                 self._request = self._download_file(image_info, url)
             except errors.ImageDownloadError as e:
                 failtime = time.time() - self._time
-                log_msg = ('URL: {0}; time: {1} '
-                           'seconds. Error: {2}').format(
+                log_msg = ('URL: {}; time: {} '
+                           'seconds. Error: {}').format(
                     url, failtime, e.details)
                 LOG.warning('Image download failed. %s', log_msg)
                 details += log_msg
@@ -313,8 +313,8 @@ class ImageDownload(object):
         proxies = image_info.get('proxies', {})
         resp = requests.get(url, stream=True, proxies=proxies)
         if resp.status_code != 200:
-            msg = ('Received status code {0} from {1}, expected 200. Response '
-                   'body: {2}').format(resp.status_code, url, resp.text)
+            msg = ('Received status code {} from {}, expected 200. Response '
+                   'body: {}').format(resp.status_code, url, resp.text)
             raise errors.ImageDownloadError(image_info['id'], msg)
         return resp
 
@@ -352,8 +352,8 @@ def _verify_image(image_info, image_location, checksum):
     :raises: ImageChecksumError if the checksum of the local image does not
              match the checksum as reported by glance in image_info.
     """
-    LOG.debug('Verifying image at {0} against MD5 checksum '
-              '{1}'.format(image_location, checksum))
+    LOG.debug('Verifying image at {} against MD5 checksum '
+              '{}'.format(image_location, checksum))
     if checksum != image_info['checksum']:
         LOG.error(errors.ImageChecksumError.details_str.format(
             image_location, image_info['id'],
@@ -379,13 +379,13 @@ def _download_image(image_info):
             for chunk in image_download:
                 f.write(chunk)
         except Exception as e:
-            msg = 'Unable to write image to {0}. Error: {1}'.format(
+            msg = 'Unable to write image to {}. Error: {}'.format(
                 image_location, str(e))
             raise errors.ImageDownloadError(image_info['id'], msg)
 
     totaltime = time.time() - starttime
-    LOG.info("Image downloaded from {0} in {1} seconds".format(image_location,
-                                                               totaltime))
+    LOG.info("Image downloaded from {} in {} seconds".format(image_location,
+                                                             totaltime))
     _verify_image(image_info, image_location, image_download.md5sum())
 
 
@@ -405,7 +405,7 @@ def _validate_image_info(ext, image_info=None, **kwargs):
 
     for field in ['id', 'urls', 'checksum']:
         if field not in image_info:
-            msg = 'Image is missing \'{0}\' field.'.format(field)
+            msg = 'Image is missing \'{}\' field.'.format(field)
             raise errors.InvalidCommandParamsError(msg)
 
     if type(image_info['urls']) != list or not image_info['urls']:
@@ -465,12 +465,12 @@ class StandbyExtension(base.BaseAgentExtension):
                 for chunk in image_download:
                     f.write(chunk)
             except Exception as e:
-                msg = 'Unable to write image to device {0}. Error: {1}'.format(
+                msg = 'Unable to write image to device {}. Error: {}'.format(
                       device, str(e))
                 raise errors.ImageDownloadError(image_info['id'], msg)
 
         totaltime = time.time() - starttime
-        LOG.info("Image streamed onto device {0} in {1} "
+        LOG.info("Image streamed onto device {} in {} "
                  "seconds".format(device, totaltime))
         # Verify if the checksum of the streamed image is correct
         _verify_image(image_info, device, image_download.md5sum())
@@ -492,13 +492,13 @@ class StandbyExtension(base.BaseAgentExtension):
         LOG.debug('Caching image %s', image_info['id'])
         device = hardware.dispatch_to_managers('get_os_install_device')
 
-        msg = 'image ({0}) already present on device {1} '
+        msg = 'image ({}) already present on device {} '
 
         if self.cached_image_id != image_info['id'] or force:
             LOG.debug('Already had %s cached, overwriting',
                       self.cached_image_id)
             self._cache_and_write_image(image_info, device)
-            msg = 'image ({0}) cached to device {1} '
+            msg = 'image ({}) cached to device {} '
 
         result_msg = _message_format(msg, image_info, device,
                                      self.partition_uuids)
@@ -553,7 +553,7 @@ class StandbyExtension(base.BaseAgentExtension):
             if configdrive is not None:
                 _write_configdrive_to_partition(configdrive, device)
 
-        msg = 'image ({0}) written to device {1} '
+        msg = 'image ({}) written to device {} '
         result_msg = _message_format(msg, image_info, device,
                                      self.partition_uuids)
         LOG.info(result_msg)

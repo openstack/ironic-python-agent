@@ -94,14 +94,14 @@ def _start_lio(iqn, portal_port, device):
         rtslib_fb.LUN(tpg, storage_object=storage, lun=1)
         tpg.enable = 1
     except rtslib_fb.utils.RTSLibError as exc:
-        msg = 'Failed to create a target: {0}'.format(exc)
+        msg = 'Failed to create a target: {}'.format(exc)
         raise errors.ISCSIError(msg)
 
     try:
         # bind to the default port on all interfaces
         rtslib_fb.NetworkPortal(tpg, '0.0.0.0', portal_port)
     except rtslib_fb.utils.RTSLibError as exc:
-        msg = 'Failed to publish a target: {0}'.format(exc)
+        msg = 'Failed to publish a target: {}'.format(exc)
         raise errors.ISCSIError(msg)
 
 
