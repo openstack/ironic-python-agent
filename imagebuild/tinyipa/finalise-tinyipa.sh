@@ -8,6 +8,7 @@ BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-true}
 TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-"http://repo.tinycorelinux.net"}
 ENABLE_SSH=${ENABLE_SSH:-false}
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
+PYOPTIMIZE_TINYIPA=${PYOPTIMIZE_TINYIPA:-true}
 
 TC=1001
 STAFF=50
@@ -147,12 +148,16 @@ sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
 sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"
 # sudo cp $WORKDIR/build_files/tc-config $FINALDIR/etc/init.d/tc-config
 
-# Precompile all python
-set +e
-$CHROOT_CMD /bin/bash -c "python -OO -m compileall /usr/local/lib/python2.7"
-set -e
-find $FINALDIR/usr/local/lib/python2.7 -name "*.py" -not -path "*ironic_python_agent/api/config.py" | sudo xargs rm
-find $FINALDIR/usr/local/lib/python2.7 -name "*.pyc" | sudo xargs rm
+if $PYOPTIMIZE_TINYIPA; then
+    # Precompile all python
+    set +e
+    $CHROOT_CMD /bin/bash -c "python -OO -m compileall /usr/local/lib/python2.7"
+    set -e
+    find $FINALDIR/usr/local/lib/python2.7 -name "*.py" -not -path "*ironic_python_agent/api/config.py" | sudo xargs rm
+    find $FINALDIR/usr/local/lib/python2.7 -name "*.pyc" | sudo xargs rm
+else
+    sudo sed -i "s/PYTHONOPTIMIZE=1/PYTHONOPTIMIZE=0/" "$FINALDIR/opt/bootlocal.sh"
+fi
 
 # Delete unnecessary Babel .dat files
 find $FINALDIR -path "*babel/locale-data/*.dat" -not -path "*en_US*" | sudo xargs rm

@@ -72,11 +72,28 @@ or::
 Advanced options
 ----------------
 
+(De)Optimizing the image
+~~~~~~~~~~~~~~~~~~~~~~~~
+
 If you want the build script to preinstall everything into the ramdisk,
 instead of loading some things at runtime (this results in a slightly bigger
 ramdisk), before running make or build-tinyipa.sh run::
 
   export BUILD_AND_INSTALL_TINYIPA=true
+
+By default, building TinyIPA will compile most of the Python code to
+optimized ``*.pyo`` files, completely remove most of ``*.py`` and ``*.pyc``
+files, and run ironic-python-agent with ``PYTHONOPTIMIZE=1``
+to save space on the ramdisk.
+If instead you want a normal Python experience inside the image,
+for example for debugging/hacking on IPA in a running ramdisk,
+before running make or build-tinyipa.sh run::
+
+    export PYOPTIMIZE_TINYIPA=false
+
+
+Enabling SSH access to the ramdisk
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you want to enable SSH access to the image, set ``ENABLE_SSH`` variable in
 your shell before building the tinyipa::
