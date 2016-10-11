@@ -118,6 +118,19 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
                       '"/usr/sbin/%(bin)s-install %(dev)s"' %
                       {'path': path, 'bin': binary_name, 'dev': device},
                       shell=True, env_variables={'PATH': path_variable})
+        # Also run grub-install with --removable, this installs grub to the
+        # EFI fallback path. Useful if the NVRAM wasn't written correctly,
+        # was reset or if testing with virt as libvirt resets the NVRAM
+        # on instance start.
+        # This operation is essentially a copy operation. Use of the
+        # --removable flag, per the grub-install source code changes
+        # the default file to be copied, destination file name, and
+        # prevents NVRAM from being updated.
+        if efi_partition:
+            utils.execute('chroot %(path)s /bin/bash -c '
+                          '"/usr/sbin/%(bin)s-install %(dev)s --removable"' %
+                          {'path': path, 'bin': binary_name, 'dev': device},
+                          shell=True, env_variables={'PATH': path_variable})
 
         # Generate the grub configuration file
         utils.execute('chroot %(path)s /bin/bash -c '

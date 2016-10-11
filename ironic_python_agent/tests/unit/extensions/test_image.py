@@ -138,6 +138,10 @@ class TestImageExtension(test_base.BaseTestCase):
                                (self.fake_dir, self.fake_dev)), shell=True,
                               env_variables={'PATH': '/sbin:/bin'}),
                     mock.call(('chroot %s /bin/bash -c '
+                              '"/usr/sbin/grub-install %s --removable"' %
+                               (self.fake_dir, self.fake_dev)), shell=True,
+                              env_variables={'PATH': '/sbin:/bin'}),
+                    mock.call(('chroot %s /bin/bash -c '
                                '"/usr/sbin/grub-mkconfig -o '
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
@@ -191,6 +195,10 @@ class TestImageExtension(test_base.BaseTestCase):
                               self.fake_dir + '/boot/efi'),
                     mock.call(('chroot %s /bin/bash -c '
                               '"/usr/sbin/grub-install %s"' %
+                               (self.fake_dir, self.fake_dev)), shell=True,
+                              env_variables={'PATH': '/sbin:/bin'}),
+                    mock.call(('chroot %s /bin/bash -c '
+                              '"/usr/sbin/grub-install %s --removable"' %
                                (self.fake_dir, self.fake_dev)), shell=True,
                               env_variables={'PATH': '/sbin:/bin'}),
                     mock.call(('chroot %s /bin/bash -c '
