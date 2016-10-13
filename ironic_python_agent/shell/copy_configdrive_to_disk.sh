@@ -62,7 +62,7 @@ if [[ $? == 0 ]]; then
 else
 
   # Check if it is GPT partition and needs to be re-sized
-  partprobe $DEVICE print 2>&1 | grep "fix the GPT to use all of the space"
+  parted $DEVICE print 2>&1 | grep "fix the GPT to use all of the space"
   if [[ $? == 0 ]]; then
     log "Fixing GPT to use all of the space on device $DEVICE"
     sgdisk -e $DEVICE || fail "move backup GPT data structures to the end of ${DEVICE}"
@@ -74,13 +74,14 @@ else
     EXISTING_PARTITION_LIST=$TEMP_DIR/existing_partitions
     UPDATED_PARTITION_LIST=$TEMP_DIR/updated_partitions
 
-    gdisk -l $DEVICE | grep -A$MAX_DISK_PARTITIONS "Number  Start" | grep -v "Number  Start" > $EXISTING_PARTITION_LIST
+    # Sort partitions by second column, which is start sector
+    gdisk -l $DEVICE | grep -A$MAX_DISK_PARTITIONS "Number  Start" | grep -v "Number  Start" | sort -k 2 > $EXISTING_PARTITION_LIST
 
     # Create small partition at the end of the device
     log "Adding configdrive partition to $DEVICE"
     sgdisk -n 0:-64MB:0 $DEVICE || fail "creating configdrive on ${DEVICE}"
 
-    gdisk -l $DEVICE | grep -A$MAX_DISK_PARTITIONS "Number  Start" | grep -v "Number  Start" > $UPDATED_PARTITION_LIST
+    gdisk -l $DEVICE | grep -A$MAX_DISK_PARTITIONS "Number  Start" | grep -v "Number  Start" | sort -k 2 > $UPDATED_PARTITION_LIST
 
     CONFIG_PARTITION_ID=`diff $EXISTING_PARTITION_LIST $UPDATED_PARTITION_LIST | tail -n1 |awk '{print $2}'`
     ISO_PARTITION="${DEVICE}${CONFIG_PARTITION_ID}"
@@ -105,10 +106,9 @@ else
     # Find partition we just created
     # Dump all partitions, ignore empty ones, then get the last partition ID
     ISO_PARTITION=`sfdisk --dump $DEVICE | grep -v ' 0,' | tail -n1 | awk -F ':' '{print $1}' | sed -e 's/\s*$//'` || fail "finding ISO partition created on ${DEVICE}"
-
-    # Wait for udev to pick up the partition
-    udevadm settle --exit-if-exists=$ISO_PARTITION
   fi
+  # Wait for udev to pick up the partition
+  udevadm settle --exit-if-exists=$ISO_PARTITION
 fi
 
 # This writes the ISO image to the config drive.
