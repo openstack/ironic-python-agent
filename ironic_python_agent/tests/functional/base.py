@@ -46,7 +46,6 @@ class FunctionalBase(test_base.BaseTestCase):
             network_interface=None,
             lookup_timeout=300,
             lookup_interval=1,
-            driver_name='agent_ipmitool',
             standalone=True)
         self.process = multiprocessing.Process(
             target=self.agent.run)

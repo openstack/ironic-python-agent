@@ -1,0 +1,10 @@
+---
+upgrade:
+  - Ironic Python Agent no longer supports Ironic API lookup and heartbeat
+    actions via agent vendor passthru methods,
+    and uses only the new, top-level lookup and heartbeat endpoints of
+    Ironic API v1.22 (introduced in Newton release, Ironic version 6.1.0).
+
+    This effectively means that Ironic Python Agent becomes incompatible
+    with Ironic API < 1.22 (Ironic version 6.0.0 or older,
+    integrated OpenStack release Mitaka or older).

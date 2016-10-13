@@ -44,6 +44,5 @@ def run():
                             CONF.network_interface,
                             CONF.lookup_timeout,
                             CONF.lookup_interval,
-                            CONF.driver_name,
                             CONF.standalone,
                             CONF.hardware_initialization_delay).run()

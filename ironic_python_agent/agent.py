@@ -159,7 +159,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
     def __init__(self, api_url, advertise_address, listen_address,
                  ip_lookup_attempts, ip_lookup_sleep, network_interface,
-                 lookup_timeout, lookup_interval, driver_name, standalone,
+                 lookup_timeout, lookup_interval, standalone,
                  hardware_initialization_delay=0):
         super(IronicPythonAgent, self).__init__()
         self.ext_mgr = extension.ExtensionManager(
@@ -169,9 +169,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             invoke_kwds={'agent': self},
         )
         self.api_url = api_url
-        self.driver_name = driver_name
-        self.api_client = ironic_api_client.APIClient(self.api_url,
-                                                      self.driver_name)
+        self.api_client = ironic_api_client.APIClient(self.api_url)
         self.listen_address = listen_address
         self.advertise_address = advertise_address
         self.version = pkg_resources.get_distribution('ironic-python-agent')\
