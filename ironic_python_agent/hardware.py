@@ -20,12 +20,11 @@ import shlex
 import time
 
 from ironic_lib import disk_utils
+from ironic_lib import utils as il_utils
 import netifaces
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils import strutils
-from oslo_utils import units
 import pint
 import psutil
 import pyudev
@@ -627,65 +626,26 @@ class GenericHardwareManager(HardwareManager):
         if not root_device_hints:
             return utils.guess_root_disk(block_devices).name
         else:
+            serialized_devs = [dev.serialize() for dev in block_devices]
+            try:
+                device = il_utils.match_root_device_hints(serialized_devs,
+                                                          root_device_hints)
+            except ValueError as e:
+                # NOTE(lucasagomes): Just playing on the safe side
+                # here, this exception should never be raised because
+                # Ironic should validate the root device hints before the
+                # deployment starts.
+                raise errors.DeviceNotFound(
+                    'No devices could be found using the root device hints '
+                    '%(hints)s because they failed to validate. Error: '
+                    '%(error)s' % {'hints': root_device_hints, 'error': e})
 
-            def match(hint, current_value, device):
-                hint_value = root_device_hints[hint]
-
-                if hint == 'rotational':
-                    hint_value = strutils.bool_from_string(hint_value)
-
-                elif hint == 'size':
-                    try:
-                        hint_value = int(hint_value)
-                    except (ValueError, TypeError):
-                        LOG.warning(
-                            'Root device hint "size" is not an integer. '
-                            'Current value: "%(value)s"; and type: "%(type)s"',
-                            {'value': hint_value, 'type': type(hint_value)})
-                        return False
-
-                if hint_value != current_value:
-                    LOG.debug("Root device hint %(hint)s=%(value)s does not "
-                              "match the device %(device)s value of "
-                              "%(current)s", {
-                                  'hint': hint,
-                                  'value': hint_value, 'device': device,
-                                  'current': current_value})
-                    return False
-                return True
-
-            def check_device_attrs(device):
-                for key in ('model', 'wwn', 'serial', 'vendor',
-                            'wwn_with_extension', 'wwn_vendor_extension',
-                            'name', 'rotational', 'size'):
-                    if key not in root_device_hints:
-                        continue
-
-                    value = getattr(device, key)
-                    if value is None:
-                        return False
-
-                    if isinstance(value, six.string_types):
-                        value = utils.normalize(value)
-
-                    if key == 'size':
-                        # Since we don't support units yet we expect the size
-                        # in GiB for now
-                        value = value / units.Gi
-
-                    if not match(key, value, device.name):
-                        return False
-
-                return True
-
-            for dev in block_devices:
-                if check_device_attrs(dev):
-                    return dev.name
-
-            else:
+            if not device:
                 raise errors.DeviceNotFound(
                     "No suitable device was found for "
                     "deployment using these hints %s" % root_device_hints)
+
+            return device['name']
 
     def get_system_vendor_info(self):
         product_name = None
