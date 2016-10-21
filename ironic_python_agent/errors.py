@@ -173,29 +173,6 @@ class ImageWriteError(RESTError):
         super(ImageWriteError, self).__init__(details)
 
 
-class ConfigDriveTooLargeError(RESTError):
-    """Error raised when a configdrive is larger than the partition."""
-
-    message = 'Configdrive is too large for intended partition'
-
-    def __init__(self, filename, filesize):
-        details = ('Configdrive at {} has size {}, which is larger than '
-                   'the intended partition.').format(filename, filesize)
-        super(ConfigDriveTooLargeError, self).__init__(details)
-
-
-class ConfigDriveWriteError(RESTError):
-    """Error raised when a configdrive cannot be written to a device."""
-
-    message = 'Error writing configdrive to device'
-
-    def __init__(self, device, exit_code, stdout, stderr):
-        details = ('Writing configdrive to device {} failed with exit code '
-                   '{}. stdout: {}. stderr: {}.')
-        details = details.format(device, exit_code, stdout, stderr)
-        super(ConfigDriveWriteError, self).__init__(details)
-
-
 class SystemRebootError(RESTError):
     """Error raised when a system cannot reboot."""
 
