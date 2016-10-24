@@ -472,13 +472,9 @@ class StandbyExtension(base.BaseAgentExtension):
                 # wherein new IPA is being used with older version
                 # of Ironic that did not pass 'node_uuid' in 'image_info'
                 node_uuid = image_info.get('node_uuid', 'local')
-                starttime = time.time()
                 disk_utils.create_config_drive_partition(node_uuid,
                                                          device,
                                                          configdrive)
-                totaltime = time.time() - starttime
-                LOG.info('configdrive copied to {0} in {1} '
-                         'seconds.'.format(device, totaltime))
         msg = 'image ({}) written to device {} '
         result_msg = _message_format(msg, image_info, device,
                                      self.partition_uuids)
