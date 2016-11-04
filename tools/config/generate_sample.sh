@@ -5,9 +5,12 @@ print_hint() {
 }
 
 PARSED_OPTIONS=$(getopt -n "${0##*/}" -o hb:p:m:l:o: \
-                 --long help,base-dir:,package-name:,output-dir:,module:,library: -- "$@")
+                --long help,base-dir:,package-name:,output-dir:,module:,library: -- "$@")
 
-if [ $? != 0 ] ; then print_hint ; exit 1 ; fi
+if [ $? != 0 ] ; then
+    print_hint ;
+    exit 1
+fi
 
 eval set -- "$PARSED_OPTIONS"
 
@@ -57,30 +60,25 @@ while true; do
 done
 
 BASEDIR=${BASEDIR:-`pwd`}
-if ! [ -d $BASEDIR ]
-then
+if ! [ -d $BASEDIR ] ; then
     echo "${0##*/}: missing project base directory" >&2 ; print_hint ; exit 1
-elif [[ $BASEDIR != /* ]]
-then
+elif [[ $BASEDIR != /* ]] ; then
     BASEDIR=$(cd "$BASEDIR" && pwd)
 fi
 
 PACKAGENAME=${PACKAGENAME:-${BASEDIR##*/}}
 PACKAGENAME=`echo $PACKAGENAME | tr - _`
 TARGETDIR=$BASEDIR/$PACKAGENAME
-if ! [ -d $TARGETDIR ]
-then
+if ! [ -d $TARGETDIR ] ; then
     echo "${0##*/}: invalid project package name" >&2 ; print_hint ; exit 1
 fi
 
 OUTPUTDIR=${OUTPUTDIR:-$BASEDIR/etc}
 # NOTE(bnemec): Some projects put their sample config in etc/,
 #               some in etc/$PACKAGENAME/
-if [ -d $OUTPUTDIR/$PACKAGENAME ]
-then
+if [ -d $OUTPUTDIR/$PACKAGENAME ] ; then
     OUTPUTDIR=$OUTPUTDIR/$PACKAGENAME
-elif ! [ -d $OUTPUTDIR ]
-then
+elif ! [ -d $OUTPUTDIR ] ; then
     echo "${0##*/}: cannot access \`$OUTPUTDIR': No such file or directory" >&2
     exit 1
 fi
@@ -91,8 +89,7 @@ FILES=$(find $TARGETDIR -type f -name "*.py" ! -path "*/tests/*" ! -path "*/nova
         -exec grep -l "Opt(" {} + | sed -e "s/^$BASEDIRESC\///g" | sort -u)
 
 RC_FILE="`dirname $0`/oslo.config.generator.rc"
-if test -r "$RC_FILE"
-then
+if test -r "$RC_FILE" ; then
     source "$RC_FILE"
 fi
 
