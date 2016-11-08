@@ -36,10 +36,10 @@ class FlowExtension(base.BaseAgentExtension, base.ExecuteCommandMixin):
     def start_flow(self, flow=None):
         for task in flow:
             for method, params in task.items():
-                LOG.info("Executing method %s for now" % method)
+                LOG.info("Executing method %s for now", method)
                 result = self.execute_command(method, **params)
                 result.join()
-                LOG.info("%s method's execution is done" % method)
+                LOG.info("%s method's execution is done", method)
                 if result.command_status == base.AgentCommandStatus.FAILED:
                     raise errors.CommandExecutionError(
                         "%s was failed" % method
