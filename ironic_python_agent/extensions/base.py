@@ -16,13 +16,14 @@ import collections
 import functools
 import inspect
 import threading
-import uuid
 
 from oslo_log import log
+from oslo_utils import uuidutils
 import six
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
+
 
 LOG = log.getLogger()
 
@@ -48,7 +49,7 @@ class BaseCommandResult(encoding.SerializableComparable):
         :param command_params: parameters passed to command
         """
 
-        self.id = six.text_type(uuid.uuid4())
+        self.id = uuidutils.generate_uuid()
         self.command_name = command_name
         self.command_params = command_params
         self.command_status = AgentCommandStatus.RUNNING
