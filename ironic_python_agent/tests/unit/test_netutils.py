@@ -217,7 +217,7 @@ class TestNetutils(test_base.BaseTestCase):
         self.assertEqual(1, sock1.close.call_count)
         self.assertEqual(1, sock2.close.call_count)
 
-        # 2 interfaces, 2 calls to enter promiscuous mode, 1 to leave
+        # 2 interfaces * (2 calls to enter promiscuous mode + 1 to leave) = 6
         self.assertEqual(6, fcntl_mock.call_count)
 
     @mock.patch('fcntl.ioctl')
