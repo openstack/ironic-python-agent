@@ -72,30 +72,24 @@ class RawPromiscuousSockets(object):
                                         'proto': self.protocol})
                 sock.bind((interface_name, self.protocol))
             except Exception:
-                LOG.warning('Failed to open all RawPromiscuousSockets, '
-                            'attempting to close any opened sockets.')
-                if self.__exit__(*sys.exc_info()):
-                    return []
-                else:
-                    LOG.exception('Could not successfully close all opened '
-                                  'RawPromiscuousSockets.')
-                    raise
+                LOG.error('Failed to open all RawPromiscuousSockets, '
+                          'attempting to close any opened sockets.')
+                self.__exit__(*sys.exc_info())
+                raise
+
         # No need to return each interfaces ifreq.
         return [(sock[0], sock[1]) for sock in self.interfaces]
 
     def __exit__(self, exception_type, exception_val, trace):
-        if exception_type:
-            LOG.exception('Error while using raw socket: %(type)s: %(val)s',
-                          {'type': exception_type, 'val': exception_val})
-
-        for _name, sock, ifr in self.interfaces:
+        for name, sock, ifr in self.interfaces:
             # bitwise or with the opposite of promiscuous mode to remove
             ifr.ifr_flags &= ~IFF_PROMISC
-            # If these raise, they shouldn't be caught
-            fcntl.ioctl(sock.fileno(), SIOCSIFFLAGS, ifr)
-            sock.close()
-        # Return True to signify exit correctly, only used internally
-        return True
+            try:
+                fcntl.ioctl(sock.fileno(), SIOCSIFFLAGS, ifr)
+                sock.close()
+            except Exception:
+                LOG.exception('Failed to close raw socket for interface %s',
+                              name)
 
     def _get_socket(self):
         return socket.socket(socket.AF_PACKET, socket.SOCK_RAW, self.protocol)
@@ -128,7 +122,7 @@ def _parse_tlv(buff):
                  14 bytes)
     """
     lldp_info = []
-    while buff:
+    while len(buff) >= 2:
         # TLV structure: type (7 bits), length (9 bits), val (0-511 bytes)
         tlvhdr = struct.unpack('!H', buff[:2])[0]
         tlvtype = (tlvhdr & 0xfe00) >> 9
@@ -136,6 +130,10 @@ def _parse_tlv(buff):
         tlvdata = buff[2:tlvlen + 2]
         buff = buff[tlvlen + 2:]
         lldp_info.append((tlvtype, tlvdata))
+
+    if buff:
+        LOG.warning("Trailing byte received in an LLDP package: %r", buff)
+
     return lldp_info
 
 
@@ -148,7 +146,7 @@ def _receive_lldp_packets(sock):
     pkt = sock.recv(1600)
     # Filter invalid packets
     if not pkt or len(pkt) < 14:
-        return
+        return []
     # Skip header (dst MAC, src MAC, ethertype)
     pkt = pkt[14:]
     return _parse_tlv(pkt)
