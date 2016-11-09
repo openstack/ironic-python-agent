@@ -221,6 +221,52 @@ class TestNetutils(test_base.BaseTestCase):
         self.assertEqual(6, fcntl_mock.call_count)
 
     @mock.patch('fcntl.ioctl')
+    @mock.patch('select.select')
+    @mock.patch('socket.socket')
+    def test_get_lldp_info_malformed(self, sock_mock, select_mock, fcntl_mock):
+        expected_lldp = {
+            'eth1': [],
+            'eth0': [],
+        }
+
+        interface_names = ['eth0', 'eth1']
+
+        sock1 = mock.Mock()
+        sock1.recv.return_value = b'123456789012345'  # odd size
+        sock1.fileno.return_value = 4
+        sock2 = mock.Mock()
+        sock2.recv.return_value = b'1234'  # too small
+        sock2.fileno.return_value = 5
+
+        sock_mock.side_effect = [sock1, sock2]
+
+        select_mock.side_effect = [
+            ([sock1], [], []),
+            ([sock2], [], []),
+        ]
+
+        lldp_info = netutils.get_lldp_info(interface_names)
+        self.assertEqual(expected_lldp, lldp_info)
+
+        sock1.bind.assert_called_with(('eth0', netutils.LLDP_ETHERTYPE))
+        sock2.bind.assert_called_with(('eth1', netutils.LLDP_ETHERTYPE))
+
+        sock1.recv.assert_called_with(1600)
+        sock2.recv.assert_called_with(1600)
+
+        self.assertEqual(1, sock1.close.call_count)
+        self.assertEqual(1, sock2.close.call_count)
+
+        # 2 interfaces, 2 calls to enter promiscuous mode, 1 to leave
+        self.assertEqual(6, fcntl_mock.call_count)
+
+        expected_calls = [
+            mock.call([sock1, sock2], [], [], cfg.CONF.lldp_timeout),
+            mock.call([sock2], [], [], cfg.CONF.lldp_timeout),
+        ]
+        self.assertEqual(expected_calls, select_mock.call_args_list)
+
+    @mock.patch('fcntl.ioctl')
     @mock.patch('socket.socket')
     def test_raw_promiscuous_sockets(self, sock_mock, fcntl_mock):
         interfaces = ['eth0', 'ens9f1']
@@ -251,11 +297,37 @@ class TestNetutils(test_base.BaseTestCase):
         sock2 = mock.Mock()
 
         sock_mock.side_effect = [sock1, sock2]
-        sock_mock.bind.side_effects = [None, Exception]
+        sock2.bind.side_effect = RuntimeError()
 
-        with netutils.RawPromiscuousSockets(interfaces, protocol) as sockets:
-            # Ensure this isn't run
-            self.assertEqual([], sockets)
+        def _run_with_bind_fail():
+            with netutils.RawPromiscuousSockets(interfaces, protocol):
+                self.fail('Unreachable code')
+
+        self.assertRaises(RuntimeError, _run_with_bind_fail)
+
+        sock1.bind.assert_called_once_with(('eth0', protocol))
+        sock2.bind.assert_called_once_with(('ens9f1', protocol))
+
+        self.assertEqual(6, fcntl_mock.call_count)
+
+        sock1.close.assert_called_once_with()
+        sock2.close.assert_called_once_with()
+
+    @mock.patch('fcntl.ioctl')
+    @mock.patch('socket.socket')
+    def test_raw_promiscuous_sockets_exception(self, sock_mock, fcntl_mock):
+        interfaces = ['eth0', 'ens9f1']
+        protocol = 3
+        sock1 = mock.Mock()
+        sock2 = mock.Mock()
+
+        sock_mock.side_effect = [sock1, sock2]
+
+        def _run_with_exception():
+            with netutils.RawPromiscuousSockets(interfaces, protocol):
+                raise RuntimeError()
+
+        self.assertRaises(RuntimeError, _run_with_exception)
 
         sock1.bind.assert_called_once_with(('eth0', protocol))
         sock2.bind.assert_called_once_with(('ens9f1', protocol))
