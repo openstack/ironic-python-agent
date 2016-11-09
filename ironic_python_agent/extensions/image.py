@@ -48,7 +48,7 @@ def _get_partition(device, uuid):
             utils.execute('udevadm', 'settle')
         except processutils.ProcessExecutionError:
             LOG.warning("Couldn't re-read the partition table "
-                        "on device %s" % device)
+                        "on device %s", device)
 
         report = utils.execute('lsblk', '-PbioKNAME,UUID,TYPE', device)[0]
         for line in report.split('\n'):

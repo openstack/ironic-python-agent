@@ -174,7 +174,7 @@ class APIClient(object):
 
         # Check for valid response data
         if 'node' not in content or 'uuid' not in content['node']:
-            LOG.warning('Got invalid node data from the API: %s' % content)
+            LOG.warning('Got invalid node data from the API: %s', content)
             return False
 
         if 'config' not in content:
@@ -183,7 +183,7 @@ class APIClient(object):
                 content['config'] = {'heartbeat_timeout':
                                      content.pop('heartbeat_timeout')}
             except KeyError:
-                LOG.warning('Got invalid heartbeat from the API: %s' % content)
+                LOG.warning('Got invalid heartbeat from the API: %s', content)
                 return False
 
         # Got valid content

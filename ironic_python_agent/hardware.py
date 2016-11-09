@@ -697,8 +697,8 @@ class GenericHardwareManager(HardwareManager):
                 'agent_continue_if_ata_erase_failed', False)
             if execute_shred:
                 LOG.warning('Failed to invoke ata_erase, '
-                            'falling back to shred: %(err)s'
-                            % {'err': e})
+                            'falling back to shred: %(err)s',
+                            {'err': e})
             else:
                 msg = ('Failed to invoke ata_erase, '
                        'fallback to shred is not enabled: %(err)s'
