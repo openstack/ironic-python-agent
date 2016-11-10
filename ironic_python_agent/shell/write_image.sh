@@ -17,14 +17,14 @@
 set -e
 
 log() {
-  echo "`basename $0`: $@"
+    echo "`basename $0`: $@"
 }
 
 usage() {
-  [[ -z "$1" ]] || echo -e "USAGE ERROR: $@\n"
-  echo "`basename $0`: IMAGEFILE DEVICE"
-  echo "  - This script images DEVICE with IMAGEFILE"
-  exit 1
+    [[ -z "$1" ]] || echo -e "USAGE ERROR: $@\n"
+    echo "`basename $0`: IMAGEFILE DEVICE"
+    echo "  - This script images DEVICE with IMAGEFILE"
+    exit 1
 }
 
 IMAGEFILE="$1"
