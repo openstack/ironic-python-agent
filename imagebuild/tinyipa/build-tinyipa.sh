@@ -6,6 +6,7 @@ source ${WORKDIR}/tc-mirror.sh
 BUILDDIR="$WORKDIR/tinyipabuild"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-false}
 TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
+TINYIPA_REQUIRE_BIOSDEVNAME=${TINYIPA_REQUIRE_BIOSDEVNAME:-false}
 
 CHROOT_PATH="/tmp/overides:/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 CHROOT_CMD="sudo chroot $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
@@ -57,9 +58,12 @@ sudo sh -c "echo $TINYCORE_MIRROR_URL > $BUILDDIR/opt/tcemirror"
 # Download get-pip into ramdisk
 ( cd "$BUILDDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
 
-# Download TGT and Qemu-utils source
+# Download TGT, Qemu-utils, and Biosdevname source
 clone_and_checkout "https://github.com/fujita/tgt.git" "${BUILDDIR}/tmp/tgt" "v1.0.62"
 clone_and_checkout "https://github.com/qemu/qemu.git" "${BUILDDIR}/tmp/qemu" "v2.5.0"
+if $TINYIPA_REQUIRE_BIOSDEVNAME; then
+    wget -N -O - https://linux.dell.com/biosdevname/biosdevname-0.7.2/biosdevname-0.7.2.tar.gz | tar -xz -C "${BUILDDIR}/tmp" -f -
+fi
 
 # Create directory for python local mirror
 mkdir -p "$BUILDDIR/tmp/localpip"
@@ -114,3 +118,11 @@ cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/qemu-utils qemu-utils.tcz &&
 
 # Create qemu-utils.tcz.dep
 echo "glib2.tcz" > qemu-utils.tcz.dep
+
+# Build biosdevname
+if $TINYIPA_REQUIRE_BIOSDEVNAME; then
+    rm -rf $WORKDIR/build_files/biosdevname.tcz
+    $CHROOT_CMD /bin/sh -c "cd /tmp/biosdevname-* && ./configure && make && make install DESTDIR=/tmp/biosdevname-installed"
+    find $BUILDDIR/tmp/biosdevname-installed/ -type f -executable | xargs file | awk -F ':' '/ELF/ {print $1}' | sudo xargs strip
+    cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/biosdevname-installed biosdevname.tcz && md5sum biosdevname.tcz > biosdevname.tcz.md5.txt
+fi

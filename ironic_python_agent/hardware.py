@@ -218,10 +218,11 @@ class BlockDevice(encoding.SerializableComparable):
 class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'ipv4_address',
                            'has_carrier', 'lldp', 'vendor', 'product',
-                           'client_id')
+                           'client_id', 'biosdevname')
 
     def __init__(self, name, mac_addr, ipv4_address=None, has_carrier=True,
-                 lldp=None, vendor=None, product=None, client_id=None):
+                 lldp=None, vendor=None, product=None, client_id=None,
+                 biosdevname=None):
         self.name = name
         self.mac_address = mac_addr
         self.ipv4_address = ipv4_address
@@ -229,6 +230,7 @@ class NetworkInterface(encoding.SerializableComparable):
         self.lldp = lldp
         self.vendor = vendor
         self.product = product
+        self.biosdevname = biosdevname
         # client_id is used for InfiniBand only. we calculate the DHCP
         # client identifier Option to allow DHCP to work over InfiniBand.
         # see https://tools.ietf.org/html/rfc4390
@@ -531,10 +533,40 @@ class GenericHardwareManager(HardwareManager):
             ipv4_address=self.get_ipv4_addr(interface_name),
             has_carrier=netutils.interface_has_carrier(interface_name),
             vendor=_get_device_info(interface_name, 'net', 'vendor'),
-            product=_get_device_info(interface_name, 'net', 'device'))
+            product=_get_device_info(interface_name, 'net', 'device'),
+            biosdevname=self.get_bios_given_nic_name(interface_name))
 
     def get_ipv4_addr(self, interface_id):
         return netutils.get_ipv4_addr(interface_id)
+
+    def get_bios_given_nic_name(self, interface_name):
+        """Collect the BIOS given NICs name.
+
+        This function uses the biosdevname utility to collect the BIOS given
+        name of network interfaces.
+
+        The collected data is added to the network interface inventory with an
+        extra field named ``biosdevname``.
+
+        :param interface_name: list of names of node's interfaces.
+        :return: the BIOS given NIC name of node's interfaces or default
+                 as None.
+        """
+        try:
+            stdout, _ = utils.execute('biosdevname', '-i',
+                                      interface_name)
+            return stdout.rstrip('\n')
+        except OSError:
+            LOG.warning("Executable 'biosdevname' not found")
+            return
+        except processutils.ProcessExecutionError as e:
+            # NOTE(alezil) biosdevname returns 4 if running in a
+            # virtual machine.
+            if e.exit_code == 4:
+                LOG.info('The system is a virtual machine, so biosdevname '
+                         'utility does not provide names for virtual NICs.')
+            else:
+                LOG.warning('Biosdevname returned exit code %s', e.exit_code)
 
     def _is_device(self, interface_name):
         device_path = '{}/class/net/{}/device'.format(self.sys_path,

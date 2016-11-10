@@ -385,15 +385,14 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         mock_dispatch.assert_has_calls(expected_dispatch_calls)
         mock_sleep.assert_has_calls(expected_sleep_calls)
 
-    @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
-                autospec=True)
+    @mock.patch.object(hardware, 'load_managers', autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
-    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+    @mock.patch.object(agent.IronicPythonAgent, '_wait_for_interface',
                        autospec=True)
-    def test_run_with_sleep(self, mock_check_for_iscsi, mock_list_hardware,
-                            mock_make_server, mock_sleep, mock_cna):
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
+    def test_run_with_sleep(self, mock_make_server, mock_dispatch,
+                            mock_load_managers, mock_sleep, mock_wait):
         CONF.set_override('inspection_callback_url', '', enforce_type=True)
         wsgi_server = mock_make_server.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
@@ -409,7 +408,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                 'heartbeat_timeout': 300
             }
         }
-        mock_cna.return_value = False
         self.agent.run()
 
         listen_addr = agent.Host('192.0.2.1', 9999)
@@ -422,7 +420,9 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         self.agent.heartbeater.start.assert_called_once_with()
         mock_sleep.assert_called_once_with(10)
-        self.assertTrue(mock_check_for_iscsi.called)
+        self.assertTrue(mock_load_managers.called)
+        self.assertTrue(mock_wait.called)
+        mock_dispatch.assert_called_once_with('list_hardware_info')
 
     def test_async_command_success(self):
         result = base.AsyncCommandResult('foo_command', {'fail': False},

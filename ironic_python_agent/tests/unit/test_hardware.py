@@ -378,7 +378,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_network_interfaces(self,
+                                     mocked_execute,
                                      mocked_open,
                                      mocked_exists,
                                      mocked_listdir,
@@ -394,6 +396,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_ifaddresses.return_value = {
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
+        mocked_execute.return_value = ('em0\n', '')
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
@@ -401,6 +404,92 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
         self.assertIsNone(interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('em0', interfaces[0].biosdevname)
+
+    @mock.patch('ironic_python_agent.hardware._get_managers', autospec=True)
+    @mock.patch('netifaces.ifaddresses', autospec=True)
+    @mock.patch('os.listdir', autospec=True)
+    @mock.patch('os.path.exists', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_list_network_interfaces_with_biosdevname(self,
+                                                      mocked_execute,
+                                                      mocked_open,
+                                                      mocked_exists,
+                                                      mocked_listdir,
+                                                      mocked_ifaddresses,
+                                                      mocked_get_managers):
+        mocked_get_managers.return_value = [hardware.GenericHardwareManager()]
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['00:0c:29:8c:11:b1\n', '1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+        }
+        mocked_execute.return_value = ('em0\n', '')
+
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertIsNone(interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('em0', interfaces[0].biosdevname)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bios_given_nic_name_ok(self, mock_execute):
+        interface_name = 'eth0'
+        mock_execute.return_value = ('em0\n', '')
+        result = self.hardware.get_bios_given_nic_name(interface_name)
+        self.assertEqual('em0', result)
+        mock_execute.assert_called_once_with('biosdevname', '-i',
+                                             interface_name)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bios_given_nic_name_oserror(self, mock_execute):
+        interface_name = 'eth0'
+        mock_execute.side_effect = OSError()
+        result = self.hardware.get_bios_given_nic_name(interface_name)
+        self.assertIsNone(result)
+        mock_execute.assert_called_once_with('biosdevname', '-i',
+                                             interface_name)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(hardware, 'LOG', autospec=True)
+    def test_get_bios_given_nic_name_process_exec_err4(self, mock_log,
+                                                       mock_execute):
+        interface_name = 'eth0'
+        mock_execute.side_effect = [
+            processutils.ProcessExecutionError(exit_code=4)]
+
+        result = self.hardware.get_bios_given_nic_name(interface_name)
+
+        mock_log.info.assert_called_once_with(
+            'The system is a virtual machine, so biosdevname utility does '
+            'not provide names for virtual NICs.')
+        self.assertIsNone(result)
+        mock_execute.assert_called_once_with('biosdevname', '-i',
+                                             interface_name)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(hardware, 'LOG', autospec=True)
+    def test_get_bios_given_nic_name_process_exec_err3(self, mock_log,
+                                                       mock_execute):
+        interface_name = 'eth0'
+        mock_execute.side_effect = [
+            processutils.ProcessExecutionError(exit_code=3)]
+
+        result = self.hardware.get_bios_given_nic_name(interface_name)
+
+        mock_log.warning.assert_called_once_with(
+            'Biosdevname returned exit code %s', 3)
+        self.assertIsNone(result)
+        mock_execute.assert_called_once_with('biosdevname', '-i',
+                                             interface_name)
 
     @mock.patch('ironic_python_agent.hardware._get_managers', autospec=True)
     @mock.patch('ironic_python_agent.netutils.get_lldp_info', autospec=True)
@@ -408,7 +497,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_network_interfaces_with_lldp(self,
+                                               mocked_execute,
                                                mocked_open,
                                                mocked_exists,
                                                mocked_listdir,
@@ -432,6 +523,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             (2, b'\x05Ethernet1/18'),
             (3, b'\x00x')]
         }
+        mocked_execute.return_value = ('em0\n', '')
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
@@ -445,6 +537,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ]
         self.assertEqual(expected_lldp_info, interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('em0', interfaces[0].biosdevname)
 
     @mock.patch('ironic_python_agent.hardware._get_managers', autospec=True)
     @mock.patch('ironic_python_agent.netutils.get_lldp_info', autospec=True)
@@ -452,8 +545,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_network_interfaces_with_lldp_error(
-            self, mocked_open, mocked_exists, mocked_listdir,
+            self, mocked_execute, mocked_open, mocked_exists, mocked_listdir,
             mocked_ifaddresses, mocked_lldp_info, mocked_get_managers):
         mocked_get_managers.return_value = [hardware.GenericHardwareManager()]
         CONF.set_override('collect_lldp', True)
@@ -467,6 +561,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
         mocked_lldp_info.side_effect = Exception('Boom!')
+        mocked_execute.return_value = ('em0\n', '')
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
@@ -474,13 +569,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
         self.assertIsNone(interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('em0', interfaces[0].biosdevname)
 
     @mock.patch('ironic_python_agent.hardware._get_managers', autospec=True)
     @mock.patch('netifaces.ifaddresses', autospec=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_network_interfaces_no_carrier(self,
+                                                mocked_execute,
                                                 mocked_open,
                                                 mocked_exists,
                                                 mocked_listdir,
@@ -497,6 +595,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_ifaddresses.return_value = {
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
+        mocked_execute.return_value = ('em0\n', '')
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
@@ -504,13 +603,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
         self.assertFalse(interfaces[0].has_carrier)
         self.assertIsNone(interfaces[0].vendor)
+        self.assertEqual('em0', interfaces[0].biosdevname)
 
     @mock.patch('ironic_python_agent.hardware._get_managers', autospec=True)
     @mock.patch('netifaces.ifaddresses', autospec=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_network_interfaces_with_vendor_info(self,
+                                                      mocked_execute,
                                                       mocked_open,
                                                       mocked_exists,
                                                       mocked_listdir,
@@ -527,6 +629,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_ifaddresses.return_value = {
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
+        mocked_execute.return_value = ('em0\n', '')
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
@@ -535,6 +638,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertTrue(interfaces[0].has_carrier)
         self.assertEqual('0x15b3', interfaces[0].vendor)
         self.assertEqual('0x1014', interfaces[0].product)
+        self.assertEqual('em0', interfaces[0].biosdevname)
 
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)

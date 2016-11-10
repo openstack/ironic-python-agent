@@ -105,3 +105,13 @@ To provide other public SSH key, export path to it in your shell before
 building tinyipa as follows::
 
   export SSH_PUBLIC_KEY=<full-path-to-public-key>
+
+
+Enabling biosdevname in the ramdisk
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to collect BIOS given names of NICs in the inventory, set
+``TINYIPA_REQUIRE_BIOSDEVNAME`` variable in your shell before building the
+tinyipa::
+
+  export TINYIPA_REQUIRE_BIOSDEVNAME=true
