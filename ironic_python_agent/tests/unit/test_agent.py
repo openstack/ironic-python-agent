@@ -144,7 +144,6 @@ class TestBaseAgent(test_base.BaseTestCase):
                                              'eth0',
                                              300,
                                              1,
-                                             'agent_ipmitool',
                                              False)
         self.agent.ext_mgr = extension.ExtensionManager.\
             make_test_instance([extension.Extension('fake', None,
@@ -438,7 +437,6 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
             network_interface=None,
             lookup_timeout=300,
             lookup_interval=1,
-            driver_name='agent_ipmitool',
             standalone=False)
 
     def test_advertise_address_provided(self, mock_exec, mock_gethostbyname):

@@ -82,11 +82,6 @@ cli_opts = [
                     'doubled after each failure until timeout is '
                     'exceeded.'),
 
-    cfg.StrOpt('driver_name',
-               default=APARAMS.get('ipa-driver-name', 'agent_ipmitool'),
-               deprecated_name='driver-name',
-               help='The Ironic driver in use for this node'),
-
     cfg.FloatOpt('lldp_timeout',
                  default=APARAMS.get('ipa-lldp-timeout',
                                      APARAMS.get('lldp-timeout', 30.0)),

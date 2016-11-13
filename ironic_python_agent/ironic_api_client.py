@@ -27,20 +27,12 @@ LOG = log.getLogger(__name__)
 
 class APIClient(object):
     api_version = 'v1'
-    payload_version = '2'
-    use_ramdisk_api = True
     lookup_api = '/%s/lookup' % api_version
     heartbeat_api = '/%s/heartbeat/{uuid}' % api_version
-    # TODO(dtanstur): drop support for old passthru in Ocata
-    lookup_passthru = ('/%s/drivers/{driver}/vendor_passthru/lookup'
-                       % api_version)
-    heartbeat_passthru = ('/%s/nodes/{uuid}/vendor_passthru/heartbeat'
-                          % api_version)
     ramdisk_api_headers = {'X-OpenStack-Ironic-API-Version': '1.22'}
 
-    def __init__(self, api_url, driver_name):
+    def __init__(self, api_url):
         self.api_url = api_url.rstrip('/')
-        self.driver_name = driver_name
 
         # Only keep alive a maximum of 2 connections to the API. More will be
         # opened if they are needed, but they will be closed immediately after
@@ -70,22 +62,12 @@ class APIClient(object):
                                     data=data,
                                     **kwargs)
 
-    def _heartbeat_request(self, uuid, agent_url):
-        if self.use_ramdisk_api:
-            path = self.heartbeat_api.format(uuid=uuid)
-            data = {'callback_url': agent_url}
-            headers = self.ramdisk_api_headers
-        else:
-            path = self.heartbeat_passthru.format(uuid=uuid)
-            data = {'agent_url': agent_url}
-            headers = None
-
-        return self._request('POST', path, data=data, headers=headers)
-
     def heartbeat(self, uuid, advertise_address):
-        agent_url = self._get_agent_url(advertise_address)
+        path = self.heartbeat_api.format(uuid=uuid)
+        data = {'callback_url': self._get_agent_url(advertise_address)}
         try:
-            response = self._heartbeat_request(uuid, agent_url)
+            response = self._request('POST', path, data=data,
+                                     headers=self.ramdisk_api_headers)
         except Exception as e:
             raise errors.HeartbeatError(str(e))
 
@@ -110,7 +92,11 @@ class APIClient(object):
                                          'logs for details.')
         return node_content
 
-    def _do_new_lookup(self, hardware_info, node_uuid):
+    def _do_lookup(self, hardware_info, node_uuid):
+        """The actual call to lookup a node.
+
+        Should be called as a `loopingcall.BackOffLoopingCall`.
+        """
         params = {
             'addresses': ','.join(iface.mac_address
                                   for iface in hardware_info['interfaces']
@@ -119,45 +105,10 @@ class APIClient(object):
         if node_uuid:
             params['node_uuid'] = node_uuid
 
-        response = self._request('GET', self.lookup_api,
-                                 headers=self.ramdisk_api_headers,
-                                 params=params)
-        if response.status_code in (requests.codes.NOT_FOUND,
-                                    requests.codes.UNAUTHORIZED,
-                                    requests.codes.NOT_ACCEPTABLE):
-            # Assume that new API is not available and retry
-            LOG.warning('New API is not available, falling back to old '
-                        'agent vendor passthru')
-            self.use_ramdisk_api = False
-            return self._do_passthru_lookup(hardware_info, node_uuid)
-
-        return response
-
-    def _do_passthru_lookup(self, hardware_info, node_uuid):
-        path = self.lookup_passthru.format(driver=self.driver_name)
-        # This hardware won't be saved on the node currently, because of
-        # how driver_vendor_passthru is implemented (no node saving).
-        data = {
-            'version': self.payload_version,
-            'inventory': hardware_info
-        }
-        if node_uuid:
-            data['node_uuid'] = node_uuid
-
-        # Make the POST, make sure we get back normal data/status codes and
-        # content
-        return self._request('POST', path, data=data)
-
-    def _do_lookup(self, hardware_info, node_uuid):
-        """The actual call to lookup a node.
-
-        Should be called as a `loopingcall.BackOffLoopingCall`.
-        """
         try:
-            response = (self._do_new_lookup(hardware_info, node_uuid)
-                        if self.use_ramdisk_api
-                        else self._do_passthru_lookup(hardware_info,
-                                                      node_uuid))
+            response = self._request('GET', self.lookup_api,
+                                     headers=self.ramdisk_api_headers,
+                                     params=params)
         except Exception:
             LOG.exception('Lookup failed')
             return False
