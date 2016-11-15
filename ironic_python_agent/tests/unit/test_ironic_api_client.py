@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-
 import mock
+from oslo_serialization import jsonutils
 from oslo_service import loopingcall
 from oslotest import base as test_base
 
@@ -28,7 +27,7 @@ API_URL = 'http://agent-api.ironic.example.org/'
 class FakeResponse(object):
     def __init__(self, content=None, status_code=200, headers=None):
         content = content or {}
-        self.content = json.dumps(content)
+        self.content = jsonutils.dumps(content)
         self.status_code = status_code
         self.headers = headers or {}
 

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 
 from oslo_log import log
+from oslo_serialization import jsonutils
 from oslo_service import loopingcall
 import requests
 
@@ -72,7 +72,7 @@ class APIClient(object):
             raise errors.HeartbeatError(str(e))
 
         if response.status_code == requests.codes.CONFLICT:
-            data = json.loads(response.content)
+            data = jsonutils.loads(response.content)
             raise errors.HeartbeatConflictError(data.get('faultstring'))
         elif response.status_code != requests.codes.ACCEPTED:
             msg = 'Invalid status code: {}'.format(response.status_code)
@@ -118,7 +118,7 @@ class APIClient(object):
             return False
 
         try:
-            content = json.loads(response.content)
+            content = jsonutils.loads(response.content)
         except Exception as e:
             LOG.warning('Error decoding response: %s', e)
             return False

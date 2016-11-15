@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import socket
 import time
 
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_serialization import jsonutils
 from oslotest import base as test_base
 import pkg_resources
 from stevedore import extension
@@ -158,7 +158,8 @@ class TestBaseAgent(test_base.BaseTestCase):
         # object.
         a_encoded = self.encoder.encode(a)
         b_encoded = self.encoder.encode(b)
-        self.assertEqual(json.loads(a_encoded), json.loads(b_encoded))
+        self.assertEqual(jsonutils.loads(a_encoded),
+                         jsonutils.loads(b_encoded))
 
     def test_get_status(self):
         started_at = time.time()
