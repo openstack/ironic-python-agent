@@ -207,10 +207,11 @@ class BlockDevice(encoding.SerializableComparable):
 class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'switch_port_descr',
                            'switch_chassis_descr', 'ipv4_address',
-                           'has_carrier', 'lldp', 'vendor', 'product')
+                           'has_carrier', 'lldp', 'vendor', 'product',
+                           'client_id')
 
     def __init__(self, name, mac_addr, ipv4_address=None, has_carrier=True,
-                 lldp=None, vendor=None, product=None):
+                 lldp=None, vendor=None, product=None, client_id=None):
         self.name = name
         self.mac_address = mac_addr
         self.ipv4_address = ipv4_address
@@ -218,6 +219,10 @@ class NetworkInterface(encoding.SerializableComparable):
         self.lldp = lldp
         self.vendor = vendor
         self.product = product
+        # client_id is used for InfiniBand only. we calculate the DHCP
+        # client identifier Option to allow DHCP to work over InfiniBand.
+        # see https://tools.ietf.org/html/rfc4390
+        self.client_id = client_id
         # TODO(sambetts) Remove these fields in Ocata, they have been
         # superseded by self.lldp
         self.switch_port_descr = None
