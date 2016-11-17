@@ -19,6 +19,7 @@ import six
 import time
 
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_log import log
 
 from ironic_lib import disk_utils
@@ -27,6 +28,7 @@ from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import utils
 
+CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 IMAGE_CHUNK_SIZE = 1024 * 1024  # 1MB
@@ -227,7 +229,9 @@ class ImageDownload(object):
         if no_proxy:
             os.environ['no_proxy'] = no_proxy
         proxies = image_info.get('proxies', {})
-        resp = requests.get(url, stream=True, proxies=proxies)
+        verify, cert = utils.get_ssl_client_options(CONF)
+        resp = requests.get(url, stream=True, proxies=proxies,
+                            verify=verify, cert=cert)
         if resp.status_code != 200:
             msg = ('Received status code {} from {}, expected 200. Response '
                    'body: {}').format(resp.status_code, url, resp.text)

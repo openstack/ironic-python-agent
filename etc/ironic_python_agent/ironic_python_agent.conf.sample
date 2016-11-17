@@ -5,9 +5,10 @@
 #
 
 # URL of the Ironic API. Can be supplied as "ipa-api-url"
-# kernel parameter. (string value)
+# kernel parameter.The value must start with either http:// or
+# https://. (string value)
 # Deprecated group/name - [DEFAULT]/api_url
-#api_url = http://127.0.0.1:6385
+#api_url = <None>
 
 # The IP address to listen on. Can be supplied as "ipa-listen-
 # host" kernel parameter. (string value)
@@ -43,7 +44,7 @@
 # Deprecated group/name - [DEFAULT]/ip_lookup_sleep
 #ip_lookup_sleep = 10
 
-# The interface to use when looking for an IPaddress. Can be
+# The interface to use when looking for an IP address. Can be
 # supplied as "ipa-network-interface" kernel parameter.
 # (string value)
 # Deprecated group/name - [DEFAULT]/network_interface
@@ -121,6 +122,27 @@
 # be supplied as "ipa-disk-wait-delay" kernel parameter.
 # (integer value)
 #disk_wait_delay = 3
+
+# Verify HTTPS connections. Can be supplied as "ipa-insecure"
+# kernel parameter. (boolean value)
+#insecure = false
+
+# Path to PEM encoded Certificate Authority file to use when
+# verifying HTTPS connections. Default is to use available
+# system-wide configured CAs. (string value)
+#cafile = <None>
+
+# Path to PEM encoded client certificate cert file. Must be
+# provided together with "keyfile" option. Default is to not
+# present any client certificates to the server. (string
+# value)
+#certfile = <None>
+
+# Path to PEM encoded client certificate key file. Must be
+# provided together with "certfile" option. Default is to not
+# present any client certificates to the server. (string
+# value)
+#keyfile = <None>
 
 #
 # From oslo.log

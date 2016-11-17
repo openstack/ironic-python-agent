@@ -145,6 +145,7 @@ class TestCallInspector(test_base.BaseTestCase):
         res = inspector.call_inspector(data, failures)
 
         mock_post.assert_called_once_with('url',
+                                          cert=None, verify=True,
                                           data='{"data": 42, "error": null}')
         self.assertEqual(mock_post.return_value.json.return_value, res)
 
@@ -157,6 +158,7 @@ class TestCallInspector(test_base.BaseTestCase):
         res = inspector.call_inspector(data, failures)
 
         mock_post.assert_called_once_with('url',
+                                          cert=None, verify=True,
                                           data='{"data": 42, "error": "boom"}')
         self.assertEqual(mock_post.return_value.json.return_value, res)
 
@@ -168,6 +170,7 @@ class TestCallInspector(test_base.BaseTestCase):
         res = inspector.call_inspector(data, failures)
 
         mock_post.assert_called_once_with('url',
+                                          cert=None, verify=True,
                                           data='{"data": 42, "error": null}')
         self.assertIsNone(res)
 

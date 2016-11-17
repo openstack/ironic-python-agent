@@ -455,3 +455,33 @@ class TestUtils(testtools.TestCase):
             file_list=['/var/log'],
             io_dict={'iptables': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
                      'dmesg': mock.ANY, 'df': mock.ANY})
+
+    def test_get_ssl_client_options(self):
+        # defaults
+        conf = mock.Mock(insecure=False, cafile=None,
+                         keyfile=None, certfile=None)
+        self.assertEqual((True, None), utils.get_ssl_client_options(conf))
+
+        # insecure=True overrides cafile
+        conf = mock.Mock(insecure=True, cafile='spam',
+                         keyfile=None, certfile=None)
+        self.assertEqual((False, None), utils.get_ssl_client_options(conf))
+
+        # cafile returned as verify when not insecure
+        conf = mock.Mock(insecure=False, cafile='spam',
+                         keyfile=None, certfile=None)
+        self.assertEqual(('spam', None), utils.get_ssl_client_options(conf))
+
+        # only both certfile and keyfile produce non-None result
+        conf = mock.Mock(insecure=False, cafile=None,
+                         keyfile=None, certfile='ham')
+        self.assertEqual((True, None), utils.get_ssl_client_options(conf))
+
+        conf = mock.Mock(insecure=False, cafile=None,
+                         keyfile='ham', certfile=None)
+        self.assertEqual((True, None), utils.get_ssl_client_options(conf))
+
+        conf = mock.Mock(insecure=False, cafile=None,
+                         keyfile='spam', certfile='ham')
+        self.assertEqual((True, ('ham', 'spam')),
+                         utils.get_ssl_client_options(conf))

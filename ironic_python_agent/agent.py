@@ -162,6 +162,9 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                  lookup_timeout, lookup_interval, standalone,
                  hardware_initialization_delay=0):
         super(IronicPythonAgent, self).__init__()
+        if bool(cfg.CONF.keyfile) != bool(cfg.CONF.certfile):
+            LOG.warning("Only one of 'keyfile' and 'certfile' options is "
+                        "defined in config file. Its value will be ignored.")
         self.ext_mgr = extension.ExtensionManager(
             namespace='ironic_python_agent.extensions',
             invoke_on_load=True,
