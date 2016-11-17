@@ -2,6 +2,7 @@
 
 PROJECT_NAME=${PROJECT_NAME:-ironic_python_agent}
 CFGFILE_NAME=${PROJECT_NAME}.conf.sample
+OSLO_CFGFILE_OPTION=${OSLO_CFGFILE_OPTION:-tools/config/ipa-config-generator.conf}
 
 if [ -e etc/${PROJECT_NAME}/${CFGFILE_NAME} ]; then
     CFGFILE=etc/${PROJECT_NAME}/${CFGFILE_NAME}
@@ -15,10 +16,14 @@ fi
 TEMPDIR=`mktemp -d /tmp/${PROJECT_NAME}.XXXXXX`
 trap "rm -rf $TEMPDIR" EXIT
 
-tools/config/generate_sample.sh -b ./ -p ${PROJECT_NAME} -o ${TEMPDIR}
+oslo-config-generator --config-file=${OSLO_CFGFILE_OPTION} --output-file ${TEMPDIR}/${CFGFILE_NAME}
+if [ $? != 0 ]; then
+    echo "oslo-config-generator failed to create a sample config file ${TEMPDIR}/${CFGFILE_NAME} with --config-file ${OSLO_CFGFILE_OPTION}"
+    exit 1
+fi
 
-if ! diff -u ${TEMPDIR}/${CFGFILE_NAME} ${CFGFILE} ; then
+if ! diff -u ${TEMPDIR}/${CFGFILE_NAME} ${CFGFILE}; then
     echo "${0##*/}: ${PROJECT_NAME}.conf.sample is not up to date."
-    echo "${0##*/}: Please run ${0%%${0##*/}}generate_sample.sh."
+    echo "${0##*/}: Please run oslo-config-generator --config-file=${OSLO_CFGFILE_OPTION}"
     exit 1
 fi

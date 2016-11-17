@@ -1,0 +1,4 @@
+---
+other:
+  - Ironic Python Agent now uses ``oslo-config-generator`` to create the
+    sample of configuration file.
