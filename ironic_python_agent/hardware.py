@@ -21,7 +21,6 @@ import time
 
 from ironic_lib import disk_utils
 from ironic_lib import utils as il_utils
-import netifaces
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -291,6 +290,9 @@ class HardwareManager(object):
     def get_boot_info(self):
         raise errors.IncompatibleHardwareMethodError()
 
+    def get_interface_info(self, interface_name):
+        raise errors.IncompatibleHardwareMethodError()
+
     def erase_block_device(self, node, block_device):
         """Attempt to erase a block device.
 
@@ -496,7 +498,7 @@ class GenericHardwareManager(HardwareManager):
         if self.lldp_data:
             return self.lldp_data.get(interface_name)
 
-    def _get_interface_info(self, interface_name):
+    def get_interface_info(self, interface_name):
         addr_path = '{}/class/net/{}/address'.format(self.sys_path,
                                                      interface_name)
         with open(addr_path) as addr_file:
@@ -505,29 +507,12 @@ class GenericHardwareManager(HardwareManager):
         return NetworkInterface(
             interface_name, mac_addr,
             ipv4_address=self.get_ipv4_addr(interface_name),
-            has_carrier=self._interface_has_carrier(interface_name),
-            lldp=self._get_lldp_data(interface_name),
+            has_carrier=netutils.interface_has_carrier(interface_name),
             vendor=_get_device_info(interface_name, 'net', 'vendor'),
             product=_get_device_info(interface_name, 'net', 'device'))
 
     def get_ipv4_addr(self, interface_id):
-        try:
-            addrs = netifaces.ifaddresses(interface_id)
-            return addrs[netifaces.AF_INET][0]['addr']
-        except (ValueError, IndexError, KeyError):
-            # No default IPv4 address found
-            return None
-
-    def _interface_has_carrier(self, interface_name):
-        path = '{}/class/net/{}/carrier'.format(self.sys_path,
-                                                interface_name)
-        try:
-            with open(path, 'rt') as fp:
-                return fp.read().strip() == '1'
-        except EnvironmentError:
-            LOG.debug('No carrier information for interface %s',
-                      interface_name)
-            return False
+        return netutils.get_ipv4_addr(interface_id)
 
     def _is_device(self, interface_name):
         device_path = '{}/class/net/{}/device'.format(self.sys_path,
@@ -535,13 +520,20 @@ class GenericHardwareManager(HardwareManager):
         return os.path.exists(device_path)
 
     def list_network_interfaces(self):
+        network_interfaces_list = []
         iface_names = os.listdir('{}/class/net'.format(self.sys_path))
         iface_names = [name for name in iface_names if self._is_device(name)]
 
         if CONF.collect_lldp:
             self._cache_lldp_data(iface_names)
 
-        return [self._get_interface_info(name) for name in iface_names]
+        for iface_name in iface_names:
+            result = dispatch_to_managers(
+                'get_interface_info', interface_name=iface_name)
+            result.lldp = self._get_lldp_data(iface_name)
+            network_interfaces_list.append(result)
+
+        return network_interfaces_list
 
     def get_cpus(self):
         lines = utils.execute('lscpu')[0]

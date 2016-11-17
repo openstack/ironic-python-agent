@@ -19,6 +19,7 @@ import socket
 import struct
 import sys
 
+import netifaces
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -191,3 +192,23 @@ def _get_lldp_info(interfaces):
         lldp_info[name] = []
 
     return lldp_info
+
+
+def get_ipv4_addr(interface_id):
+    try:
+        addrs = netifaces.ifaddresses(interface_id)
+        return addrs[netifaces.AF_INET][0]['addr']
+    except (ValueError, IndexError, KeyError):
+        # No default IPv4 address found
+        return None
+
+
+def interface_has_carrier(interface_name):
+    path = '/sys/class/net/{}/carrier'.format(interface_name)
+    try:
+        with open(path, 'rt') as fp:
+            return fp.read().strip() == '1'
+    except EnvironmentError:
+        LOG.debug('No carrier information for interface %s',
+                  interface_name)
+        return False
