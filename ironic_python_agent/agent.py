@@ -169,13 +169,14 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             invoke_kwds={'agent': self},
         )
         self.api_url = api_url
-        self.api_client = ironic_api_client.APIClient(self.api_url)
+        if self.api_url:
+            self.api_client = ironic_api_client.APIClient(self.api_url)
+            self.heartbeater = IronicPythonAgentHeartbeater(self)
         self.listen_address = listen_address
         self.advertise_address = advertise_address
         self.version = pkg_resources.get_distribution('ironic-python-agent')\
             .version
         self.api = app.VersionSelectorApplication(self)
-        self.heartbeater = IronicPythonAgentHeartbeater(self)
         self.heartbeat_timeout = None
         self.started_at = None
         self.node = None
@@ -329,30 +330,40 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         if not self.standalone:
             # Inspection should be started before call to lookup, otherwise
             # lookup will fail due to unknown MAC.
-            uuid = inspector.inspect()
+            uuid = None
+            if cfg.CONF.inspection_callback_url:
+                uuid = inspector.inspect()
 
-            self._wait_for_interface()
-            content = self.api_client.lookup_node(
-                hardware_info=hardware.dispatch_to_managers(
-                    'list_hardware_info'),
-                timeout=self.lookup_timeout,
-                starting_interval=self.lookup_interval,
-                node_uuid=uuid)
+            if self.api_url:
+                self._wait_for_interface()
+                content = self.api_client.lookup_node(
+                    hardware_info=hardware.dispatch_to_managers(
+                        'list_hardware_info'),
+                    timeout=self.lookup_timeout,
+                    starting_interval=self.lookup_interval,
+                    node_uuid=uuid)
 
-            LOG.debug('Received lookup results: %s', content)
-            self.node = content['node']
-            LOG.info('Lookup succeeded, node UUID is %s', self.node['uuid'])
-            hardware.cache_node(self.node)
-            self.heartbeat_timeout = content['config']['heartbeat_timeout']
+                LOG.debug('Received lookup results: %s', content)
+                self.node = content['node']
+                LOG.info('Lookup succeeded, node UUID is %s',
+                         self.node['uuid'])
+                hardware.cache_node(self.node)
+                self.heartbeat_timeout = content['config']['heartbeat_timeout']
 
-            # Update config with values from Ironic
-            config = content.get('config', {})
-            if config.get('metrics'):
-                for opt, val in config.items():
-                    setattr(cfg.CONF.metrics, opt, val)
-            if config.get('metrics_statsd'):
-                for opt, val in config.items():
-                    setattr(cfg.CONF.metrics_statsd, opt, val)
+                # Update config with values from Ironic
+                config = content.get('config', {})
+                if config.get('metrics'):
+                    for opt, val in config.items():
+                        setattr(cfg.CONF.metrics, opt, val)
+                if config.get('metrics_statsd'):
+                    for opt, val in config.items():
+                        setattr(cfg.CONF.metrics_statsd, opt, val)
+            elif cfg.CONF.inspection_callback_url:
+                LOG.info('No ipa-api-url configured, Heartbeat and lookup '
+                         'skipped for inspector.')
+            else:
+                LOG.error('Neither ipa-api-url nor inspection_callback_url'
+                          'found, please check your pxe append parameters.')
 
         wsgi = simple_server.make_server(
             self.listen_address.hostname,
@@ -360,7 +371,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             self.api,
             server_class=simple_server.WSGIServer)
 
-        if not self.standalone:
+        if not self.standalone and self.api_url:
             # Don't start heartbeating until the server is listening
             self.heartbeater.start()
 
@@ -369,5 +380,5 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         except BaseException:
             LOG.exception('shutting down')
 
-        if not self.standalone:
+        if not self.standalone and self.api_url:
             self.heartbeater.stop()
