@@ -305,6 +305,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         clean_steps = self.hardware.get_clean_steps(self.node, [])
         self.assertEqual(expected_clean_steps, clean_steps)
 
+    @mock.patch('ironic_python_agent.hardware._get_managers')
     @mock.patch('netifaces.ifaddresses')
     @mock.patch('os.listdir')
     @mock.patch('os.path.exists')
@@ -313,7 +314,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                      mocked_open,
                                      mocked_exists,
                                      mocked_listdir,
-                                     mocked_ifaddresses):
+                                     mocked_ifaddresses,
+                                     mocked_get_managers):
+        mocked_get_managers.return_value = [hardware.GenericHardwareManager()]
         mocked_listdir.return_value = ['lo', 'eth0']
         mocked_exists.side_effect = [False, True]
         mocked_open.return_value.__enter__ = lambda s: s
@@ -331,6 +334,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertIsNone(interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
 
+    @mock.patch('ironic_python_agent.hardware._get_managers')
     @mock.patch('ironic_python_agent.netutils.get_lldp_info')
     @mock.patch('netifaces.ifaddresses')
     @mock.patch('os.listdir')
@@ -341,7 +345,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                                mocked_exists,
                                                mocked_listdir,
                                                mocked_ifaddresses,
-                                               mocked_lldp_info):
+                                               mocked_lldp_info,
+                                               mocked_get_managers):
+        mocked_get_managers.return_value = [hardware.GenericHardwareManager()]
         CONF.set_override('collect_lldp', True)
         mocked_listdir.return_value = ['lo', 'eth0']
         mocked_exists.side_effect = [False, True]
@@ -372,6 +378,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual(expected_lldp_info, interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
 
+    @mock.patch('ironic_python_agent.hardware._get_managers')
     @mock.patch('ironic_python_agent.netutils.get_lldp_info')
     @mock.patch('netifaces.ifaddresses')
     @mock.patch('os.listdir')
@@ -379,7 +386,8 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
     @mock.patch('six.moves.builtins.open')
     def test_list_network_interfaces_with_lldp_error(
             self, mocked_open, mocked_exists, mocked_listdir,
-            mocked_ifaddresses, mocked_lldp_info):
+            mocked_ifaddresses, mocked_lldp_info, mocked_get_managers):
+        mocked_get_managers.return_value = [hardware.GenericHardwareManager()]
         CONF.set_override('collect_lldp', True)
         mocked_listdir.return_value = ['lo', 'eth0']
         mocked_exists.side_effect = [False, True]
@@ -399,6 +407,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertIsNone(interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
 
+    @mock.patch('ironic_python_agent.hardware._get_managers')
     @mock.patch('netifaces.ifaddresses')
     @mock.patch('os.listdir')
     @mock.patch('os.path.exists')
@@ -407,7 +416,10 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                                 mocked_open,
                                                 mocked_exists,
                                                 mocked_listdir,
-                                                mocked_ifaddresses):
+                                                mocked_ifaddresses,
+                                                mocked_get_managers):
+
+        mocked_get_managers.return_value = [hardware.GenericHardwareManager()]
         mocked_listdir.return_value = ['lo', 'eth0']
         mocked_exists.side_effect = [False, True]
         mocked_open.return_value.__enter__ = lambda s: s
@@ -425,6 +437,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertFalse(interfaces[0].has_carrier)
         self.assertIsNone(interfaces[0].vendor)
 
+    @mock.patch('ironic_python_agent.hardware._get_managers')
     @mock.patch('netifaces.ifaddresses')
     @mock.patch('os.listdir')
     @mock.patch('os.path.exists')
@@ -433,7 +446,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
                                                       mocked_open,
                                                       mocked_exists,
                                                       mocked_listdir,
-                                                      mocked_ifaddresses):
+                                                      mocked_ifaddresses,
+                                                      mocked_get_managers):
+        mocked_get_managers.return_value = [hardware.GenericHardwareManager()]
         mocked_listdir.return_value = ['lo', 'eth0']
         mocked_exists.side_effect = [False, True]
         mocked_open.return_value.__enter__ = lambda s: s

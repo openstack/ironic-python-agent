@@ -30,6 +30,7 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
+from ironic_python_agent import netutils
 from ironic_python_agent import utils
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
@@ -449,7 +450,7 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
 
-    @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr',
+    @mock.patch.object(netutils, 'get_ipv4_addr',
                        autospec=True)
     def test_with_network_interface(self, mock_get_ipv4, mock_exec,
                                     mock_gethostbyname):
@@ -460,11 +461,11 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
 
         self.assertEqual(agent.Host('1.2.3.4', 9990),
                          self.agent.advertise_address)
-        mock_get_ipv4.assert_called_once_with(mock.ANY, 'em1')
+        mock_get_ipv4.assert_called_once_with('em1')
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
 
-    @mock.patch.object(hardware.GenericHardwareManager, 'get_ipv4_addr',
+    @mock.patch.object(netutils, 'get_ipv4_addr',
                        autospec=True)
     def test_with_network_interface_failed(self, mock_get_ipv4,
                                            mock_exec,
@@ -475,7 +476,7 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
         self.assertRaises(errors.LookupAgentIPError,
                           self.agent.set_agent_advertise_addr)
 
-        mock_get_ipv4.assert_called_once_with(mock.ANY, 'em1')
+        mock_get_ipv4.assert_called_once_with('em1')
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
 
