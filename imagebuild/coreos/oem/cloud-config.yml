@@ -215,6 +215,9 @@ coreos:
         Requires=opt-ironic\x2dpython\x2dagent-run-log.mount
 
         [Service]
+        ExecStartPre=-/usr/sbin/modprobe ipmi_msghandler
+        ExecStartPre=-/usr/sbin/modprobe ipmi_devintf
+        ExecStartPre=-/usr/sbin/modprobe ipmi_si
         ExecStart=/usr/bin/chroot /opt/ironic-python-agent \
                                   /usr/local/bin/ironic-python-agent
         Restart=always
