@@ -367,12 +367,14 @@ class TestBaseAgent(test_base.BaseTestCase):
         mock_dispatch.assert_has_calls(expected_dispatch_calls)
         mock_sleep.assert_has_calls(expected_sleep_calls)
 
+    @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
+                autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
     def test_run_with_sleep(self, mock_check_for_iscsi, mock_list_hardware,
-                            mock_make_server, mock_sleep):
+                            mock_make_server, mock_sleep, mock_cna):
         CONF.set_override('inspection_callback_url', '', enforce_type=True)
         wsgi_server = mock_make_server.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
@@ -388,6 +390,7 @@ class TestBaseAgent(test_base.BaseTestCase):
                 'heartbeat_timeout': 300
             }
         }
+        mock_cna.return_value = False
         self.agent.run()
 
         listen_addr = agent.Host('192.0.2.1', 9999)
@@ -545,10 +548,13 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
 
     @mock.patch.object(netutils, 'get_ipv4_addr',
                        autospec=True)
-    def test_with_network_interface(self, mock_get_ipv4, mock_exec,
+    @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
+                autospec=True)
+    def test_with_network_interface(self, mock_cna, mock_get_ipv4, mock_exec,
                                     mock_gethostbyname):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = '1.2.3.4'
+        mock_cna.return_value = False
 
         self.agent.set_agent_advertise_addr()
 
@@ -560,10 +566,13 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
 
     @mock.patch.object(netutils, 'get_ipv4_addr',
                        autospec=True)
-    def test_with_network_interface_failed(self, mock_get_ipv4, mock_exec,
-                                           mock_gethostbyname):
+    @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
+                autospec=True)
+    def test_with_network_interface_failed(self, mock_cna, mock_get_ipv4,
+                                           mock_exec, mock_gethostbyname):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = None
+        mock_cna.return_value = False
 
         self.assertRaises(errors.LookupAgentIPError,
                           self.agent.set_agent_advertise_addr)

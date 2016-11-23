@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import binascii
 import os
 import time
 
@@ -304,6 +305,64 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         ]
         clean_steps = self.hardware.get_clean_steps(self.node, [])
         self.assertEqual(expected_clean_steps, clean_steps)
+
+    @mock.patch('binascii.hexlify')
+    @mock.patch('ironic_python_agent.netutils.get_lldp_info')
+    def test_collect_lldp_data(self, mock_lldp_info, mock_hexlify):
+        if_names = ['eth0', 'lo']
+        mock_lldp_info.return_value = {if_names[0]: [
+            (0, b''),
+            (1, b'foo\x01'),
+            (2, b'\x02bar')],
+        }
+        mock_hexlify.side_effect = [
+            b'',
+            b'666f6f01',
+            b'02626172'
+        ]
+        expected_lldp_data = {
+            'eth0': [
+                (0, ''),
+                (1, '666f6f01'),
+                (2, '02626172')],
+        }
+        result = self.hardware.collect_lldp_data(if_names)
+        self.assertEqual(True, if_names[0] in result)
+        self.assertEqual(expected_lldp_data, result)
+
+    @mock.patch('ironic_python_agent.netutils.get_lldp_info')
+    def test_collect_lldp_data_netutils_exception(self, mock_lldp_info):
+        if_names = ['eth0', 'lo']
+        mock_lldp_info.side_effect = Exception('fake error')
+        result = self.hardware.collect_lldp_data(if_names)
+        expected_lldp_data = {}
+        self.assertEqual(expected_lldp_data, result)
+
+    @mock.patch.object(hardware, 'LOG', autospec=True)
+    @mock.patch('binascii.hexlify')
+    @mock.patch('ironic_python_agent.netutils.get_lldp_info')
+    def test_collect_lldp_data_decode_exception(self, mock_lldp_info,
+                                                mock_hexlify, mock_log):
+        if_names = ['eth0', 'lo']
+        mock_lldp_info.return_value = {if_names[0]: [
+            (0, b''),
+            (1, b'foo\x01'),
+            (2, b'\x02bar')],
+        }
+        mock_hexlify.side_effect = [
+            b'',
+            b'666f6f01',
+            binascii.Error('fake_error')
+        ]
+        expected_lldp_data = {
+            'eth0': [
+                (0, ''),
+                (1, '666f6f01')],
+        }
+        result = self.hardware.collect_lldp_data(if_names)
+        mock_log.warning.assert_called_once()
+        self.assertEqual(True, if_names[0] in result)
+        self.assertEqual(expected_lldp_data, result)
 
     @mock.patch('ironic_python_agent.hardware._get_managers')
     @mock.patch('netifaces.ifaddresses')

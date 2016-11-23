@@ -488,15 +488,25 @@ class GenericHardwareManager(HardwareManager):
             LOG.warning('No disks detected in %d seconds',
                         CONF.disk_wait_delay * CONF.disk_wait_attempts)
 
-    def _cache_lldp_data(self, interface_names):
+    def collect_lldp_data(self, interface_names):
+        """Collect and convert LLDP info from the node.
+
+        In order to process the LLDP information later, the raw data needs to
+        be converted for serialization purposes.
+
+        :param interface_names: list of names of node's interfaces.
+        :return: a dict, containing the lldp data from every interface.
+        """
+
         interface_names = [name for name in interface_names if name != 'lo']
+        lldp_data = {}
         try:
             raw_lldp_data = netutils.get_lldp_info(interface_names)
         except Exception:
             # NOTE(sambetts) The get_lldp_info function will log this exception
             # and we don't invalidate any existing data in the cache if we fail
             # to get data to replace it so just return.
-            return
+            return lldp_data
         for ifname, tlvs in raw_lldp_data.items():
             # NOTE(sambetts) Convert each type-length-value (TLV) value to hex
             # so that it can be serialised safely
@@ -508,7 +518,8 @@ class GenericHardwareManager(HardwareManager):
                 except (binascii.Error, binascii.Incomplete) as e:
                     LOG.warning('An error occurred while processing TLV type '
                                 '%s for interface %s: %s', (typ, ifname, e))
-            self.lldp_data[ifname] = processed_tlvs
+            lldp_data[ifname] = processed_tlvs
+        return lldp_data
 
     def _get_lldp_data(self, interface_name):
         if self.lldp_data:
@@ -541,7 +552,8 @@ class GenericHardwareManager(HardwareManager):
         iface_names = [name for name in iface_names if self._is_device(name)]
 
         if CONF.collect_lldp:
-            self._cache_lldp_data(iface_names)
+            self.lldp_data = dispatch_to_managers('collect_lldp_data',
+                                                  interface_names=iface_names)
 
         for iface_name in iface_names:
             result = dispatch_to_managers(
