@@ -1,0 +1,4 @@
+---
+fixes:
+  - Fixes detection of IPMI address in the CoreOS-based images
+    by loading IPMI modules before going into chroot.
