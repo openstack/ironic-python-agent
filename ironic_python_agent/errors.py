@@ -70,7 +70,7 @@ class CommandExecutionError(RESTError):
 class InvalidCommandError(InvalidContentError):
     """Error which is raised when an unknown command is issued."""
 
-    messsage = 'Invalid command'
+    message = 'Invalid command'
 
     def __init__(self, details):
         super(InvalidCommandError, self).__init__(details)

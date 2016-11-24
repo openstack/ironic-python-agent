@@ -361,7 +361,7 @@ def get_journalctl_output(lines=None, units=None):
 def gzip_and_b64encode(io_dict=None, file_list=None):
     """Gzip and base64 encode files and BytesIO buffers.
 
-    :param io_dict: A dictionary containg whose the keys are the file
+    :param io_dict: A dictionary containing whose the keys are the file
         names and the value a BytesIO object.
     :param file_list: A list of file path.
     :returns: A gzipped and base64 encoded string.
