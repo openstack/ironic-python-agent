@@ -56,7 +56,8 @@ def _generate_client_id(address):
 def _detect_hardware():
     """method for detection of Mellanox NICs
 
-    :return True/False
+    :returns: Boolean value. True if the machine contain one
+              or more Mellanox NIC(s), False otherwise.
     """
     iface_names = os.listdir('/sys/class/net')
     for ifname in iface_names:
