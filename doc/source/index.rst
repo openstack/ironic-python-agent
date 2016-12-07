@@ -114,7 +114,7 @@ fields:
 ``disks``
     list of disk block devices with fields: ``name``, ``model``,
     ``size`` (in bytes), ``rotational`` (boolean), ``wwn``, ``serial``,
-    ``vendor``, ``wwn_with_extension``, ``wwn_vendor_extension``.
+    ``vendor``, ``wwn_with_extension``, ``wwn_vendor_extension``, ``hctl``.
 
 ``interfaces``
     list of network interfaces with fields: ``name``, ``mac_address``,
