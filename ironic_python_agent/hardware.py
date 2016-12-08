@@ -154,6 +154,16 @@ def list_all_block_devices(block_type='disk'):
                       ('wwn_with_extension', 'WWN_WITH_EXTENSION'),
                       ('wwn_vendor_extension', 'WWN_VENDOR_EXTENSION')]}
 
+        # NOTE(lucasagomes): Newer versions of the lsblk tool supports
+        # HCTL as a parameter but let's get it from sysfs to avoid breaking
+        # old distros.
+        try:
+            extra['hctl'] = os.listdir(
+                '/sys/block/%s/device/scsi_device' % device['KNAME'])[0]
+        except (OSError, IndexError):
+            LOG.warning('Could not find the SCSI address (HCTL) for '
+                        'device %s. Skipping', name)
+
         devices.append(BlockDevice(name=name,
                                    model=device['MODEL'],
                                    size=int(device['SIZE']),
@@ -188,11 +198,11 @@ class HardwareType(object):
 class BlockDevice(encoding.SerializableComparable):
     serializable_fields = ('name', 'model', 'size', 'rotational',
                            'wwn', 'serial', 'vendor', 'wwn_with_extension',
-                           'wwn_vendor_extension')
+                           'wwn_vendor_extension', 'hctl')
 
     def __init__(self, name, model, size, rotational, wwn=None, serial=None,
                  vendor=None, wwn_with_extension=None,
-                 wwn_vendor_extension=None):
+                 wwn_vendor_extension=None, hctl=None):
         self.name = name
         self.model = model
         self.size = size
@@ -202,6 +212,7 @@ class BlockDevice(encoding.SerializableComparable):
         self.vendor = vendor
         self.wwn_with_extension = wwn_with_extension
         self.wwn_vendor_extension = wwn_vendor_extension
+        self.hctl = hctl
 
 
 class NetworkInterface(encoding.SerializableComparable):

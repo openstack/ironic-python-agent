@@ -1,0 +1,4 @@
+---
+features:
+  - Add HCTL (Host, Channel, Target and Lun) information to the block
+    devices.
