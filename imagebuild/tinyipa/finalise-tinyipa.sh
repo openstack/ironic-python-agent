@@ -2,10 +2,11 @@
 
 set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
+source ${WORKDIR}/tc-mirror.sh
 BUILDDIR="$WORKDIR/tinyipabuild"
 FINALDIR="$WORKDIR/tinyipafinal"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-true}
-TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-"http://repo.tinycorelinux.net"}
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
 ENABLE_SSH=${ENABLE_SSH:-false}
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 PYOPTIMIZE_TINYIPA=${PYOPTIMIZE_TINYIPA:-true}
@@ -18,6 +19,10 @@ CHROOT_CMD="sudo chroot $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$
 TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
 
 echo "Finalising tinyipa:"
+
+# Find a working TC mirror if none is explicitly provided
+choose_tc_mirror
+
 
 if $ENABLE_SSH ; then
     echo "Validating location of public SSH key"

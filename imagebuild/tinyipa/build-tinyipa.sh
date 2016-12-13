@@ -2,9 +2,10 @@
 
 set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
+source ${WORKDIR}/tc-mirror.sh
 BUILDDIR="$WORKDIR/tinyipabuild"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-false}
-TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-"http://repo.tinycorelinux.net"}
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
 
 CHROOT_PATH="/tmp/overides:/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 CHROOT_CMD="sudo chroot $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
@@ -31,6 +32,9 @@ fi
 ##############################################
 # Download and Cache Tiny Core Files
 ##############################################
+
+# Find a working TC mirror if none is explicitly provided
+choose_tc_mirror
 
 cd $WORKDIR/build_files
 wget -N $TINYCORE_MIRROR_URL/7.x/x86_64/release/distribution_files/corepure64.gz
