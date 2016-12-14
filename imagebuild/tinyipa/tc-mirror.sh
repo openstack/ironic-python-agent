@@ -8,6 +8,7 @@
 # - those that were unavailable are moved to the bottom of the list
 # - those that already responded with 404 are moved to the very bottom
 
+# List generated on 12-Dec-2016
 TC_MIRRORS="http://repo.tinycorelinux.net
 http://distro.ibiblio.org/tinycorelinux
 http://mirror.cedia.org.ec/tinycorelinux
