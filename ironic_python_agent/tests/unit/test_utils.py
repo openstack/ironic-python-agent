@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import base64
 import errno
 import glob
 import io
@@ -27,6 +26,7 @@ import testtools
 from ironic_lib import utils as ironic_utils
 import mock
 from oslo_concurrency import processutils
+from oslo_serialization import base64
 from oslotest import base as test_base
 
 from ironic_python_agent import errors
@@ -386,7 +386,7 @@ class TestUtils(testtools.TestCase):
         io_dict = {'fake-name': io.BytesIO(bytes(contents))}
         data = utils.gzip_and_b64encode(io_dict=io_dict)
 
-        res = io.BytesIO(base64.b64decode(data))
+        res = io.BytesIO(base64.decode_as_bytes(data))
         with tarfile.open(fileobj=res) as tar:
             members = [(m.name, m.size) for m in tar]
             self.assertEqual([('fake-name', len(contents))], members)
