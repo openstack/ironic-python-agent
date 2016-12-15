@@ -481,25 +481,25 @@ class StandbyExtension(base.BaseAgentExtension):
         LOG.info(result_msg)
         return result_msg
 
-    def _run_shutdown_script(self, parameter):
-        """Runs the agent's shutdown script with the specified parameter.
+    def _run_shutdown_command(self, command):
+        """Run the shutdown or reboot command
 
-        The script only takes the following parameters:
-
-            -h : 'halts' the machine by turning the power off.
-            -r : 'runs' the installed image by rebooting the machine.
-
-        Only one parameter should be specified.
-
-        :param parameter: The parameter to send to the shutdown script.
-        :raises: SystemRebootError if calling the shutdown script returns an
-                 unsuccessful exit code.
+        :param command: A string having the command to be run.
+        :raises: InvalidCommandParamsError if the passed command is not
+            equal to poweroff or reboot.
+        :raises: SystemRebootError if the command errors out with an
+            unsuccessful exit code.
         """
-        script = _path_to_script('shell/shutdown.sh')
-        command = ['/bin/bash', script, parameter]
-        # this should never return if successful
+        if command not in ('reboot', 'poweroff'):
+            msg = (('Expected the command "poweroff" or "reboot" '
+                    'but received "%s".') % command)
+            raise errors.InvalidCommandParamsError(msg)
         try:
-            stdout, stderr = utils.execute(*command, check_exit_code=[0])
+            self.sync()
+        except errors.CommandExecutionError as e:
+            LOG.warning('Failed to sync file system buffers: % s', e)
+        try:
+            utils.execute(command, check_exit_code=[0])
         except processutils.ProcessExecutionError as e:
             raise errors.SystemRebootError(e.exit_code, e.stdout, e.stderr)
 
@@ -507,13 +507,13 @@ class StandbyExtension(base.BaseAgentExtension):
     def run_image(self):
         """Runs image on agent's system via reboot."""
         LOG.info('Rebooting system')
-        self._run_shutdown_script('-r')
+        self._run_shutdown_command('reboot')
 
     @base.async_command('power_off')
     def power_off(self):
         """Powers off the agent's system."""
         LOG.info('Powering off system')
-        self._run_shutdown_script('-h')
+        self._run_shutdown_command('poweroff')
 
     @base.sync_command('sync')
     def sync(self):

@@ -663,15 +663,34 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self._test_prepare_image_raw(image_info)
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_run_shutdown_command_invalid(self, execute_mock):
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.agent_extension._run_shutdown_command, 'boot')
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_run_shutdown_command_fails(self, execute_mock):
+        execute_mock.side_effect = processutils.ProcessExecutionError
+        self.assertRaises(errors.SystemRebootError,
+                          self.agent_extension._run_shutdown_command, 'reboot')
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_run_shutdown_command_valid(self, execute_mock):
+        execute_mock.return_value = ('', '')
+
+        self.agent_extension._run_shutdown_command('poweroff')
+        calls = [mock.call('sync'),
+                 mock.call('poweroff', check_exit_code=[0])]
+        execute_mock.assert_has_calls(calls)
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_run_image(self, execute_mock):
-        script = standby._path_to_script('shell/shutdown.sh')
-        command = ['/bin/bash', script, '-r']
         execute_mock.return_value = ('', '')
 
         success_result = self.agent_extension.run_image()
         success_result.join()
-
-        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
+        calls = [mock.call('sync'),
+                 mock.call('reboot', check_exit_code=[0])]
+        execute_mock.assert_has_calls(calls)
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
         execute_mock.reset_mock()
@@ -681,23 +700,19 @@ class TestStandbyExtension(test_base.BaseTestCase):
         failed_result = self.agent_extension.run_image()
         failed_result.join()
 
-        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
+        execute_mock.assert_any_call('sync')
         self.assertEqual('FAILED', failed_result.command_status)
-
-    def test_path_to_script(self):
-        script = standby._path_to_script('shell/reboot.sh')
-        self.assertTrue(script.endswith('extensions/../shell/reboot.sh'))
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_power_off(self, execute_mock):
-        script = standby._path_to_script('shell/shutdown.sh')
-        command = ['/bin/bash', script, '-h']
         execute_mock.return_value = ('', '')
 
         success_result = self.agent_extension.power_off()
         success_result.join()
 
-        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
+        calls = [mock.call('sync'),
+                 mock.call('poweroff', check_exit_code=[0])]
+        execute_mock.assert_has_calls(calls)
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
         execute_mock.reset_mock()
@@ -707,7 +722,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         failed_result = self.agent_extension.power_off()
         failed_result.join()
 
-        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
+        execute_mock.assert_any_call('sync')
         self.assertEqual('FAILED', failed_result.command_status)
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
