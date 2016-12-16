@@ -1,0 +1,6 @@
+---
+fixes:
+  - Ironic Python Agent now correctly detects its IPv6 address
+    if communicating with ironic over IPv6. This address is also
+    wrapped in square brackets if the address being advertised
+    is IPv6.

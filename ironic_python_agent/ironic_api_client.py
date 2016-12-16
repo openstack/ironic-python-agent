@@ -20,6 +20,7 @@ import requests
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
+from ironic_python_agent import netutils
 
 
 LOG = log.getLogger(__name__)
@@ -141,5 +142,5 @@ class APIClient(object):
         raise loopingcall.LoopingCallDone(retvalue=content)
 
     def _get_agent_url(self, advertise_address):
-        return 'http://{}:{}'.format(advertise_address[0],
+        return 'http://{}:{}'.format(netutils.wrap_ipv6(advertise_address[0]),
                                      advertise_address[1])
