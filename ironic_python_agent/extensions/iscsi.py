@@ -28,6 +28,7 @@ except ImportError:
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
+from ironic_python_agent import netutils
 from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)
@@ -99,7 +100,8 @@ def _start_lio(iqn, portal_port, device):
 
     try:
         # bind to the default port on all interfaces
-        rtslib_fb.NetworkPortal(tpg, '0.0.0.0', portal_port)
+        listen_ip = netutils.wrap_ipv6(netutils.get_wildcard_address())
+        rtslib_fb.NetworkPortal(tpg, listen_ip, portal_port)
     except rtslib_fb.utils.RTSLibError as exc:
         msg = 'Failed to publish a target: {}'.format(exc)
         raise errors.ISCSIError(msg)
