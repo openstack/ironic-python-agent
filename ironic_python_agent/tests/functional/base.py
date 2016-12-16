@@ -24,6 +24,7 @@ from ironic_python_agent import agent
 # NOTE(lucasagomes): This import is needed so we can register the
 # configuration options prior to IPA prior to starting the service
 from ironic_python_agent import config  # noqa
+from ironic_python_agent import netutils
 
 
 class FunctionalBase(test_base.BaseTestCase):
@@ -40,7 +41,8 @@ class FunctionalBase(test_base.BaseTestCase):
         self.agent = agent.IronicPythonAgent(
             api_url='http://127.0.0.1:6835',
             advertise_address=agent.Host('localhost', 9999),
-            listen_address=agent.Host('0.0.0.0', int(self.test_port)),
+            listen_address=agent.Host(netutils.get_wildcard_address(),
+                                      int(self.test_port)),
             ip_lookup_attempts=3,
             ip_lookup_sleep=10,
             network_interface=None,

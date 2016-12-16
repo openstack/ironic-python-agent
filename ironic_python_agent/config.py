@@ -15,6 +15,7 @@
 from oslo_config import cfg
 
 from ironic_python_agent import inspector
+from ironic_python_agent import netutils
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
@@ -31,7 +32,9 @@ cli_opts = [
                     'The value must start with either http:// or https://.'),
 
     cfg.StrOpt('listen_host',
-               default=APARAMS.get('ipa-listen-host', '0.0.0.0'),
+               default=APARAMS.get('ipa-listen-host',
+                                   netutils.get_wildcard_address()),
+               sample_default='::',
                deprecated_name='listen-host',
                help='The IP address to listen on. '
                     'Can be supplied as "ipa-listen-host" kernel parameter.'),
