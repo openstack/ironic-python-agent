@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixes a bug in the CoreOS IPA images (where IPA runs in a chroot), where
+    IPA could not power off or reboot properly. In this case, it will now use
+    SYSRQ commands to forcefully reboot or power off.

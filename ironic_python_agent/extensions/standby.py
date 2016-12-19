@@ -499,7 +499,15 @@ class StandbyExtension(base.BaseAgentExtension):
         except errors.CommandExecutionError as e:
             LOG.warning('Failed to sync file system buffers: % s', e)
         try:
-            utils.execute(command, check_exit_code=[0])
+            _, stderr = utils.execute(command, use_standard_locale=True,
+                                      check_exit_code=[0])
+            if 'ignoring request.' in stderr:
+                LOG.debug('%s command failed with error %s, '
+                          'falling back to sysrq-trigger.', command, stderr)
+                if command == 'poweroff':
+                    utils.execute("echo o > /proc/sysrq-trigger", shell=True)
+                elif command == 'reboot':
+                    utils.execute("echo b > /proc/sysrq-trigger", shell=True)
         except processutils.ProcessExecutionError as e:
             raise errors.SystemRebootError(e.exit_code, e.stdout, e.stderr)
 
