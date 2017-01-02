@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import base64
 import copy
 import errno
 import glob
@@ -27,6 +26,7 @@ import time
 from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 from oslo_log import log as logging
+from oslo_serialization import base64
 from oslo_utils import units
 from six.moves.urllib import parse
 
@@ -383,7 +383,7 @@ def gzip_and_b64encode(io_dict=None, file_list=None):
                 tar.add(f)
 
         fp.seek(0)
-        return base64.b64encode(fp.getvalue())
+        return base64.encode_as_bytes(fp.getvalue())
 
 
 def collect_system_logs(journald_max_lines=None):
