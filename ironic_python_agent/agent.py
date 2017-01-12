@@ -210,7 +210,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             return
 
         try:
-            return out.strip().split('\n')[0].split('src')[1].strip()
+            return out.strip().split('\n')[0].split('src')[1].split()[0]
         except IndexError:
             LOG.warning('No route to host %(dest)s, route record: %(rec)s',
                         {'dest': dest, 'rec': out})

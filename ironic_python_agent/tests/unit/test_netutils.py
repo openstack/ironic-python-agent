@@ -336,3 +336,11 @@ class TestNetutils(test_base.BaseTestCase):
 
         sock1.close.assert_called_once_with()
         sock2.close.assert_called_once_with()
+
+    def test_wrap_ipv6(self):
+        res = netutils.wrap_ipv6('1:2::3:4')
+        self.assertEqual('[1:2::3:4]', res)
+
+    def test_wrap_ipv6_with_ipv4(self):
+        res = netutils.wrap_ipv6('1.2.3.4')
+        self.assertEqual('1.2.3.4', res)

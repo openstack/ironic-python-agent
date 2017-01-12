@@ -22,6 +22,7 @@ import sys
 import netifaces
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import netutils
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -213,3 +214,9 @@ def interface_has_carrier(interface_name):
         LOG.debug('No carrier information for interface %s',
                   interface_name)
         return False
+
+
+def wrap_ipv6(ip):
+    if netutils.is_valid_ipv6(ip):
+        return "[%s]" % ip
+    return ip

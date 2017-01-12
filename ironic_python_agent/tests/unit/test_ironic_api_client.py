@@ -70,8 +70,29 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
         heartbeat_path = 'v1/heartbeat/deadbeef-dabb-ad00-b105-f00d00bab10c'
         request_args = self.api_client.session.request.call_args[0]
+        data = self.api_client.session.request.call_args[1]['data']
         self.assertEqual('POST', request_args[0])
         self.assertEqual(API_URL + heartbeat_path, request_args[1])
+        self.assertEqual('{"callback_url": "http://192.0.2.1:9999"}', data)
+
+    def test_successful_heartbeat_ip6(self):
+        response = FakeResponse(status_code=202)
+
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.api_client.heartbeat(
+            uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+            advertise_address=('fc00:1111::4', '9999')
+        )
+
+        heartbeat_path = 'v1/heartbeat/deadbeef-dabb-ad00-b105-f00d00bab10c'
+        request_args = self.api_client.session.request.call_args[0]
+        data = self.api_client.session.request.call_args[1]['data']
+        self.assertEqual('POST', request_args[0])
+        self.assertEqual(API_URL + heartbeat_path, request_args[1])
+        self.assertEqual('{"callback_url": "http://[fc00:1111::4]:9999"}',
+                         data)
 
     def test_heartbeat_requests_exception(self):
         self.api_client.session.request = mock.Mock()
@@ -240,3 +261,11 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                                            node_uuid=None)
 
         self.assertFalse(error)
+
+    def test_get_agent_url_ipv4(self):
+        url = self.api_client._get_agent_url(('1.2.3.4', '9999'))
+        self.assertEqual('http://1.2.3.4:9999', url)
+
+    def test_get_agent_url_ipv6(self):
+        url = self.api_client._get_agent_url(('1:2::3:4', '9999'))
+        self.assertEqual('http://[1:2::3:4]:9999', url)

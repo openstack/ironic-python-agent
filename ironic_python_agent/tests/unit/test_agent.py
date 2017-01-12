@@ -466,6 +466,22 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertRaises(errors.UnknownNodeError,
                           self.agent.get_node_uuid)
 
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_route_source(self, mock_execute):
+        mock_execute.return_value = ('XXX src 1.2.3.4 XXX\n    cache', None)
+
+        source = self.agent._get_route_source('XXX')
+        self.assertEqual('1.2.3.4', source)
+
+    @mock.patch.object(agent, 'LOG', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_route_source_indexerror(self, mock_execute, mock_log):
+        mock_execute.return_value = ('XXX src \n    cache', None)
+
+        source = self.agent._get_route_source('XXX')
+        self.assertIsNone(source)
+        mock_log.warning.assert_called_once()
+
 
 @mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
                    lambda self: None)
@@ -596,6 +612,22 @@ class TestAdvertiseAddress(test_base.BaseTestCase):
                          self.agent.advertise_address)
         mock_exec.assert_called_once_with('ip', 'route', 'get', '1.2.1.2')
         mock_gethostbyname.assert_called_once_with('1.2.1.2')
+
+    def test_route_with_ipv6(self, mock_exec, mock_gethostbyname):
+        self.agent.api_url = 'http://[fc00:1111::1]:8081/v1'
+        mock_gethostbyname.side_effect = socket.gaierror()
+        mock_exec.return_value = (
+            """fc00:101::1 dev br-ctlplane  src fc00:101::4  metric 0
+                cache """,
+            ""
+        )
+
+        self.agent.set_agent_advertise_addr()
+
+        self.assertEqual(('fc00:101::4', 9990),
+                         self.agent.advertise_address)
+        mock_exec.assert_called_once_with('ip', 'route', 'get', 'fc00:1111::1')
+        mock_gethostbyname.assert_called_once_with('fc00:1111::1')
 
     def test_route_with_host(self, mock_exec, mock_gethostbyname):
         mock_gethostbyname.return_value = '1.2.1.2'
