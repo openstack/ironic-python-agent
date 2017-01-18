@@ -189,6 +189,41 @@ coreos:
         Type=none
         Options=bind
 
+    - name: setup-rescue-directories.service
+      command: start
+      content: |
+        [Unit]
+        Description=Create directories for rescue mode configuration
+        After=ironic-python-agent-container-creation.service
+        Requires=ironic-python-agent-container-creation.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/mkdir /etc/ipa-rescue-config
+        ExecStart=/usr/bin/mkdir /opt/ironic-python-agent/etc/ipa-rescue-config
+
+    - name: opt-ironic\x2dpython\x2dagent-etc-ipa\x2drescue\x2dconfig.mount
+      command: start
+      content: |
+        [Unit]
+        DefaultDependencies=no
+
+        Conflicts=umount.target
+        Before=umount.target
+
+        After=ironic-python-agent-container-creation.service
+        After=setup-rescue-directories.service
+
+        Requires=ironic-python-agent-container-creation.service
+        Requires=setup-rescue-directories.service
+
+        [Mount]
+        What=/etc/ipa-rescue-config
+        Where=/opt/ironic-python-agent/etc/ipa-rescue-config
+        Type=none
+        Options=bind
+
     - name: ironic-python-agent.service
       command: start
       content: |
@@ -203,6 +238,8 @@ coreos:
         After=opt-ironic\x2dpython\x2dagent-mnt.mount
         After=opt-ironic\x2dpython\x2dagent-etc-resolvconf.service
         After=opt-ironic\x2dpython\x2dagent-run-log.mount
+        After=setup-rescue-directories.service
+        After=opt-ironic\x2dpython\x2dagent-etc-ipa\x2drescue\x2dconfig.mount
 
         Requires=ironic-python-agent-container-creation.service
         Requires=opt-ironic\x2dpython\x2dagent-proc.mount
@@ -213,6 +250,8 @@ coreos:
         Requires=opt-ironic\x2dpython\x2dagent-mnt.mount
         Requires=opt-ironic\x2dpython\x2dagent-etc-resolvconf.service
         Requires=opt-ironic\x2dpython\x2dagent-run-log.mount
+        Requires=setup-rescue-directories.service
+        Requires=opt-ironic\x2dpython\x2dagent-etc-ipa\x2drescue\x2dconfig.mount
 
         [Service]
         ExecStartPre=-/usr/sbin/modprobe ipmi_msghandler
@@ -220,6 +259,6 @@ coreos:
         ExecStartPre=-/usr/sbin/modprobe ipmi_si
         ExecStart=/usr/bin/chroot /opt/ironic-python-agent \
                                   /usr/local/bin/ironic-python-agent
-        Restart=always
+        ExecStopPost=/usr/share/oem/finalize_rescue.sh
+        Restart=on-failure
         RestartSec=30s
-
