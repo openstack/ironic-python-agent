@@ -112,7 +112,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
         path_variable = '%s:/bin' % path_variable
 
         # Install grub
-        utils.execute('chroot %(path)s /bin/bash -c '
+        utils.execute('chroot %(path)s /bin/sh -c '
                       '"/usr/sbin/%(bin)s-install %(dev)s"' %
                       {'path': path, 'bin': binary_name, 'dev': device},
                       shell=True, env_variables={'PATH': path_variable})
@@ -125,13 +125,13 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
         # the default file to be copied, destination file name, and
         # prevents NVRAM from being updated.
         if efi_partition:
-            utils.execute('chroot %(path)s /bin/bash -c '
+            utils.execute('chroot %(path)s /bin/sh -c '
                           '"/usr/sbin/%(bin)s-install %(dev)s --removable"' %
                           {'path': path, 'bin': binary_name, 'dev': device},
                           shell=True, env_variables={'PATH': path_variable})
 
         # Generate the grub configuration file
-        utils.execute('chroot %(path)s /bin/bash -c '
+        utils.execute('chroot %(path)s /bin/sh -c '
                       '"/usr/sbin/%(bin)s-mkconfig -o '
                       '/boot/%(bin)s/grub.cfg"' %
                       {'path': path, 'bin': binary_name}, shell=True,
