@@ -23,6 +23,7 @@ import time
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import netutils
 import pkg_resources
 from six.moves.urllib import parse as urlparse
 from stevedore import extension
@@ -365,6 +366,10 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                 LOG.error('Neither ipa-api-url nor inspection_callback_url'
                           'found, please check your pxe append parameters.')
 
+        if netutils.is_ipv6_enabled():
+            # Listens to both IP versions, assuming IPV6_V6ONLY isn't enabled,
+            # (the default behaviour in linux)
+            simple_server.WSGIServer.address_family = socket.AF_INET6
         wsgi = simple_server.make_server(
             self.listen_address.hostname,
             self.listen_address.port,

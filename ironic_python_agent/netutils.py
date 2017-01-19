@@ -220,3 +220,9 @@ def wrap_ipv6(ip):
     if netutils.is_valid_ipv6(ip):
         return "[%s]" % ip
     return ip
+
+
+def get_wildcard_address():
+    if netutils.is_ipv6_enabled():
+        return "::"
+    return "0.0.0.0"

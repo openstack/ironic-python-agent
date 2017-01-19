@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ironic_python_agent import netutils
+
 # Server Specific Configurations
 # See https://pecan.readthedocs.org/en/latest/configuration.html#server-configuration # noqa
 server = {
     'port': '9999',
-    'host': '0.0.0.0'
+    'host': netutils.get_wildcard_address()
 }
 
 # Pecan Application Configurations
