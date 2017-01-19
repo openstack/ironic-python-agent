@@ -467,11 +467,19 @@ class TestBaseAgent(test_base.BaseTestCase):
                           self.agent.get_node_uuid)
 
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_route_source(self, mock_execute):
+    def test_get_route_source_ipv4(self, mock_execute):
         mock_execute.return_value = ('XXX src 1.2.3.4 XXX\n    cache', None)
 
         source = self.agent._get_route_source('XXX')
         self.assertEqual('1.2.3.4', source)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_route_source_ipv6(self, mock_execute):
+        mock_execute.return_value = ('XXX src 1:2::3:4 metric XXX\n    cache',
+                                     None)
+
+        source = self.agent._get_route_source('XXX')
+        self.assertEqual('1:2::3:4', source)
 
     @mock.patch.object(agent, 'LOG', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
