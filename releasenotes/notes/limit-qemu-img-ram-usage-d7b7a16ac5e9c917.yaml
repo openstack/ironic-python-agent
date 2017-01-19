@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Limits the memory usage of ``qemu-img convert`` command to 1 GiB to
+    avoid it from causing the host machine to fail due not enough ram.
