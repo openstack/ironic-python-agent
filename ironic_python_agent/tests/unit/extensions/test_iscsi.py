@@ -150,8 +150,11 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
         self.fake_dev = '/dev/fake'
         self.fake_iqn = 'iqn-fake'
 
-    def test_start_iscsi_target(self, mock_rtslib, mock_dispatch,
+    @mock.patch('ironic_python_agent.netutils.get_wildcard_address')
+    def test_start_iscsi_target(self, mock_get_wildcard_address,
+                                mock_rtslib, mock_dispatch,
                                 mock_destroy):
+        mock_get_wildcard_address.return_value = '::'
         mock_dispatch.return_value = self.fake_dev
         result = self.agent_extension.start_iscsi_target(iqn=self.fake_iqn)
 
@@ -195,9 +198,12 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             mock_rtslib.TPG.return_value, '0.0.0.0', 3260)
         self.assertFalse(mock_destroy.called)
 
-    def test_start_iscsi_target_with_special_port(self, mock_rtslib,
-                                                  mock_dispatch,
+    @mock.patch('ironic_python_agent.netutils.get_wildcard_address')
+    def test_start_iscsi_target_with_special_port(self,
+                                                  mock_get_wildcard_address,
+                                                  mock_rtslib, mock_dispatch,
                                                   mock_destroy):
+        mock_get_wildcard_address.return_value = '::'
         mock_dispatch.return_value = self.fake_dev
         result = self.agent_extension.start_iscsi_target(iqn=self.fake_iqn,
                                                          portal_port=3266)
@@ -225,8 +231,10 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             errors.ISCSIError, 'Failed to create a target',
             self.agent_extension.start_iscsi_target, iqn=self.fake_iqn)
 
-    def test_failed_to_bind_iscsi(self, mock_rtslib, mock_dispatch,
-                                  mock_destroy):
+    @mock.patch('ironic_python_agent.netutils.get_wildcard_address')
+    def test_failed_to_bind_iscsi(self, mock_get_wildcard_address,
+                                  mock_rtslib, mock_dispatch, mock_destroy):
+        mock_get_wildcard_address.return_value = '::'
         mock_dispatch.return_value = self.fake_dev
         mock_rtslib.NetworkPortal.side_effect = _ORIG_UTILS.RTSLibError()
         self.assertRaisesRegex(
