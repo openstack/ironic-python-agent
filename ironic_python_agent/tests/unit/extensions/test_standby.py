@@ -679,7 +679,34 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         self.agent_extension._run_shutdown_command('poweroff')
         calls = [mock.call('sync'),
-                 mock.call('poweroff', check_exit_code=[0])]
+                 mock.call('poweroff', use_standard_locale=True,
+                           check_exit_code=[0])]
+        execute_mock.assert_has_calls(calls)
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_run_shutdown_command_valid_poweroff_sysrq(self, execute_mock):
+        execute_mock.side_effect = [('', ''), ('',
+                                    'Running in chroot, ignoring request.'),
+                                    ('', '')]
+
+        self.agent_extension._run_shutdown_command('poweroff')
+        calls = [mock.call('sync'),
+                 mock.call('poweroff', use_standard_locale=True,
+                           check_exit_code=[0]),
+                 mock.call("echo o > /proc/sysrq-trigger", shell=True)]
+        execute_mock.assert_has_calls(calls)
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_run_shutdown_command_valid_reboot_sysrq(self, execute_mock):
+        execute_mock.side_effect = [('', ''), ('',
+                                    'Running in chroot, ignoring request.'),
+                                    ('', '')]
+
+        self.agent_extension._run_shutdown_command('reboot')
+        calls = [mock.call('sync'),
+                 mock.call('reboot', use_standard_locale=True,
+                           check_exit_code=[0]),
+                 mock.call("echo b > /proc/sysrq-trigger", shell=True)]
         execute_mock.assert_has_calls(calls)
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
@@ -689,7 +716,8 @@ class TestStandbyExtension(test_base.BaseTestCase):
         success_result = self.agent_extension.run_image()
         success_result.join()
         calls = [mock.call('sync'),
-                 mock.call('reboot', check_exit_code=[0])]
+                 mock.call('reboot', use_standard_locale=True,
+                           check_exit_code=[0])]
         execute_mock.assert_has_calls(calls)
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
@@ -711,7 +739,8 @@ class TestStandbyExtension(test_base.BaseTestCase):
         success_result.join()
 
         calls = [mock.call('sync'),
-                 mock.call('poweroff', check_exit_code=[0])]
+                 mock.call('poweroff', use_standard_locale=True,
+                           check_exit_code=[0])]
         execute_mock.assert_has_calls(calls)
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
