@@ -579,6 +579,12 @@ class GenericHardwareManager(HardwareManager):
             total = int(psutil.TOTAL_PHYMEM)
         elif psutil.version_info[0] == 2:
             total = int(psutil.phymem_usage().total)
+        elif psutil.version_info[0] == 5:
+            total = int(psutil.virtual_memory().total)
+        else:
+            total = None
+            LOG.warning("Cannot fetch total memory size: unsupported psutil "
+                        "version %s", psutil.version_info[0])
 
         try:
             out, _e = utils.execute("dmidecode --type 17 | grep Size",

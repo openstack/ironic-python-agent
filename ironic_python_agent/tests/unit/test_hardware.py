@@ -657,11 +657,11 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual([], cpus.flags)
 
-    @mock.patch('psutil.version_info', (2, 0))
-    @mock.patch('psutil.phymem_usage', autospec=True)
+    @mock.patch('psutil.version_info', (5, 0))
+    @mock.patch('psutil.virtual_memory', autospec=True)
     @mock.patch.object(utils, 'execute')
-    def test_get_memory(self, mocked_execute, mocked_usage):
-        mocked_usage.return_value = mock.Mock(total=3952 * 1024 * 1024)
+    def test_get_memory(self, mocked_execute, mocked_virtmem):
+        mocked_virtmem.return_value.total = 3952 * 1024 * 1024
         mocked_execute.return_value = (
             ("Foo\nSize: 2048 MB\nSize: 2 GB\n"
              "Installed Size: Not Installed\n"
