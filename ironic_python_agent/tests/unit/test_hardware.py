@@ -239,6 +239,15 @@ CPUINFO_FLAGS_OUTPUT = """
 flags           : fpu vme de pse
 """
 
+DMIDECODE_MEMORY_OUTPUT = ("""
+Foo
+Size: 2048 MB
+Size: 2 GB
+Installed Size: Not Installed
+Enabled Size: Not Installed
+Size: No Module Installed
+""", "")
+
 
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
@@ -728,22 +737,24 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual([], cpus.flags)
 
-    @mock.patch('psutil.version_info', (5, 0))
     @mock.patch('psutil.virtual_memory', autospec=True)
-    @mock.patch.object(utils, 'execute')
-    def test_get_memory(self, mocked_execute, mocked_virtmem):
-        mocked_virtmem.return_value.total = 3952 * 1024 * 1024
-        mocked_execute.return_value = (
-            ("Foo\nSize: 2048 MB\nSize: 2 GB\n"
-             "Installed Size: Not Installed\n"
-             "Enabled Size: Not Installed\n"
-             "Size: No Module Installed\n"),
-            ""
-        )
-
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_memory_psutil(self, mocked_execute, mocked_psutil):
+        mocked_psutil.return_value.total = 3952 * 1024 * 1024
+        mocked_execute.return_value = DMIDECODE_MEMORY_OUTPUT
         mem = self.hardware.get_memory()
 
         self.assertEqual(3952 * 1024 * 1024, mem.total)
+        self.assertEqual(4096, mem.physical_mb)
+
+    @mock.patch('psutil.virtual_memory', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_memory_psutil_exception(self, mocked_execute, mocked_psutil):
+        mocked_execute.return_value = DMIDECODE_MEMORY_OUTPUT
+        mocked_psutil.side_effect = AttributeError()
+        mem = self.hardware.get_memory()
+
+        self.assertIsNone(mem.total)
         self.assertEqual(4096, mem.physical_mb)
 
     def test_list_hardware_info(self):
