@@ -597,6 +597,9 @@ class GenericHardwareManager(HardwareManager):
         try:
             total = int(psutil.virtual_memory().total)
         except Exception:
+            # This is explicitly catching all exceptions. We want to catch any
+            # situation where a newly upgraded psutil would fail, and instead
+            # print an error instead of blowing up the stack on IPA.
             total = None
             LOG.exception(("Cannot fetch total memory size using psutil "
                            "version %s"), psutil.version_info[0])
