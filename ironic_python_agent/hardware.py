@@ -594,16 +594,12 @@ class GenericHardwareManager(HardwareManager):
 
     def get_memory(self):
         # psutil returns a long, so we force it to an int
-        if psutil.version_info[0] == 1:
-            total = int(psutil.TOTAL_PHYMEM)
-        elif psutil.version_info[0] == 2:
-            total = int(psutil.phymem_usage().total)
-        elif psutil.version_info[0] == 5:
+        try:
             total = int(psutil.virtual_memory().total)
-        else:
+        except Exception:
             total = None
-            LOG.warning("Cannot fetch total memory size: unsupported psutil "
-                        "version %s", psutil.version_info[0])
+            LOG.exception(("Cannot fetch total memory size using psutil "
+                           "version %s"), psutil.version_info[0])
 
         try:
             out, _e = utils.execute("dmidecode --type 17 | grep Size",
