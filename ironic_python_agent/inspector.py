@@ -16,13 +16,11 @@
 import os
 import time
 
-import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import excutils
-from oslo_utils import units
 import requests
 import stevedore
 
@@ -157,67 +155,6 @@ def setup_ipmi_credentials(resp):
     LOG.info('successfully set IPMI credentials: user %s', user)
 
 
-def discover_network_properties(inventory, data, failures):
-    """Discover network and BMC related properties.
-
-    This logic should eventually move to inspector itself.
-
-    :param inventory: hardware inventory from a hardware manager
-    :param data: mutable data that we'll send to inspector
-    :param failures: AccumulatedFailures object
-    """
-    data.setdefault('interfaces', {})
-    for iface in inventory['interfaces']:
-        is_loopback = (iface.ipv4_address and
-                       netaddr.IPAddress(iface.ipv4_address).is_loopback())
-        if iface.name == 'lo' or is_loopback:
-            LOG.debug('ignoring local network interface %s', iface.name)
-            continue
-
-        LOG.debug('found network interface %s', iface.name)
-
-        if not iface.mac_address:
-            LOG.debug('no link information for interface %s', iface.name)
-            continue
-
-        if not iface.ipv4_address:
-            LOG.debug('no IP address for interface %s', iface.name)
-
-        data['interfaces'][iface.name] = {'mac': iface.mac_address,
-                                          'ip': iface.ipv4_address}
-
-    if data['interfaces']:
-        LOG.info('network interfaces: %s', data['interfaces'])
-    else:
-        failures.add('no network interfaces found')
-
-
-def discover_scheduling_properties(inventory, data, root_disk=None):
-    """Discover properties required for nova scheduler.
-
-    This logic should eventually move to inspector itself.
-
-    :param inventory: hardware inventory from a hardware manager
-    :param data: mutable data that we'll send to inspector
-    :param root_disk: root device (if it can be detected)
-    """
-    data['cpus'] = inventory['cpu'].count
-    data['cpu_arch'] = inventory['cpu'].architecture
-    data['memory_mb'] = inventory['memory'].physical_mb
-    if root_disk is not None:
-        # -1 is required to give Ironic some spacing for partitioning
-        data['local_gb'] = root_disk.size / units.Gi - 1
-
-    for key in ('cpus', 'local_gb', 'memory_mb'):
-        try:
-            data[key] = int(data[key])
-        except (KeyError, ValueError, TypeError):
-            LOG.warning('value for %s is missing or malformed: %s',
-                        key, data.get(key))
-        else:
-            LOG.info('value for %s is %s', key, data[key])
-
-
 def _normalize_mac(mac):
     """Convert MAC to a well-known format aa:bb:cc:dd:ee:ff."""
     if '-' in mac:
@@ -274,12 +211,10 @@ def wait_for_dhcp():
 def collect_default(data, failures):
     """The default inspection collector.
 
-    This is the only collector that is called by default. It is designed to be
-    both backward and future compatible:
-        1. it collects exactly the same data as the old bash-based ramdisk
-        2. it also posts the whole inventory which we'll eventually use.
+    This is the only collector that is called by default. It collects
+    the whole inventory as returned by the hardware manager(s).
 
-    In both cases it tries to get BMC address, PXE boot device and the expected
+    It also tries to get BMC address, PXE boot device and the expected
     root device.
 
     :param data: mutable data that we'll send to inspector
@@ -288,9 +223,6 @@ def collect_default(data, failures):
     wait_for_dhcp()
     inventory = hardware.dispatch_to_managers('list_hardware_info')
 
-    # In the future we will only need the current version of inventory,
-    # a guessed root disk, PXE boot interface and IPMI address.
-    # Everything else will be done by inspector itself and its plugins.
     data['inventory'] = inventory
     # Replicate the same logic as in deploy. We need to make sure that when
     # root device hints are not set, inspector will use the same root disk as
@@ -309,11 +241,6 @@ def collect_default(data, failures):
     LOG.debug('boot devices was %s', data['boot_interface'])
     data['ipmi_address'] = inventory.get('bmc_address')
     LOG.debug('BMC IP address: %s', data['ipmi_address'])
-
-    # These 2 calls are required for backward compatibility and should be
-    # dropped after inspector is ready (probably in Mitaka cycle).
-    discover_network_properties(inventory, data, failures)
-    discover_scheduling_properties(inventory, data, root_disk)
 
 
 def collect_logs(data, failures):

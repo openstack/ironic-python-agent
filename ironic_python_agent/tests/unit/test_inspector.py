@@ -262,77 +262,10 @@ class BaseDiscoverTest(test_base.BaseTestCase):
         self.data = {}
 
 
-class TestDiscoverNetworkProperties(BaseDiscoverTest):
-    def test_no_network_interfaces(self):
-        self.inventory['interfaces'] = [
-            hardware.NetworkInterface(name='lo',
-                                      mac_addr='aa:bb:cc:dd:ee:ff',
-                                      ipv4_address='127.0.0.1'),
-            hardware.NetworkInterface(name='local-2',
-                                      mac_addr='aa:bb:cc:dd:ee:ff',
-                                      ipv4_address='127.0.1.42'),
-        ]
-
-        inspector.discover_network_properties(self.inventory, self.data,
-                                              self.failures)
-
-        self.assertIn('no network interfaces found', self.failures.get_error())
-        self.assertFalse(self.data['interfaces'])
-
-    def test_ok(self):
-        inspector.discover_network_properties(self.inventory, self.data,
-                                              self.failures)
-
-        self.assertEqual({'em1': {'mac': 'aa:bb:cc:dd:ee:ff',
-                                  'ip': '1.1.1.1'},
-                          'em2': {'mac': '11:22:33:44:55:66',
-                                  'ip': None}},
-                         self.data['interfaces'])
-        self.assertFalse(self.failures)
-
-    def test_missing(self):
-        self.inventory['interfaces'] = [
-            hardware.NetworkInterface(name='em1',
-                                      mac_addr='aa:bb:cc:dd:ee:ff'),
-            hardware.NetworkInterface(name='em2',
-                                      mac_addr=None,
-                                      ipv4_address='1.2.1.2'),
-        ]
-
-        inspector.discover_network_properties(self.inventory, self.data,
-                                              self.failures)
-
-        self.assertEqual({'em1': {'mac': 'aa:bb:cc:dd:ee:ff', 'ip': None}},
-                         self.data['interfaces'])
-        self.assertFalse(self.failures)
-
-
-class TestDiscoverSchedulingProperties(BaseDiscoverTest):
-    def test_ok(self):
-        inspector.discover_scheduling_properties(
-            self.inventory, self.data,
-            root_disk=self.inventory['disks'][2])
-
-        self.assertEqual({'cpus': 4, 'cpu_arch': 'x86_64', 'local_gb': 464,
-                          'memory_mb': 12288}, self.data)
-
-    def test_no_local_gb(self):
-        # Some DRAC servers do not have any visible hard drive until RAID is
-        # built
-
-        inspector.discover_scheduling_properties(self.inventory, self.data)
-
-        self.assertEqual({'cpus': 4, 'cpu_arch': 'x86_64', 'memory_mb': 12288},
-                         self.data)
-
-
 @mock.patch.object(inspector, 'wait_for_dhcp', autospec=True)
-@mock.patch.object(inspector, 'discover_scheduling_properties', autospec=True)
-@mock.patch.object(inspector, 'discover_network_properties', autospec=True)
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
 class TestCollectDefault(BaseDiscoverTest):
-    def test_ok(self, mock_dispatch, mock_discover_net, mock_discover_sched,
-                mock_wait_for_dhcp):
+    def test_ok(self, mock_dispatch, mock_wait_for_dhcp):
         mock_dispatch.return_value = self.inventory
 
         inspector.collect_default(self.data, self.failures)
@@ -346,15 +279,9 @@ class TestCollectDefault(BaseDiscoverTest):
                          self.data['root_disk'].name)
 
         mock_dispatch.assert_called_once_with('list_hardware_info')
-        mock_discover_net.assert_called_once_with(self.inventory, self.data,
-                                                  self.failures)
-        mock_discover_sched.assert_called_once_with(
-            self.inventory, self.data,
-            root_disk=self.inventory['disks'][0])
         mock_wait_for_dhcp.assert_called_once_with()
 
-    def test_no_root_disk(self, mock_dispatch, mock_discover_net,
-                          mock_discover_sched, mock_wait_for_dhcp):
+    def test_no_root_disk(self, mock_dispatch, mock_wait_for_dhcp):
         mock_dispatch.return_value = self.inventory
         self.inventory['disks'] = []
 
@@ -368,10 +295,6 @@ class TestCollectDefault(BaseDiscoverTest):
         self.assertNotIn('root_disk', self.data)
 
         mock_dispatch.assert_called_once_with('list_hardware_info')
-        mock_discover_net.assert_called_once_with(self.inventory, self.data,
-                                                  self.failures)
-        mock_discover_sched.assert_called_once_with(
-            self.inventory, self.data, root_disk=None)
         mock_wait_for_dhcp.assert_called_once_with()
 
 
