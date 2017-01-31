@@ -49,13 +49,13 @@ drivers for IPA, see the Ironic drivers documentation [0]_.
 Lookup
 ~~~~~~
 On startup, the agent performs a lookup in Ironic to determine its node UUID
-by sending a hardware profile to the Ironic vendor_passthru lookup endpoint:
-``/v1/drivers/{driver}/vendor_passthru/lookup``.
+by sending a hardware profile to the Ironic lookup endpoint:
+``/v1/lookup``.
 
 Heartbeat
 ~~~~~~~~~
 After successfully looking up its node, the agent heartbeats via
-``/v1/nodes/{node_ident}/vendor_passthru/heartbeat`` every N seconds, where
+``/v1/heartbeat/{node_ident}`` every N seconds, where
 N is the Ironic conductor's agent.heartbeat_timeout value multiplied by a
 number between .3 and .6.
 
