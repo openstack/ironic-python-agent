@@ -216,8 +216,7 @@ class BlockDevice(encoding.SerializableComparable):
 
 
 class NetworkInterface(encoding.SerializableComparable):
-    serializable_fields = ('name', 'mac_address', 'switch_port_descr',
-                           'switch_chassis_descr', 'ipv4_address',
+    serializable_fields = ('name', 'mac_address', 'ipv4_address',
                            'has_carrier', 'lldp', 'vendor', 'product',
                            'client_id')
 
@@ -234,10 +233,6 @@ class NetworkInterface(encoding.SerializableComparable):
         # client identifier Option to allow DHCP to work over InfiniBand.
         # see https://tools.ietf.org/html/rfc4390
         self.client_id = client_id
-        # TODO(sambetts) Remove these fields in Ocata, they have been
-        # superseded by self.lldp
-        self.switch_port_descr = None
-        self.switch_chassis_descr = None
 
 
 class CPU(encoding.SerializableComparable):

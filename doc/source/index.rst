@@ -122,10 +122,6 @@ fields:
     If  configuration option ``collect_lldp`` is set to True the ``lldp``
     field will be populated by a list of type-length-value (TLV) fields
     retrieved using the Link Layer Discovery Protocol (LLDP).
-    Currently IPA also returns 2 fields ``switch_port_descr``
-    and ``switch_chassis_descr`` which were reserved for future use, these are
-    now deprecated to be removed in Ocata in favor of including all LLDP data
-    in the ``lldp`` field.
 
 
 ``system_vendor``
