@@ -1,0 +1,4 @@
+---
+features:
+  - Support for zypper has been added to the TinyIPA install-deps script
+    in order to support building TinyIPA on SUSE.
