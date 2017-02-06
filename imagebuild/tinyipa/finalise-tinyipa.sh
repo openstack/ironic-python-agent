@@ -158,14 +158,14 @@ if $PYOPTIMIZE_TINYIPA; then
     set +e
     $CHROOT_CMD /bin/bash -c "python -OO -m compileall /usr/local/lib/python2.7"
     set -e
-    find $FINALDIR/usr/local/lib/python2.7 -name "*.py" -not -path "*ironic_python_agent/api/config.py" | sudo xargs rm
-    find $FINALDIR/usr/local/lib/python2.7 -name "*.pyc" | sudo xargs rm
+    find $FINALDIR/usr/local/lib/python2.7 -name "*.py" -not -path "*ironic_python_agent/api/config.py" | sudo xargs --no-run-if-empty rm
+    find $FINALDIR/usr/local/lib/python2.7 -name "*.pyc" | sudo xargs --no-run-if-empty rm
 else
     sudo sed -i "s/PYTHONOPTIMIZE=1/PYTHONOPTIMIZE=0/" "$FINALDIR/opt/bootlocal.sh"
 fi
 
 # Delete unnecessary Babel .dat files
-find $FINALDIR -path "*babel/locale-data/*.dat" -not -path "*en_US*" | sudo xargs rm
+find $FINALDIR -path "*babel/locale-data/*.dat" -not -path "*en_US*" | sudo xargs --no-run-if-empty rm
 
 # Allow an extension to be added to the generated files by specifying
 # $BRANCH_PATH e.g. export BRANCH_PATH=master results in tinyipa-master.gz etc
