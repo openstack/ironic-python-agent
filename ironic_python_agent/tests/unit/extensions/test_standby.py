@@ -299,6 +299,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         standby._download_image(image_info)
         requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
                                               stream=True, proxies={})
         write = file_mock.write
         write.assert_any_call('some')
@@ -329,6 +330,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         standby._download_image(image_info)
         self.assertEqual(no_proxy, os.environ['no_proxy'])
         requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
                                               stream=True, proxies=proxies)
         write = file_mock.write
         write.assert_any_call('some')
@@ -796,6 +798,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.agent_extension._stream_raw_image_onto_device(image_info,
                                                            '/dev/foo')
         requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
                                               stream=True, proxies={})
         expected_calls = [mock.call('some'), mock.call('content')]
         file_mock.write.assert_has_calls(expected_calls)
@@ -819,6 +822,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
                           self.agent_extension._stream_raw_image_onto_device,
                           image_info, '/dev/foo')
         requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
                                               stream=True, proxies={})
         # Assert write was only called once and failed!
         file_mock.write.assert_called_once_with('some')
@@ -892,5 +896,6 @@ class TestImageDownload(test_base.BaseTestCase):
 
         self.assertEqual(content, list(image_download))
         requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
                                               stream=True, proxies={})
         self.assertEqual(image_info['checksum'], image_download.md5sum())

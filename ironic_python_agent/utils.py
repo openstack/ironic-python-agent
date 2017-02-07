@@ -416,3 +416,20 @@ def collect_system_logs(journald_max_lines=None):
         try_get_command_output(io_dict, name, cmd)
 
     return gzip_and_b64encode(io_dict=io_dict, file_list=file_list)
+
+
+def get_ssl_client_options(conf):
+    """Format SSL-related requests options.
+
+    :param conf: oslo_config CONF object
+    :returns: tuple of 'verify' and 'cert' values to pass to requests
+    """
+    if conf.insecure:
+        verify = False
+    else:
+        verify = conf.cafile or True
+    if conf.certfile and conf.keyfile:
+        cert = (conf.certfile, conf.keyfile)
+    else:
+        cert = None
+    return verify, cert

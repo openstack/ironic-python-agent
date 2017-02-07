@@ -183,6 +183,24 @@ cli_opts = [
                     'in inventory. '
                     'Can be supplied as "ipa-disk-wait-delay" '
                     'kernel parameter.'),
+    cfg.BoolOpt('insecure',
+                default=APARAMS.get('ipa-insecure', False),
+                help='Verify HTTPS connections. Can be supplied as '
+                     '"ipa-insecure" kernel parameter.'),
+    cfg.StrOpt('cafile',
+               help='Path to PEM encoded Certificate Authority file '
+                    'to use when verifying HTTPS connections. '
+                    'Default is to use available system-wide configured CAs.'),
+    cfg.StrOpt('certfile',
+               help='Path to PEM encoded client certificate cert file. '
+                    'Must be provided together with "keyfile" option. '
+                    'Default is to not present any client certificates to '
+                    'the server.'),
+    cfg.StrOpt('keyfile',
+               help='Path to PEM encoded client certificate key file. '
+                    'Must be provided together with "certfile" option. '
+                    'Default is to not present any client certificates to '
+                    'the server.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

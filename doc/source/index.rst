@@ -222,6 +222,74 @@ ironic-python-agent.service unit in cloud-config.yaml [5]_.
 * ``--debug``: Enables debug logging.
 
 
+IPA and SSL
+===========
+
+During its operation IPA makes HTTP requests to a number of other services,
+currently including
+
+- ironic for lookup/heartbeats
+- ironic-inspector to publish results of introspection
+- HTTP image storage to fetch the user image to be written to the node's disk
+  (Object storage service or other service storing user images
+  when ironic is running in a standalone mode)
+
+When these services are configured to require SSL-encrypted connections,
+IPA can be configured to either properly use such secure connections or
+ignore verifying such SSL connections.
+
+Configuration mostly happens in the IPA config file
+(default is ``/etc/ironic_python_agent/ironic_python_agent.conf``)
+or command line arguments passed to ``ironic-python-agent``,
+and it is possible to provide some options via kernel command line arguments
+instead.
+
+Available options in the ``[DEFAULT]`` config file section are:
+
+insecure
+  Whether to verify server SSL certificates.
+  When not specified explicitly, defaults to the value of ``ipa-insecure``
+  kernel command line argument (converted to boolean).
+  The default for this kernel command line argument is taken to be ``False``.
+  Overriding it to ``True`` by adding ``ipa-insecure=1`` to the value of
+  ``[pxe]pxe_append_params`` in ironic configuration file will allow running
+  the same IPA-based deploy ramdisk in a CI-like environment when services
+  are using secure HTTPS endpoints with self-signed certificates without
+  adding a custom CA file to the deploy ramdisk (see below).
+
+cafile
+  Path to the PEM encoded Certificate Authority file.
+  When not specified, available system-wide list of CAs will be used to
+  verify server certificates.
+  Thus in order to use IPA with HTTPS endpoints of other services in
+  a secure fashion (with ``insecure`` option being ``False``, see above),
+  operators should either ensure that certificates of those services
+  are verifiable by root CAs present in the deploy ramdisk,
+  or add a custom CA file to the ramdisk and set this IPA option to point
+  to this file at ramdisk build time.
+
+certfile
+  Path to PEM encoded client certificate cert file.
+  This option must be used when services are configured to require client
+  certificates on SSL-secured connections.
+  This cert file must be added to the deploy ramdisk and path
+  to it specified for IPA via this option at ramdisk build time.
+  This option has an effect only when the ``keyfile`` option is also set.
+
+keyfile
+  Path to PEM encoded client certificate key file.
+  This option must be used when services are configured to require client
+  certificates on SSL-secured connections.
+  This key file must be added to the deploy ramdisk and path
+  to it specified for IPA via this option at ramdisk build time.
+  This option has an effect only when the ``certfile`` option is also set.
+
+Currently a single set of cafile/certfile/keyfile options is used for all
+HTTP requests to the other services.
+
+Securing IPA's HTTP server itself with SSL is not yet supported in default
+ramdisk builds.
+
 Hardware Managers
 =================
 

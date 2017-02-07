@@ -116,7 +116,9 @@ def call_inspector(data, failures):
     encoder = encoding.RESTJSONEncoder()
     data = encoder.encode(data)
 
-    resp = requests.post(CONF.inspection_callback_url, data=data)
+    verify, cert = utils.get_ssl_client_options(CONF)
+    resp = requests.post(CONF.inspection_callback_url, data=data,
+                         verify=verify, cert=cert)
     if resp.status_code >= 400:
         LOG.error('inspector error %d: %s, proceeding with lookup',
                   resp.status_code, resp.content.decode('utf-8'))

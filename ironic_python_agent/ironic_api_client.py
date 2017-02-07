@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
 from oslo_service import loopingcall
@@ -21,8 +22,10 @@ import requests
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent import netutils
+from ironic_python_agent import utils
 
 
+CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
@@ -57,10 +60,13 @@ class APIClient(object):
             'Accept': 'application/json',
         })
 
+        verify, cert = utils.get_ssl_client_options(CONF)
         return self.session.request(method,
                                     request_url,
                                     headers=headers,
                                     data=data,
+                                    verify=verify,
+                                    cert=cert,
                                     **kwargs)
 
     def heartbeat(self, uuid, advertise_address):
