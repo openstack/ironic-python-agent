@@ -293,6 +293,12 @@ class ISCSIError(RESTError):
         super(ISCSIError, self).__init__(details)
 
 
+class IncompatibleNumaFormatError(RESTError):
+    """Error raised when unexpected format data in NUMA node."""
+
+    message = 'Error in NUMA node data format'
+
+
 class ISCSICommandError(ISCSIError):
     """Error executing TGT command."""
 
