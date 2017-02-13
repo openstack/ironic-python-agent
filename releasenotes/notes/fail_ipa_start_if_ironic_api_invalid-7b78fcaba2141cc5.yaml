@@ -1,8 +1,9 @@
 ---
 fixes:
-  - Accepting ``ipa-api-url`` value specified in the configuration
-    file that does not start with either ``https://`` or ``http://``.
-    Such value leads failure while contacting ironic-api.
-    This misconfiguration will be detected on ironic-python-agent start.
+  - Values of ``ipa-api-url`` specified in the configuration
+    file that do not start with either ``https://`` or ``http://`` are no
+    longer accepted.
+    Such values lead to failure while contacting ironic-api.
+    Such misconfigurations will be detected on ironic-python-agent start.
     An exception will be raised and an error about the invalid value
     will be logged.

@@ -1,6 +1,6 @@
 ---
 fixes:
-  - The ironic-python-agent when writing a partition image now
-    installs grub to the UEFI fallback path. e.g. EFI/BOOT/BOOTX64.EFI
+  - When writing a partition image, IPA now
+    installs grub to the UEFI fallback path (e.g. ``EFI/BOOT/BOOTX64.EFI``).
     The fallback path is used to boot the bare metal node if the NVRAM is
     reset.

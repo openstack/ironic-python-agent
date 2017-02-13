@@ -1,6 +1,6 @@
 ---
 upgrade:
   - |
-    Two reserved fields ``switch_port_descr`` and
-    ``switch_chassis_descr`` were deprecated in
+    Two reserved fields, ``switch_port_descr`` and
+    ``switch_chassis_descr``, were deprecated in
     Newton cycle and now are removed.

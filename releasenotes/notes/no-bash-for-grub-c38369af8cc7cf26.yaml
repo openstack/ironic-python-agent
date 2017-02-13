@@ -2,5 +2,5 @@
 fixes:
   - |
     Ironic Python Agent no longer requires 'bash' to be present in the user
-    image when preparing the partition image for local boot,
-    and uses default 'sh' interpreter to run 'grub'-related commands instead.
+    image when preparing the partition image for local boot, and uses the
+    default 'sh' interpreter to run 'grub'-related commands instead.

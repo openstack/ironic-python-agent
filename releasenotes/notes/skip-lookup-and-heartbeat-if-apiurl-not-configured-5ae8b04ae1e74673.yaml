@@ -1,5 +1,5 @@
 ---
 fixes:
   - If ipa-api-url is not configured in pxe parameters, skip lookup and heartbeat
-    to avoid ConnectionError when the IPA starts. See https://bugs.launchpad.net/bugs/1643966
+    to avoid ConnectionError when IPA starts. See https://bugs.launchpad.net/bugs/1643966
     for details.

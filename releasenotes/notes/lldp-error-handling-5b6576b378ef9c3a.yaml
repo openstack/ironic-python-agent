@@ -1,6 +1,6 @@
 ---
 fixes:
-  - Fix LLDP discovery to not fail completely when odd number of bytes is
+  - Fix LLDP discovery to not fail completely when an odd number of bytes is
     received in an LLDP package.
   - Fix raw sockets code to properly propagate exceptions to a caller instead
     of silencing them and returning None (causing failures later).

@@ -1,15 +1,16 @@
 ---
 features:
-  - Ironic Python Agent now can access other services
+  - Ironic Python Agent can now access other services
     (Ironic, Inspector, image backend) when those are configured with
     HTTPS endpoints and use custom server certificates or require
     client certificates.
     It is possible to add a custom Certificate Authority (CA) file and client
     certificate files to the deploy ramdisk during build,
     and provide paths to those as corresponding new options
-    in ``ironic_python_agent.conf`` configuration file.
-    Validation of server certificate can be turned off with ``insecure``
-    config option or via ``ipa-insecure`` kernel boot parameter.
+    in the ``ironic_python_agent.conf`` configuration file.
+    Validation of the server certificate can be turned off with the
+    ``insecure`` config option or via the ``ipa-insecure`` kernel boot
+    parameter.
     This should make it possible to run IPA in CI-like environments that use
-    HTTPS endpoints with self-signed sertificates.
+    HTTPS endpoints with self-signed certificates.
 
