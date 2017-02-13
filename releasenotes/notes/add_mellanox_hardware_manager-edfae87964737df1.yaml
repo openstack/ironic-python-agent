@@ -1,6 +1,6 @@
 ---
 features:
-  - Add support for Mellanox InfiniBand NIC in IPA.
-    Each Mellanox InfiniBand interface returned with
-    "InfiniBand MAC" and InfiniBand Client-ID according
-    to DHCP over InfiniBand https://tools.ietf.org/html/rfc4390.
+  - Add support for Mellanox InfiniBand NICs in IPA.
+    Each Mellanox InfiniBand interface is returned with
+    an "InfiniBand MAC" and InfiniBand Client-ID calculated
+    according to a Mellanox-specific translation.
