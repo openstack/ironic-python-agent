@@ -182,10 +182,17 @@ def _get_lldp_info(interfaces):
             # Create a copy of interfaces to avoid deleting while iterating.
             for index, interface in enumerate(list(interfaces)):
                 if s == interface[1]:
-                    LOG.info('Found LLDP info for interface: %s',
-                             interface[0])
-                    lldp_info[interface[0]] = (
-                        _receive_lldp_packets(s))
+                    try:
+                        lldp_info[interface[0]] = _receive_lldp_packets(s)
+                    except socket.error:
+                        LOG.exception('Socket for network interface %s said '
+                                      'that it was ready to read we were '
+                                      'unable to read from the socket while '
+                                      'trying to get LLDP packet. Skipping '
+                                      'this network interface.', interface[0])
+                    else:
+                        LOG.info('Found LLDP info for interface: %s',
+                                 interface[0])
                     # Remove interface from the list, only need one packet
                     del interfaces[index]
 
