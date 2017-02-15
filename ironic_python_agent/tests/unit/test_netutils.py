@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import binascii
+import socket
 
 import mock
 from oslo_config import cfg
@@ -63,6 +64,50 @@ class TestNetutils(base.IronicAgentTest):
         sock1 = mock.Mock()
         sock1.recv.return_value = FAKE_LLDP_PACKET
         sock1.fileno.return_value = 4
+        sock2 = mock.Mock()
+        sock2.recv.return_value = FAKE_LLDP_PACKET
+        sock2.fileno.return_value = 5
+
+        sock_mock.side_effect = [sock1, sock2]
+
+        select_mock.side_effect = [
+            ([sock1], [], []),
+            ([sock2], [], [])
+        ]
+
+        lldp_info = netutils.get_lldp_info(interface_names)
+        self.assertEqual(expected_lldp, lldp_info)
+
+        sock1.bind.assert_called_with(('eth0', netutils.LLDP_ETHERTYPE))
+        sock2.bind.assert_called_with(('eth1', netutils.LLDP_ETHERTYPE))
+
+        sock1.recv.assert_called_with(1600)
+        sock2.recv.assert_called_with(1600)
+
+        self.assertEqual(1, sock1.close.call_count)
+        self.assertEqual(1, sock2.close.call_count)
+
+        # 2 interfaces, 2 calls to enter promiscuous mode, 1 to leave
+        self.assertEqual(6, fcntl_mock.call_count)
+
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('select.select', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
+    def test_get_lldp_info_socket_recv_error(self, sock_mock, select_mock,
+                                             fcntl_mock):
+        expected_lldp = {
+            'eth1': [
+                (0, b''),
+                (1, b'\x04\x88Z\x92\xecTY'),
+                (2, b'\x05Ethernet1/18'),
+                (3, b'\x00x')]
+        }
+
+        interface_names = ['eth0', 'eth1']
+
+        sock1 = mock.Mock()
+        sock1.recv.side_effect = socket.error("BOOM")
+
         sock2 = mock.Mock()
         sock2.recv.return_value = FAKE_LLDP_PACKET
         sock2.fileno.return_value = 5
