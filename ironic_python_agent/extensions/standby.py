@@ -14,13 +14,13 @@
 
 import hashlib
 import os
-import requests
-import six
 import time
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
+import requests
+import six
 
 from ironic_lib import disk_utils
 from ironic_python_agent import errors

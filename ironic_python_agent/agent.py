@@ -19,6 +19,7 @@ import select
 import socket
 import threading
 import time
+from wsgiref import simple_server
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -27,7 +28,6 @@ from oslo_utils import netutils
 import pkg_resources
 from six.moves.urllib import parse as urlparse
 from stevedore import extension
-from wsgiref import simple_server
 
 from ironic_python_agent.api import app
 from ironic_python_agent import encoding

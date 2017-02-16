@@ -14,6 +14,7 @@
 
 import socket
 import time
+from wsgiref import simple_server
 
 import mock
 from oslo_concurrency import processutils
@@ -22,7 +23,6 @@ from oslo_serialization import jsonutils
 from oslotest import base as test_base
 import pkg_resources
 from stevedore import extension
-from wsgiref import simple_server
 
 from ironic_python_agent import agent
 from ironic_python_agent import encoding
