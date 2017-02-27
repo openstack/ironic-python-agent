@@ -257,13 +257,24 @@ class Memory(encoding.SerializableComparable):
         self.physical_mb = physical_mb
 
 
-class SystemVendorInfo(encoding.SerializableComparable):
-    serializable_fields = ('product_name', 'serial_number', 'manufacturer')
+class CPUInfo(encoding.SerializableComparable):
+    serializable_fields = ('version', 'cpu_count', 'core_count', 'thread_count')
 
-    def __init__(self, product_name, serial_number, manufacturer):
+    def __init__(self, version, cpu_count, core_count, thread_count):
+        self.version = version
+        self.cpu_count = cpu_count
+        self.core_count = core_count
+        self.thread_count = thread_count
+
+
+class SystemVendorInfo(encoding.SerializableComparable):
+    serializable_fields = ('product_name', 'serial_number', 'manufacturer', 'asset_tag')
+
+    def __init__(self, product_name, serial_number, manufacturer, asset_tag):
         self.product_name = product_name
         self.serial_number = serial_number
         self.manufacturer = manufacturer
+        self.asset_tag = asset_tag
 
 
 class BootInfo(encoding.SerializableComparable):
@@ -290,6 +301,9 @@ class HardwareManager(object):
         raise errors.IncompatibleHardwareMethodError
 
     def get_memory(self):
+        raise errors.IncompatibleHardwareMethodError
+
+    def get_cpu_info(self):
         raise errors.IncompatibleHardwareMethodError
 
     def get_os_install_device(self):
@@ -366,6 +380,7 @@ class HardwareManager(object):
         hardware_info['bmc_address'] = self.get_bmc_address()
         hardware_info['system_vendor'] = self.get_system_vendor_info()
         hardware_info['boot'] = self.get_boot_info()
+        hardware_info['cpu_info'] = self.get_cpu_info()
         return hardware_info
 
     def get_clean_steps(self, node, ports):
@@ -633,6 +648,60 @@ class GenericHardwareManager(HardwareManager):
 
         return Memory(total=total, physical_mb=physical)
 
+    def get_cpu_info(self):
+        try:
+            out, _e = utils.execute("dmidecode --type processor | grep 'Processor Information'",
+                                    shell=True)
+        except (processutils.ProcessExecutionError, OSError) as e:
+            LOG.warning("Cannot get cpu count info: %s", e)
+            cpu_count = 0
+        else:
+            cpu_count = len(out.strip().split('\n'))
+
+        version = ''
+        out, _e = utils.try_execute("dmidecode --type processor | grep Version", shell=True)
+        if out:
+            try:
+                for line in out.strip().split('\n'):
+                    line = line.strip()
+                    version = line.split('Version: ', 1)[1]
+                    if not version:
+                        LOG.debug('One cpu version is empty')
+                    else:
+                        break
+
+            except (IndexError, ValueError):
+                LOG.warning('Malformed CPU version information: %s', out)
+        else:
+            LOG.warning('Failed to get CPU version')
+
+        core_count = 0
+        thread_count = 0
+        out, _e = utils.try_execute("dmidecode --type processor | grep 'Count'", shell=True)
+        if out:
+            try:
+                for line in out.strip().split('\n'):
+                    line = line.strip()
+                    if core_count and thread_count:
+                        break
+
+                    if 'Core Count' in line:
+                        value = line.split('Core Count: ', 1)[1]
+                        core_count = int(value)
+
+                    if 'Thread Count' in line:
+                        value = line.split('Thread Count: ', 1)[1]
+                        thread_count = int(value)
+
+            except (IndexError, ValueError):
+                LOG.warning('Malformed CPU core count and thread count information: %s', out)
+        else:
+            LOG.warning('Failed to get CPU core count and thread count')
+
+        return CPUInfo(version=version, cpu_count=cpu_count,
+                       core_count=core_count, thread_count=thread_count)
+
+
     def list_block_devices(self):
         return list_all_block_devices()
 
@@ -687,9 +756,20 @@ class GenericHardwareManager(HardwareManager):
                     serial_number = line_arr[1].strip()
                 elif line_arr[0].strip() == 'Manufacturer':
                     manufacturer = line_arr[1].strip()
+                    
+        try:
+            out, _e = utils.execute("dmidecode -s chassis-asset-tag",
+                                    shell=True)
+        except (processutils.ProcessExecutionError, OSError) as e:
+            LOG.warning("Cannot get system vendor asset tag: %s", e)
+        else:
+            out_list = out.strip().split('\n')
+            asset_tag = out_list[len(out_list)-1]
+            
         return SystemVendorInfo(product_name=product_name,
                                 serial_number=serial_number,
-                                manufacturer=manufacturer)
+                                manufacturer=manufacturer,
+                                asset_tag=asset_tag)
 
     def get_boot_info(self):
         boot_mode = 'uefi' if os.path.isdir('/sys/firmware/efi') else 'bios'
@@ -900,6 +980,10 @@ class GenericHardwareManager(HardwareManager):
             out, _e = utils.execute(
                 "ipmitool lan print | grep -e 'IP Address [^S]' "
                 "| awk '{ print $4 }'", shell=True)
+            if out.strip() == '0.0.0.0':
+                out, _e = utils.execute(
+                    "ipmitool lan print 8 | grep -e 'IP Address [^S]' "
+                    "| awk '{ print $4 }'", shell=True)
         except (processutils.ProcessExecutionError, OSError) as e:
             # Not error, because it's normal in virtual environment
             LOG.warning("Cannot get BMC address: %s", e)
