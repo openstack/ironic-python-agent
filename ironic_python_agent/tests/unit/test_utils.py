@@ -21,13 +21,13 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
-import testtools
 
 from ironic_lib import utils as ironic_utils
 import mock
 from oslo_concurrency import processutils
 from oslo_serialization import base64
 from oslotest import base as test_base
+import testtools
 
 from ironic_python_agent import errors
 from ironic_python_agent import utils
