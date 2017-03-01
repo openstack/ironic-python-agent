@@ -23,6 +23,7 @@ clean_build:
 	sudo rm -rf tinyipafinal
 	rm -f tinyipa*.vmlinuz
 	rm -f tinyipa*.gz
+	rm -f tinyipa*.sha256
 	rm -f build_files/corepure64.gz
 	rm -f build_files/vmlinuz64
 	rm -f build_files/*.tcz
