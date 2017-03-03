@@ -204,17 +204,15 @@ class ImageDownload(object):
                 failtime = time.time() - self._time
                 log_msg = ('URL: {}; time: {} '
                            'seconds. Error: {}').format(
-                    url, failtime, e.details)
-                LOG.warning('Image download failed. %s', log_msg)
-                details += log_msg
+                    url, failtime, e.secondary_message)
+                LOG.warning(log_msg)
+                details.append(log_msg)
                 continue
             else:
                 break
         else:
-            details = '/n'.join(details)
-            msg = ('Image download failed for all URLs with following errors: '
-                   '{}'.format(details))
-            raise errors.ImageDownloadError(image_info['id'], msg)
+            details = '\n '.join(details)
+            raise errors.ImageDownloadError(image_info['id'], details)
 
     def _download_file(self, image_info, url):
         """Opens a download stream for the given URL.

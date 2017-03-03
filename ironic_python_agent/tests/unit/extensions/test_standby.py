@@ -899,3 +899,21 @@ class TestImageDownload(test_base.BaseTestCase):
                                               cert=None, verify=True,
                                               stream=True, proxies={})
         self.assertEqual(image_info['checksum'], image_download.md5sum())
+
+    @mock.patch('time.time', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_download_image_fail(self, requests_mock, time_mock):
+        response = requests_mock.return_value
+        response.status_code = 401
+        response.text = 'Unauthorized'
+        time_mock.return_value = 0.0
+        image_info = _build_fake_image_info()
+        msg = ('Error downloading image: Download of image id fake_id failed: '
+               'URL: http://example.org; time: 0.0 seconds. Error: '
+               'Received status code 401 from http://example.org, expected '
+               '200. Response body: Unauthorized')
+        self.assertRaisesRegexp(errors.ImageDownloadError, msg,
+                                standby.ImageDownload, image_info)
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
+                                              stream=True, proxies={})
