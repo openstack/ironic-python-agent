@@ -24,6 +24,8 @@ class TestCommands(base.FunctionalBase):
     different test runs.
     """
 
+    node = {'uuid': '1', 'properties': {}}
+
     def step_1_get_empty_commands(self):
         response = self.request('get', 'commands')
         self.assertEqual({'commands': []}, response)
@@ -34,7 +36,7 @@ class TestCommands(base.FunctionalBase):
         # this command succeeds even with an empty node and port. This test's
         # success is required for steps 3 and 4 to succeed.
         command = {'name': 'clean.get_clean_steps',
-                   'params': {'node': {}, 'ports': {}}}
+                   'params': {'node': self.node, 'ports': {}}}
         response = self.request('post', 'commands', json=command,
                                 headers={'Content-Type': 'application/json'})
         self.assertIsNone(response['command_error'])
