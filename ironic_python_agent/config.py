@@ -180,7 +180,7 @@ cli_opts = [
                default=APARAMS.get('ipa-disk-wait-delay', 3),
                help='How much time (in seconds) to wait between attempts '
                     'to check if at least one suitable disk has appeared '
-                    'in inventory. '
+                    'in inventory. Set to zero to disable. '
                     'Can be supplied as "ipa-disk-wait-delay" '
                     'kernel parameter.'),
     cfg.BoolOpt('insecure',

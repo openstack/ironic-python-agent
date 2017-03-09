@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    If root device hints are provided on the node, wait for the root device
+    instead of the first disk. This fixes deployment when the target disk takes
+    time to load.

@@ -53,6 +53,8 @@ class ZFakeGenericHardwareManager(hardware.HardwareManager):
                 _build_clean_step('ZHigherPrio', 100)]
 
 
+@mock.patch.object(hardware.HardwareManager, 'wait_for_disks',
+                   lambda _self: None)
 class TestMultipleHardwareManagerCleanSteps(base.IronicAgentTest):
     def setUp(self):
         super(TestMultipleHardwareManagerCleanSteps, self).setUp()
@@ -79,7 +81,8 @@ class TestMultipleHardwareManagerCleanSteps(base.IronicAgentTest):
         hardware._global_managers = None
 
     def test_clean_step_ordering(self):
-        as_results = self.agent_extension.get_clean_steps(node={}, ports=[])
+        as_results = self.agent_extension.get_clean_steps(node={'uuid': '1'},
+                                                          ports=[])
         results = as_results.join().command_result
         expected_steps = {
             'clean_steps': {

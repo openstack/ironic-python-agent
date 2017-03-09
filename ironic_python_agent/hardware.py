@@ -354,6 +354,33 @@ class HardwareManager(object):
             erase_results[block_device.name] = result
         return erase_results
 
+    def wait_for_disks(self):
+        """Wait for the root disk to appear.
+
+        Wait for at least one suitable disk to show up or a specific disk
+        if any device hint is specified. Otherwise neither inspection
+        not deployment have any chances to succeed.
+
+        """
+        if not CONF.disk_wait_attempts:
+            return
+
+        for attempt in range(CONF.disk_wait_attempts):
+            try:
+                self.get_os_install_device()
+            except errors.DeviceNotFound:
+                LOG.debug('Still waiting for the root device to appear, '
+                          'attempt %d of %d', attempt + 1,
+                          CONF.disk_wait_attempts)
+
+                if attempt < CONF.disk_wait_attempts - 1:
+                    time.sleep(CONF.disk_wait_delay)
+            else:
+                break
+        else:
+            LOG.warning('The root device was not detected in %d seconds',
+                        CONF.disk_wait_delay * CONF.disk_wait_attempts)
+
     def list_hardware_info(self):
         """Return full hardware inventory as a serializable dict.
 
@@ -462,31 +489,8 @@ class GenericHardwareManager(HardwareManager):
     def evaluate_hardware_support(self):
         # Do some initialization before we declare ourself ready
         _check_for_iscsi()
-        self._wait_for_disks()
+        self.wait_for_disks()
         return HardwareSupport.GENERIC
-
-    def _wait_for_disks(self):
-        """Wait for disk to appear
-
-        Wait for at least one suitable disk to show up, otherwise neither
-        inspection not deployment have any chances to succeed.
-
-        """
-
-        for attempt in range(CONF.disk_wait_attempts):
-            try:
-                block_devices = self.list_block_devices()
-                utils.guess_root_disk(block_devices)
-            except errors.DeviceNotFound:
-                LOG.debug('Still waiting for at least one disk to appear, '
-                          'attempt %d of %d', attempt + 1,
-                          CONF.disk_wait_attempts)
-                time.sleep(CONF.disk_wait_delay)
-            else:
-                break
-        else:
-            LOG.warning('No disks detected in %d seconds',
-                        CONF.disk_wait_delay * CONF.disk_wait_attempts)
 
     def collect_lldp_data(self, interface_names):
         """Collect and convert LLDP info from the node.
@@ -678,10 +682,12 @@ class GenericHardwareManager(HardwareManager):
         root_device_hints = None
         if cached_node is not None:
             root_device_hints = cached_node['properties'].get('root_device')
+            LOG.debug('Looking for a device matching root hints %s',
+                      root_device_hints)
 
         block_devices = self.list_block_devices()
         if not root_device_hints:
-            return utils.guess_root_disk(block_devices).name
+            dev_name = utils.guess_root_disk(block_devices).name
         else:
             serialized_devs = [dev.serialize() for dev in block_devices]
             try:
@@ -702,7 +708,13 @@ class GenericHardwareManager(HardwareManager):
                     "No suitable device was found for "
                     "deployment using these hints %s" % root_device_hints)
 
-            return device['name']
+            dev_name = device['name']
+
+        LOG.info('Picked root device %(dev)s for node %(node)s based on '
+                 'root device hints %(hints)s',
+                 {'dev': dev_name, 'hints': root_device_hints,
+                  'node': cached_node['uuid'] if cached_node else None})
+        return dev_name
 
     def get_system_vendor_info(self):
         product_name = None
@@ -1133,10 +1145,21 @@ def cache_node(node):
     Stores the node object in the hardware module to facilitate the
     access of a node information in the hardware extensions.
 
+    If the new node does not match the previously cached one, wait for the
+    expected root device to appear.
+
     :param node: Ironic node object
     """
     global NODE
+    new_node = NODE is None or NODE['uuid'] != node['uuid']
     NODE = node
+
+    if new_node:
+        LOG.info('Cached node %s, waiting for its root device to appear',
+                 node['uuid'])
+        # Root device hints, stored in the new node, can change the expected
+        # root device. So let us wait for it to appear again.
+        dispatch_to_managers('wait_for_disks')
 
 
 def get_cached_node():
