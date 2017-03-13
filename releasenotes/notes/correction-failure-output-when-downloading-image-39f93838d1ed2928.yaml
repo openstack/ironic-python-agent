@@ -1,0 +1,3 @@
+---
+fixes:
+  - Correct message output when failed to download image.
