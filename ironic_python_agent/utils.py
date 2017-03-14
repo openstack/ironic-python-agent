@@ -383,7 +383,7 @@ def gzip_and_b64encode(io_dict=None, file_list=None):
                 tar.add(f)
 
         fp.seek(0)
-        return base64.encode_as_bytes(fp.getvalue())
+        return base64.encode_as_text(fp.getvalue())
 
 
 def collect_system_logs(journald_max_lines=None):

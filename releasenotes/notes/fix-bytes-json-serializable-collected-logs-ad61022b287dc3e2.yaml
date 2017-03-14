@@ -1,0 +1,6 @@
+---
+fixes:
+  - JSON serialization of logs collected for ironic-python-agent.
+    In python3 logs were encoded as byte strings, which can't be serialized.
+    Make sure that logs are encoded as text for both py2.7 and py3. See
+    https://bugs.launchpad.net/ironic-python-agent/+bug/1668533 for details.
