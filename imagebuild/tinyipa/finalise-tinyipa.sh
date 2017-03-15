@@ -141,6 +141,9 @@ cleanup_tce "$DST_DIR"
 # Copy bootlocal.sh to opt
 sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
 
+# Copy udhcpc.script to opt
+sudo cp "$WORKDIR/udhcpc.script" "$FINALDIR/opt/"
+
 # Disable ZSwap
 sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"
 # sudo cp $WORKDIR/build_files/tc-config $FINALDIR/etc/init.d/tc-config
