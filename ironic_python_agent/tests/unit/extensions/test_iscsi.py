@@ -15,10 +15,10 @@
 
 import mock
 
+from ironic_lib import disk_utils
 from oslo_concurrency import processutils
 from oslotest import base as test_base
 
-from ironic_lib import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import iscsi
 from ironic_python_agent import hardware

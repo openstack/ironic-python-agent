@@ -14,11 +14,10 @@
 #    under the License.
 
 import mock
-
-from ironic_python_agent import utils
 from oslotest import base as test_base
 
 from ironic_python_agent.extensions import log
+from ironic_python_agent import utils
 
 
 class TestLogExtension(test_base.BaseTestCase):

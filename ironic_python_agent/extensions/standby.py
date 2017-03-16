@@ -16,13 +16,13 @@ import hashlib
 import os
 import time
 
+from ironic_lib import disk_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 import requests
 import six
 
-from ironic_lib import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
