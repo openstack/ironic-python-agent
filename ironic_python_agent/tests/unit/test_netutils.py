@@ -32,13 +32,18 @@ FAKE_LLDP_PACKET = binascii.unhexlify(
 cfg.CONF.import_opt('lldp_timeout', 'ironic_python_agent.config')
 
 
+def socket_socket_sig(family=None, type=None, proto=None):
+    # Signature for socket.socket to be used by mock
+    pass
+
+
 class TestNetutils(test_base.BaseTestCase):
     def setUp(self):
         super(TestNetutils, self).setUp()
 
-    @mock.patch('fcntl.ioctl')
-    @mock.patch('select.select')
-    @mock.patch('socket.socket')
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('select.select', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info(self, sock_mock, select_mock, fcntl_mock):
         expected_lldp = {
             'eth1': [
@@ -84,9 +89,9 @@ class TestNetutils(test_base.BaseTestCase):
         # 2 interfaces, 2 calls to enter promiscuous mode, 1 to leave
         self.assertEqual(6, fcntl_mock.call_count)
 
-    @mock.patch('fcntl.ioctl')
-    @mock.patch('select.select')
-    @mock.patch('socket.socket')
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('select.select', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info_multiple(self, sock_mock, select_mock, fcntl_mock):
         expected_lldp = {
             'eth1': [
@@ -138,9 +143,9 @@ class TestNetutils(test_base.BaseTestCase):
         ]
         self.assertEqual(expected_calls, select_mock.call_args_list)
 
-    @mock.patch('fcntl.ioctl')
-    @mock.patch('select.select')
-    @mock.patch('socket.socket')
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('select.select', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info_one_empty_interface(self, sock_mock, select_mock,
                                                fcntl_mock):
         expected_lldp = {
@@ -182,9 +187,9 @@ class TestNetutils(test_base.BaseTestCase):
         # 2 interfaces, 2 calls to enter promiscuous mode, 1 to leave
         self.assertEqual(6, fcntl_mock.call_count)
 
-    @mock.patch('fcntl.ioctl')
-    @mock.patch('select.select')
-    @mock.patch('socket.socket')
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('select.select', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info_empty(self, sock_mock, select_mock, fcntl_mock):
         expected_lldp = {
             'eth1': [],
@@ -220,9 +225,9 @@ class TestNetutils(test_base.BaseTestCase):
         # 2 interfaces * (2 calls to enter promiscuous mode + 1 to leave) = 6
         self.assertEqual(6, fcntl_mock.call_count)
 
-    @mock.patch('fcntl.ioctl')
-    @mock.patch('select.select')
-    @mock.patch('socket.socket')
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('select.select', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info_malformed(self, sock_mock, select_mock, fcntl_mock):
         expected_lldp = {
             'eth1': [],
@@ -266,8 +271,8 @@ class TestNetutils(test_base.BaseTestCase):
         ]
         self.assertEqual(expected_calls, select_mock.call_args_list)
 
-    @mock.patch('fcntl.ioctl')
-    @mock.patch('socket.socket')
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_raw_promiscuous_sockets(self, sock_mock, fcntl_mock):
         interfaces = ['eth0', 'ens9f1']
         protocol = 3
@@ -288,8 +293,8 @@ class TestNetutils(test_base.BaseTestCase):
         sock1.close.assert_called_once_with()
         sock2.close.assert_called_once_with()
 
-    @mock.patch('fcntl.ioctl')
-    @mock.patch('socket.socket')
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_raw_promiscuous_sockets_bind_fail(self, sock_mock, fcntl_mock):
         interfaces = ['eth0', 'ens9f1']
         protocol = 3
@@ -313,8 +318,8 @@ class TestNetutils(test_base.BaseTestCase):
         sock1.close.assert_called_once_with()
         sock2.close.assert_called_once_with()
 
-    @mock.patch('fcntl.ioctl')
-    @mock.patch('socket.socket')
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_raw_promiscuous_sockets_exception(self, sock_mock, fcntl_mock):
         interfaces = ['eth0', 'ens9f1']
         protocol = 3
