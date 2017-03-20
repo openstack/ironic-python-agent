@@ -118,7 +118,8 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
         self.fake_ext_mgr = extension.ExtensionManager.make_test_instance(
             [self.generic_hwm, self.mainline_hwm])
 
-        self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager')
+        self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager',
+                                                autospec=True)
         self.mocked_extension_mgr = self.extension_mgr_patcher.start()
         self.mocked_extension_mgr.return_value = self.fake_ext_mgr
         hardware._global_managers = None
@@ -216,7 +217,7 @@ class TestNoHardwareManagerLoading(test_base.BaseTestCase):
         super(TestNoHardwareManagerLoading, self).setUp()
         self.empty_ext_mgr = extension.ExtensionManager.make_test_instance([])
 
-    @mock.patch('stevedore.ExtensionManager')
+    @mock.patch('stevedore.ExtensionManager', autospec=True)
     def test_no_managers_found(self, mocked_extension_mgr_constructor):
         mocked_extension_mgr_constructor.return_value = self.empty_ext_mgr
         hardware._global_managers = None

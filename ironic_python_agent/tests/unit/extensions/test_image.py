@@ -28,8 +28,8 @@ from ironic_python_agent import hardware
 from ironic_python_agent import utils
 
 
-@mock.patch.object(hardware, 'dispatch_to_managers')
-@mock.patch.object(utils, 'execute')
+@mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 @mock.patch.object(tempfile, 'mkdtemp', lambda *_: '/tmp/fake-dir')
 @mock.patch.object(shutil, 'rmtree', lambda *_: None)
 class TestImageExtension(test_base.BaseTestCase):
@@ -44,8 +44,8 @@ class TestImageExtension(test_base.BaseTestCase):
         self.fake_efi_system_part_uuid = '45AB-2312'
         self.fake_dir = '/tmp/fake-dir'
 
-    @mock.patch.object(iscsi, 'clean_up')
-    @mock.patch.object(image, '_install_grub2')
+    @mock.patch.object(iscsi, 'clean_up', autospec=True)
+    @mock.patch.object(image, '_install_grub2', autospec=True)
     def test_install_bootloader_bios(self, mock_grub2, mock_iscsi_clean,
                                      mock_execute, mock_dispatch):
         mock_dispatch.return_value = self.fake_dev
@@ -56,8 +56,8 @@ class TestImageExtension(test_base.BaseTestCase):
             efi_system_part_uuid=None)
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
-    @mock.patch.object(iscsi, 'clean_up')
-    @mock.patch.object(image, '_install_grub2')
+    @mock.patch.object(iscsi, 'clean_up', autospec=True)
+    @mock.patch.object(image, '_install_grub2', autospec=True)
     def test_install_bootloader_uefi(self, mock_grub2, mock_iscsi_clean,
                                      mock_execute, mock_dispatch):
         mock_dispatch.return_value = self.fake_dev
@@ -71,8 +71,8 @@ class TestImageExtension(test_base.BaseTestCase):
             efi_system_part_uuid=self.fake_efi_system_part_uuid)
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
-    @mock.patch.object(os, 'environ')
-    @mock.patch.object(image, '_get_partition')
+    @mock.patch.object(os, 'environ', autospec=True)
+    @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2(self, mock_get_part_uuid, environ_mock,
                             mock_execute, mock_dispatch):
         mock_get_part_uuid.return_value = self.fake_root_part
@@ -108,9 +108,9 @@ class TestImageExtension(test_base.BaseTestCase):
                                                    uuid=self.fake_root_uuid)
         self.assertFalse(mock_dispatch.called)
 
-    @mock.patch.object(os, 'environ')
-    @mock.patch.object(os, 'makedirs')
-    @mock.patch.object(image, '_get_partition')
+    @mock.patch.object(os, 'environ', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2_uefi(self, mock_get_part_uuid, mkdir_mock,
                                  environ_mock, mock_execute,
                                  mock_dispatch):
@@ -162,9 +162,9 @@ class TestImageExtension(test_base.BaseTestCase):
                                            uuid=self.fake_efi_system_part_uuid)
         self.assertFalse(mock_dispatch.called)
 
-    @mock.patch.object(os, 'environ')
-    @mock.patch.object(os, 'makedirs')
-    @mock.patch.object(image, '_get_partition')
+    @mock.patch.object(os, 'environ', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2_uefi_umount_fails(
             self, mock_get_part_uuid, mkdir_mock, environ_mock, mock_execute,
             mock_dispatch):
@@ -208,7 +208,7 @@ class TestImageExtension(test_base.BaseTestCase):
                               attempts=3, delay_on_retry=True)]
         mock_execute.assert_has_calls(expected)
 
-    @mock.patch.object(image, '_get_partition')
+    @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2_command_fail(self, mock_get_part_uuid,
                                          mock_execute,
                                          mock_dispatch):

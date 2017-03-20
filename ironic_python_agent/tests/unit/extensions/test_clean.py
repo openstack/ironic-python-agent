@@ -34,8 +34,9 @@ class TestCleanExtension(test_base.BaseTestCase):
         self.version = {'generic': '1', 'specific': '1'}
 
     @mock.patch('ironic_python_agent.extensions.clean.'
-                '_get_current_clean_version')
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_all_managers')
+                '_get_current_clean_version', autospec=True)
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_all_managers',
+                autospec=True)
     def test_get_clean_steps(self, mock_dispatch, mock_version):
         mock_version.return_value = self.version
 
@@ -135,8 +136,10 @@ class TestCleanExtension(test_base.BaseTestCase):
         self.assertEqual(expected_return,
                          async_results.join().command_result)
 
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers')
-    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version')
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version',
+                autospec=True)
     def test_execute_clean_step(self, mock_version, mock_dispatch):
         result = 'cleaned'
         mock_dispatch.return_value = result
@@ -157,8 +160,10 @@ class TestCleanExtension(test_base.BaseTestCase):
             self.node, self.ports)
         self.assertEqual(expected_result, async_result.command_result)
 
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers')
-    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version')
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version',
+                autospec=True)
     def test_execute_clean_step_tuple_result(self, mock_version,
                                              mock_dispatch):
         result = ('stdout', 'stderr')
@@ -180,7 +185,8 @@ class TestCleanExtension(test_base.BaseTestCase):
             self.node, self.ports)
         self.assertEqual(expected_result, async_result.command_result)
 
-    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version')
+    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version',
+                autospec=True)
     def test_execute_clean_step_no_step(self, mock_version):
         async_result = self.agent_extension.execute_clean_step(
             step={}, node=self.node, ports=self.ports,
@@ -190,8 +196,10 @@ class TestCleanExtension(test_base.BaseTestCase):
         self.assertEqual('FAILED', async_result.command_status)
         mock_version.assert_called_once_with(self.version)
 
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers')
-    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version')
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version',
+                autospec=True)
     def test_execute_clean_step_fail(self, mock_version, mock_dispatch):
         mock_dispatch.side_effect = RuntimeError
 
@@ -207,8 +215,10 @@ class TestCleanExtension(test_base.BaseTestCase):
             self.step['GenericHardwareManager'][0]['step'],
             self.node, self.ports)
 
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers')
-    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version')
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.clean._check_clean_version',
+                autospec=True)
     def test_execute_clean_step_version_mismatch(self, mock_version,
                                                  mock_dispatch):
         mock_version.side_effect = errors.CleanVersionMismatch(
@@ -222,7 +232,8 @@ class TestCleanExtension(test_base.BaseTestCase):
 
         mock_version.assert_called_once_with(self.version)
 
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_all_managers')
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_all_managers',
+                autospec=True)
     def _get_current_clean_version(self, mock_dispatch):
         mock_dispatch.return_value = {'SpecificHardwareManager':
                                       {'name': 'specific', 'version': '1'},
@@ -230,7 +241,8 @@ class TestCleanExtension(test_base.BaseTestCase):
                                       {'name': 'generic', 'version': '1'}}
         self.assertEqual(self.version, clean._get_current_clean_version())
 
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_all_managers')
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_all_managers',
+                autospec=True)
     def test__check_clean_version_fail(self, mock_dispatch):
         mock_dispatch.return_value = {'SpecificHardwareManager':
                                       {'name': 'specific', 'version': '1'}}

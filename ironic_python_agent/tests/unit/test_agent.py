@@ -60,10 +60,10 @@ class TestHeartbeater(test_base.BaseTestCase):
             hardware.HardwareManager)
         self.heartbeater.stop_event = mock.Mock()
 
-    @mock.patch('os.read')
-    @mock.patch('select.poll')
-    @mock.patch('ironic_python_agent.agent._time')
-    @mock.patch('random.uniform')
+    @mock.patch('os.read', autospec=True)
+    @mock.patch('select.poll', autospec=True)
+    @mock.patch('ironic_python_agent.agent._time', autospec=True)
+    @mock.patch('random.uniform', autospec=True)
     def test_heartbeat(self, mock_uniform, mock_time, mock_poll, mock_read):
         time_responses = []
         uniform_responses = []
@@ -172,7 +172,7 @@ class TestBaseAgent(test_base.BaseTestCase):
                          .version, status.version)
 
     @mock.patch.object(agent.IronicPythonAgent,
-                       '_wait_for_interface')
+                       '_wait_for_interface', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     def test_run(self, mock_make_server, mock_dispatch, mock_wait):
@@ -199,16 +199,17 @@ class TestBaseAgent(test_base.BaseTestCase):
             self.agent.api,
             server_class=simple_server.WSGIServer)
         wsgi_server.serve_forever.assert_called_once_with()
-        mock_wait.assert_called_once_with()
+        mock_wait.assert_called_once_with(mock.ANY)
         mock_dispatch.assert_called_once_with("list_hardware_info")
         self.agent.heartbeater.start.assert_called_once_with()
 
     @mock.patch.object(agent.IronicPythonAgent,
-                       '_wait_for_interface')
+                       '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
     def test_run_with_inspection(self, mock_list_hardware, mock_make_server,
                                  mock_dispatch, mock_inspector, mock_wait):
         CONF.set_override('inspection_callback_url', 'http://foo/bar',
@@ -244,16 +245,17 @@ class TestBaseAgent(test_base.BaseTestCase):
             'uuid',
             self.agent.api_client.lookup_node.call_args[1]['node_uuid'])
 
-        mock_wait.assert_called_once_with()
+        mock_wait.assert_called_once_with(mock.ANY)
         mock_dispatch.assert_called_once_with("list_hardware_info")
         self.agent.heartbeater.start.assert_called_once_with()
 
     @mock.patch.object(agent.IronicPythonAgent,
-                       '_wait_for_interface')
+                       '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
     def test_run_with_inspection_without_apiurl(self,
                                                 mock_list_hardware,
                                                 mock_make_server,
@@ -297,11 +299,12 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertFalse(mock_dispatch.called)
 
     @mock.patch.object(agent.IronicPythonAgent,
-                       '_wait_for_interface')
+                       '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
     def test_run_without_inspection_and_apiurl(self,
                                                mock_list_hardware,
                                                mock_make_server,
@@ -372,7 +375,8 @@ class TestBaseAgent(test_base.BaseTestCase):
     @mock.patch.object(time, 'sleep', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
     def test_run_with_sleep(self, mock_check_for_iscsi, mock_list_hardware,
                             mock_make_server, mock_sleep, mock_cna):
         CONF.set_override('inspection_callback_url', '', enforce_type=True)
@@ -512,7 +516,8 @@ class TestAgentStandalone(test_base.BaseTestCase):
                                              True)
 
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
     def test_run(self, mock_list_hardware, mock_make_server):
         wsgi_server = mock_make_server.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()

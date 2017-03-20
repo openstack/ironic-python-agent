@@ -71,7 +71,8 @@ class TestMultipleHardwareManagerCleanSteps(test_base.BaseTestCase):
         self.fake_ext_mgr = extension.ExtensionManager.make_test_instance(
             [self.ag_hwm, self.zg_hwm, self.ml_hwm])
 
-        self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager')
+        self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager',
+                                                autospec=True)
         self.mocked_extension_mgr = self.extension_mgr_patcher.start()
         self.mocked_extension_mgr.return_value = self.fake_ext_mgr
         hardware._global_managers = None

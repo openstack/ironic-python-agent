@@ -144,8 +144,8 @@ class TestIntelCnaHardwareManager(test_base.BaseTestCase):
             (1, 'bar'),
         ]
         mock_super_collect.return_value = returned_lldp_data
-        with mock.patch.object(cna,
-                               '_disable_embedded_lldp_agent_in_cna_card'):
+        with mock.patch.object(cna, '_disable_embedded_lldp_agent_in_cna_card',
+                               autospec=True):
             result = self.hardware.collect_lldp_data(iface_names)
             mock_super_collect.assert_called_once_with(self.hardware,
                                                        iface_names)

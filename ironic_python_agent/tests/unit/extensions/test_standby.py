@@ -283,9 +283,9 @@ class TestStandbyExtension(test_base.BaseTestCase):
 
         self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
 
-    @mock.patch('hashlib.md5')
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch('requests.get')
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
     def test_download_image(self, requests_mock, open_mock, md5_mock):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
@@ -306,9 +306,9 @@ class TestStandbyExtension(test_base.BaseTestCase):
         write.assert_any_call('content')
         self.assertEqual(2, write.call_count)
 
-    @mock.patch('hashlib.md5')
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch('requests.get')
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
     @mock.patch.dict(os.environ, {})
     def test_download_image_proxy(
             self, requests_mock, open_mock, md5_mock):
@@ -780,9 +780,9 @@ class TestStandbyExtension(test_base.BaseTestCase):
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, device)
 
-    @mock.patch('hashlib.md5')
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch('requests.get')
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device(self, requests_mock, open_mock,
                                           md5_mock):
         image_info = _build_fake_image_info()
@@ -803,9 +803,9 @@ class TestStandbyExtension(test_base.BaseTestCase):
         expected_calls = [mock.call('some'), mock.call('content')]
         file_mock.write.assert_has_calls(expected_calls)
 
-    @mock.patch('hashlib.md5')
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch('requests.get')
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device_write_error(self, requests_mock,
                                                       open_mock, md5_mock):
         image_info = _build_fake_image_info()

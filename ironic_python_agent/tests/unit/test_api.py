@@ -192,7 +192,7 @@ class TestIronicAPI(test_base.BaseTestCase):
 
         self.mock_agent.execute_command.return_value = result
 
-        with mock.patch.object(result, 'join') as join_mock:
+        with mock.patch.object(result, 'join', autospec=True) as join_mock:
             response = self.post_json('/commands', command)
             self.assertFalse(join_mock.called)
 
@@ -219,7 +219,7 @@ class TestIronicAPI(test_base.BaseTestCase):
 
         self.mock_agent.execute_command.return_value = result
 
-        with mock.patch.object(result, 'join') as join_mock:
+        with mock.patch.object(result, 'join', autospec=True) as join_mock:
             response = self.post_json('/commands?wait=true', command)
             join_mock.assert_called_once_with()
 
@@ -245,7 +245,7 @@ class TestIronicAPI(test_base.BaseTestCase):
 
         self.mock_agent.execute_command.return_value = result
 
-        with mock.patch.object(result, 'join') as join_mock:
+        with mock.patch.object(result, 'join', autospec=True) as join_mock:
             response = self.post_json('/commands?wait=false', command)
             self.assertFalse(join_mock.called)
 

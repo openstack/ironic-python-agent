@@ -45,14 +45,14 @@ class ExecuteTestCase(test_base.BaseTestCase):
 
 class GetAgentParamsTestCase(test_base.BaseTestCase):
 
-    @mock.patch('oslo_log.log.getLogger')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('oslo_log.log.getLogger', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test__read_params_from_file_fail(self, logger_mock, open_mock):
         open_mock.side_effect = Exception
         params = utils._read_params_from_file('file-path')
         self.assertEqual({}, params)
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test__read_params_from_file(self, open_mock):
         kernel_line = 'api-url=http://localhost:9999 baz foo=bar\n'
         open_mock.return_value.__enter__ = lambda s: s
@@ -66,9 +66,9 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         self.assertEqual('bar', params['foo'])
         self.assertNotIn('baz', params)
 
-    @mock.patch.object(utils, '_set_cached_params')
-    @mock.patch.object(utils, '_read_params_from_file')
-    @mock.patch.object(utils, '_get_cached_params')
+    @mock.patch.object(utils, '_set_cached_params', autospec=True)
+    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
+    @mock.patch.object(utils, '_get_cached_params', autospec=True)
     def test_get_agent_params_kernel_cmdline(self, get_cache_mock,
                                              read_params_mock,
                                              set_cache_mock):
@@ -80,10 +80,10 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         self.assertEqual(expected_params, returned_params)
         set_cache_mock.assert_called_once_with(expected_params)
 
-    @mock.patch.object(utils, '_set_cached_params')
-    @mock.patch.object(utils, '_get_vmedia_params')
-    @mock.patch.object(utils, '_read_params_from_file')
-    @mock.patch.object(utils, '_get_cached_params')
+    @mock.patch.object(utils, '_set_cached_params', autospec=True)
+    @mock.patch.object(utils, '_get_vmedia_params', autospec=True)
+    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
+    @mock.patch.object(utils, '_get_cached_params', autospec=True)
     def test_get_agent_params_vmedia(self, get_cache_mock,
                                      read_params_mock,
                                      get_vmedia_params_mock,
@@ -102,8 +102,8 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         # Make sure information is cached
         set_cache_mock.assert_called_once_with(expected_params)
 
-    @mock.patch.object(utils, '_set_cached_params')
-    @mock.patch.object(utils, '_get_cached_params')
+    @mock.patch.object(utils, '_set_cached_params', autospec=True)
+    @mock.patch.object(utils, '_get_cached_params', autospec=True)
     def test_get_agent_params_from_cache(self, get_cache_mock,
                                          set_cache_mock):
         get_cache_mock.return_value = {'a': 'b'}
@@ -112,8 +112,8 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         self.assertEqual(expected_params, returned_params)
         self.assertEqual(0, set_cache_mock.call_count)
 
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch.object(glob, 'glob')
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch.object(glob, 'glob', autospec=True)
     def test__get_vmedia_device(self, glob_mock, open_mock):
 
         glob_mock.return_value = ['/sys/class/block/sda/device/model',
@@ -130,10 +130,10 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
     @mock.patch.object(shutil, 'rmtree', autospec=True)
     @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
-    @mock.patch.object(utils, '_read_params_from_file')
-    @mock.patch.object(os.path, 'exists')
-    @mock.patch.object(os, 'mkdir')
-    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    @mock.patch.object(os, 'mkdir', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_vmedia_params_by_label_lower_case(
             self, execute_mock, mkdir_mock, exists_mock, read_params_mock,
             mkdtemp_mock, rmtree_mock):
@@ -158,10 +158,10 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
     @mock.patch.object(shutil, 'rmtree', autospec=True)
     @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
-    @mock.patch.object(utils, '_read_params_from_file')
-    @mock.patch.object(os.path, 'exists')
-    @mock.patch.object(os, 'mkdir')
-    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    @mock.patch.object(os, 'mkdir', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_vmedia_params_by_label_upper_case(
             self, execute_mock, mkdir_mock, exists_mock, read_params_mock,
             mkdtemp_mock, rmtree_mock):
@@ -188,11 +188,11 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
     @mock.patch.object(shutil, 'rmtree', autospec=True)
     @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
-    @mock.patch.object(utils, '_get_vmedia_device')
-    @mock.patch.object(utils, '_read_params_from_file')
-    @mock.patch.object(os.path, 'exists')
-    @mock.patch.object(os, 'mkdir')
-    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
+    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    @mock.patch.object(os, 'mkdir', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_vmedia_params_by_device(self, execute_mock, mkdir_mock,
                                           exists_mock, read_params_mock,
                                           get_device_mock, mkdtemp_mock,
@@ -219,8 +219,8 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
         mkdtemp_mock.assert_called_once_with()
         rmtree_mock.assert_called_once_with("/tempdir")
 
-    @mock.patch.object(utils, '_get_vmedia_device')
-    @mock.patch.object(os.path, 'exists')
+    @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
     def test__get_vmedia_params_cannot_find_dev(self, exists_mock,
                                                 get_device_mock):
         get_device_mock.return_value = None
@@ -230,11 +230,11 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
     @mock.patch.object(shutil, 'rmtree', autospec=True)
     @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
-    @mock.patch.object(utils, '_get_vmedia_device')
-    @mock.patch.object(utils, '_read_params_from_file')
-    @mock.patch.object(os.path, 'exists')
-    @mock.patch.object(os, 'mkdir')
-    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
+    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    @mock.patch.object(os, 'mkdir', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_vmedia_params_mount_fails(self, execute_mock,
                                             mkdir_mock, exists_mock,
                                             read_params_mock,
@@ -259,11 +259,11 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
     @mock.patch.object(shutil, 'rmtree', autospec=True)
     @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
-    @mock.patch.object(utils, '_get_vmedia_device')
-    @mock.patch.object(utils, '_read_params_from_file')
-    @mock.patch.object(os.path, 'exists')
-    @mock.patch.object(os, 'mkdir')
-    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
+    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    @mock.patch.object(os, 'mkdir', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_vmedia_params_umount_fails(self, execute_mock, mkdir_mock,
                                              exists_mock, read_params_mock,
                                              get_device_mock, mkdtemp_mock,
@@ -291,11 +291,11 @@ class GetAgentParamsTestCase(test_base.BaseTestCase):
 
     @mock.patch.object(shutil, 'rmtree', autospec=True)
     @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
-    @mock.patch.object(utils, '_get_vmedia_device')
-    @mock.patch.object(utils, '_read_params_from_file')
-    @mock.patch.object(os.path, 'exists')
-    @mock.patch.object(os, 'mkdir')
-    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
+    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    @mock.patch.object(os, 'mkdir', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_vmedia_params_rmtree_fails(self, execute_mock, mkdir_mock,
                                              exists_mock, read_params_mock,
                                              get_device_mock, mkdtemp_mock,
@@ -406,21 +406,21 @@ class TestUtils(testtools.TestCase):
             'foo', binary=True, log_stdout=False)
         self.assertEqual(contents, data.read())
 
-    @mock.patch.object(subprocess, 'check_call')
+    @mock.patch.object(subprocess, 'check_call', autospec=True)
     def test_is_journalctl_present(self, mock_call):
         self.assertTrue(utils.is_journalctl_present())
 
-    @mock.patch.object(subprocess, 'check_call')
+    @mock.patch.object(subprocess, 'check_call', autospec=True)
     def test_is_journalctl_present_false(self, mock_call):
         os_error = OSError()
         os_error.errno = errno.ENOENT
         mock_call.side_effect = os_error
         self.assertFalse(utils.is_journalctl_present())
 
-    @mock.patch.object(utils, 'gzip_and_b64encode')
-    @mock.patch.object(utils, 'is_journalctl_present')
-    @mock.patch.object(utils, 'get_command_output')
-    @mock.patch.object(utils, 'get_journalctl_output')
+    @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
+    @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
+    @mock.patch.object(utils, 'get_command_output', autospec=True)
+    @mock.patch.object(utils, 'get_journalctl_output', autospec=True)
     def test_collect_system_logs_journald(
             self, mock_logs, mock_outputs, mock_journalctl, mock_gzip_b64):
         mock_journalctl.return_value = True
@@ -438,9 +438,9 @@ class TestUtils(testtools.TestCase):
             io_dict={'journal': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
                      'df': mock.ANY, 'iptables': mock.ANY})
 
-    @mock.patch.object(utils, 'gzip_and_b64encode')
-    @mock.patch.object(utils, 'is_journalctl_present')
-    @mock.patch.object(utils, 'get_command_output')
+    @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
+    @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
+    @mock.patch.object(utils, 'get_command_output', autospec=True)
     def test_collect_system_logs_non_journald(
             self, mock_outputs, mock_journalctl, mock_gzip_b64):
         mock_journalctl.return_value = False
