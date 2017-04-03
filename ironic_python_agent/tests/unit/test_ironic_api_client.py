@@ -15,11 +15,11 @@
 import mock
 from oslo_serialization import jsonutils
 from oslo_service import loopingcall
-from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
+from ironic_python_agent.tests.unit import base
 
 API_URL = 'http://agent-api.ironic.example.org/'
 
@@ -32,7 +32,7 @@ class FakeResponse(object):
         self.headers = headers or {}
 
 
-class TestBaseIronicPythonAgent(test_base.BaseTestCase):
+class TestBaseIronicPythonAgent(base.IronicAgentTest):
     def setUp(self):
         super(TestBaseIronicPythonAgent, self).setUp()
         self.api_client = ironic_api_client.APIClient(API_URL)

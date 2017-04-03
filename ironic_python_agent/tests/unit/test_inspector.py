@@ -21,13 +21,13 @@ import time
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
-from oslotest import base as test_base
 import requests
 import stevedore
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
@@ -46,7 +46,7 @@ class AcceptingFailure(mock.Mock):
             failure, expect_error)
 
 
-class TestMisc(test_base.BaseTestCase):
+class TestMisc(base.IronicAgentTest):
     def test_default_collector_loadable(self):
         ext = inspector.extension_manager([inspector.DEFAULT_COLLECTOR])
         self.assertIs(ext[inspector.DEFAULT_COLLECTOR].plugin,
@@ -62,7 +62,7 @@ class TestMisc(test_base.BaseTestCase):
 @mock.patch.object(inspector, 'setup_ipmi_credentials', autospec=True)
 @mock.patch.object(inspector, 'call_inspector', new_callable=AcceptingFailure)
 @mock.patch.object(stevedore, 'NamedExtensionManager', autospec=True)
-class TestInspect(test_base.BaseTestCase):
+class TestInspect(base.IronicAgentTest):
     def setUp(self):
         super(TestInspect, self).setUp()
         CONF.set_override('inspection_callback_url', 'http://foo/bar',
@@ -131,7 +131,7 @@ class TestInspect(test_base.BaseTestCase):
 
 
 @mock.patch.object(requests, 'post', autospec=True)
-class TestCallInspector(test_base.BaseTestCase):
+class TestCallInspector(base.IronicAgentTest):
     def setUp(self):
         super(TestCallInspector, self).setUp()
         CONF.set_override('inspection_callback_url', 'url',
@@ -176,7 +176,7 @@ class TestCallInspector(test_base.BaseTestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestSetupIpmiCredentials(test_base.BaseTestCase):
+class TestSetupIpmiCredentials(base.IronicAgentTest):
     def setUp(self):
         super(TestSetupIpmiCredentials, self).setUp()
         self.resp = {'ipmi_username': 'user',
@@ -227,7 +227,7 @@ class TestSetupIpmiCredentials(test_base.BaseTestCase):
         self.assertEqual(expected, mock_call.call_args_list)
 
 
-class BaseDiscoverTest(test_base.BaseTestCase):
+class BaseDiscoverTest(base.IronicAgentTest):
     def setUp(self):
         super(BaseDiscoverTest, self).setUp()
         self.inventory = {
@@ -302,7 +302,7 @@ class TestCollectDefault(BaseDiscoverTest):
 
 
 @mock.patch.object(utils, 'collect_system_logs', autospec=True)
-class TestCollectLogs(test_base.BaseTestCase):
+class TestCollectLogs(base.IronicAgentTest):
 
     def test(self, mock_collect):
         data = {}
@@ -320,7 +320,7 @@ class TestCollectLogs(test_base.BaseTestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestCollectExtraHardware(test_base.BaseTestCase):
+class TestCollectExtraHardware(base.IronicAgentTest):
     def setUp(self):
         super(TestCollectExtraHardware, self).setUp()
         self.data = {}
@@ -366,7 +366,7 @@ class TestCollectExtraHardware(test_base.BaseTestCase):
 
 
 @mock.patch.object(os, 'listdir', autospec=True)
-class TestCollectPciDevicesInfo(test_base.BaseTestCase):
+class TestCollectPciDevicesInfo(base.IronicAgentTest):
     def setUp(self):
         super(TestCollectPciDevicesInfo, self).setUp()
         self.data = {}
@@ -421,7 +421,7 @@ class TestCollectPciDevicesInfo(test_base.BaseTestCase):
 
 @mock.patch.object(utils, 'get_agent_params', lambda: {'BOOTIF': '01-cdef'})
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-class TestWaitForDhcp(test_base.BaseTestCase):
+class TestWaitForDhcp(base.IronicAgentTest):
     def setUp(self):
         super(TestWaitForDhcp, self).setUp()
         CONF.set_override('inspection_dhcp_wait_timeout',
@@ -507,7 +507,7 @@ class TestWaitForDhcp(test_base.BaseTestCase):
         self.assertFalse(mocked_dispatch.called)
 
 
-class TestNormalizeMac(test_base.BaseTestCase):
+class TestNormalizeMac(base.IronicAgentTest):
     def test_correct_mac(self):
         self.assertEqual('11:22:33:aa:bb:cc',
                          inspector._normalize_mac('11:22:33:aa:BB:cc'))

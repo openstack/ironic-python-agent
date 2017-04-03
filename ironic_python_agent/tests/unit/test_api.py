@@ -15,18 +15,18 @@
 import time
 
 import mock
-from oslotest import base as test_base
 import pecan
 import pecan.testing
 
 from ironic_python_agent import agent
 from ironic_python_agent.extensions import base
+from ironic_python_agent.tests.unit import base as ironic_agent_base
 
 
 PATH_PREFIX = '/v1'
 
 
-class TestIronicAPI(test_base.BaseTestCase):
+class TestIronicAPI(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
         super(TestIronicAPI, self).setUp()
