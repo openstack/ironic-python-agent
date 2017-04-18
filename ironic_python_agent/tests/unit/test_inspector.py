@@ -483,10 +483,12 @@ class TestWaitForDhcp(test_base.BaseTestCase):
         self.assertEqual(1, mocked_sleep.call_count)
         self.assertEqual(2, mocked_dispatch.call_count)
 
-    @mock.patch.object(inspector, '_DHCP_RETRY_INTERVAL', 0.01)
-    def test_timeout(self, mocked_dispatch):
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(time, 'time', autospec=True,
+                       side_effect=[1.0, 1.1, 3.1, 3.2])
+    def test_timeout(self, mocked_time, mocked_sleep, mocked_dispatch):
         CONF.set_override('inspection_dhcp_all_interfaces', True)
-        CONF.set_override('inspection_dhcp_wait_timeout', 0.02)
+        CONF.set_override('inspection_dhcp_wait_timeout', 1)
 
         mocked_dispatch.return_value = [
             hardware.NetworkInterface(name='em0', mac_addr='abcd',
@@ -496,8 +498,11 @@ class TestWaitForDhcp(test_base.BaseTestCase):
         ]
 
         self.assertFalse(inspector.wait_for_dhcp())
-
         mocked_dispatch.assert_called_with('list_network_interfaces')
+        mocked_sleep.assert_called_once_with(inspector._DHCP_RETRY_INTERVAL)
+        # time.time() was called 3 times explicitly in wait_for_dhcp(),
+        # and 1 in LOG.warning()
+        self.assertEqual(4, mocked_time.call_count)
 
     def test_disabled(self, mocked_dispatch):
         CONF.set_override('inspection_dhcp_wait_timeout', 0)
