@@ -20,7 +20,6 @@ import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-from oslotest import base as test_base
 import pkg_resources
 from stevedore import extension
 
@@ -31,6 +30,7 @@ from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
 from ironic_python_agent import netutils
+from ironic_python_agent.tests.unit import base as ironic_agent_base
 from ironic_python_agent import utils
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
@@ -49,7 +49,7 @@ class FakeExtension(base.BaseAgentExtension):
     pass
 
 
-class TestHeartbeater(test_base.BaseTestCase):
+class TestHeartbeater(ironic_agent_base.IronicAgentTest):
     def setUp(self):
         super(TestHeartbeater, self).setUp()
         self.mock_agent = mock.Mock()
@@ -129,7 +129,7 @@ class TestHeartbeater(test_base.BaseTestCase):
 
 @mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
                    lambda self: None)
-class TestBaseAgent(test_base.BaseTestCase):
+class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
         super(TestBaseAgent, self).setUp()
@@ -171,6 +171,10 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertEqual(pkg_resources.get_distribution('ironic-python-agent')
                          .version, status.version)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
@@ -203,6 +207,9 @@ class TestBaseAgent(test_base.BaseTestCase):
         mock_dispatch.assert_called_once_with("list_hardware_info")
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
+                mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
@@ -249,6 +256,10 @@ class TestBaseAgent(test_base.BaseTestCase):
         mock_dispatch.assert_called_once_with("list_hardware_info")
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
@@ -298,6 +309,10 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertFalse(mock_wait.called)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
@@ -497,7 +512,7 @@ class TestBaseAgent(test_base.BaseTestCase):
 
 @mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
                    lambda self: None)
-class TestAgentStandalone(test_base.BaseTestCase):
+class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
         super(TestAgentStandalone, self).setUp()
@@ -515,6 +530,10 @@ class TestAgentStandalone(test_base.BaseTestCase):
                                              'agent_ipmitool',
                                              True)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
@@ -551,7 +570,7 @@ class TestAgentStandalone(test_base.BaseTestCase):
                    lambda self: None)
 @mock.patch.object(socket, 'gethostbyname', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestAdvertiseAddress(test_base.BaseTestCase):
+class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
     def setUp(self):
         super(TestAdvertiseAddress, self).setUp()
 

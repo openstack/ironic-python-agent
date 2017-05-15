@@ -16,9 +16,9 @@ import binascii
 
 import mock
 from oslo_config import cfg
-from oslotest import base as test_base
 
 from ironic_python_agent import netutils
+from ironic_python_agent.tests.unit import base
 
 # hexlify-ed output from LLDP packet
 FAKE_LLDP_PACKET = binascii.unhexlify(
@@ -37,7 +37,7 @@ def socket_socket_sig(family=None, type=None, proto=None):
     pass
 
 
-class TestNetutils(test_base.BaseTestCase):
+class TestNetutils(base.IronicAgentTest):
     def setUp(self):
         super(TestNetutils, self).setUp()
 

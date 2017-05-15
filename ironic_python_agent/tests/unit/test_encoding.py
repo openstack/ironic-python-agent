@@ -12,9 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslotest import base as test_base
-
 from ironic_python_agent import encoding
+from ironic_python_agent.tests.unit import base
 
 
 class SerializableTesting(encoding.Serializable):
@@ -33,7 +32,7 @@ class SerializableComparableTesting(encoding.SerializableComparable):
         self.jill = jill
 
 
-class TestSerializable(test_base.BaseTestCase):
+class TestSerializable(base.IronicAgentTest):
     def test_baseclass_serialize(self):
         obj = encoding.Serializable()
         self.assertEqual({}, obj.serialize())
@@ -44,7 +43,7 @@ class TestSerializable(test_base.BaseTestCase):
         self.assertEqual(expected, obj.serialize())
 
 
-class TestSerializableComparable(test_base.BaseTestCase):
+class TestSerializableComparable(base.IronicAgentTest):
 
     def test_childclass_equal(self):
         obj1 = SerializableComparableTesting('hello', 'world')

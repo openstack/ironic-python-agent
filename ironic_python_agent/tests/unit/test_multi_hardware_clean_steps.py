@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import mock
-from oslotest import base as test_base
 from stevedore import extension
 
 from ironic_python_agent.extensions import clean
 from ironic_python_agent import hardware
+from ironic_python_agent.tests.unit import base
 
 
 def _build_clean_step(name, priority, reboot=False, abort=False):
@@ -53,7 +53,7 @@ class ZFakeGenericHardwareManager(hardware.HardwareManager):
                 _build_clean_step('ZHigherPrio', 100)]
 
 
-class TestMultipleHardwareManagerCleanSteps(test_base.BaseTestCase):
+class TestMultipleHardwareManagerCleanSteps(base.IronicAgentTest):
     def setUp(self):
         super(TestMultipleHardwareManagerCleanSteps, self).setUp()
 
@@ -73,13 +73,10 @@ class TestMultipleHardwareManagerCleanSteps(test_base.BaseTestCase):
 
         self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager',
                                                 autospec=True)
+        self.addCleanup(self.extension_mgr_patcher.stop)
         self.mocked_extension_mgr = self.extension_mgr_patcher.start()
         self.mocked_extension_mgr.return_value = self.fake_ext_mgr
         hardware._global_managers = None
-
-    def tearDown(self):
-        super(TestMultipleHardwareManagerCleanSteps, self).tearDown()
-        self.extension_mgr_patcher.stop()
 
     def test_clean_step_ordering(self):
         as_results = self.agent_extension.get_clean_steps(node={}, ports=[])

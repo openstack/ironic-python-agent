@@ -31,9 +31,14 @@ import six
 import testtools
 
 from ironic_python_agent import errors
+from ironic_python_agent.tests.unit import base as ironic_agent_base
 from ironic_python_agent import utils
 
 
+# Normally we'd use the IronicAgentTest base class which mocks out
+# any use of utils.execute() to prevent accidental processes. However
+# this test is checking the upcall to ironic_lib's execute(), so that
+# is mocked out instead.
 class ExecuteTestCase(test_base.BaseTestCase):
 
     @mock.patch.object(ironic_utils, 'execute', autospec=True)
@@ -43,7 +48,7 @@ class ExecuteTestCase(test_base.BaseTestCase):
                                              check_exit_code=False)
 
 
-class GetAgentParamsTestCase(test_base.BaseTestCase):
+class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
 
     @mock.patch('oslo_log.log.getLogger', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)

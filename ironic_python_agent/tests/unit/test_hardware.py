@@ -22,12 +22,12 @@ import netifaces
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import units
-from oslotest import base as test_base
 import pyudev
 from stevedore import extension
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
@@ -257,7 +257,7 @@ class FakeHardwareManager(hardware.GenericHardwareManager):
         return self._hardware_support
 
 
-class TestHardwareManagerLoading(test_base.BaseTestCase):
+class TestHardwareManagerLoading(base.IronicAgentTest):
     def setUp(self):
         super(TestHardwareManagerLoading, self).setUp()
         # In order to use ExtensionManager.make_test_instance() without
@@ -286,7 +286,7 @@ class TestHardwareManagerLoading(test_base.BaseTestCase):
 
 
 @mock.patch.object(hardware, '_udev_settle', lambda *_: None)
-class TestGenericHardwareManager(test_base.BaseTestCase):
+class TestGenericHardwareManager(base.IronicAgentTest):
     def setUp(self):
         super(TestGenericHardwareManager, self).setUp()
         self.hardware = hardware.GenericHardwareManager()
@@ -783,6 +783,9 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.hardware.get_boot_info = mock.Mock()
         self.hardware.get_boot_info.return_value = hardware.BootInfo(
             current_boot_mode='bios', pxe_interface='boot:if')
+
+        self.hardware.get_bmc_address = mock.Mock()
+        self.hardware.get_system_vendor_info = mock.Mock()
 
         hardware_info = self.hardware.list_hardware_info()
         self.assertEqual(self.hardware.get_memory(), hardware_info['memory'])
@@ -1490,6 +1493,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         self.assertEqual(2, mocked_root_dev.call_count)
         mocked_sleep.assert_called_once_with(CONF.disk_wait_delay)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
                        autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
@@ -1517,6 +1521,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_root_dev.assert_called_with(mocked_block_dev.return_value)
         self.assertEqual(10, mocked_root_dev.call_count)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
                        autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
@@ -1539,6 +1544,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
         mocked_root_dev.assert_called_with(mocked_block_dev.return_value)
         self.assertEqual(2, mocked_root_dev.call_count)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
                        autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
@@ -1552,6 +1558,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
         mocked_sleep.assert_called_with(3)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch.object(hardware.GenericHardwareManager, 'list_block_devices',
                        autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
@@ -1611,7 +1618,7 @@ class TestGenericHardwareManager(test_base.BaseTestCase):
 
 @mock.patch.object(os, 'listdir', lambda *_: [])
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestModuleFunctions(test_base.BaseTestCase):
+class TestModuleFunctions(base.IronicAgentTest):
 
     @mock.patch.object(hardware, '_get_device_info',
                        lambda x, y, z: 'FooTastic')
