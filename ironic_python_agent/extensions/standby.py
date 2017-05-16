@@ -34,14 +34,6 @@ LOG = log.getLogger(__name__)
 IMAGE_CHUNK_SIZE = 1024 * 1024  # 1MB
 
 
-def _configdrive_location():
-    """Get the configdrive location in the local file system.
-
-    :returns: The full, absolute path to the configdrive as a string.
-    """
-    return '/tmp/configdrive'
-
-
 def _image_location(image_info):
     """Get the location of the image in the local file system.
 

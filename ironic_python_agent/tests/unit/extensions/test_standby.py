@@ -487,16 +487,12 @@ class TestStandbyExtension(test_base.BaseTestCase):
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._download_image',
                 autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._configdrive_location',
-                autospec=True)
     def test_prepare_image(self,
-                           location_mock,
                            download_mock,
                            write_mock,
                            dispatch_mock,
                            configdrive_copy_mock):
         image_info = _build_fake_image_info()
-        location_mock.return_value = '/tmp/configdrive'
         download_mock.return_value = None
         write_mock.return_value = None
         dispatch_mock.return_value = 'manager'
@@ -529,16 +525,12 @@ class TestStandbyExtension(test_base.BaseTestCase):
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._download_image',
                 autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._configdrive_location',
-                autospec=True)
     def test_prepare_partition_image(self,
-                                     location_mock,
                                      download_mock,
                                      write_mock,
                                      dispatch_mock,
                                      configdrive_copy_mock):
         image_info = _build_fake_partition_image_info()
-        location_mock.return_value = '/tmp/configdrive'
         download_mock.return_value = None
         write_mock.return_value = {'root uuid': 'root_uuid'}
         dispatch_mock.return_value = 'manager'
