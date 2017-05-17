@@ -15,8 +15,11 @@
 
 """Common utilities and classes across all unit tests."""
 
-import mock
+import subprocess
 
+import ironic_lib
+import mock
+from oslo_concurrency import processutils
 from oslotest import base as test_base
 
 from ironic_python_agent import utils
@@ -25,19 +28,33 @@ from ironic_python_agent import utils
 class IronicAgentTest(test_base.BaseTestCase):
     """Extends the base test to provide common features across agent tests."""
 
+    # By default block execution of utils.execute() and related functions.
+    block_execute = True
+
     def setUp(self):
         super(IronicAgentTest, self).setUp()
-        """Add a blanket ban on running external processes via utils.execute().
+        """Ban running external processes via 'execute' like functions
 
         `self` will grow a property  called _exec_patch which is the Mock
-        that replaces utils.execute.
+        that replaces all the 'execute' related functions.
 
         If the mock is called, an exception is raised to warn the tester.
         """
         # NOTE(bigjools): Not using a decorator on tests because I don't
         # want to force every test method to accept a new arg. Instead, they
         # can override or examine this self._exec_patch Mock as needed.
-        self._exec_patch = mock.Mock()
-        self._exec_patch.side_effect = Exception(
-            "Don't call utils.execute in tests!")
-        self.patch(utils, 'execute', self._exec_patch)
+        if self.block_execute:
+            self._exec_patch = mock.Mock()
+            self._exec_patch.side_effect = Exception(
+                "Don't call ironic_lib.utils.execute() / "
+                "processutils.execute() or similar functions in tests!")
+
+            # NOTE(jlvillal): pyudev.Context() calls ctypes.find_library()
+            # which calls subprocess.Popen(). So not blocking
+            # subprocess.Popen()
+            self.patch(ironic_lib.utils, 'execute', self._exec_patch)
+            self.patch(processutils, 'execute', self._exec_patch)
+            self.patch(subprocess, 'call', self._exec_patch)
+            self.patch(subprocess, 'check_call', self._exec_patch)
+            self.patch(subprocess, 'check_output', self._exec_patch)
+            self.patch(utils, 'execute', self._exec_patch)

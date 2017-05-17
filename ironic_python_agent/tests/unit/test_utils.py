@@ -26,7 +26,6 @@ from ironic_lib import utils as ironic_utils
 import mock
 from oslo_concurrency import processutils
 from oslo_serialization import base64
-from oslotest import base as test_base
 import six
 import testtools
 
@@ -35,12 +34,13 @@ from ironic_python_agent.tests.unit import base as ironic_agent_base
 from ironic_python_agent import utils
 
 
-# Normally we'd use the IronicAgentTest base class which mocks out
-# any use of utils.execute() to prevent accidental processes. However
-# this test is checking the upcall to ironic_lib's execute(), so that
-# is mocked out instead.
-class ExecuteTestCase(test_base.BaseTestCase):
+class ExecuteTestCase(ironic_agent_base.IronicAgentTest):
+    # This test case does call utils.execute(), so don't block access to the
+    # execute calls.
+    block_execute = False
 
+    # We do mock out the call to ironic_utils.execute() so we don't actually
+    # 'execute' anything, as utils.execute() calls ironic_utils.execute()
     @mock.patch.object(ironic_utils, 'execute', autospec=True)
     def test_execute(self, mock_execute):
         utils.execute('/usr/bin/env', 'false', check_exit_code=False)
