@@ -11,6 +11,7 @@ ENABLE_SSH=${ENABLE_SSH:-false}
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 PYOPTIMIZE_TINYIPA=${PYOPTIMIZE_TINYIPA:-true}
 TINYIPA_REQUIRE_BIOSDEVNAME=${TINYIPA_REQUIRE_BIOSDEVNAME:-false}
+TINYIPA_REQUIRE_IPMITOOL=${TINYIPA_REQUIRE_IPMITOOL:-true}
 
 TC=1001
 STAFF=50
@@ -90,6 +91,9 @@ cp $WORKDIR/build_files/qemu-utils.* $FINALDIR/tmp/builtin/optional
 if $TINYIPA_REQUIRE_BIOSDEVNAME; then
     cp $WORKDIR/build_files/biosdevname.* $FINALDIR/tmp/builtin/optional
 fi
+if $TINYIPA_REQUIRE_IPMITOOL; then
+    cp $WORKDIR/build_files/ipmitool.* $FINALDIR/tmp/builtin/optional
+fi
 
 # Mount /proc for chroot commands
 sudo mount --bind /proc $FINALDIR/proc
@@ -129,6 +133,9 @@ $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/tgt.tcz
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/qemu-utils.tcz
 if $TINYIPA_REQUIRE_BIOSDEVNAME; then
     $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/biosdevname.tcz
+fi
+if $TINYIPA_REQUIRE_IPMITOOL; then
+    $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/ipmitool.tcz
 fi
 
 # Ensure tinyipa picks up installed kernel modules
