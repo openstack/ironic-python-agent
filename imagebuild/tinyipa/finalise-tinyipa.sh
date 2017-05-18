@@ -10,6 +10,7 @@ TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
 ENABLE_SSH=${ENABLE_SSH:-false}
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 PYOPTIMIZE_TINYIPA=${PYOPTIMIZE_TINYIPA:-true}
+TINYIPA_REQUIRE_IPMITOOL=${TINYIPA_REQUIRE_IPMITOOL:-true}
 
 TC=1001
 STAFF=50
@@ -86,6 +87,9 @@ echo "tc" | $CHROOT_CMD tee -a /etc/sysconfig/tcuser
 
 cp $WORKDIR/build_files/tgt.* $FINALDIR/tmp/builtin/optional
 cp $WORKDIR/build_files/qemu-utils.* $FINALDIR/tmp/builtin/optional
+if $TINYIPA_REQUIRE_IPMITOOL; then
+    cp $WORKDIR/build_files/ipmitool.* $FINALDIR/tmp/builtin/optional
+fi
 
 # Mount /proc for chroot commands
 sudo mount --bind /proc $FINALDIR/proc
@@ -123,6 +127,9 @@ fi
 
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/tgt.tcz
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/qemu-utils.tcz
+if $TINYIPA_REQUIRE_IPMITOOL; then
+    $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/ipmitool.tcz
+fi
 
 # Ensure tinyipa picks up installed kernel modules
 $CHROOT_CMD depmod -a `$WORKDIR/build_files/fakeuname -r`
