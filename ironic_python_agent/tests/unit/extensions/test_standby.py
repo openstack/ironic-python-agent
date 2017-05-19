@@ -904,8 +904,8 @@ class TestImageDownload(test_base.BaseTestCase):
                'URL: http://example.org; time: 0.0 seconds. Error: '
                'Received status code 401 from http://example.org, expected '
                '200. Response body: Unauthorized')
-        self.assertRaisesRegexp(errors.ImageDownloadError, msg,
-                                standby.ImageDownload, image_info)
+        self.assertRaisesRegex(errors.ImageDownloadError, msg,
+                               standby.ImageDownload, image_info)
         requests_mock.assert_called_once_with(image_info['urls'][0],
                                               cert=None, verify=True,
                                               stream=True, proxies={})
