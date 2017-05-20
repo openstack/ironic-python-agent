@@ -150,8 +150,11 @@ class ISCSIExtension(base.BaseAgentExtension):
                            portal_port=None):
         """Expose the disk as an ISCSI target.
 
+        :param iqn: IQN for iSCSI target. If None, a new IQN is generated.
         :param wipe_disk_metadata: if the disk metadata should be wiped out
                                    before the disk is exposed.
+        :param portal_port: customized port for iSCSI port, can be None.
+        :returns: a dict that provides IQN of iSCSI target.
         """
         # If iqn is not given, generate one
         if iqn is None:
