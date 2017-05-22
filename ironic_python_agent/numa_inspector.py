@@ -81,7 +81,7 @@ def get_nodes_memory_info(numa_node_dirs):
             # Memory info sample line format 'Node 0 MemTotal: 1560000 kB'
             value = line.split(":")[1].strip()
             memory_kb = int(UNIT_CONVERTER(value).to_base_units())
-        except (ValueError, IndexError, pint.errors.UndefinedUnitError) as exc:
+        except (ValueError, IndexError, pint.UndefinedUnitError) as exc:
             msg = ('Failed to get memory information for %(node)s: '
                    '%(error)s' % {'node': numa_node_dir, 'error': exc})
             raise errors.IncompatibleNumaFormatError(msg)
