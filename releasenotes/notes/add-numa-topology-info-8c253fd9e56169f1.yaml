@@ -1,0 +1,4 @@
+---
+features:
+  - Adds new optional NUMA topology collector named ``numa_topology``.
+    It collects NUMA specific RAM, CPU and NIC information.
