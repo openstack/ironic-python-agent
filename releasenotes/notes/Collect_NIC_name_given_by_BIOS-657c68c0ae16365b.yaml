@@ -1,0 +1,11 @@
+---
+features:
+  - Adds an extra field ``biosdevname`` (BIOS given NICs name) to network
+    interface inventory collected by ``default`` collector of
+    ironic-python-agent. Biosdevname utility is used for collecting bios given
+    NICs name.
+
+issues:
+  - Collecting the 'biosdevname' field on network interfaces is impossible on any
+    Debian-based images due to the missing 'biosdevname' utility. This includes
+    the CoreOS image, as the CoreOS image utilizes a Debian-based chroot.
