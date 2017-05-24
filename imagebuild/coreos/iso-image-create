@@ -104,8 +104,13 @@ then
 elif [ -f /usr/lib/syslinux/isolinux.bin ]
 then
     cp /usr/lib/syslinux/isolinux.bin "$TMP_IMAGE_DIR/isolinux"
+
+elif [ -f /usr/lib/ISOLINUX/isolinux.bin ]
+then
+    cp /usr/lib/ISOLINUX/isolinux.bin "$TMP_IMAGE_DIR/isolinux"
+
 else
-    err_print "Could not find isolinux.bin. Install syslinux?"
+    err_print "Could not find isolinux.bin. Install syslinux or isolinux?"
     cleanup
     exit 1
 fi
