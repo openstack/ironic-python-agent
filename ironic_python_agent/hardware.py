@@ -39,6 +39,8 @@ _global_managers = None
 LOG = log.getLogger()
 CONF = cfg.CONF
 
+WARN_BIOSDEVNAME_NOT_FOUND = False
+
 UNIT_CONVERTER = pint.UnitRegistry(filename=None)
 UNIT_CONVERTER.define('MB = []')
 UNIT_CONVERTER.define('GB = 1024 MB')
@@ -552,13 +554,15 @@ class GenericHardwareManager(HardwareManager):
         :return: the BIOS given NIC name of node's interfaces or default
                  as None.
         """
+        global WARN_BIOSDEVNAME_NOT_FOUND
         try:
             stdout, _ = utils.execute('biosdevname', '-i',
                                       interface_name)
             return stdout.rstrip('\n')
         except OSError:
-            LOG.warning("Executable 'biosdevname' not found")
-            return
+            if not WARN_BIOSDEVNAME_NOT_FOUND:
+                LOG.warning("Executable 'biosdevname' not found")
+                WARN_BIOSDEVNAME_NOT_FOUND = True
         except processutils.ProcessExecutionError as e:
             # NOTE(alezil) biosdevname returns 4 if running in a
             # virtual machine.
