@@ -76,6 +76,8 @@ cp requirements.txt $BUILDDIR/tmp/ipa-requirements.txt
 
 imagebuild/common/generate_upper_constraints.sh upper-constraints.txt
 cp upper-constraints.txt $BUILDDIR/tmp/upper-constraints.txt
+echo Using upper-constraints:
+cat upper-constraints.txt
 cd $WORKDIR
 
 sudo cp /etc/resolv.conf $BUILDDIR/etc/resolv.conf
@@ -83,6 +85,17 @@ sudo cp /etc/resolv.conf $BUILDDIR/etc/resolv.conf
 trap "sudo umount $BUILDDIR/proc; sudo umount $BUILDDIR/dev/pts" EXIT
 sudo mount --bind /proc $BUILDDIR/proc
 sudo mount --bind /dev/pts $BUILDDIR/dev/pts
+
+if [ -d /opt/stack/new ]; then
+    # Running in CI environment, make checkouts available
+    $CHROOT_CMD mkdir -p /opt/stack/new
+    for project in $(ls /opt/stack/new); do
+        if grep -q "$project" $BUILDDIR/tmp/upper-constraints.txt &&
+            [ -d "/opt/stack/new/$project/.git" ]; then
+            sudo cp -R "/opt/stack/new/$project" $BUILDDIR/opt/stack/new/
+        fi
+    done
+fi
 
 $CHROOT_CMD mkdir /etc/sysconfig/tcedir
 $CHROOT_CMD chmod a+rwx /etc/sysconfig/tcedir
@@ -103,6 +116,8 @@ $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels setu
 $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels pip
 $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels -r /tmp/ipa-requirements.txt
 $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --no-index --pre --wheel-dir /tmp/wheels --find-links=/tmp/localpip --find-links=/tmp/wheels ironic-python-agent
+echo Resulting wheels:
+ls -1 $BUILDDIR/tmp/wheels
 
 # Build tgt
 rm -rf $WORKDIR/build_files/tgt.tcz
