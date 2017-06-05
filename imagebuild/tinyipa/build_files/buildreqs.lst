@@ -16,3 +16,4 @@ zlib_base-dev.tcz
 glib2-dev.tcz
 pixman-dev.tcz
 binutils.tcz
+git.tcz
