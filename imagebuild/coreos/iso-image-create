@@ -119,7 +119,7 @@ fi
 v_print "Copying ldlinux.c32"
 if [ -f /usr/share/syslinux/ldlinux.c32 ]
 then
-    cp usr/share/syslinux/ldlinux.c32 "$TMP_IMAGE_DIR/isolinux"
+    cp /usr/share/syslinux/ldlinux.c32 "$TMP_IMAGE_DIR/isolinux"
 elif [ -f /usr/lib/syslinux/modules/bios/ldlinux.c32 ]
 then
     cp /usr/lib/syslinux/modules/bios/ldlinux.c32 "$TMP_IMAGE_DIR/isolinux"
