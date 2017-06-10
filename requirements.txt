@@ -2,7 +2,7 @@
 # of appearance. Changing the order has an impact on the overall integration
 # process, which may cause wedges in the gate later.
 pbr!=2.1.0,>=2.0.0 # Apache-2.0
-eventlet!=0.18.3,<0.21.0,>=0.18.2 # MIT
+eventlet!=0.18.3,!=0.20.1,<0.21.0,>=0.18.2 # MIT
 iso8601>=0.1.11 # MIT
 netaddr!=0.7.16,>=0.7.13 # BSD
 netifaces>=0.10.4 # MIT
@@ -16,7 +16,7 @@ pecan!=1.0.2,!=1.0.3,!=1.0.4,!=1.2,>=1.0.0 # BSD
 Pint>=0.5 # BSD
 psutil>=3.2.2 # BSD
 pyudev # LGPLv2.1+
-requests!=2.12.2,!=2.13.0,>=2.10.0 # Apache-2.0
+requests>=2.14.2 # Apache-2.0
 rtslib-fb!=2.1.60,!=2.1.61,>=2.1.43 # Apache-2.0
 six>=1.9.0 # MIT
 stevedore>=1.20.0 # Apache-2.0
