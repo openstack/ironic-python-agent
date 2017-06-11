@@ -775,7 +775,7 @@ class GenericHardwareManager(HardwareManager):
 
         :param node: Ironic node object
         :param ports: list of Ironic port objects
-        :raises BlockDeviceEraseError when there's an error erasing the
+        :raises BlockDeviceEraseError: when there's an error erasing the
                 block device
         """
         block_devices = self.list_block_devices()
