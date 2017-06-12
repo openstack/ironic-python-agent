@@ -56,6 +56,12 @@ add_module_names = True
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
+# Ignore the following warning: WARNING: while setting up extension
+# wsmeext.sphinxext: directive 'autoattribute' is already registered,
+# it will be overridden.
+suppress_warnings = ['app.add_directive']
+
+
 # -- Options for HTML output --------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
