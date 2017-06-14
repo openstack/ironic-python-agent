@@ -1633,7 +1633,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     def test_evaluate_hw_waits_for_disks_configured(self, mocked_root_dev,
                                                     mocked_sleep,
                                                     mocked_block_dev):
-        CONF.set_override('disk_wait_attempts', '2', enforce_type=True)
+        CONF.set_override('disk_wait_attempts', '2')
 
         mocked_root_dev.side_effect = [
             errors.DeviceNotFound('boom'),
@@ -1670,7 +1670,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     def test_evaluate_hw_disks_timeout_configured(self, mocked_root_dev,
                                                   mocked_sleep,
                                                   mocked_block_dev):
-        CONF.set_override('disk_wait_delay', '5', enforce_type=True)
+        CONF.set_override('disk_wait_delay', '5')
         mocked_root_dev.side_effect = errors.DeviceNotFound('boom')
 
         self.hardware.evaluate_hardware_support()

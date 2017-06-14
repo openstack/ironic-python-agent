@@ -180,7 +180,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     def test_run(self, mock_make_server, mock_dispatch, mock_wait):
-        CONF.set_override('inspection_callback_url', '', enforce_type=True)
+        CONF.set_override('inspection_callback_url', '')
         wsgi_server = mock_make_server.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
 
@@ -219,8 +219,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                        autospec=True)
     def test_run_with_inspection(self, mock_list_hardware, mock_make_server,
                                  mock_dispatch, mock_inspector, mock_wait):
-        CONF.set_override('inspection_callback_url', 'http://foo/bar',
-                          enforce_type=True)
+        CONF.set_override('inspection_callback_url', 'http://foo/bar')
 
         wsgi_server = mock_make_server.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
@@ -277,8 +276,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         # agent starts, ensure that the inspection will be called and wsgi
         # server will work as usual. Also, make sure api_client and heartbeater
         # will not be initialized in this case.
-        CONF.set_override('inspection_callback_url', 'http://foo/bar',
-                          enforce_type=True)
+        CONF.set_override('inspection_callback_url', 'http://foo/bar')
 
         self.agent = agent.IronicPythonAgent(None,
                                              agent.Host('203.0.113.1', 9990),
@@ -330,8 +328,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         # the agent starts, ensure that the inspection will be skipped and wsgi
         # server will work as usual. Also, make sure api_client and heartbeater
         # will not be initialized in this case.
-        CONF.set_override('inspection_callback_url', None,
-                          enforce_type=True)
+        CONF.set_override('inspection_callback_url', None)
 
         self.agent = agent.IronicPythonAgent(None,
                                              agent.Host('203.0.113.1', 9990),
@@ -393,7 +390,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     def test_run_with_sleep(self, mock_make_server, mock_dispatch,
                             mock_load_managers, mock_sleep, mock_wait):
-        CONF.set_override('inspection_callback_url', '', enforce_type=True)
+        CONF.set_override('inspection_callback_url', '')
         wsgi_server = mock_make_server.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
 
