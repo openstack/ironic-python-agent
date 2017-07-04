@@ -10,7 +10,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinxcontrib.httpdomain',
               'sphinxcontrib.pecanwsme.rest',
               'wsmeext.sphinxext',
-              'oslosphinx',
+              'openstackdocstheme',
               ]
 
 wsme_protocols = ['restjson']
@@ -66,9 +66,15 @@ suppress_warnings = ['app.add_directive']
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-#html_theme_path = ["."]
-#html_theme = '_theme'
-#html_static_path = ['_static']
+html_theme = 'openstackdocs'
+
+# openstackdocstheme options
+repository_name = 'openstack/ironic-python-agent'
+bug_project = 'ironic-python-agent'
+bug_tag = ''
+
+# Must set this variable to include year, month, day, hours, and minutes.
+html_last_updated_fmt = '%Y-%m-%d %H:%M'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = '%sdoc' % project
