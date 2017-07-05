@@ -927,21 +927,38 @@ class GenericHardwareManager(HardwareManager):
         return True
 
     def get_bmc_address(self):
+        """Attempt to detect BMC IP address
+
+        :return: IP address of lan channel or 0.0.0.0 in case none of them is
+                 configured properly
+        """
         # These modules are rarely loaded automatically
         utils.try_execute('modprobe', 'ipmi_msghandler')
         utils.try_execute('modprobe', 'ipmi_devintf')
         utils.try_execute('modprobe', 'ipmi_si')
 
         try:
-            out, _e = utils.execute(
-                "ipmitool lan print | grep -e 'IP Address [^S]' "
-                "| awk '{ print $4 }'", shell=True)
+            # From all the channels 0-15, only 1-7 can be assigned to different
+            # types of communication media and protocols and effectively used
+            for channel in range(1, 8):
+                out, e = utils.execute(
+                    "ipmitool lan print {} | awk '/IP Address[[:space:]]*:/"
+                    " {{print $4}}'".format(channel), shell=True)
+                # Invalid channel cannot be followed by a valid one, so we can
+                # safely break here
+                if e.startswith("Invalid channel"):
+                    break
+                # In case we get empty IP or 0.0.0.0 on a valid channel,
+                # we need to keep querying
+                if out.strip() not in ('', '0.0.0.0'):
+                    return out.strip()
+
         except (processutils.ProcessExecutionError, OSError) as e:
             # Not error, because it's normal in virtual environment
             LOG.warning("Cannot get BMC address: %s", e)
             return
 
-        return out.strip()
+        return '0.0.0.0'
 
     def get_clean_steps(self, node, ports):
         return [
