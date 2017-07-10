@@ -1,3 +1,5 @@
+.. _Hardware Managers:
+
 Hardware Managers
 =================
 
