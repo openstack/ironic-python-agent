@@ -60,7 +60,7 @@ full endpoint of Ironic Inspector, for example::
 
 Make sure your DHCP environment is set to boot IPA by default.
 
-.. _Ironic Inspector: http://docs.openstack.org/ironic-inspector/
+.. _Ironic Inspector: https://docs.openstack.org/ironic-inspector/
 
 Hardware Inventory
 ------------------
@@ -114,4 +114,4 @@ fields:
 
 References
 ==========
-.. [0] Enabling Drivers - http://docs.openstack.org/ironic/latest/admin/drivers/ipa.html
+.. [0] Enabling Drivers - https://docs.openstack.org/ironic/latest/admin/drivers/ipa.html
