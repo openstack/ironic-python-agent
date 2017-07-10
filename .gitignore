@@ -19,7 +19,7 @@ imagebuild/coreos/oem/container.tar.gz
 imagebuild/coreos/UPLOAD
 *.swp
 _build
-doc/source/api/
+doc/source/contributor/api/
 doc/build
 .proxy.sh.save
 
