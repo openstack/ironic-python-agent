@@ -1,0 +1,4 @@
+---
+features:
+  - Adds a new optional dmidecode output collector called ``dmi-decode``.
+    It collects dmi output for BIOS, processor and memory information.
