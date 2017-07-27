@@ -40,7 +40,7 @@ def collect_dmidecode_info(data, failures):
     try:
         data['dmi'] = parse_dmi(shret)
     except (ValueError, IndexError) as exc:
-        LOG.warning('Failed to collect dmidecode info %s:', exc)
+        LOG.warning('Failed to collect dmidecode info: %s', exc)
 
 
 def parse_dmi(data):
@@ -69,28 +69,30 @@ def parse_dmi(data):
         if not len(infoblock):
             continue
 
-        if infoblock.startswith('Handle 0x'):
-            try:
-                # Determine DMI type value. Handle line will look like this:
-                # Handle 0x0018, DMI type 17, 27 bytes
-                dmi_type = int(infoblock.split(',', 2)[1].strip()[
-                               len('DMI type'):])
-            except (ValueError, IndexError) as exc:
-                LOG.warning('Failed to parse Handle type in dmi output: %s',
-                            exc)
-                continue
+        if not infoblock.startswith('Handle 0x'):
+            continue
 
-            if dmi_type in TYPE.values():
-                sectiondata = _parse_handle_block(infoblock)
+        try:
+            # Determine DMI type value. Handle line will look like this:
+            # Handle 0x0018, DMI type 17, 27 bytes
+            dmi_type = int(infoblock.split(',', 2)[1].strip()[
+                           len('DMI type'):])
+        except (ValueError, IndexError) as exc:
+            LOG.warning('Failed to parse Handle type in dmi output: %s',
+                        exc)
+            continue
 
-                if dmi_type == TYPE['bios']:
-                    dmi_info['bios'] = sectiondata
-                elif dmi_type == TYPE['cpu']:
-                    dmi_info['cpu'].append(sectiondata)
-                elif dmi_type == TYPE['memory']:
-                    memorydata.append(sectiondata)
-                elif dmi_type == TYPE['devices']:
-                    devicedata.append(sectiondata)
+        if dmi_type in TYPE.values():
+            sectiondata = _parse_handle_block(infoblock)
+
+            if dmi_type == TYPE['bios']:
+                dmi_info['bios'] = sectiondata
+            elif dmi_type == TYPE['cpu']:
+                dmi_info['cpu'].append(sectiondata)
+            elif dmi_type == TYPE['memory']:
+                memorydata.append(sectiondata)
+            elif dmi_type == TYPE['devices']:
+                devicedata.append(sectiondata)
 
     return _save_data(dmi_info, memorydata, devicedata)
 
@@ -124,7 +126,7 @@ def _save_data(dmi_info, memorydata, devicedata):
             dmi_info['memory'] = memorydata[0]
             dmi_info['memory']['Number Of Devices'] = device_count
             dmi_info['memory'].pop('Handle')
-        except (KeyError) as exc:
+        except KeyError as exc:
             LOG.warning('Failed to process memory dmi data: %s', exc)
             raise
 

@@ -668,11 +668,25 @@ class TestCollectDmidecodeInfo(base.IronicAgentTest):
         ret = dmi_inspector._save_data(dmi_info, mem, devices)
         self.assertEqual(expected, ret)
 
+    def test_save_data_error_number_of_devices(self):
+        dmi_info = {}
+        dmi_info['bios'] = {}
+        dmi_info['cpu'] = []
+        dmi_info['memory'] = {}
+        dmi_info['memory']['devices'] = {}
+
         self.assertRaises(KeyError,
                           dmi_inspector._save_data,
                           dmi_info,
                           [{'foo': 'bar', 'Handle': '0x10'}],
                           [{'bar': 'foo'}, {'bar': 'foo'}])
+
+    def test_save_data_error_handle(self):
+        dmi_info = {}
+        dmi_info['bios'] = {}
+        dmi_info['cpu'] = []
+        dmi_info['memory'] = {}
+        dmi_info['memory']['devices'] = {}
 
         self.assertRaises(KeyError,
                           dmi_inspector._save_data,
