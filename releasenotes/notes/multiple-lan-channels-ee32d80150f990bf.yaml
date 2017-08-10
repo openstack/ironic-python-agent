@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IPMI interface can be configured to use lan channel different than
+    a default one. In that case querying it will return 0.0.0.0 as an IP
+    address representing an interface lacking configuration. In order to get
+    the real IP address, we need to iterate through all the possible channels.
