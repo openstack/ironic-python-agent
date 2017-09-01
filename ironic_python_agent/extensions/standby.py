@@ -154,7 +154,9 @@ def _message_format(msg, image_info, device, partition_uuids):
             result_msg = msg + 'root_uuid={}'
             message = result_msg.format(image_info['id'], device, root_uuid)
     else:
-        message = result_msg.format(image_info['id'], device)
+        root_uuid = disk_utils.get_disk_identifier(device)
+        result_msg = msg + 'root_uuid={}'
+        message = result_msg.format(image_info['id'], device, root_uuid)
     return message
 
 
