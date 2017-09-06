@@ -36,10 +36,14 @@ DEFAULT_ISCSI_PORTAL_PORT = 3260
 def _execute(cmd, error_msg, **kwargs):
     try:
         stdout, stderr = utils.execute(*cmd, **kwargs)
-    except (processutils.ProcessExecutionError, OSError) as e:
+    except processutils.ProcessExecutionError as e:
         LOG.error(error_msg)
         raise errors.ISCSICommandError(error_msg, e.exit_code,
                                        e.stdout, e.stderr)
+    except OSError as e:
+        LOG.error("Error: %(error)s: OS Error: %(os_error)s",
+                  {'error': error_msg, 'os_error': e})
+        raise errors.ISCSICommandError(e, e.errno, None, None)
 
 
 def _wait_for_tgtd(attempts=10):

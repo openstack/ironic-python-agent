@@ -134,6 +134,15 @@ class TestISCSIExtensionTgt(test_base.BaseTestCase):
         mock_execute.assert_has_calls(expected)
         mock_dispatch.assert_called_once_with('get_os_install_device')
 
+    def test_start_iscsi_target_fail_command_not_exist(self, mock_execute,
+                                                       mock_dispatch,
+                                                       mock_destroy):
+        mock_dispatch.return_value = self.fake_dev
+        mock_execute.side_effect = OSError('file not found')
+        self.assertRaises(errors.ISCSIError,
+                          self.agent_extension.start_iscsi_target,
+                          iqn=self.fake_iqn)
+
 
 _ORIG_UTILS = iscsi.rtslib_fb.utils
 
