@@ -21,6 +21,7 @@ import time
 
 from ironic_lib import disk_utils
 from ironic_lib import utils as il_utils
+import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -944,14 +945,20 @@ class GenericHardwareManager(HardwareManager):
                 out, e = utils.execute(
                     "ipmitool lan print {} | awk '/IP Address[[:space:]]*:/"
                     " {{print $4}}'".format(channel), shell=True)
-                # Invalid channel cannot be followed by a valid one, so we can
-                # safely break here
                 if e.startswith("Invalid channel"):
-                    break
-                # In case we get empty IP or 0.0.0.0 on a valid channel,
-                # we need to keep querying
-                if out.strip() not in ('', '0.0.0.0'):
-                    return out.strip()
+                    continue
+                out = out.strip()
+
+                try:
+                    netaddr.IPAddress(out)
+                except netaddr.AddrFormatError:
+                    LOG.warning('Invalid IP address: %s', out)
+                    continue
+
+                # In case we get 0.0.0.0 on a valid channel, we need to keep
+                # querying
+                if out != '0.0.0.0':
+                    return out
 
         except (processutils.ProcessExecutionError, OSError) as e:
             # Not error, because it's normal in virtual environment
