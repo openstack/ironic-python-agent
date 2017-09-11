@@ -1564,7 +1564,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         # and for any other we return a correct IP address
         def side_effect(*args, **kwargs):
             if args[0].startswith("ipmitool lan print 1"):
+                return '', 'Invalid channel 1\n'
+            elif args[0].startswith("ipmitool lan print 2"):
                 return '0.0.0.0\n', ''
+            elif args[0].startswith("ipmitool lan print 3"):
+                return 'meow', ''
             else:
                 return '192.1.2.3\n', ''
         mocked_execute.side_effect = side_effect

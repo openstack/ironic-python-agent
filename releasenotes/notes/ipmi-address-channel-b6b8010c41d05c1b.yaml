@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes incorrect assumption that a valid channel cannot follow an invalid
+    one in IPMI (`bug 1714944
+    <https://bugs.launchpad.net/ironic-python-agent/+bug/1714944>`_).
