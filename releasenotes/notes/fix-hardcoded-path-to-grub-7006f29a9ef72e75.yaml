@@ -1,0 +1,6 @@
+---
+fixes:
+  - Uses the PATH environment variable to get the grub (or grub2)
+    binary instead of assuming it is in /usr/sbin. This provides
+    flexibilty for grub to be installed in any PATH directory,
+    on a partitioned image.
