@@ -87,14 +87,14 @@ class TestImageExtension(test_base.BaseTestCase):
                     mock.call('mount', '-t', 'sysfs', 'none',
                               self.fake_dir + '/sys'),
                     mock.call(('chroot %s /bin/sh -c '
-                              '"/usr/sbin/grub-install %s"' %
+                              '"grub-install %s"' %
                                (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin'}),
+                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
-                               '"/usr/sbin/grub-mkconfig -o '
+                               '"grub-mkconfig -o '
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
-                              env_variables={'PATH': '/sbin:/bin'}),
+                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
                     mock.call('umount', self.fake_dir + '/dev',
                               attempts=3, delay_on_retry=True),
                     mock.call('umount', self.fake_dir + '/proc',
@@ -132,18 +132,18 @@ class TestImageExtension(test_base.BaseTestCase):
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
                     mock.call(('chroot %s /bin/sh -c '
-                              '"/usr/sbin/grub-install %s"' %
+                              '"grub-install %s"' %
                                (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin'}),
+                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
-                              '"/usr/sbin/grub-install %s --removable"' %
+                              '"grub-install %s --removable"' %
                                (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin'}),
+                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
-                               '"/usr/sbin/grub-mkconfig -o '
+                               '"grub-mkconfig -o '
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
-                              env_variables={'PATH': '/sbin:/bin'}),
+                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('umount', self.fake_dir + '/dev',
@@ -192,18 +192,18 @@ class TestImageExtension(test_base.BaseTestCase):
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
                     mock.call(('chroot %s /bin/sh -c '
-                              '"/usr/sbin/grub-install %s"' %
+                              '"grub-install %s"' %
                                (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin'}),
+                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
-                              '"/usr/sbin/grub-install %s --removable"' %
+                              '"grub-install %s --removable"' %
                                (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin'}),
+                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
-                               '"/usr/sbin/grub-mkconfig -o '
+                               '"grub-mkconfig -o '
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
-                              env_variables={'PATH': '/sbin:/bin'}),
+                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True)]
         mock_execute.assert_has_calls(expected)
