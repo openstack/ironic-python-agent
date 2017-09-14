@@ -108,12 +108,14 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
 
         # Add /bin to PATH variable as grub requires it to find efibootmgr
         # when running in uefi boot mode.
+        # Add /usr/sbin to PATH variable to ensure it is there as we do
+        # not use full path to grub binary anymore.
         path_variable = os.environ.get('PATH', '')
-        path_variable = '%s:/bin' % path_variable
+        path_variable = '%s:/bin:/usr/sbin' % path_variable
 
         # Install grub
         utils.execute('chroot %(path)s /bin/sh -c '
-                      '"/usr/sbin/%(bin)s-install %(dev)s"' %
+                      '"%(bin)s-install %(dev)s"' %
                       {'path': path, 'bin': binary_name, 'dev': device},
                       shell=True, env_variables={'PATH': path_variable})
         # Also run grub-install with --removable, this installs grub to the
@@ -126,13 +128,13 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
         # prevents NVRAM from being updated.
         if efi_partition:
             utils.execute('chroot %(path)s /bin/sh -c '
-                          '"/usr/sbin/%(bin)s-install %(dev)s --removable"' %
+                          '"%(bin)s-install %(dev)s --removable"' %
                           {'path': path, 'bin': binary_name, 'dev': device},
                           shell=True, env_variables={'PATH': path_variable})
 
         # Generate the grub configuration file
         utils.execute('chroot %(path)s /bin/sh -c '
-                      '"/usr/sbin/%(bin)s-mkconfig -o '
+                      '"%(bin)s-mkconfig -o '
                       '/boot/%(bin)s/grub.cfg"' %
                       {'path': path, 'bin': binary_name}, shell=True,
                       env_variables={'PATH': path_variable})
