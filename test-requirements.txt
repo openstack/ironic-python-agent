@@ -7,13 +7,13 @@ mock>=2.0.0 # BSD
 testtools>=1.4.0 # MIT
 python-subunit>=0.0.18 # Apache-2.0/BSD
 oslotest>=1.10.0 # Apache-2.0
-os-testr>=0.8.0 # Apache-2.0
-bashate>=0.2 # Apache-2.0
+os-testr>=1.0.0 # Apache-2.0
+bashate>=0.5.1 # Apache-2.0
 flake8-import-order==0.11 # LGPLv3
 
 # Doc requirements
-doc8 # Apache-2.0
+doc8>=0.6.0 # Apache-2.0
 sphinx>=1.6.2 # BSD
 sphinxcontrib-pecanwsme>=0.8.0 # Apache-2.0
-openstackdocstheme>=1.16.0 # Apache-2.0
+openstackdocstheme>=1.17.0 # Apache-2.0
 reno>=2.5.0 # Apache-2.0
