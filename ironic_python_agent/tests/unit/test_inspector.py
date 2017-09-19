@@ -59,7 +59,6 @@ class TestMisc(base.IronicAgentTest):
                                ['foobar'])
 
 
-@mock.patch.object(inspector, 'setup_ipmi_credentials', autospec=True)
 @mock.patch.object(inspector, 'call_inspector', new_callable=AcceptingFailure)
 @mock.patch.object(stevedore, 'NamedExtensionManager', autospec=True)
 class TestInspect(base.IronicAgentTest):
@@ -71,7 +70,7 @@ class TestInspect(base.IronicAgentTest):
         self.mock_ext = mock.Mock(spec=['plugin', 'name'],
                                   plugin=self.mock_collect)
 
-    def test_ok(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
+    def test_ok(self, mock_ext_mgr, mock_call):
         mock_ext_mgr.return_value = [self.mock_ext]
         mock_call.return_value = {'uuid': 'uuid1'}
 
@@ -80,9 +79,8 @@ class TestInspect(base.IronicAgentTest):
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure()
         self.assertEqual('uuid1', result)
-        mock_setup_ipmi.assert_called_once_with(mock_call.return_value)
 
-    def test_collectors_option(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
+    def test_collectors_option(self, mock_ext_mgr, mock_call):
         CONF.set_override('inspection_collectors', 'foo,bar')
         mock_ext_mgr.return_value = [
             mock.Mock(spec=['name', 'plugin'], plugin=AcceptingFailure()),
@@ -95,7 +93,7 @@ class TestInspect(base.IronicAgentTest):
             fake_ext.plugin.assert_called_with_failure()
         mock_call.assert_called_with_failure()
 
-    def test_collector_failed(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
+    def test_collector_failed(self, mock_ext_mgr, mock_call):
         mock_ext_mgr.return_value = [self.mock_ext]
         self.mock_collect.side_effect = RuntimeError('boom')
 
@@ -104,18 +102,16 @@ class TestInspect(base.IronicAgentTest):
 
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure(expect_error=True)
-        self.assertFalse(mock_setup_ipmi.called)
 
-    def test_extensions_failed(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
+    def test_extensions_failed(self, mock_ext_mgr, mock_call):
         CONF.set_override('inspection_collectors', 'foo,bar')
         mock_ext_mgr.side_effect = RuntimeError('boom')
 
         self.assertRaisesRegex(RuntimeError, 'boom', inspector.inspect)
 
         mock_call.assert_called_with_failure(expect_error=True)
-        self.assertFalse(mock_setup_ipmi.called)
 
-    def test_inspector_error(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
+    def test_inspector_error(self, mock_ext_mgr, mock_call):
         mock_call.return_value = None
         mock_ext_mgr.return_value = [self.mock_ext]
 
@@ -124,7 +120,6 @@ class TestInspect(base.IronicAgentTest):
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure()
         self.assertIsNone(result)
-        self.assertFalse(mock_setup_ipmi.called)
 
 
 @mock.patch.object(requests, 'post', autospec=True)
@@ -169,58 +164,6 @@ class TestCallInspector(base.IronicAgentTest):
                                           cert=None, verify=True,
                                           data='{"data": 42, "error": null}')
         self.assertIsNone(res)
-
-
-@mock.patch.object(utils, 'execute', autospec=True)
-class TestSetupIpmiCredentials(base.IronicAgentTest):
-    def setUp(self):
-        super(TestSetupIpmiCredentials, self).setUp()
-        self.resp = {'ipmi_username': 'user',
-                     'ipmi_password': 'pwd',
-                     'ipmi_setup_credentials': True}
-
-    def test_disabled(self, mock_call):
-        del self.resp['ipmi_setup_credentials']
-
-        inspector.setup_ipmi_credentials(self.resp)
-
-        self.assertFalse(mock_call.called)
-
-    def test_ok(self, mock_call):
-        inspector.setup_ipmi_credentials(self.resp)
-
-        expected = [
-            mock.call('ipmitool', 'user', 'set', 'name', '2', 'user'),
-            mock.call('ipmitool', 'user', 'set', 'password', '2', 'pwd'),
-            mock.call('ipmitool', 'user', 'enable', '2'),
-            mock.call('ipmitool', 'channel', 'setaccess', '1', '2',
-                      'link=on', 'ipmi=on', 'callin=on', 'privilege=4'),
-        ]
-        self.assertEqual(expected, mock_call.call_args_list)
-
-    def test_user_failed(self, mock_call):
-        mock_call.side_effect = processutils.ProcessExecutionError()
-
-        self.assertRaises(errors.InspectionError,
-                          inspector.setup_ipmi_credentials,
-                          self.resp)
-
-        mock_call.assert_called_once_with('ipmitool', 'user', 'set', 'name',
-                                          '2', 'user')
-
-    def test_password_failed(self, mock_call):
-        mock_call.side_effect = iter((None,
-                                      processutils.ProcessExecutionError))
-
-        self.assertRaises(errors.InspectionError,
-                          inspector.setup_ipmi_credentials,
-                          self.resp)
-
-        expected = [
-            mock.call('ipmitool', 'user', 'set', 'name', '2', 'user'),
-            mock.call('ipmitool', 'user', 'set', 'password', '2', 'pwd')
-        ]
-        self.assertEqual(expected, mock_call.call_args_list)
 
 
 class BaseDiscoverTest(base.IronicAgentTest):
@@ -269,10 +212,9 @@ class TestCollectDefault(BaseDiscoverTest):
 
         inspector.collect_default(self.data, self.failures)
 
-        for key in ('memory', 'interfaces', 'cpu', 'disks'):
+        for key in ('memory', 'interfaces', 'cpu', 'disks', 'bmc_address'):
             self.assertTrue(self.data['inventory'][key])
 
-        self.assertEqual('1.2.3.4', self.data['ipmi_address'])
         self.assertEqual('boot:if', self.data['boot_interface'])
         self.assertEqual(self.inventory['disks'][0].name,
                          self.data['root_disk'].name)
@@ -286,10 +228,9 @@ class TestCollectDefault(BaseDiscoverTest):
 
         inspector.collect_default(self.data, self.failures)
 
-        for key in ('memory', 'interfaces', 'cpu'):
+        for key in ('memory', 'interfaces', 'cpu', 'bmc_address'):
             self.assertTrue(self.data['inventory'][key])
 
-        self.assertEqual('1.2.3.4', self.data['ipmi_address'])
         self.assertEqual('boot:if', self.data['boot_interface'])
         self.assertNotIn('root_disk', self.data)
 
