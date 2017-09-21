@@ -183,7 +183,7 @@ How can I build a custom HardwareManager?
 Operators wishing to build their own hardware managers should reference
 the documentation available at `Hardware Managers`_.
 
-.. _Hardware Managers: https://docs.openstack.org/ironic/latest/contributor/hardware_managers.html
+.. _Hardware Managers: https://docs.openstack.org/ironic-python-agent/latest/contributor/hardware_managers.html
 
 References
 ==========
