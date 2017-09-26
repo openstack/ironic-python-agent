@@ -113,6 +113,27 @@ def list_all_block_devices(block_type='disk'):
     """
     _udev_settle()
 
+    # map device names to /dev/disk/by-path symbolic links that points to it
+
+    by_path_mapping = {}
+
+    disk_by_path_dir = '/dev/disk/by-path'
+
+    try:
+        paths = os.listdir(disk_by_path_dir)
+
+        for path in paths:
+            path = os.path.join(disk_by_path_dir, path)
+            # Turn possibly relative symbolic link into absolute
+            devname = os.path.join(disk_by_path_dir, os.readlink(path))
+            devname = os.path.abspath(devname)
+            by_path_mapping[devname] = path
+
+    except OSError as e:
+        LOG.warning("Path %(path)s is inaccessible, skipping by-path "
+                    "block devices reporting "
+                    "Error: %(error)s", {'path': disk_by_path_dir, 'error': e})
+
     columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
     report = utils.execute('lsblk', '-Pbdi', '-o{}'.format(','.join(columns)),
                            check_exit_code=[0])[0]
@@ -139,7 +160,8 @@ def list_all_block_devices(block_type='disk'):
             raise errors.BlockDeviceError(
                 '%s must be returned by lsblk.' % ', '.join(sorted(missing)))
 
-        name = '/dev/' + device['KNAME']
+        name = os.path.join('/dev', device['KNAME'])
+
         try:
             udev = pyudev.Device.from_device_file(context, name)
         # pyudev started raising another error in 0.18
@@ -167,12 +189,16 @@ def list_all_block_devices(block_type='disk'):
             LOG.warning('Could not find the SCSI address (HCTL) for '
                         'device %s. Skipping', name)
 
+        # Not all /dev entries are pointed to from /dev/disk/by-path
+        by_path_name = by_path_mapping.get(name)
+
         devices.append(BlockDevice(name=name,
                                    model=device['MODEL'],
                                    size=int(device['SIZE']),
                                    rotational=bool(int(device['ROTA'])),
                                    vendor=_get_device_info(device['KNAME'],
                                                            'block', 'vendor'),
+                                   by_path=by_path_name,
                                    **extra))
     return devices
 
@@ -201,11 +227,11 @@ class HardwareType(object):
 class BlockDevice(encoding.SerializableComparable):
     serializable_fields = ('name', 'model', 'size', 'rotational',
                            'wwn', 'serial', 'vendor', 'wwn_with_extension',
-                           'wwn_vendor_extension', 'hctl')
+                           'wwn_vendor_extension', 'hctl', 'by_path')
 
     def __init__(self, name, model, size, rotational, wwn=None, serial=None,
                  vendor=None, wwn_with_extension=None,
-                 wwn_vendor_extension=None, hctl=None):
+                 wwn_vendor_extension=None, hctl=None, by_path=None):
         self.name = name
         self.model = model
         self.size = size
@@ -216,6 +242,7 @@ class BlockDevice(encoding.SerializableComparable):
         self.wwn_with_extension = wwn_with_extension
         self.wwn_vendor_extension = wwn_vendor_extension
         self.hctl = hctl
+        self.by_path = by_path
 
 
 class NetworkInterface(encoding.SerializableComparable):

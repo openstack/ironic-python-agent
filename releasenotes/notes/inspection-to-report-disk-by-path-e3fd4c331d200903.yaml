@@ -1,0 +1,4 @@
+---
+features:
+  - The /dev/disk/by-path/XXX device name is added to the storage
+    hardware inspection report.

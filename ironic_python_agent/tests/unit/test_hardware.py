@@ -640,9 +640,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('0x1014', interfaces[0].product)
         self.assertEqual('em0', interfaces[0].biosdevname)
 
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_os_install_device(self, mocked_execute, mock_cached_node):
+    def test_get_os_install_device(self, mocked_execute, mock_cached_node,
+                                   mocked_listdir, mocked_readlink):
+        mocked_readlink.return_value = '/dev/sda'
+        mocked_listdir.return_value = ['1:0:0:0']
         mock_cached_node.return_value = None
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
@@ -651,11 +656,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             check_exit_code=[0])
         mock_cached_node.assert_called_once_with()
 
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_os_install_device_fails(self, mocked_execute,
-                                         mock_cached_node):
+                                         mock_cached_node,
+                                         mocked_listdir, mocked_readlink):
         """Fail to find device >=4GB w/o root device hints"""
+        mocked_readlink.return_value = '/dev/sda'
+        mocked_listdir.return_value = ['1:0:0:0']
         mock_cached_node.return_value = None
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
         ex = self.assertRaises(errors.DeviceNotFound,
@@ -690,7 +700,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  wwn='fake-wwn',
                                  wwn_with_extension='fake-wwnven0',
                                  wwn_vendor_extension='ven0',
-                                 serial='fake-serial'),
+                                 serial='fake-serial',
+                                 by_path='/dev/disk/by-path/1:0:0:0'),
         ]
 
         self.assertEqual(expected_device,
@@ -735,6 +746,12 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         for value in (True, 'true', 'on', 'y', 'yes'):
             self._get_os_install_device_root_device_hints(
                 {'rotational': value}, '/dev/sdb')
+
+    # TODO(etingof): enable this test once the patch below is merged
+    # https://review.openstack.org/#/c/500524/
+    def skip_test_get_os_install_device_root_device_hints_by_path(self):
+        self._get_os_install_device_root_device_hints(
+            {'by_path': '/dev/disk/by-path/1:0:0:0'}, '/dev/sdb')
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
@@ -911,13 +928,23 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         list_mock.assert_called_once_with()
 
+    @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     @mock.patch.object(pyudev.Device, 'from_device_file', autospec=False)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device(self, mocked_execute, mocked_udev,
-                                   mocked_dev_vendor, mock_listdir):
-        mock_listdir.return_value = ['1:0:0:0']
+                                   mocked_dev_vendor, mock_listdir,
+                                   mock_readlink):
+        by_path_map = {
+            '/dev/disk/by-path/1:0:0:0': '/dev/sda',
+            '/dev/disk/by-path/1:0:0:1': '/dev/sdb',
+            '/dev/disk/by-path/1:0:0:2': '/dev/sdc',
+            '/dev/disk/by-path/1:0:0:3': '/dev/sdd',
+        }
+        mock_readlink.side_effect = lambda x, m=by_path_map: m[x]
+        mock_listdir.return_value = [os.path.basename(x)
+                                     for x in sorted(by_path_map)]
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         mocked_udev.side_effect = pyudev.DeviceNotFoundError()
         mocked_dev_vendor.return_value = 'Super Vendor'
@@ -928,25 +955,29 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  size=3116853504,
                                  rotational=False,
                                  vendor='Super Vendor',
-                                 hctl='1:0:0:0'),
+                                 hctl='1:0:0:0',
+                                 by_path='/dev/disk/by-path/1:0:0:0'),
             hardware.BlockDevice(name='/dev/sdb',
                                  model='Fastable SD131 7',
                                  size=10737418240,
                                  rotational=False,
                                  vendor='Super Vendor',
-                                 hctl='1:0:0:0'),
+                                 hctl='1:0:0:0',
+                                 by_path='/dev/disk/by-path/1:0:0:1'),
             hardware.BlockDevice(name='/dev/sdc',
                                  model='NWD-BLP4-1600',
                                  size=1765517033472,
                                  rotational=False,
                                  vendor='Super Vendor',
-                                 hctl='1:0:0:0'),
+                                 hctl='1:0:0:0',
+                                 by_path='/dev/disk/by-path/1:0:0:2'),
             hardware.BlockDevice(name='/dev/sdd',
                                  model='NWD-BLP4-1600',
                                  size=1765517033472,
                                  rotational=False,
                                  vendor='Super Vendor',
-                                 hctl='1:0:0:0'),
+                                 hctl='1:0:0:0',
+                                 by_path='/dev/disk/by-path/1:0:0:3'),
         ]
 
         self.assertEqual(4, len(devices))
@@ -960,12 +991,21 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           for dev in ('sda', 'sdb', 'sdc', 'sdd')]
         mock_listdir.assert_has_calls(expected_calls)
 
+        expected_calls = [mock.call('/dev/disk/by-path/1:0:0:%d' % dev)
+                          for dev in range(4)]
+        mock_readlink.assert_has_calls(expected_calls)
+
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     @mock.patch.object(pyudev.Device, 'from_device_file', autospec=False)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_udev_17(self, mocked_execute, mocked_udev,
-                                           mocked_dev_vendor):
+                                           mocked_dev_vendor, mocked_listdir,
+                                           mocked_readlink):
         # test compatibility with pyudev < 0.18
+        mocked_readlink.return_value = '/dev/sda'
+        mocked_listdir.return_value = ['1:0:0:0']
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         mocked_udev.side_effect = OSError()
         mocked_dev_vendor.return_value = 'Super Vendor'
@@ -979,22 +1019,28 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     def test_list_all_block_device_hctl_fail(self, mocked_execute, mocked_udev,
                                              mocked_dev_vendor,
                                              mocked_listdir):
-        mocked_listdir.side_effect = (OSError, IndexError)
+        mocked_listdir.side_effect = (OSError, OSError, IndexError)
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
         mocked_dev_vendor.return_value = 'Super Vendor'
         devices = hardware.list_all_block_devices()
         self.assertEqual(2, len(devices))
-        expected_calls = [mock.call('/sys/block/%s/device/scsi_device' % dev)
-                          for dev in ('sda', 'sdb')]
-        mocked_listdir.assert_has_calls(expected_calls)
+        expected_calls = [
+            mock.call('/dev/disk/by-path'),
+            mock.call('/sys/block/sda/device/scsi_device'),
+            mock.call('/sys/block/sdb/device/scsi_device')
+        ]
+        self.assertEqual(expected_calls, mocked_listdir.call_args_list)
 
+    @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     @mock.patch.object(pyudev.Device, 'from_device_file', autospec=False)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_with_udev(self, mocked_execute, mocked_udev,
-                                             mocked_dev_vendor, mock_listdir):
-        mock_listdir.return_value = ['1:0:0:0']
+                                             mocked_dev_vendor, mocked_listdir,
+                                             mocked_readlink):
+        mocked_readlink.return_value = '/dev/sda'
+        mocked_listdir.return_value = ['1:0:0:0']
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         mocked_udev.side_effect = iter([
             {'ID_WWN': 'wwn%d' % i, 'ID_SERIAL_SHORT': 'serial%d' % i,
@@ -1057,7 +1103,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  getattr(device, attr))
         expected_calls = [mock.call('/sys/block/%s/device/scsi_device' % dev)
                           for dev in ('sda', 'sdb', 'sdc', 'sdd')]
-        mock_listdir.assert_has_calls(expected_calls)
+        mocked_listdir.assert_has_calls(expected_calls)
 
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     def test_erase_devices(self, mocked_dispatch):
@@ -1762,13 +1808,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestModuleFunctions(base.IronicAgentTest):
 
+    @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(hardware, '_get_device_info',
                        lambda x, y, z: 'FooTastic')
     @mock.patch.object(hardware, '_udev_settle', autospec=True)
     @mock.patch.object(hardware.pyudev.Device, "from_device_file",
                        autospec=False)
     def test_list_all_block_devices_success(self, mocked_fromdevfile,
-                                            mocked_udev, mocked_execute):
+                                            mocked_udev, mocked_readlink,
+                                            mocked_execute):
+        mocked_readlink.return_value = '/dev/sda'
         mocked_fromdevfile.return_value = {}
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
         result = hardware.list_all_block_devices()
