@@ -10,6 +10,7 @@ devenv/*
 cover
 .coverage
 coverage.xml
+.stestr
 .testrepository
 imagebuild/.image_cache
 imagebuild/coreos/build
