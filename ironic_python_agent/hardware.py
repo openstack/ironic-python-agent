@@ -846,9 +846,8 @@ class GenericHardwareManager(HardwareManager):
         try:
             utils.execute(*args)
         except (processutils.ProcessExecutionError, OSError) as e:
-            msg = ("Erasing block device %(dev)s failed with error %(err)s ",
-                   {'dev': block_device.name, 'err': e})
-            LOG.error(msg)
+            msg = "Erasing block device %(dev)s failed with error %(err)s"
+            LOG.error(msg, {'dev': block_device.name, 'err': e})
             return False
 
         return True
