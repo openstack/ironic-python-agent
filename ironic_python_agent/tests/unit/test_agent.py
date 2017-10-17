@@ -127,7 +127,7 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
         self.assertEqual(2.7, self.heartbeater.error_delay)
 
 
-@mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
+@mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
@@ -151,6 +151,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                                     FakeExtension())])
         self.sample_nw_iface = hardware.NetworkInterface(
             "eth9", "AA:BB:CC:DD:EE:FF", "1.2.3.4", True)
+        hardware.NODE = None
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
@@ -204,7 +205,9 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
             server_class=simple_server.WSGIServer)
         wsgi_server.serve_forever.assert_called_once_with()
         mock_wait.assert_called_once_with(mock.ANY)
-        mock_dispatch.assert_called_once_with("list_hardware_info")
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
 
     @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
@@ -252,7 +255,9 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
             self.agent.api_client.lookup_node.call_args[1]['node_uuid'])
 
         mock_wait.assert_called_once_with(mock.ANY)
-        mock_dispatch.assert_called_once_with("list_hardware_info")
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
 
     @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
@@ -419,7 +424,9 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         mock_sleep.assert_called_once_with(10)
         self.assertTrue(mock_load_managers.called)
         self.assertTrue(mock_wait.called)
-        mock_dispatch.assert_called_once_with('list_hardware_info')
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
 
     def test_async_command_success(self):
         result = base.AsyncCommandResult('foo_command', {'fail': False},
@@ -507,7 +514,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         mock_log.warning.assert_called_once()
 
 
-@mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
+@mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 
@@ -563,7 +570,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 
 
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
-@mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
+@mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 @mock.patch.object(socket, 'gethostbyname', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
