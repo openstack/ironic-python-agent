@@ -1,6 +1,5 @@
 ---
 fixes:
-  - Uses the PATH environment variable to get the grub (or grub2)
-    binary instead of assuming it is in /usr/sbin. This provides
-    flexibilty for grub to be installed in any PATH directory,
-    on a partitioned image.
+  - Uses the ``PATH`` environment variable to get the grub2 binary location
+    instead of assuming it to be ``/usr/sbin``. This fixes installing a boot
+    loader when the grub2 binary is located somewhere else.
