@@ -394,7 +394,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     def test_run_with_sleep(self, mock_make_server, mock_dispatch,
-                            mock_load_managers, mock_sleep, mock_wait):
+                            mock_wait, mock_sleep, mock_load_managers):
         CONF.set_override('inspection_callback_url', '')
         wsgi_server = mock_make_server.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
