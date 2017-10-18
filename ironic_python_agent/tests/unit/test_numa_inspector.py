@@ -16,14 +16,14 @@
 import os
 
 import mock
-from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent import numa_inspector as numa_insp
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
-class TestCollectNumaTopologyInfo(test_base.BaseTestCase):
+class TestCollectNumaTopologyInfo(base.IronicAgentTest):
     def setUp(self):
         super(TestCollectNumaTopologyInfo, self).setUp()
         self.data = {}
@@ -115,7 +115,7 @@ class TestCollectNumaTopologyInfo(test_base.BaseTestCase):
         self.assertFalse(self.failures)
 
 
-class TestGetNumaTopologyInfo(test_base.BaseTestCase):
+class TestGetNumaTopologyInfo(base.IronicAgentTest):
     def setUp(self):
         super(TestGetNumaTopologyInfo, self).setUp()
         self.data = {}

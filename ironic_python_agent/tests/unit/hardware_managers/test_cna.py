@@ -16,16 +16,16 @@ import os
 
 import mock
 from oslo_config import cfg
-from oslotest import base as test_base
 
 from ironic_python_agent import hardware
 from ironic_python_agent.hardware_managers import cna
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
 
 
-class TestIntelCnaHardwareManager(test_base.BaseTestCase):
+class TestIntelCnaHardwareManager(base.IronicAgentTest):
     def setUp(self):
         super(TestIntelCnaHardwareManager, self).setUp()
         self.hardware = cna.IntelCnaHardwareManager()

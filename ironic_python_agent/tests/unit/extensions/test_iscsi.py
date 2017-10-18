@@ -17,11 +17,11 @@ import mock
 
 from ironic_lib import disk_utils
 from oslo_concurrency import processutils
-from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import iscsi
 from ironic_python_agent import hardware
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
@@ -35,7 +35,7 @@ class FakeAgent(object):
 @mock.patch.object(utils, 'execute', autospec=True)
 @mock.patch.object(iscsi.rtslib_fb, 'RTSRoot',
                    mock.Mock(side_effect=iscsi.rtslib_fb.RTSLibError()))
-class TestISCSIExtensionTgt(test_base.BaseTestCase):
+class TestISCSIExtensionTgt(base.IronicAgentTest):
 
     def setUp(self):
         super(TestISCSIExtensionTgt, self).setUp()
@@ -151,7 +151,7 @@ _ORIG_UTILS = iscsi.rtslib_fb.utils
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
 # Don't mock the utils module, as it contains exceptions
 @mock.patch.object(iscsi, 'rtslib_fb', utils=_ORIG_UTILS, autospec=True)
-class TestISCSIExtensionLIO(test_base.BaseTestCase):
+class TestISCSIExtensionLIO(base.IronicAgentTest):
 
     def setUp(self):
         super(TestISCSIExtensionLIO, self).setUp()
@@ -283,7 +283,7 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
 
 
 @mock.patch.object(iscsi.rtslib_fb, 'RTSRoot', autospec=True)
-class TestISCSIExtensionCleanUp(test_base.BaseTestCase):
+class TestISCSIExtensionCleanUp(base.IronicAgentTest):
 
     def setUp(self):
         super(TestISCSIExtensionCleanUp, self).setUp()

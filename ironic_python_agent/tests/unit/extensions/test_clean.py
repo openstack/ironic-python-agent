@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import mock
-from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import clean
+from ironic_python_agent.tests.unit import base
 
 
 @mock.patch('ironic_python_agent.hardware.cache_node', autospec=True)
-class TestCleanExtension(test_base.BaseTestCase):
+class TestCleanExtension(base.IronicAgentTest):
     def setUp(self):
         super(TestCleanExtension, self).setUp()
         self.agent_extension = clean.CleanExtension()
@@ -245,7 +245,7 @@ class TestCleanExtension(test_base.BaseTestCase):
 
 @mock.patch('ironic_python_agent.hardware.dispatch_to_all_managers',
             autospec=True)
-class TestCleanVersion(test_base.BaseTestCase):
+class TestCleanVersion(base.IronicAgentTest):
     version = {'generic': '1', 'specific': '1'}
 
     def test__get_current_clean_version(self, mock_dispatch):

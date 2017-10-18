@@ -15,17 +15,17 @@
 import os
 
 import mock
-from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent.hardware_managers import mlnx
+from ironic_python_agent.tests.unit import base
 
 IB_ADDRESS = 'a0:00:00:27:fe:80:00:00:00:00:00:00:7c:fe:90:03:00:29:26:52'
 CLIENT_ID = 'ff:00:00:00:00:00:02:00:00:02:c9:00:7c:fe:90:03:00:29:26:52'
 
 
-class MlnxHardwareManager(test_base.BaseTestCase):
+class MlnxHardwareManager(base.IronicAgentTest):
     def setUp(self):
         super(MlnxHardwareManager, self).setUp()
         self.hardware = mlnx.MellanoxDeviceHardwareManager()

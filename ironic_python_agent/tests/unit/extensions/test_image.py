@@ -19,12 +19,12 @@ import tempfile
 
 import mock
 from oslo_concurrency import processutils
-from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import image
 from ironic_python_agent.extensions import iscsi
 from ironic_python_agent import hardware
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
@@ -32,7 +32,7 @@ from ironic_python_agent import utils
 @mock.patch.object(utils, 'execute', autospec=True)
 @mock.patch.object(tempfile, 'mkdtemp', lambda *_: '/tmp/fake-dir')
 @mock.patch.object(shutil, 'rmtree', lambda *_: None)
-class TestImageExtension(test_base.BaseTestCase):
+class TestImageExtension(base.IronicAgentTest):
 
     def setUp(self):
         super(TestImageExtension, self).setUp()
