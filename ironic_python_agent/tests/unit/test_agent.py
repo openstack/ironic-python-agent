@@ -370,11 +370,14 @@ class TestBaseAgent(test_base.BaseTestCase):
     @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
                 autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent, '_wait_for_interface',
+                       autospec=True)
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
     @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
     def test_run_with_sleep(self, mock_check_for_iscsi, mock_list_hardware,
-                            mock_make_server, mock_sleep, mock_cna):
+                            mock_make_server, mock_wait, mock_sleep,
+                            mock_cna):
         CONF.set_override('inspection_callback_url', '', enforce_type=True)
         wsgi_server = mock_make_server.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
