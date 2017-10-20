@@ -2,9 +2,11 @@
 
 set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
-source ${WORKDIR}/tc-mirror.sh
-BUILDDIR="$WORKDIR/tinyipabuild"
 FINALDIR="$WORKDIR/tinyipafinal"
+DST_DIR=$FINALDIR
+source ${WORKDIR}/common.sh
+
+BUILDDIR="$WORKDIR/tinyipabuild"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-true}
 TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
 ENABLE_SSH=${ENABLE_SSH:-false}
@@ -13,18 +15,7 @@ PYOPTIMIZE_TINYIPA=${PYOPTIMIZE_TINYIPA:-true}
 TINYIPA_REQUIRE_BIOSDEVNAME=${TINYIPA_REQUIRE_BIOSDEVNAME:-false}
 TINYIPA_REQUIRE_IPMITOOL=${TINYIPA_REQUIRE_IPMITOOL:-true}
 
-TC=1001
-STAFF=50
-
-CHROOT_PATH="/tmp/overides:/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-CHROOT_CMD="sudo chroot $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
-TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
-
 echo "Finalising tinyipa:"
-
-# Find a working TC mirror if none is explicitly provided
-choose_tc_mirror
-
 
 if $ENABLE_SSH ; then
     echo "Validating location of public SSH key"
@@ -61,15 +52,9 @@ mkdir "$FINALDIR"
 # Download get-pip into ramdisk
 ( cd "$FINALDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
 
-#####################################
+
 # Setup Final Dir
-#####################################
-
-sudo cp $FINALDIR/etc/resolv.conf $FINALDIR/etc/resolv.conf.old
-sudo cp /etc/resolv.conf $FINALDIR/etc/resolv.conf
-
-sudo cp -a $FINALDIR/opt/tcemirror $FINALDIR/opt/tcemirror.old
-sudo sh -c "echo $TINYCORE_MIRROR_URL > $FINALDIR/opt/tcemirror"
+setup_tce "$DST_DIR"
 
 # Modify ldconfig for x86-64
 $CHROOT_CMD cp /sbin/ldconfig /sbin/ldconfigold
@@ -80,12 +65,6 @@ $CHROOT_CMD chmod u+x /sbin/ldconfig
 # Copy python wheels from build to final dir
 cp -Rp "$BUILDDIR/tmp/wheels" "$FINALDIR/tmp/wheelhouse"
 
-mkdir -p $FINALDIR/tmp/builtin/optional
-$CHROOT_CMD chown -R tc.staff /tmp/builtin
-$CHROOT_CMD chmod -R a+w /tmp/builtin
-$CHROOT_CMD ln -sf /tmp/builtin /etc/sysconfig/tcedir
-echo "tc" | $CHROOT_CMD tee -a /etc/sysconfig/tcuser
-
 cp $WORKDIR/build_files/tgt.* $FINALDIR/tmp/builtin/optional
 cp $WORKDIR/build_files/qemu-utils.* $FINALDIR/tmp/builtin/optional
 if $TINYIPA_REQUIRE_BIOSDEVNAME; then
@@ -94,9 +73,6 @@ fi
 if $TINYIPA_REQUIRE_IPMITOOL; then
     cp $WORKDIR/build_files/ipmitool.* $FINALDIR/tmp/builtin/optional
 fi
-
-# Mount /proc for chroot commands
-sudo mount --bind /proc $FINALDIR/proc
 
 mkdir $FINALDIR/tmp/overides
 cp $WORKDIR/build_files/fakeuname $FINALDIR/tmp/overides/uname
@@ -149,14 +125,7 @@ if $BUILD_AND_INSTALL_TINYIPA ; then
 fi
 
 # Unmount /proc and clean up everything
-sudo umount $FINALDIR/proc
-sudo rm -rf $FINALDIR/tmp/builtin
-sudo rm -rf $FINALDIR/tmp/tcloop
-sudo rm -rf $FINALDIR/usr/local/tce.installed
-sudo mv $FINALDIR/opt/tcemirror.old $FINALDIR/opt/tcemirror
-sudo mv $FINALDIR/etc/resolv.conf.old $FINALDIR/etc/resolv.conf
-sudo rm $FINALDIR/etc/sysconfig/tcuser
-sudo rm $FINALDIR/etc/sysconfig/tcedir
+cleanup_tce "$DST_DIR"
 
 # Copy bootlocal.sh to opt
 sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
