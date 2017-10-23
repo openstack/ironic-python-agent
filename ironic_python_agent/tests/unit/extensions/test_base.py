@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import mock
-from oslotest import base as test_base
 from stevedore import extension
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
+from ironic_python_agent.tests.unit import base as test_base
 
 
 def _fake_validator(ext, **kwargs):
@@ -60,7 +60,7 @@ class FakeAgent(base.ExecuteCommandMixin):
                                  FakeExtension())])
 
 
-class TestExecuteCommandMixin(test_base.BaseTestCase):
+class TestExecuteCommandMixin(test_base.IronicAgentTest):
     def setUp(self):
         super(TestExecuteCommandMixin, self).setUp()
         self.agent = FakeAgent()
@@ -117,7 +117,7 @@ class TestExecuteCommandMixin(test_base.BaseTestCase):
         self.assertEqual(exc, result.command_error)
 
 
-class TestExtensionDecorators(test_base.BaseTestCase):
+class TestExtensionDecorators(test_base.IronicAgentTest):
     def setUp(self):
         super(TestExtensionDecorators, self).setUp()
         self.agent = FakeAgent()

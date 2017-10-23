@@ -16,10 +16,10 @@ import os
 
 import mock
 from oslo_concurrency import processutils
-from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import standby
+from ironic_python_agent.tests.unit import base
 
 
 def _build_fake_image_info():
@@ -53,7 +53,7 @@ def _build_fake_partition_image_info():
         'deploy_boot_mode': 'bios'}
 
 
-class TestStandbyExtension(test_base.BaseTestCase):
+class TestStandbyExtension(base.IronicAgentTest):
     def setUp(self):
         super(TestStandbyExtension, self).setUp()
         self.agent_extension = standby.StandbyExtension()
@@ -872,7 +872,7 @@ class TestStandbyExtension(test_base.BaseTestCase):
         self.assertEqual(expected_msg, result_msg)
 
 
-class TestImageDownload(test_base.BaseTestCase):
+class TestImageDownload(base.IronicAgentTest):
 
     @mock.patch('hashlib.md5', autospec=True)
     @mock.patch('requests.get', autospec=True)
