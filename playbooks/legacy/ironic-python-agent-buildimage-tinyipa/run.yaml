@@ -82,6 +82,7 @@
                   (cd imagebuild/tinyipa && make)
                   mv imagebuild/tinyipa/tinyipa*.tar.gz* UPLOAD_TAR
                   mv imagebuild/tinyipa/tinyipa*.* UPLOAD_RAW
+                  mv imagebuild/tinyipa/tiny-instance-uec.tar.gz UPLOAD_RAW
                   # NOTE(sambetts) Must clean up chroot directories before
                   # publisher rsync command tries and fails to read them
                   (cd imagebuild/tinyipa && make clean)
