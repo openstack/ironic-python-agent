@@ -3,6 +3,14 @@
 WORKDIR=$(readlink -f $0 | xargs dirname)
 source ${WORKDIR}/tc-mirror.sh
 
+# Allow an extension to be added to the generated files by specifying
+# $BRANCH_PATH e.g. export BRANCH_PATH=master results in tinyipa-master.gz etc
+BRANCH_EXT=''
+if [ -n "$BRANCH_PATH" ]; then
+    BRANCH_EXT="-$BRANCH_PATH"
+fi
+export BRANCH_EXT
+
 TC=1001
 STAFF=50
 

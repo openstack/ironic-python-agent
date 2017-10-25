@@ -148,30 +148,23 @@ fi
 # Delete unnecessary Babel .dat files
 find $FINALDIR -path "*babel/locale-data/*.dat" -not -path "*en_US*" | sudo xargs --no-run-if-empty rm
 
-# Allow an extension to be added to the generated files by specifying
-# $BRANCH_PATH e.g. export BRANCH_PATH=master results in tinyipa-master.gz etc
-branch_ext=''
-if [ -n "$BRANCH_PATH" ]; then
-    branch_ext="-$BRANCH_PATH"
-fi
-
 # Rebuild build directory into gz file
-( cd "$FINALDIR" && sudo find | sudo cpio -o -H newc | gzip -9 > "$WORKDIR/tinyipa${branch_ext}.gz" )
+( cd "$FINALDIR" && sudo find | sudo cpio -o -H newc | gzip -9 > "$WORKDIR/tinyipa${BRANCH_EXT}.gz" )
 
 # Copy vmlinuz to new name
-cp "$WORKDIR/build_files/vmlinuz64" "$WORKDIR/tinyipa${branch_ext}.vmlinuz"
+cp "$WORKDIR/build_files/vmlinuz64" "$WORKDIR/tinyipa${BRANCH_EXT}.vmlinuz"
 
 # Create tar.gz containing tinyipa files
-tar czf tinyipa${branch_ext}.tar.gz tinyipa${branch_ext}.gz tinyipa${branch_ext}.vmlinuz
+tar czf tinyipa${BRANCH_EXT}.tar.gz tinyipa${BRANCH_EXT}.gz tinyipa${BRANCH_EXT}.vmlinuz
 
 # Create sha256 files which will be uploaded by the publish jobs along with
 # the tinyipa ones in order to provide a way to verify the integrity of the tinyipa
 # builds.
-for f in tinyipa${branch_ext}.{gz,tar.gz,vmlinuz}; do
+for f in tinyipa${BRANCH_EXT}.{gz,tar.gz,vmlinuz}; do
     sha256sum $f > $f.sha256
 done
 
 # Output files with sizes created by this script
 echo "Produced files:"
-du -h tinyipa${branch_ext}.gz tinyipa${branch_ext}.tar.gz tinyipa${branch_ext}.vmlinuz
-echo "Checksums: " tinyipa${branch_ext}.*sha256
+du -h tinyipa${BRANCH_EXT}.gz tinyipa${BRANCH_EXT}.tar.gz tinyipa${BRANCH_EXT}.vmlinuz
+echo "Checksums: " tinyipa${BRANCH_EXT}.*sha256

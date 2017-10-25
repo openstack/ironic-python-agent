@@ -31,11 +31,11 @@ clean_build:
 	rm -f build_files/vmlinuz64
 	rm -f build_files/*.tcz
 	rm -f build_files/*.tcz.*
+	rm -f tiny-instance-part*.img
+	rm -f tiny-instance-uec*.tar.gz
 
 clean_iso:
 	rm -rf newiso
 	rm -f build_files/syslinux-4.06.tar.gz
 	rm -rf build_files/syslinux-4.06
 	rm -f tinyipa.iso
-	rm -f tiny-instance-part.img
-	rm -f tiny-instance-uec.tar.gz
