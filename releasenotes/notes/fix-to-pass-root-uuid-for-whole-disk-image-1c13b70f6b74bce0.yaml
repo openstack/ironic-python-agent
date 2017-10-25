@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes an issue wherein IPA does not return ``root_uuid`` as part of
+    command status when provisioning of whole disk image is performed
+    using ``agent`` deploy interface from ironic. See `bug 1713916
+    <https://bugs.launchpad.net/ironic/+bug/1713916>`_ for details.

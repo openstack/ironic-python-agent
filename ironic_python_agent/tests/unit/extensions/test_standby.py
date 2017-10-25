@@ -29,7 +29,8 @@ def _build_fake_image_info():
         'urls': [
             'http://example.org',
         ],
-        'checksum': 'abc123'
+        'checksum': 'abc123',
+        'image_type': 'whole-disk-image',
     }
 
 
@@ -374,6 +375,8 @@ class TestStandbyExtension(base.IronicAgentTest):
                           standby._verify_image,
                           image_info, image_location, checksum)
 
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                lambda dev: 'ROOT')
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._write_image',
@@ -395,8 +398,9 @@ class TestStandbyExtension(base.IronicAgentTest):
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertIn('result', async_result.command_result)
-        cmd_result = ('cache_image: image ({}) cached to device '
-                      '{} ').format(image_info['id'], 'manager')
+        cmd_result = ('cache_image: image ({}) cached to device {} '
+                      'root_uuid={}').format(image_info['id'], 'manager',
+                                             'ROOT')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
@@ -425,6 +429,8 @@ class TestStandbyExtension(base.IronicAgentTest):
                                              'root_uuid')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                lambda dev: 'ROOT')
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._write_image',
@@ -449,10 +455,12 @@ class TestStandbyExtension(base.IronicAgentTest):
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertIn('result', async_result.command_result)
-        cmd_result = ('cache_image: image ({}) cached to device '
-                      '{} ').format(image_info['id'], 'manager')
+        cmd_result = ('cache_image: image ({}) cached to device {} '
+                      'root_uuid=ROOT').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                lambda dev: 'ROOT')
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._write_image',
@@ -475,10 +483,12 @@ class TestStandbyExtension(base.IronicAgentTest):
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertIn('result', async_result.command_result)
-        cmd_result = ('cache_image: image ({}) already present on device '
-                      '{} ').format(image_info['id'], 'manager')
+        cmd_result = ('cache_image: image ({}) already present on device {} '
+                      'root_uuid=ROOT').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                lambda dev: 'ROOT')
     @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
@@ -513,8 +523,8 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertIn('result', async_result.command_result)
-        cmd_result = ('prepare_image: image ({}) written to device '
-                      '{} ').format(image_info['id'], 'manager')
+        cmd_result = ('prepare_image: image ({}) written to device {} '
+                      'root_uuid=ROOT').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
     @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
@@ -575,6 +585,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             image_info['id'], 'manager', 'root_uuid')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                lambda dev: 'ROOT')
     @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
@@ -607,10 +619,12 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertEqual(0, configdrive_copy_mock.call_count)
         self.assertEqual('SUCCEEDED', async_result.command_status)
         self.assertIn('result', async_result.command_result)
-        cmd_result = ('prepare_image: image ({}) written to device '
-                      '{} ').format(image_info['id'], 'manager')
+        cmd_result = ('prepare_image: image ({}) written to device {} '
+                      'root_uuid=ROOT').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                lambda dev: 'ROOT')
     @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
@@ -819,15 +833,17 @@ class TestStandbyExtension(base.IronicAgentTest):
         # Assert write was only called once and failed!
         file_mock.write.assert_called_once_with('some')
 
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                lambda dev: 'ROOT')
     def test__message_format_whole_disk(self):
         image_info = _build_fake_image_info()
-        msg = 'image ({}) already present on device {}'
+        msg = 'image ({}) already present on device {} '
         device = '/dev/fake'
         partition_uuids = {}
         result_msg = standby._message_format(msg, image_info,
                                              device, partition_uuids)
         expected_msg = ('image (fake_id) already present on device '
-                        '/dev/fake')
+                        '/dev/fake root_uuid=ROOT')
         self.assertEqual(expected_msg, result_msg)
 
     def test__message_format_partition_bios(self):
