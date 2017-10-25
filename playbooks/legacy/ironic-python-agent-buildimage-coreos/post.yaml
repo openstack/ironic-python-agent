@@ -1,0 +1,47 @@
+- hosts: primary
+  tasks:
+
+    - name: Ensure artifacts directory exists
+      file:
+        path: '{{ zuul.executor.work_root }}/artifacts'
+        state: directory
+      delegate_to: localhost
+
+    - name: Copy files from {{ ansible_user_dir }}/workspace/ on node
+      synchronize:
+        src: '{{ ansible_user_dir }}/workspace/'
+        dest: '{{ zuul.executor.work_root }}/artifacts/coreos/files/'
+        mode: pull
+        copy_links: true
+        verify_host: true
+        rsync_opts:
+          - --include=/UPLOAD_RAW/*
+          - --include=*/
+          - --exclude=*
+          - --prune-empty-dirs
+
+    - name: Copy files from {{ ansible_user_dir }}/workspace/ on node
+      synchronize:
+        src: '{{ ansible_user_dir }}/workspace/'
+        dest: '{{ zuul.executor.work_root }}/artifacts/coreos/'
+        mode: pull
+        copy_links: true
+        verify_host: true
+        rsync_opts:
+          - --include=/UPLOAD_TAR/*
+          - --include=*/
+          - --exclude=*
+          - --prune-empty-dirs
+
+    - name: Copy files from {{ ansible_user_dir }}/workspace/ on node
+      synchronize:
+        src: '{{ ansible_user_dir }}/workspace/'
+        dest: '{{ zuul.executor.log_root }}'
+        mode: pull
+        copy_links: true
+        verify_host: true
+        rsync_opts:
+          - --include=/testrepository.subunit.gz
+          - --include=*/
+          - --exclude=*
+          - --prune-empty-dirs
