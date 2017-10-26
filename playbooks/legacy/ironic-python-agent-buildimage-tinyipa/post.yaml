@@ -3,7 +3,7 @@
 
     - name: Ensure artifacts directory exists
       file:
-        path: '{{ zuul.executor.work_root }}/artifacts'
+        path: '{{ zuul.executor.work_root }}/artifacts/tinyipa/files'
         state: directory
       delegate_to: localhost
 
