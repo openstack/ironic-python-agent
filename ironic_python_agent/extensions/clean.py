@@ -180,9 +180,9 @@ def _check_clean_version(clean_version=None):
         return
     agent_version = _get_current_clean_version()
     if clean_version != agent_version:
-        LOG.warning('Mismatched clean versions. Agent version: %(agent), '
-                    'node version: %(node)', {'agent': agent_version,
-                                              'node': clean_version})
+        LOG.warning('Mismatched clean versions. Agent version: %(agent)s, '
+                    'node version: %(node)s', {'agent': agent_version,
+                                               'node': clean_version})
         raise errors.CleanVersionMismatch(agent_version=agent_version,
                                           node_version=clean_version)
 
