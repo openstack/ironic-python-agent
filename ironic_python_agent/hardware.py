@@ -392,6 +392,7 @@ class HardwareManager(object):
         if not CONF.disk_wait_attempts:
             return
 
+        max_waits = CONF.disk_wait_attempts - 1
         for attempt in range(CONF.disk_wait_attempts):
             try:
                 self.get_os_install_device()
@@ -400,13 +401,16 @@ class HardwareManager(object):
                           'attempt %d of %d', attempt + 1,
                           CONF.disk_wait_attempts)
 
-                if attempt < CONF.disk_wait_attempts - 1:
+                if attempt < max_waits:
                     time.sleep(CONF.disk_wait_delay)
             else:
                 break
         else:
-            LOG.warning('The root device was not detected in %d seconds',
-                        CONF.disk_wait_delay * CONF.disk_wait_attempts)
+            if max_waits:
+                LOG.warning('The root device was not detected in %d seconds',
+                            CONF.disk_wait_delay * max_waits)
+            else:
+                LOG.warning('The root device was not detected')
 
     def list_hardware_info(self):
         """Return full hardware inventory as a serializable dict.

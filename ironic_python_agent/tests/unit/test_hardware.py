@@ -1680,12 +1680,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(2, mocked_get_inst_dev.call_count)
         mocked_sleep.assert_called_once_with(CONF.disk_wait_delay)
 
+    @mock.patch.object(hardware, 'LOG', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        'get_os_install_device', autospec=True)
     @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
     def test_evaluate_hw_no_wait_for_disks(
-            self, mocked_sleep, mocked_check_for_iscsi, mocked_get_inst_dev):
+            self, mocked_sleep, mocked_check_for_iscsi, mocked_get_inst_dev,
+            mocked_log):
         CONF.set_override('disk_wait_attempts', '0')
 
         result = self.hardware.evaluate_hardware_support()
@@ -1694,13 +1696,15 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(hardware.HardwareSupport.GENERIC, result)
         self.assertFalse(mocked_get_inst_dev.called)
         self.assertFalse(mocked_sleep.called)
+        self.assertFalse(mocked_log.called)
 
+    @mock.patch.object(hardware, 'LOG', autospec=True)
     @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch.object(hardware.GenericHardwareManager,
                        'get_os_install_device', autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
     def test_evaluate_hw_waits_for_disks_nonconfigured(
-            self, mocked_sleep, mocked_get_inst_dev):
+            self, mocked_sleep, mocked_get_inst_dev, mocked_log):
         mocked_get_inst_dev.side_effect = [
             errors.DeviceNotFound('boom'),
             errors.DeviceNotFound('boom'),
@@ -1722,18 +1726,21 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(10, mocked_get_inst_dev.call_count)
         expected_calls = [mock.call(CONF.disk_wait_delay)] * 9
         mocked_sleep.assert_has_calls(expected_calls)
+        mocked_log.warning.assert_called_once_with(
+            'The root device was not detected in %d seconds',
+            CONF.disk_wait_delay * 9)
 
+    @mock.patch.object(hardware, 'LOG', autospec=True)
     @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch.object(hardware.GenericHardwareManager,
                        'get_os_install_device', autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
     def test_evaluate_hw_waits_for_disks_configured(self, mocked_sleep,
-                                                    mocked_get_inst_dev):
-        CONF.set_override('disk_wait_attempts', '2')
+                                                    mocked_get_inst_dev,
+                                                    mocked_log):
+        CONF.set_override('disk_wait_attempts', '1')
 
         mocked_get_inst_dev.side_effect = [
-            errors.DeviceNotFound('boom'),
-            errors.DeviceNotFound('boom'),
             errors.DeviceNotFound('boom'),
             errors.DeviceNotFound('boom'),
             None
@@ -1742,9 +1749,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.evaluate_hardware_support()
 
         mocked_get_inst_dev.assert_called_with(mock.ANY)
-        self.assertEqual(2, mocked_get_inst_dev.call_count)
-        expected_calls = [mock.call(CONF.disk_wait_delay)] * 1
-        mocked_sleep.assert_has_calls(expected_calls)
+        self.assertEqual(1, mocked_get_inst_dev.call_count)
+        self.assertFalse(mocked_sleep.called)
+        mocked_log.warning.assert_called_once_with(
+            'The root device was not detected')
 
     @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch.object(hardware.GenericHardwareManager,
