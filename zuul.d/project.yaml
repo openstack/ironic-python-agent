@@ -2,205 +2,33 @@
     name: openstack/ironic-python-agent
     check:
       jobs:
-        - ironic-python-agent-tox-func:
-            voting: false
-        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-coreos-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src
+        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-coreos-src
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src
+        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src
+        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src
+        # Non-voting jobs
         - ipa-tempest-dsvm-ironic-inspector-src:
             voting: false
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+        - ironic-python-agent-tox-func:
+            voting: false
     gate:
       jobs:
-        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-coreos-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src
+        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-coreos-src
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src
+        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src
+        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src
     experimental:
       jobs:
-        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa256-src:
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
-        - ipa-tempest-dsvm-partition-pxe_ipmitool-tinyipa-python3:
-            voting: false
-            branches: ^(?!stable/(newton|ocata)).*$
-            irrelevant-files:
-              - ^(test-|)requirements.txt$
-              - ^.*\.rst$
-              - ^doc/.*$
-              - ^ironic_python_agent/tests/.*$
-              - ^releasenotes/.*$
-              - ^setup.cfg$
-              - ^tools/.*$
-              - ^tox.ini$
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa256-src
+        - ipa-tempest-dsvm-partition-pxe_ipmitool-tinyipa-python3
     post:
       jobs:
         - ironic-python-agent-buildimage-coreos
