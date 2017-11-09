@@ -20,9 +20,13 @@ import subprocess
 import ironic_lib
 import mock
 from oslo_concurrency import processutils
+from oslo_config import cfg
+from oslo_config import fixture as config_fixture
 from oslotest import base as test_base
 
 from ironic_python_agent import utils
+
+CONF = cfg.CONF
 
 
 class IronicAgentTest(test_base.BaseTestCase):
@@ -40,6 +44,7 @@ class IronicAgentTest(test_base.BaseTestCase):
 
         If the mock is called, an exception is raised to warn the tester.
         """
+        self._set_config()
         # NOTE(bigjools): Not using a decorator on tests because I don't
         # want to force every test method to accept a new arg. Instead, they
         # can override or examine this self._exec_patch Mock as needed.
@@ -58,3 +63,16 @@ class IronicAgentTest(test_base.BaseTestCase):
             self.patch(subprocess, 'check_call', self._exec_patch)
             self.patch(subprocess, 'check_output', self._exec_patch)
             self.patch(utils, 'execute', self._exec_patch)
+
+    def _set_config(self):
+        self.cfg_fixture = self.useFixture(config_fixture.Config(CONF))
+
+    def config(self, **kw):
+        """Override config options for a test."""
+        self.cfg_fixture.config(**kw)
+
+    def set_defaults(self, **kw):
+        """Set default values of config options."""
+        group = kw.pop('group', None)
+        for o, v in kw.items():
+            self.cfg_fixture.set_default(o, v, group=group)
