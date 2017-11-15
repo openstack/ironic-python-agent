@@ -154,9 +154,17 @@ def _message_format(msg, image_info, device, partition_uuids):
             result_msg = msg + 'root_uuid={}'
             message = result_msg.format(image_info['id'], device, root_uuid)
     else:
-        root_uuid = disk_utils.get_disk_identifier(device)
-        result_msg = msg + 'root_uuid={}'
-        message = result_msg.format(image_info['id'], device, root_uuid)
+        try:
+            # NOTE(TheJulia): ironic-lib disk_utils.get_disk_identifier
+            # can raise OSError if hexdump is not found.
+            root_uuid = disk_utils.get_disk_identifier(device)
+            result_msg = msg + 'root_uuid={}'
+            message = result_msg.format(image_info['id'], device, root_uuid)
+        except OSError as e:
+            LOG.warning('Failed to call get_disk_identifier: '
+                        'Unable to obtain the root_uuid parameter: '
+                        'The hexdump tool may be missing in IPA: %s', e)
+            message = result_msg.format(image_info['id'], device)
     return message
 
 

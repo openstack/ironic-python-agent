@@ -887,6 +887,21 @@ class TestStandbyExtension(base.IronicAgentTest):
                         'efi_system_partition_uuid=efi_id')
         self.assertEqual(expected_msg, result_msg)
 
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                autospec=True)
+    def test__message_format_whole_disk_missing_oserror(self,
+                                                        ident_mock):
+        ident_mock.side_effect = OSError
+        image_info = _build_fake_image_info()
+        msg = 'image ({}) already present on device {}'
+        device = '/dev/fake'
+        partition_uuids = {}
+        result_msg = standby._message_format(msg, image_info,
+                                             device, partition_uuids)
+        expected_msg = ('image (fake_id) already present on device '
+                        '/dev/fake')
+        self.assertEqual(expected_msg, result_msg)
+
 
 class TestImageDownload(base.IronicAgentTest):
 
