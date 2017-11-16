@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fixes the issue where link-local IP addresses were sometimes used as part
+    of the callback URL given to ironic. The routable address is used instead.
+    See `bug 1732692 <https://bugs.launchpad.net/ironic-python-agent/+bug/1732692>`_
+    for more details.

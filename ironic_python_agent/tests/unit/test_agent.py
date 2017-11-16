@@ -504,6 +504,14 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         source = self.agent._get_route_source('XXX')
         self.assertEqual('1:2::3:4', source)
 
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_route_source_ipv6_linklocal(self, mock_execute):
+        mock_execute.return_value = (
+            'XXX src fe80::1234:1234:1234:1234 metric XXX\n    cache', None)
+
+        source = self.agent._get_route_source('XXX')
+        self.assertIsNone(source)
+
     @mock.patch.object(agent, 'LOG', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_route_source_indexerror(self, mock_execute, mock_log):
