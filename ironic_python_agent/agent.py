@@ -21,6 +21,7 @@ import threading
 import time
 from wsgiref import simple_server
 
+import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -214,7 +215,12 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             return
 
         try:
-            return out.strip().split('\n')[0].split('src')[1].split()[0]
+            source = out.strip().split('\n')[0].split('src')[1].split()[0]
+            if netaddr.IPAddress(source).is_link_local():
+                LOG.info('Ignoring link-local source to %(dest)s: %(rec)s',
+                         {'dest': dest, 'rec': out})
+                return
+            return source
         except IndexError:
             LOG.warning('No route to host %(dest)s, route record: %(rec)s',
                         {'dest': dest, 'rec': out})
