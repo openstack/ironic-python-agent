@@ -208,6 +208,36 @@ class TestImageExtension(base.IronicAgentTest):
                               attempts=3, delay_on_retry=True)]
         mock_execute.assert_has_calls(expected)
 
+    @mock.patch.object(os, 'environ', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    @mock.patch.object(image, '_get_partition', autospec=True)
+    def test__install_grub2_uefi_mount_fails(
+            self, mock_get_part_uuid, mkdir_mock, environ_mock, mock_execute,
+            mock_dispatch):
+        mock_get_part_uuid.side_effect = [self.fake_root_part,
+                                          self.fake_efi_system_part]
+
+        def mount_raise_func(*args, **kwargs):
+            if args[0] == 'mount':
+                raise processutils.ProcessExecutionError('error')
+
+        mock_execute.side_effect = mount_raise_func
+        self.assertRaises(errors.CommandExecutionError,
+                          image._install_grub2,
+                          self.fake_dev, root_uuid=self.fake_root_uuid,
+                          efi_system_part_uuid=self.fake_efi_system_part_uuid)
+
+        expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('umount', self.fake_dir + '/dev',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('umount', self.fake_dir + '/proc',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('umount', self.fake_dir + '/sys',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('umount', self.fake_dir, attempts=3,
+                              delay_on_retry=True)]
+        mock_execute.assert_has_calls(expected)
+
     @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2_command_fail(self, mock_get_part_uuid,
                                          mock_execute,

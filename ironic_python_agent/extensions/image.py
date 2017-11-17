@@ -82,6 +82,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
     root_partition = _get_partition(device, uuid=root_uuid)
     efi_partition = None
     efi_partition_mount_point = None
+    efi_mounted = False
 
     try:
         # Mount the partition and binds
@@ -101,6 +102,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
             if not os.path.exists(efi_partition_mount_point):
                 os.makedirs(efi_partition_mount_point)
             utils.execute('mount', efi_partition, efi_partition_mount_point)
+            efi_mounted = True
 
         binary_name = "grub"
         if os.path.exists(os.path.join(path, 'usr/sbin/grub2-install')):
@@ -155,7 +157,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
         # If umount fails for efi partition, then we cannot be sure that all
         # the changes were written back to the filesystem.
         try:
-            if efi_partition:
+            if efi_mounted:
                 utils.execute('umount', efi_partition_mount_point, attempts=3,
                               delay_on_retry=True)
         except processutils.ProcessExecutionError as e:
