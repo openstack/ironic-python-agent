@@ -62,6 +62,7 @@ sudo sh -c "echo $TINYCORE_MIRROR_URL > $BUILDDIR/opt/tcemirror"
 # Download TGT, Qemu-utils, Biosdevname and IPMItool source
 clone_and_checkout "https://github.com/fujita/tgt.git" "${BUILDDIR}/tmp/tgt" "v1.0.62"
 clone_and_checkout "https://github.com/qemu/qemu.git" "${BUILDDIR}/tmp/qemu" "v2.5.0"
+clone_and_checkout "https://github.com/lyonel/lshw.git" "${BUILDDIR}/tmp/lshw" "B.02.18"
 if $TINYIPA_REQUIRE_BIOSDEVNAME; then
     wget -N -O - https://linux.dell.com/biosdevname/biosdevname-0.7.2/biosdevname-0.7.2.tar.gz | tar -xz -C "${BUILDDIR}/tmp" -f -
 fi
@@ -136,6 +137,13 @@ find $BUILDDIR/tmp/qemu-utils/ -type f -executable | xargs file | awk -F ':' '/E
 cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/qemu-utils qemu-utils.tcz && md5sum qemu-utils.tcz > qemu-utils.tcz.md5.txt
 # Create qemu-utils.tcz.dep
 echo "glib2.tcz" > qemu-utils.tcz.dep
+
+# Build lshw
+rm -rf $WORKDIR/build_files/lshw.tcz
+# NOTE(mjturek): We touch src/lshw.1 and clear src/po/Makefile to avoid building the man pages, as they aren't used and require large dependencies to build.
+$CHROOT_CMD /bin/sh -c "cd /tmp/lshw && touch src/lshw.1 && echo install: > src/po/Makefile && make && make install DESTDIR=/tmp/lshw-installed"
+find $BUILDDIR/tmp/lshw-installed/ -type f -executable | xargs file | awk -F ':' '/ELF/ {print $1}' | sudo xargs strip
+cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/lshw-installed lshw.tcz && md5sum lshw.tcz > lshw.tcz.md5.txt
 
 # Build biosdevname
 if $TINYIPA_REQUIRE_BIOSDEVNAME; then

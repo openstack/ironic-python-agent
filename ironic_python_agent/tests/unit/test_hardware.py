@@ -239,13 +239,113 @@ CPUINFO_FLAGS_OUTPUT = """
 flags           : fpu vme de pse
 """
 
-DMIDECODE_MEMORY_OUTPUT = ("""
-Foo
-Size: 2048 MB
-Size: 2 GB
-Installed Size: Not Installed
-Enabled Size: Not Installed
-Size: No Module Installed
+LSHW_JSON_OUTPUT = ("""
+{
+  "id": "fuzzypickles",
+  "product": "ABC123 (GENERIC_SERVER)",
+  "vendor": "GENERIC",
+  "serial": "1234567",
+  "width": 64,
+  "capabilities": {
+    "smbios-2.7": "SMBIOS version 2.7",
+    "dmi-2.7": "DMI version 2.7",
+    "vsyscall32": "32-bit processes"
+  },
+  "children": [
+    {
+      "id": "core",
+      "description": "Motherboard",
+      "product": "ABC123",
+      "vendor": "GENERIC",
+      "serial": "ABCDEFGHIJK",
+      "children": [
+        {
+          "id": "memory",
+          "class": "memory",
+          "description": "System Memory",
+          "units": "bytes",
+          "size": 4294967296,
+          "children": [
+            {
+              "id": "bank:0",
+              "class": "memory",
+              "physid": "0",
+              "units": "bytes",
+              "size": 2147483648,
+              "width": 64,
+              "clock": 1600000000
+            },
+            {
+              "id": "bank:1",
+              "class": "memory",
+              "physid": "1"
+            },
+            {
+              "id": "bank:2",
+              "class": "memory",
+              "physid": "2",
+              "units": "bytes",
+              "size": 1073741824,
+              "width": 64,
+              "clock": 1600000000
+            },
+            {
+              "id": "bank:3",
+              "class": "memory",
+              "physid": "3",
+              "units": "bytes",
+              "size": 1073741824,
+              "width": 64,
+              "clock": 1600000000
+            }
+          ]
+        },
+        {
+          "id": "cpu:0",
+          "class": "processor",
+          "claimed": true,
+          "product": "Intel Xeon E312xx (Sandy Bridge)",
+          "vendor": "Intel Corp.",
+          "physid": "1",
+          "businfo": "cpu@0",
+          "width": 64,
+          "capabilities": {
+            "fpu": "mathematical co-processor",
+            "fpu_exception": "FPU exceptions reporting",
+            "wp": true,
+            "mmx": "multimedia extensions (MMX)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "network:0",
+      "class": "network",
+      "claimed": true,
+      "description": "Ethernet interface",
+      "physid": "1",
+      "logicalname": "ovs-tap",
+      "serial": "1c:90:c0:f9:4e:a1",
+      "units": "bit/s",
+      "size": 10000000000,
+      "configuration": {
+        "autonegotiation": "off",
+        "broadcast": "yes",
+        "driver": "veth",
+        "driverversion": "1.0",
+        "duplex": "full",
+        "link": "yes",
+        "multicast": "yes",
+        "port": "twisted pair",
+        "speed": "10Gbit/s"
+      },
+      "capabilities": {
+        "ethernet": true,
+        "physical": "Physical interface"
+      }
+    }
+  ]
+}
 """, "")
 
 
@@ -861,7 +961,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_psutil(self, mocked_execute, mocked_psutil):
         mocked_psutil.return_value.total = 3952 * 1024 * 1024
-        mocked_execute.return_value = DMIDECODE_MEMORY_OUTPUT
+        mocked_execute.return_value = LSHW_JSON_OUTPUT
         mem = self.hardware.get_memory()
 
         self.assertEqual(3952 * 1024 * 1024, mem.total)
@@ -870,12 +970,22 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('psutil.virtual_memory', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_psutil_exception(self, mocked_execute, mocked_psutil):
-        mocked_execute.return_value = DMIDECODE_MEMORY_OUTPUT
+        mocked_execute.return_value = LSHW_JSON_OUTPUT
         mocked_psutil.side_effect = AttributeError()
         mem = self.hardware.get_memory()
 
         self.assertIsNone(mem.total)
         self.assertEqual(4096, mem.physical_mb)
+
+    @mock.patch('psutil.virtual_memory', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_memory_lshw_exception(self, mocked_execute, mocked_psutil):
+        mocked_execute.side_effect = OSError()
+        mocked_psutil.return_value.total = 3952 * 1024 * 1024
+        mem = self.hardware.get_memory()
+
+        self.assertEqual(3952 * 1024 * 1024, mem.total)
+        self.assertIsNone(mem.physical_mb)
 
     def test_list_hardware_info(self):
         self.hardware.list_network_interfaces = mock.Mock()
@@ -1625,38 +1735,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_system_vendor_info(self, mocked_execute):
-        mocked_execute.return_value = (
-            '# dmidecode 2.12\n'
-            'SMBIOS 2.6 present.\n'
-            '\n'
-            'Handle 0x0001, DMI type 1, 27 bytes\n'
-            'System Information\n'
-            '\tManufacturer: NEC\n'
-            '\tProduct Name: Express5800/R120b-2 [N8100-1653]\n'
-            '\tVersion: FR1.3\n'
-            '\tSerial Number: 0800113\n'
-            '\tUUID: 00433468-26A5-DF11-8001-406186F5A681\n'
-            '\tWake-up Type: Power Switch\n'
-            '\tSKU Number: Not Specified\n'
-            '\tFamily: Not Specified\n'
-            '\n'
-            'Handle 0x002E, DMI type 12, 5 bytes\n'
-            'System Configuration Options\n'
-            '\tOption 1: CLR_CMOS: Close to clear CMOS\n'
-            '\tOption 2: BMC_FRB3: Close to stop FRB3 Timer\n'
-            '\tOption 3: BIOS_RECOVERY: Close to run BIOS Recovery\n'
-            '\tOption 4: PASS_DIS: Close to clear Password\n'
-            '\n'
-            'Handle 0x0059, DMI type 32, 11 bytes\n'
-            'System Boot Information\n'
-            '\tStatus: No errors detected\n'
-        ), ''
-        self.assertEqual('Express5800/R120b-2 [N8100-1653]',
-                         self.hardware.get_system_vendor_info().product_name)
-        self.assertEqual('0800113',
-                         self.hardware.get_system_vendor_info().serial_number)
-        self.assertEqual('NEC',
-                         self.hardware.get_system_vendor_info().manufacturer)
+        mocked_execute.return_value = LSHW_JSON_OUTPUT
+        vendor_info = self.hardware.get_system_vendor_info()
+        self.assertEqual('ABC123 (GENERIC_SERVER)', vendor_info.product_name)
+        self.assertEqual('1234567', vendor_info.serial_number)
+        self.assertEqual('GENERIC', vendor_info.manufacturer)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_system_vendor_info_failure(self, mocked_execute):
+        mocked_execute.side_effect = processutils.ProcessExecutionError()
+        vendor_info = self.hardware.get_system_vendor_info()
+        self.assertEqual('', vendor_info.product_name)
+        self.assertEqual('', vendor_info.serial_number)
+        self.assertEqual('', vendor_info.manufacturer)
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'get_os_install_device', autospec=True)

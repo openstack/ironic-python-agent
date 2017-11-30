@@ -1,4 +1,4 @@
-# Copyright 2013 Rackspace, Inc.
+#  Copyright 2013 Rackspace, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 import abc
 import binascii
 import functools
+import json
 import os
 import shlex
 import time
@@ -43,8 +44,8 @@ CONF = cfg.CONF
 WARN_BIOSDEVNAME_NOT_FOUND = False
 
 UNIT_CONVERTER = pint.UnitRegistry(filename=None)
-UNIT_CONVERTER.define('MB = []')
-UNIT_CONVERTER.define('GB = 1024 MB')
+UNIT_CONVERTER.define('bytes = []')
+UNIT_CONVERTER.define('MB = 1048576 bytes')
 
 NODE = None
 
@@ -60,6 +61,18 @@ def _get_device_info(dev, devclass, field):
         LOG.warning(
             "Can't find field {} for device {} in device class {}".format(
                 field, dev, devclass))
+
+
+def _get_system_lshw_dict():
+    """Get a dict representation of the system from lshw
+
+    Retrieves a json representation of the system from lshw and converts
+    it to a python dict
+
+    :return: A python dict from the lshw json output
+    """
+    out, _e = utils.execute('lshw', '-quiet', '-json')
+    return json.loads(out)
 
 
 def _udev_settle():
@@ -670,38 +683,25 @@ class GenericHardwareManager(HardwareManager):
             total = None
             LOG.exception(("Cannot fetch total memory size using psutil "
                            "version %s"), psutil.version_info[0])
-
+        sys_dict = None
         try:
-            out, _e = utils.execute("dmidecode --type 17 | grep Size",
-                                    shell=True)
-        except (processutils.ProcessExecutionError, OSError) as e:
-            LOG.warning("Cannot get real physical memory size: %s", e)
+            sys_dict = _get_system_lshw_dict()
+        except (processutils.ProcessExecutionError, OSError, ValueError) as e:
+            LOG.warning('Could not get real physical RAM from lshw: %s', e)
             physical = None
         else:
             physical = 0
-            for line in out.strip().split('\n'):
-                line = line.strip()
-                if not line:
-                    continue
-
-                if 'Size:' not in line:
-                    continue
-
-                value = None
-                try:
-                    value = line.split('Size: ', 1)[1]
-                    physical += int(UNIT_CONVERTER(value).to_base_units())
-                except Exception as exc:
-                    if (value == "No Module Installed" or
-                            value == "Not Installed"):
-                        LOG.debug('One memory slot is empty')
-                    else:
-                        LOG.error('Cannot parse size expression %s: %s',
-                                  line, exc)
-
+            # locate memory information in system_dict
+            for sys_child in sys_dict['children']:
+                if sys_child['id'] == 'core':
+                    for core_child in sys_child['children']:
+                        if core_child['id'] == 'memory':
+                            if core_child.get('size'):
+                                value = "%(size)s %(units)s" % core_child
+                                physical += int(UNIT_CONVERTER(value).to(
+                                    'MB').magnitude)
             if not physical:
-                LOG.warning('failed to get real physical RAM, dmidecode '
-                            'returned %s', out)
+                LOG.warning('Did not find any physical RAM')
 
         return Memory(total=total, physical_mb=physical)
 
@@ -748,28 +748,14 @@ class GenericHardwareManager(HardwareManager):
         return dev_name
 
     def get_system_vendor_info(self):
-        product_name = None
-        serial_number = None
-        manufacturer = None
         try:
-            out, _e = utils.execute("dmidecode --type system",
-                                    shell=True)
-        except (processutils.ProcessExecutionError, OSError) as e:
-            LOG.warning("Cannot get system vendor information: %s", e)
-        else:
-            for line in out.split('\n'):
-                line_arr = line.split(':', 1)
-                if len(line_arr) != 2:
-                    continue
-                if line_arr[0].strip() == 'Product Name':
-                    product_name = line_arr[1].strip()
-                elif line_arr[0].strip() == 'Serial Number':
-                    serial_number = line_arr[1].strip()
-                elif line_arr[0].strip() == 'Manufacturer':
-                    manufacturer = line_arr[1].strip()
-        return SystemVendorInfo(product_name=product_name,
-                                serial_number=serial_number,
-                                manufacturer=manufacturer)
+            sys_dict = _get_system_lshw_dict()
+        except (processutils.ProcessExecutionError, OSError, ValueError) as e:
+            LOG.warning('Could not retrieve vendor info from lshw: %e', e)
+            sys_dict = {}
+        return SystemVendorInfo(product_name=sys_dict.get('product', ''),
+                                serial_number=sys_dict.get('serial', ''),
+                                manufacturer=sys_dict.get('vendor', ''))
 
     def get_boot_info(self):
         boot_mode = 'uefi' if os.path.isdir('/sys/firmware/efi') else 'bios'
