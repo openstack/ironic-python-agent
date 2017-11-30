@@ -18,7 +18,6 @@
 import subprocess
 
 import ironic_lib
-import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
@@ -37,32 +36,27 @@ class IronicAgentTest(test_base.BaseTestCase):
 
     def setUp(self):
         super(IronicAgentTest, self).setUp()
-        """Ban running external processes via 'execute' like functions
 
-        `self` will grow a property  called _exec_patch which is the Mock
-        that replaces all the 'execute' related functions.
-
-        If the mock is called, an exception is raised to warn the tester.
-        """
         self._set_config()
-        # NOTE(bigjools): Not using a decorator on tests because I don't
-        # want to force every test method to accept a new arg. Instead, they
-        # can override or examine this self._exec_patch Mock as needed.
-        if self.block_execute:
-            self._exec_patch = mock.Mock()
-            self._exec_patch.side_effect = Exception(
-                "Don't call ironic_lib.utils.execute() / "
-                "processutils.execute() or similar functions in tests!")
 
+        # Ban running external processes via 'execute' like functions. If the
+        # patched function is called, an exception is raised to warn the
+        # tester.
+        if self.block_execute:
             # NOTE(jlvillal): pyudev.Context() calls ctypes.find_library()
             # which calls subprocess.Popen(). So not blocking
             # subprocess.Popen()
-            self.patch(ironic_lib.utils, 'execute', self._exec_patch)
-            self.patch(processutils, 'execute', self._exec_patch)
-            self.patch(subprocess, 'call', self._exec_patch)
-            self.patch(subprocess, 'check_call', self._exec_patch)
-            self.patch(subprocess, 'check_output', self._exec_patch)
-            self.patch(utils, 'execute', self._exec_patch)
+
+            # NOTE(jlvillal): Intentionally not using mock as if you mock a
+            # mock it causes things to not work correctly. As doing an
+            # autospec=True causes strangeness. By using a simple function we
+            # can then mock it without issue.
+            self.patch(ironic_lib.utils, 'execute', do_not_call)
+            self.patch(processutils, 'execute', do_not_call)
+            self.patch(subprocess, 'call', do_not_call)
+            self.patch(subprocess, 'check_call', do_not_call)
+            self.patch(subprocess, 'check_output', do_not_call)
+            self.patch(utils, 'execute', do_not_call)
 
     def _set_config(self):
         self.cfg_fixture = self.useFixture(config_fixture.Config(CONF))
@@ -76,3 +70,10 @@ class IronicAgentTest(test_base.BaseTestCase):
         group = kw.pop('group', None)
         for o, v in kw.items():
             self.cfg_fixture.set_default(o, v, group=group)
+
+
+def do_not_call(*args, **kwargs):
+    """Helper function to raise an exception if it is called"""
+    raise Exception(
+        "Don't call ironic_lib.utils.execute() / "
+        "processutils.execute() or similar functions in tests!")
