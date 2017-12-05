@@ -10,6 +10,15 @@ BUILDDIR="$WORKDIR/tinyipabuild"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-true}
 TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
 ENABLE_SSH=${ENABLE_SSH:-false}
+INSTALL_SSH=${INSTALL_SSH:-true}
+AUTHORIZE_SSH=${ENABLE_SSH:-false}
+
+if $ENABLE_SSH; then
+    echo "WARNING: using ENABLE_SSH is deprecated, use INSTALL_SSH and AUTHORIZE_SSH variables instead"
+    INSTALL_SSH=true
+    AUTHORIZE_SSH=true
+fi
+
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 PYOPTIMIZE_TINYIPA=${PYOPTIMIZE_TINYIPA:-true}
 TINYIPA_REQUIRE_BIOSDEVNAME=${TINYIPA_REQUIRE_BIOSDEVNAME:-false}
@@ -17,7 +26,7 @@ TINYIPA_REQUIRE_IPMITOOL=${TINYIPA_REQUIRE_IPMITOOL:-true}
 
 echo "Finalising tinyipa:"
 
-if $ENABLE_SSH ; then
+if $AUTHORIZE_SSH ; then
     echo "Validating location of public SSH key"
     if [ -n "$SSH_PUBLIC_KEY" ]; then
         if [ -f "$SSH_PUBLIC_KEY" ]; then
@@ -81,7 +90,7 @@ while read line; do
     $TC_CHROOT_CMD tce-load -wic $line
 done < $WORKDIR/build_files/finalreqs.lst
 
-if $ENABLE_SSH ; then
+if $INSTALL_SSH ; then
     # Install and configure bare minimum for SSH access
     $TC_CHROOT_CMD tce-load -wic openssh
     # Configure OpenSSH
@@ -97,12 +106,14 @@ if $ENABLE_SSH ; then
     echo "HostKey /usr/local/etc/ssh/ssh_host_ed25519_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
 
     # setup user and SSH keys
-    $CHROOT_CMD mkdir -p /home/tc
-    $CHROOT_CMD chown -R tc.staff /home/tc
-    $TC_CHROOT_CMD mkdir -p /home/tc/.ssh
-    cat $_found_ssh_key | $TC_CHROOT_CMD tee /home/tc/.ssh/authorized_keys
-    $CHROOT_CMD chown tc.staff /home/tc/.ssh/authorized_keys
-    $TC_CHROOT_CMD chmod 600 /home/tc/.ssh/authorized_keys
+    if $AUTHORIZE_SSH; then
+        $CHROOT_CMD mkdir -p /home/tc
+        $CHROOT_CMD chown -R tc.staff /home/tc
+        $TC_CHROOT_CMD mkdir -p /home/tc/.ssh
+        cat $_found_ssh_key | $TC_CHROOT_CMD tee /home/tc/.ssh/authorized_keys
+        $CHROOT_CMD chown tc.staff /home/tc/.ssh/authorized_keys
+        $TC_CHROOT_CMD chmod 600 /home/tc/.ssh/authorized_keys
+    fi
 fi
 
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/tgt.tcz
@@ -141,12 +152,45 @@ if $PYOPTIMIZE_TINYIPA; then
     set -e
     find $FINALDIR/usr/local/lib/python2.7 -name "*.py" -not -path "*ironic_python_agent/api/config.py" | sudo xargs --no-run-if-empty rm
     find $FINALDIR/usr/local/lib/python2.7 -name "*.pyc" | sudo xargs --no-run-if-empty rm
+    if $INSTALL_SSH && $AUTHORIZE_SSH ; then
+        # NOTE(pas-ha) for Ansible+Python to work we need to ensure that
+        # PYTHONOPTIMIZE=1 is set for all sessions from 'tc' user including
+        # those that are elevated with 'sudo' afterwards
+        echo "PYTHONOPTIMIZE=1" | $TC_CHROOT_CMD tee -a /home/tc/.ssh/environment
+        echo "PermitUserEnvironment yes" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+        echo 'Defaults env_keep += "PYTHONOPTIMIZE"' | $CHROOT_CMD tee -a /etc/sudoers
+    fi
 else
     sudo sed -i "s/PYTHONOPTIMIZE=1/PYTHONOPTIMIZE=0/" "$FINALDIR/opt/bootlocal.sh"
 fi
 
 # Delete unnecessary Babel .dat files
 find $FINALDIR -path "*babel/locale-data/*.dat" -not -path "*en_US*" | sudo xargs --no-run-if-empty rm
+
+# NOTE(pas-ha) Apparently on TinyCore Ansible's 'command' module is
+# not searching for executables in the '/usr/local/(s)bin' paths.
+# Thus we symlink everything from there to '/usr/(s)bin' which is being searched,
+# so that 'command' module picks full utilities installed by 'util-linux'
+# instead of built-in simplified BusyBox ones.
+set +x
+echo "Symlink all from /usr/local/sbin to /usr/sbin"
+pushd "$FINALDIR/usr/local/sbin"
+for target in *; do
+    if [ ! -f "$FINALDIR/usr/sbin/$target" ]; then
+        $CHROOT_CMD ln -s "/usr/local/sbin/$target" "/usr/sbin/$target"
+    fi
+done
+popd
+echo "Symlink all from /usr/local/bin to /usr/bin"
+# this also includes symlinking Python to the place expected by Ansible
+pushd "$FINALDIR/usr/local/bin"
+for target in *; do
+    if [ ! -f "$FINALDIR/usr/bin/$target" ]; then
+        $CHROOT_CMD ln -s "/usr/local/bin/$target" "/usr/bin/$target"
+    fi
+done
+popd
+set -x
 
 # Rebuild build directory into gz file
 ( cd "$FINALDIR" && sudo find | sudo cpio -o -H newc | gzip -9 > "$WORKDIR/tinyipa${BRANCH_EXT}.gz" )

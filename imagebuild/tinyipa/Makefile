@@ -1,4 +1,4 @@
-.PHONY: default all dependencies build finalise iso clean clean_build clean_iso
+.PHONY: default all dependencies build finalise addssh iso clean clean_build clean_iso
 default: dependencies build finalise instance-images
 
 all: dependencies build finalise iso instance-images
@@ -12,6 +12,9 @@ build:
 finalise:
 	./finalise-tinyipa.sh
 
+addssh:
+	./add-ssh-tinyipa.sh
+
 iso:
 	./build-iso.sh
 
@@ -24,9 +27,9 @@ clean_build:
 	sudo -v
 	sudo rm -rf tinyipabuild
 	sudo rm -rf tinyipafinal
-	rm -f tinyipa*.vmlinuz
-	rm -f tinyipa*.gz
-	rm -f tinyipa*.sha256
+	rm -f *tinyipa*.vmlinuz
+	rm -f *tinyipa*.gz
+	rm -f *tinyipa*.sha256
 	rm -f build_files/corepure64.gz
 	rm -f build_files/vmlinuz64
 	rm -f build_files/*.tcz
