@@ -18,7 +18,6 @@ Version 1 of the Ironic Python Agent API
 
 import pecan
 from pecan import rest
-
 from wsme import types as wtypes
 import wsmeext.pecan as wsme_pecan
 
