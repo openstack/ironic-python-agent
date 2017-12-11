@@ -1,0 +1,5 @@
+[Match]
+Name=RESCUE_NETWORK_INTERFACE
+
+[Network]
+DHCP=yes
