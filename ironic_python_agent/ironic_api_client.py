@@ -23,17 +23,21 @@ from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent import netutils
 from ironic_python_agent import utils
+from ironic_python_agent import version
 
 
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
+
+MIN_IRONIC_VERSION = (1, 22)
+AGENT_VERSION_IRONIC_VERSION = (1, 36)
 
 
 class APIClient(object):
     api_version = 'v1'
     lookup_api = '/%s/lookup' % api_version
     heartbeat_api = '/%s/heartbeat/{uuid}' % api_version
-    ramdisk_api_headers = {'X-OpenStack-Ironic-API-Version': '1.22'}
+    _ironic_api_version = None
 
     def __init__(self, api_url):
         self.api_url = api_url.rstrip('/')
@@ -69,12 +73,39 @@ class APIClient(object):
                                     cert=cert,
                                     **kwargs)
 
+    def _get_ironic_api_version_header(self, version=MIN_IRONIC_VERSION):
+        version_str = "%d.%d" % version
+        return {'X-OpenStack-Ironic-API-Version': version_str}
+
+    def _get_ironic_api_version(self):
+        if not self._ironic_api_version:
+            try:
+                response = self._request('GET', '/')
+                data = jsonutils.loads(response.content)
+                version = data['default_version']['version'].split('.')
+                self._ironic_api_version = (int(version[0]), int(version[1]))
+            except Exception:
+                LOG.exception("An error occurred while attempting to discover "
+                              "the available Ironic API versions, falling "
+                              "back to using version %s",
+                              ".".join(map(str, MIN_IRONIC_VERSION)))
+                return MIN_IRONIC_VERSION
+        return self._ironic_api_version
+
     def heartbeat(self, uuid, advertise_address):
         path = self.heartbeat_api.format(uuid=uuid)
+
         data = {'callback_url': self._get_agent_url(advertise_address)}
+
+        if self._get_ironic_api_version() >= AGENT_VERSION_IRONIC_VERSION:
+            data['agent_version'] = version.version_info.release_string()
+            headers = self._get_ironic_api_version_header(
+                AGENT_VERSION_IRONIC_VERSION)
+        else:
+            headers = self._get_ironic_api_version_header()
+
         try:
-            response = self._request('POST', path, data=data,
-                                     headers=self.ramdisk_api_headers)
+            response = self._request('POST', path, data=data, headers=headers)
         except Exception as e:
             raise errors.HeartbeatError(str(e))
 
@@ -113,9 +144,10 @@ class APIClient(object):
             params['node_uuid'] = node_uuid
 
         try:
-            response = self._request('GET', self.lookup_api,
-                                     headers=self.ramdisk_api_headers,
-                                     params=params)
+            response = self._request(
+                'GET', self.lookup_api,
+                headers=self._get_ironic_api_version_header(),
+                params=params)
         except Exception:
             LOG.exception('Lookup failed')
             return False
