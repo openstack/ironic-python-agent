@@ -130,9 +130,9 @@ def list_all_block_devices(block_type='disk'):
             by_path_mapping[devname] = path
 
     except OSError as e:
-        LOG.warning("Path %(path)s is inaccessible, skipping by-path "
-                    "block devices reporting "
-                    "Error: %(error)s", {'path': disk_by_path_dir, 'error': e})
+        LOG.warning("Path %(path)s is inaccessible, /dev/disk/by-path/* "
+                    "version of block device name is unavailable "
+                    "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
 
     columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
     report = utils.execute('lsblk', '-Pbdi', '-o{}'.format(','.join(columns)),
