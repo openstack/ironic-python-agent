@@ -27,6 +27,7 @@ clean_build:
 	sudo -v
 	sudo rm -rf tinyipabuild
 	sudo rm -rf tinyipafinal
+	sudo rm -rf tinyipaaddssh
 	rm -f *tinyipa*.vmlinuz
 	rm -f *tinyipa*.gz
 	rm -f *tinyipa*.sha256
