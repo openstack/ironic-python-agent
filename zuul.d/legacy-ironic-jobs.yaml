@@ -24,15 +24,6 @@
       - openstack/virtualbmc
 
 - job:
-    name: ironic-python-agent-tox-func
-    parent: legacy-base
-    run: playbooks/legacy/ironic-python-agent-tox-func/run.yaml
-    post-run: playbooks/legacy/ironic-python-agent-tox-func/post.yaml
-    timeout: 2400
-    required-projects:
-      - openstack/requirements
-
-- job:
     name: ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src
     parent: legacy-ipa-dsvm-base
     run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src/run.yaml

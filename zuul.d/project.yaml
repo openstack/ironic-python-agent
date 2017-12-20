@@ -13,7 +13,7 @@
         # Non-voting jobs
         - ipa-tempest-dsvm-ironic-inspector-src:
             voting: false
-        - ironic-python-agent-tox-func:
+        - openstack-tox-functional:
             voting: false
     gate:
       jobs:
