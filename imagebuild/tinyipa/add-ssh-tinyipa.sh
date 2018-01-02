@@ -19,23 +19,15 @@
 
 set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
-REBUILDDIR="$WORKDIR/rebuild"
+REBUILDDIR="$WORKDIR/tinyipaaddssh"
 DST_DIR=$REBUILDDIR
 source ${WORKDIR}/common.sh
 
-source ${WORKDIR}/build_files/tc-mirror.sh
 TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
 BRANCH_PATH=${BRANCH_PATH:-master}
 TINYIPA_RAMDISK_FILE=${TINYIPA_RAMDISK_FILE:-}
 
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
-
-TC=1001
-STAFF=50
-
-CHROOT_PATH="/tmp/overides:/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-CHROOT_CMD="sudo chroot $REBUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
-TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $REBUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
 
 function validate_params {
     echo "Validating location of public SSH key"
@@ -56,16 +48,14 @@ function validate_params {
         echo "Failed to find neither provided nor default SSH key"
         exit 1
     fi
-
-    choose_tc_mirror
 }
 
 function get_tinyipa {
     if [ -z $TINYIPA_RAMDISK_FILE ]; then
         mkdir -p $WORKDIR/build_files/cache
         cd $WORKDIR/build_files/cache
-        wget -N https://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa-${BRANCH_PATH}.gz
-        TINYIPA_RAMDISK_FILE="$WORKDIR/build_files/cache/tinyipa-${BRANCH_PATH}.gz"
+        wget -N https://tarballs.openstack.org/ironic-python-agent/tinyipa/files/tinyipa${BRANCH_EXT}.gz
+        TINYIPA_RAMDISK_FILE="$WORKDIR/build_files/cache/tinyipa${BRANCH_EXT}.gz"
     fi
 }
 
@@ -132,6 +122,7 @@ function rebuild_ramdisk {
 sudo -v
 
 
+validate_params
 get_tinyipa
 unpack_ramdisk
 setup_tce "$DST_DIR"
@@ -144,5 +135,5 @@ install_ssh
 # with 'sudo' afterwards
 fix_python_optimize
 
-cleanup_tce $DST_DIR
+cleanup_tce "$DST_DIR"
 rebuild_ramdisk
