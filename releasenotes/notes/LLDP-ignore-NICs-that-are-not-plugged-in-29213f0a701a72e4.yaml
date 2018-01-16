@@ -1,7 +1,8 @@
 ---
 fixes:
   - |
-    Fixes bug in LLDP discovery code which lead to no LLDP information being
-    discovered for any network interface if one network interface raised an
-    exception, for example if the network interface incorrectly indicates its
-    ready to read. `<https://bugs.launchpad.net/ironic-python-agent/+bug/1665025>`_
+    Fixes a bug in the LLDP discovery code that prevented reporting any
+    LLDP information if an LLDP discovery raised an exception for one of the
+    network interfaces. This could happen, for example, if a network
+    interface incorrectly indicated its readiness for reading. See `bug 1665025
+    <https://bugs.launchpad.net/bugs/1665025>`_ for details.
