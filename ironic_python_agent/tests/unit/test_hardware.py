@@ -513,7 +513,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         read_mock = mocked_open.return_value.read
         read_mock.side_effect = ['1']
         mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
         }
         mocked_execute.return_value = ('em0\n', '')
         mock_get_mac.mock_has_carrier = True
@@ -523,6 +524,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
         self.assertIsNone(interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
         self.assertEqual('em0', interfaces[0].biosdevname)
@@ -552,7 +554,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         read_mock = mocked_open.return_value.read
         read_mock.side_effect = ['1']
         mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
         }
         mocked_execute.return_value = ('em0\n', '')
         mock_get_mac.return_value = '00:0c:29:8c:11:b1'
@@ -562,6 +565,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
         self.assertIsNone(interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
         self.assertEqual('em0', interfaces[0].biosdevname)
@@ -645,7 +649,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         read_mock = mocked_open.return_value.read
         read_mock.side_effect = ['1']
         mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
         }
         mocked_lldp_info.return_value = {'eth0': [
             (0, b''),
@@ -661,6 +666,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
         expected_lldp_info = [
             (0, ''),
             (1, '04885a92ec5459'),
@@ -693,7 +699,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         read_mock = mocked_open.return_value.read
         read_mock.side_effect = ['1']
         mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
         }
         mocked_lldp_info.side_effect = Exception('Boom!')
         mocked_execute.return_value = ('em0\n', '')
@@ -704,6 +711,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
         self.assertIsNone(interfaces[0].lldp)
         self.assertTrue(interfaces[0].has_carrier)
         self.assertEqual('em0', interfaces[0].biosdevname)
@@ -734,7 +742,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         read_mock = mocked_open.return_value.read
         read_mock.side_effect = [OSError('boom')]
         mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
         }
         mocked_execute.return_value = ('em0\n', '')
         mock_has_carrier.return_value = False
@@ -744,6 +753,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
         self.assertFalse(interfaces[0].has_carrier)
         self.assertIsNone(interfaces[0].vendor)
         self.assertEqual('em0', interfaces[0].biosdevname)
@@ -774,7 +784,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mac = '00:0c:29:8c:11:b1'
         read_mock.side_effect = ['0x15b3\n', '0x1014\n']
         mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}]
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
         }
         mocked_execute.return_value = ('em0\n', '')
         mock_has_carrier.return_value = True
@@ -784,6 +795,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual(mac, interfaces[0].mac_address)
         self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
         self.assertTrue(interfaces[0].has_carrier)
         self.assertEqual('0x15b3', interfaces[0].vendor)
         self.assertEqual('0x1014', interfaces[0].product)

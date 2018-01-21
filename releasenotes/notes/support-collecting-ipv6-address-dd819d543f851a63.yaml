@@ -1,0 +1,5 @@
+---
+fixes:
+  - Adds support to collect the default IPv6 address for interfaces. With
+    different networking environment, the address could be a link-local
+    address, ULA or something else.

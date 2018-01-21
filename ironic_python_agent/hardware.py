@@ -260,15 +260,17 @@ class BlockDevice(encoding.SerializableComparable):
 
 class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'ipv4_address',
-                           'has_carrier', 'lldp', 'vendor', 'product',
-                           'client_id', 'biosdevname')
+                           'ipv6_address', 'has_carrier', 'lldp',
+                           'vendor', 'product', 'client_id',
+                           'biosdevname')
 
-    def __init__(self, name, mac_addr, ipv4_address=None, has_carrier=True,
-                 lldp=None, vendor=None, product=None, client_id=None,
-                 biosdevname=None):
+    def __init__(self, name, mac_addr, ipv4_address=None, ipv6_address=None,
+                 has_carrier=True, lldp=None, vendor=None, product=None,
+                 client_id=None, biosdevname=None):
         self.name = name
         self.mac_address = mac_addr
         self.ipv4_address = ipv4_address
+        self.ipv6_address = ipv6_address
         self.has_carrier = has_carrier
         self.lldp = lldp
         self.vendor = vendor
@@ -582,6 +584,7 @@ class GenericHardwareManager(HardwareManager):
         return NetworkInterface(
             interface_name, mac_addr,
             ipv4_address=self.get_ipv4_addr(interface_name),
+            ipv6_address=self.get_ipv6_addr(interface_name),
             has_carrier=netutils.interface_has_carrier(interface_name),
             vendor=_get_device_info(interface_name, 'net', 'vendor'),
             product=_get_device_info(interface_name, 'net', 'device'),
@@ -589,6 +592,14 @@ class GenericHardwareManager(HardwareManager):
 
     def get_ipv4_addr(self, interface_id):
         return netutils.get_ipv4_addr(interface_id)
+
+    def get_ipv6_addr(self, interface_id):
+        """Get the default IPv6 address assigned to the interface.
+
+        With different networking environment, the address could be a
+        link-local address, ULA or something else.
+        """
+        return netutils.get_ipv6_addr(interface_id)
 
     def get_bios_given_nic_name(self, interface_name):
         """Collect the BIOS given NICs name.
