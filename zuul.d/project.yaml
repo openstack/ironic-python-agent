@@ -1,5 +1,4 @@
 - project:
-    name: openstack/ironic-python-agent
     check:
       jobs:
         - ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src
