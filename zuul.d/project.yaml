@@ -16,6 +16,7 @@
         - openstack-tox-functional:
             voting: false
     gate:
+      queue: ironic
       jobs:
         - ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src
         - ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src
