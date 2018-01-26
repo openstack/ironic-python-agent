@@ -14,6 +14,7 @@
 
 import os
 
+from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 
@@ -27,13 +28,18 @@ CONF = cfg.CONF
 def _detect_cna_card():
     addr_path = '/sys/class/net'
     for net_dev in os.listdir(addr_path):
+        link_path = '{}/{}/device/driver/module'.format(addr_path, net_dev)
         try:
-            link_command = 'readlink {}/{}/device/driver/module'.format(
-                addr_path, net_dev)
-            out = utils.execute(link_command.split())
-            if not out or out[1]:
-                continue
-        except OSError:
+            out = utils.execute('readlink', '-v', link_path)
+        except OSError as e:
+            LOG.warning('Something went wrong when readlink for '
+                        'interface %(device)s. Error: %(error)s',
+                        {'device': net_dev, 'error': e})
+            continue
+        except processutils.ProcessExecutionError as e:
+            LOG.debug('Get driver for interface %(device)s failed. '
+                      'Error: %(error)s',
+                      {'device': net_dev, 'error': e})
             continue
         driver_name = os.path.basename(out[0].strip())
         if driver_name == 'i40e':

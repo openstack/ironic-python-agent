@@ -15,6 +15,7 @@
 import os
 
 import mock
+from oslo_concurrency import processutils
 from oslo_config import cfg
 
 from ironic_python_agent import hardware
@@ -38,9 +39,9 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_detect_cna_card(self, mock_execute, mock_listdir):
         def mock_return_execute(*args, **kwargs):
-            if 'eth0' in args[0][1]:
+            if 'eth0' in args[2]:
                 return '/foo/bar/fake', ''
-            if 'eth1' in args[0][1]:
+            if 'eth1' in args[2]:
                 return '/foo/bar/i40e', ''
 
         mock_listdir.return_value = ['eth0', 'eth1']
@@ -51,11 +52,11 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_detect_cna_card_execute_error(self, mock_execute, mock_listdir):
         def mock_return_execute(*args, **kwargs):
-            if 'eth0' in args[0][1]:
+            if 'eth0' in args[2]:
                 return '/foo/bar/fake', ''
-            if 'eth1' in args[0][1]:
-                return '', 'fake error'
-            if 'eth2' in args[0][1]:
+            if 'eth1' in args[2]:
+                raise processutils.ProcessExecutionError('fake')
+            if 'eth2' in args[2]:
                 raise OSError('fake')
 
         mock_listdir.return_value = ['eth0', 'eth1', 'eth2']
@@ -66,9 +67,9 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_detect_cna_card_no_i40e_driver(self, mock_execute, mock_listdir):
         def mock_return_execute(*args, **kwargs):
-            if 'eth0' in args[0][1]:
+            if 'eth0' in args[2]:
                 return '/foo/bar/fake1', ''
-            if 'eth1' in args[0][1]:
+            if 'eth1' in args[2]:
                 return '/foo/bar/fake2', ''
 
         mock_listdir.return_value = ['eth0', 'eth1']
