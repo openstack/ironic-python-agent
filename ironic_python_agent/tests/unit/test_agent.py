@@ -244,7 +244,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         }
 
         self.assertRaisesRegex(errors.IronicAPIError,
-                               'Failed due to unknow exception.',
+                               'Failed due to an unknown exception.',
                                self.agent.run)
 
         self.assertTrue(mock_wait.called)
