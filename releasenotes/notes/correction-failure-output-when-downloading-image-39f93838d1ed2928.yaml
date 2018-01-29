@@ -1,0 +1,3 @@
+---
+fixes:
+  - Shows correct output message when IPA fails to download image.

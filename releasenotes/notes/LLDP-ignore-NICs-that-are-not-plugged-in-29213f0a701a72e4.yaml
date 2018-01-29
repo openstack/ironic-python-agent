@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes a bug in the LLDP discovery code that prevented reporting any
+    LLDP information if an LLDP discovery raised an exception for one of the
+    network interfaces. This could happen, for example, if a network
+    interface incorrectly indicated its readiness for reading. See `bug 1665025
+    <https://bugs.launchpad.net/bugs/1665025>`_ for details.

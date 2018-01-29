@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Now passes an ``agent_version`` field to the Bare Metal service as part of
+    the heartbeat request if the Bare Metal API version is 1.36 or higher.
+    This provides the Bare Metal service with the information required to
+    determine what agent features are available, so that the Bare Metal service
+    can be upgraded to a new version before the agent is upgraded, whilst
+    ensuring the Bare Metal service only requests the agent features that are
+    available to it.

@@ -104,12 +104,26 @@ then
 elif [ -f /usr/lib/syslinux/isolinux.bin ]
 then
     cp /usr/lib/syslinux/isolinux.bin "$TMP_IMAGE_DIR/isolinux"
+
+elif [ -f /usr/lib/ISOLINUX/isolinux.bin ]
+then
+    cp /usr/lib/ISOLINUX/isolinux.bin "$TMP_IMAGE_DIR/isolinux"
+
 else
-    err_print "Could not find isolinux.bin. Install syslinux?"
+    err_print "Could not find isolinux.bin. Install syslinux or isolinux?"
     cleanup
     exit 1
 fi
 
+# Copy ldlinux.c32 to the isolinux directory
+v_print "Copying ldlinux.c32"
+if [ -f /usr/share/syslinux/ldlinux.c32 ]
+then
+    cp /usr/share/syslinux/ldlinux.c32 "$TMP_IMAGE_DIR/isolinux"
+elif [ -f /usr/lib/syslinux/modules/bios/ldlinux.c32 ]
+then
+    cp /usr/lib/syslinux/modules/bios/ldlinux.c32 "$TMP_IMAGE_DIR/isolinux"
+fi
 
 # Copy initrd, kernel
 v_print "Copying kernel to $TMP_IMAGE_DIR/vmlinuz"

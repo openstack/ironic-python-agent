@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-
 # -- General configuration ----------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -10,7 +7,7 @@ extensions = ['sphinx.ext.autodoc',
               'sphinxcontrib.httpdomain',
               'sphinxcontrib.pecanwsme.rest',
               'wsmeext.sphinxext',
-              'oslosphinx',
+              'openstackdocstheme',
               ]
 
 wsme_protocols = ['restjson']
@@ -56,13 +53,25 @@ add_module_names = True
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
+# Ignore the following warning: WARNING: while setting up extension
+# wsmeext.sphinxext: directive 'autoattribute' is already registered,
+# it will be overridden.
+suppress_warnings = ['app.add_directive']
+
+
 # -- Options for HTML output --------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-#html_theme_path = ["."]
-#html_theme = '_theme'
-#html_static_path = ['_static']
+html_theme = 'openstackdocs'
+
+# openstackdocstheme options
+repository_name = 'openstack/ironic-python-agent'
+bug_project = 'ironic-python-agent'
+bug_tag = ''
+
+# Must set this variable to include year, month, day, hours, and minutes.
+html_last_updated_fmt = '%Y-%m-%d %H:%M'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = '%sdoc' % project

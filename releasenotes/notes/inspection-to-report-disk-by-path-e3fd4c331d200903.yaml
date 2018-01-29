@@ -1,0 +1,7 @@
+---
+features:
+  - Adds the new field ``by_path`` to disks in the inventory. Its value is
+    the full device path, in the form ``/dev/disk/by-path/<rest-of-path>``.
+
+    With ``ironic-lib`` version 2.11 or newer it is possible to use this field
+    in root device hints.

@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes bug where it was assumed that all BMCs operated on the default LAN
+    channel. IPA now iterates through all the possible LAN channels for the
+    IP address and returns 0.0.0.0 if the IPMI interface is not configured. See
+    https://bugs.launchpad.net/ironic-python-agent/+bug/1702514
+    for more details.

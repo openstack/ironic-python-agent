@@ -1,0 +1,100 @@
+- hosts: all
+  name: Autoconverted job legacy-ironic-python-agent-buildimage-tinyipa from old job
+    ironic-python-agent-buildimage-tinyipa-ubuntu-xenial
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          CLONEMAP=`mktemp`
+          function cleanup {
+              # In cases where zuul-cloner is aborted during a git
+              # clone operation, git will remove the git work tree in
+              # its cleanup. The work tree in these jobs is the
+              # workspace directory, which means that subsequent
+              # jenkins post-build actions can not run because the
+              # workspace has been removed.
+              # To reduce the likelihood of this having an impact,
+              # recreate the workspace directory if needed
+              mkdir -p $WORKSPACE
+              rm -f $CLONEMAP
+          }
+          trap cleanup EXIT
+          cat > $CLONEMAP << EOF
+          clonemap:
+            - name: $ZUUL_PROJECT
+              dest: .
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m $CLONEMAP --cache-dir /opt/git \
+              git://git.openstack.org $ZUUL_PROJECT
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: /usr/local/jenkins/slave_scripts/install-distro-packages.sh
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          BRANCH=$ZUUL_REFNAME
+          # After migration to zuulv3 BRANCH now looks like refs/heads/master
+          export BRANCH_PATH=`echo $BRANCH | sed -e "s/refs\/heads\///" | tr / -`
+
+          mkdir UPLOAD_RAW
+          mkdir UPLOAD_TAR
+
+          JOBNAME=ironic-python-agent-buildimage-{image-type}-{node}
+          TRANS_START_TIME=$(date +%s)
+          SUBUNIT_OUTPUT=testrepository.subunit
+          ERRORS=1
+          VENV=$(mktemp -d)
+          virtualenv $VENV
+          $VENV/bin/pip install -U os-testr
+
+          trap "finish" EXIT
+
+          function finish {
+              if [[ "$ERRORS" -eq 1 ]]; then
+                  $VENV/bin/generate-subunit $TRANS_START_TIME $SECONDS 'fail' $JOBNAME >> $SUBUNIT_OUTPUT
+              else
+                  $VENV/bin/generate-subunit $TRANS_START_TIME $SECONDS 'success' $JOBNAME >> $SUBUNIT_OUTPUT
+              fi
+              gzip -9 $SUBUNIT_OUTPUT
+              if [ "$VENV" != "" ] ; then
+                  rm -rf $VENV
+                  VENV=""
+              fi
+          }
+
+          type="tinyipa"
+          case $type in
+              tinyipa)
+                  export BUILD_AND_INSTALL_TINYIPA=true
+                  (cd imagebuild/tinyipa && make)
+                  mv imagebuild/tinyipa/tinyipa*.tar.gz* UPLOAD_TAR
+                  mv imagebuild/tinyipa/tinyipa*.* UPLOAD_RAW
+                  mv imagebuild/tinyipa/tiny-instance-uec*.tar.gz UPLOAD_TAR
+                  # NOTE(sambetts) Must clean up chroot directories before
+                  # publisher rsync command tries and fails to read them
+                  (cd imagebuild/tinyipa && make clean)
+              ;;
+              coreos)
+                  imagebuild/coreos/full_trusty_build.sh
+                  mv imagebuild/coreos/UPLOAD/coreos_production_pxe* UPLOAD_RAW
+                  mv ipa-coreos*.tar.gz* UPLOAD_TAR
+              ;;
+          esac
+          ERRORS=0
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'

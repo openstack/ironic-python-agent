@@ -10,6 +10,7 @@ devenv/*
 cover
 .coverage
 coverage.xml
+.stestr
 .testrepository
 imagebuild/.image_cache
 imagebuild/coreos/build
@@ -19,7 +20,7 @@ imagebuild/coreos/oem/container.tar.gz
 imagebuild/coreos/UPLOAD
 *.swp
 _build
-doc/source/api/
+doc/source/contributor/api/
 doc/build
 .proxy.sh.save
 

@@ -2,8 +2,8 @@
 Team and repository tags
 ========================
 
-.. image:: http://governance.openstack.org/badges/ironic-python-agent.svg
-    :target: http://governance.openstack.org/reference/tags/index.html
+.. image:: https://governance.openstack.org/tc/badges/ironic-python-agent.svg
+    :target: https://governance.openstack.org/tc/reference/tags/index.html
 
 .. Change things from this point on
 
@@ -25,14 +25,14 @@ as of the Kilo OpenStack release.
 Building the IPA deployment ramdisk
 ===================================
 
-For more information see the `Image Builder <http://docs.openstack.org/developer/ironic-python-agent/#image-builders>`_ section of the Ironic Python Agent
+For more information see the `Image Builder <https://docs.openstack.org/ironic-python-agent/latest/install/index.html#image-builders>`_ section of the Ironic Python Agent
 developer guide.
 
 
 Using IPA with devstack
 =======================
 
-This is covered in the `Deploying Ironic with DevStack <http://docs.openstack.org/developer/ironic/dev/dev-quickstart.html#deploying-ironic-with-devstack>`_
+This is covered in the `Deploying Ironic with DevStack <https://docs.openstack.org/ironic/latest/contributor/dev-quickstart.html#deploying-ironic-with-devstack>`_
 section of the Ironic dev-quickstart guide.
 
 
@@ -40,11 +40,11 @@ Project Resources
 =================
 Project status, bugs, and blueprints are tracked on Launchpad:
 
-  http://launchpad.net/ironic-python-agent
+  https://launchpad.net/ironic-python-agent
 
 Developer documentation can be found here:
 
-  http://docs.openstack.org/developer/ironic-python-agent
+  https://docs.openstack.org/ironic-python-agent
 
 Additional resources are linked from the project wiki page:
 
@@ -54,4 +54,4 @@ IRC channel:
     #openstack-ironic
 
 To contribute, start here: `Openstack: How to
-contribute <http://docs.openstack.org/infra/manual/developers.html>`_.
+contribute <https://docs.openstack.org/infra/manual/developers.html>`_.

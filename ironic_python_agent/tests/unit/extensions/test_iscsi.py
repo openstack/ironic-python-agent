@@ -13,15 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-
-from oslo_concurrency import processutils
-from oslotest import base as test_base
-
 from ironic_lib import disk_utils
+import mock
+from oslo_concurrency import processutils
+
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import iscsi
 from ironic_python_agent import hardware
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
@@ -31,11 +30,11 @@ class FakeAgent(object):
 
 
 @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
-@mock.patch.object(hardware, 'dispatch_to_managers')
-@mock.patch.object(utils, 'execute')
+@mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 @mock.patch.object(iscsi.rtslib_fb, 'RTSRoot',
                    mock.Mock(side_effect=iscsi.rtslib_fb.RTSLibError()))
-class TestISCSIExtensionTgt(test_base.BaseTestCase):
+class TestISCSIExtensionTgt(base.IronicAgentTest):
 
     def setUp(self):
         super(TestISCSIExtensionTgt, self).setUp()
@@ -116,7 +115,7 @@ class TestISCSIExtensionTgt(test_base.BaseTestCase):
         mock_dispatch.assert_called_once_with('get_os_install_device')
         self.assertFalse(mock_destroy.called)
 
-    @mock.patch.object(iscsi, '_wait_for_tgtd')
+    @mock.patch.object(iscsi, '_wait_for_tgtd', autospec=True)
     def test_start_iscsi_target_fail_command(self, mock_wait_iscsi,
                                              mock_execute, mock_dispatch,
                                              mock_destroy):
@@ -134,15 +133,24 @@ class TestISCSIExtensionTgt(test_base.BaseTestCase):
         mock_execute.assert_has_calls(expected)
         mock_dispatch.assert_called_once_with('get_os_install_device')
 
+    def test_start_iscsi_target_fail_command_not_exist(self, mock_execute,
+                                                       mock_dispatch,
+                                                       mock_destroy):
+        mock_dispatch.return_value = self.fake_dev
+        mock_execute.side_effect = OSError('file not found')
+        self.assertRaises(errors.ISCSIError,
+                          self.agent_extension.start_iscsi_target,
+                          iqn=self.fake_iqn)
+
 
 _ORIG_UTILS = iscsi.rtslib_fb.utils
 
 
 @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
-@mock.patch.object(hardware, 'dispatch_to_managers')
+@mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
 # Don't mock the utils module, as it contains exceptions
-@mock.patch.object(iscsi, 'rtslib_fb', utils=_ORIG_UTILS)
-class TestISCSIExtensionLIO(test_base.BaseTestCase):
+@mock.patch.object(iscsi, 'rtslib_fb', utils=_ORIG_UTILS, autospec=True)
+class TestISCSIExtensionLIO(base.IronicAgentTest):
 
     def setUp(self):
         super(TestISCSIExtensionLIO, self).setUp()
@@ -150,7 +158,8 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
         self.fake_dev = '/dev/fake'
         self.fake_iqn = 'iqn-fake'
 
-    @mock.patch('ironic_python_agent.netutils.get_wildcard_address')
+    @mock.patch('ironic_python_agent.netutils.get_wildcard_address',
+                autospec=True)
     def test_start_iscsi_target(self, mock_get_wildcard_address,
                                 mock_rtslib, mock_dispatch,
                                 mock_destroy):
@@ -174,7 +183,8 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             mock_rtslib.TPG.return_value, '[::]', 3260)
         self.assertFalse(mock_destroy.called)
 
-    @mock.patch('ironic_python_agent.netutils.get_wildcard_address')
+    @mock.patch('ironic_python_agent.netutils.get_wildcard_address',
+                autospec=True)
     def test_start_iscsi_target_noipv6(self, mock_get_wildcard_address,
                                        mock_rtslib, mock_dispatch,
                                        mock_destroy):
@@ -198,7 +208,8 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             mock_rtslib.TPG.return_value, '0.0.0.0', 3260)
         self.assertFalse(mock_destroy.called)
 
-    @mock.patch('ironic_python_agent.netutils.get_wildcard_address')
+    @mock.patch('ironic_python_agent.netutils.get_wildcard_address',
+                autospec=True)
     def test_start_iscsi_target_with_special_port(self,
                                                   mock_get_wildcard_address,
                                                   mock_rtslib, mock_dispatch,
@@ -231,7 +242,8 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
             errors.ISCSIError, 'Failed to create a target',
             self.agent_extension.start_iscsi_target, iqn=self.fake_iqn)
 
-    @mock.patch('ironic_python_agent.netutils.get_wildcard_address')
+    @mock.patch('ironic_python_agent.netutils.get_wildcard_address',
+                autospec=True)
     def test_failed_to_bind_iscsi(self, mock_get_wildcard_address,
                                   mock_rtslib, mock_dispatch, mock_destroy):
         mock_get_wildcard_address.return_value = '::'
@@ -269,8 +281,8 @@ class TestISCSIExtensionLIO(test_base.BaseTestCase):
         mock_destroy.assert_called_once_with('/dev/fake', 'my_node_uuid')
 
 
-@mock.patch.object(iscsi.rtslib_fb, 'RTSRoot')
-class TestISCSIExtensionCleanUp(test_base.BaseTestCase):
+@mock.patch.object(iscsi.rtslib_fb, 'RTSRoot', autospec=True)
+class TestISCSIExtensionCleanUp(base.IronicAgentTest):
 
     def setUp(self):
         super(TestISCSIExtensionCleanUp, self).setUp()

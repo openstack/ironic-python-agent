@@ -12,9 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslotest import base as test_base
-
 from ironic_python_agent import errors
+from ironic_python_agent.tests.unit import base
 
 DETAILS = 'details'
 SAME_CL_DETAILS = 'same_as_class_details'
@@ -32,7 +31,7 @@ class TestError(errors.RESTError):
         super(TestError, self).__init__(details)
 
 
-class TestErrors(test_base.BaseTestCase):
+class TestErrors(base.IronicAgentTest):
 
     def test_RESTError(self):
         e = errors.RESTError()

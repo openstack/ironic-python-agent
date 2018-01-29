@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixes JSON serialization of logs by encoding them as text instead of byte
+    strings in IPA. This works for py2.7 as well as py3. See
+    https://bugs.launchpad.net/ironic-python-agent/+bug/1668533 for details.

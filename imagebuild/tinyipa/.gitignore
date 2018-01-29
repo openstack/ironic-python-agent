@@ -5,6 +5,7 @@ tinyipabuild
 tinyipafinal
 *.vmlinuz
 vmlinuz64
+*.sha256
 *.iso
 *.tcz*
 squashfs-root

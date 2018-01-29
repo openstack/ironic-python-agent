@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    Support for setting IPMI credentials during inspection was removed. This
+    feature is not supported by ironic-inspector since the Pike release.
+  - |
+    The ``ipmi_address`` field is no longer sent as part of the inspection
+    process. The ``inventory[bmc_address]`` field should be used instead.

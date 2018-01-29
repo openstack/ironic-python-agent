@@ -15,11 +15,12 @@
 import mock
 from oslo_serialization import jsonutils
 from oslo_service import loopingcall
-from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import ironic_api_client
+from ironic_python_agent.tests.unit import base
+from ironic_python_agent import version
 
 API_URL = 'http://agent-api.ironic.example.org/'
 
@@ -28,14 +29,20 @@ class FakeResponse(object):
     def __init__(self, content=None, status_code=200, headers=None):
         content = content or {}
         self.content = jsonutils.dumps(content)
+        self._json = content
         self.status_code = status_code
         self.headers = headers or {}
 
+    def json(self):
+        return self._json
 
-class TestBaseIronicPythonAgent(test_base.BaseTestCase):
+
+class TestBaseIronicPythonAgent(base.IronicAgentTest):
     def setUp(self):
         super(TestBaseIronicPythonAgent, self).setUp()
         self.api_client = ironic_api_client.APIClient(API_URL)
+        self.api_client._ironic_api_version = (
+            ironic_api_client.MIN_IRONIC_VERSION)
         self.hardware_info = {
             'interfaces': [
                 hardware.NetworkInterface(
@@ -57,11 +64,54 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                                       physical_mb='8675'),
         }
 
+    def test__get_ironic_api_version_already_set(self):
+        self.api_client.session.request = mock.create_autospec(
+            self.api_client.session.request,
+            return_value=None)
+
+        self.assertFalse(self.api_client.session.request.called)
+        self.assertEqual(ironic_api_client.MIN_IRONIC_VERSION,
+                         self.api_client._get_ironic_api_version())
+
+    def test__get_ironic_api_version_error(self):
+        self.api_client._ironic_api_version = None
+        self.api_client.session.request = mock.create_autospec(
+            self.api_client.session.request,
+            return_value=None)
+        self.api_client.session.request.side_effect = Exception("Boom")
+
+        self.assertEqual(ironic_api_client.MIN_IRONIC_VERSION,
+                         self.api_client._get_ironic_api_version())
+
+    def test__get_ironic_api_version_fresh(self):
+        self.api_client._ironic_api_version = None
+        response = FakeResponse(status_code=200, content={
+            "default_version": {
+                "id": "v1",
+                "links": [
+                    {
+                        "href": "http://127.0.0.1:6385/v1/",
+                        "rel": "self"
+                    }
+                ],
+                "min_version": "1.1",
+                "status": "CURRENT",
+                "version": "1.31"
+            }
+        })
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertEqual((1, 31), self.api_client._get_ironic_api_version())
+        self.assertEqual((1, 31), self.api_client._ironic_api_version)
+
     def test_successful_heartbeat(self):
         response = FakeResponse(status_code=202)
 
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
+        self.api_client._ironic_api_version = (
+            ironic_api_client.AGENT_VERSION_IRONIC_VERSION)
 
         self.api_client.heartbeat(
             uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
@@ -73,13 +123,18 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         data = self.api_client.session.request.call_args[1]['data']
         self.assertEqual('POST', request_args[0])
         self.assertEqual(API_URL + heartbeat_path, request_args[1])
-        self.assertEqual('{"callback_url": "http://192.0.2.1:9999"}', data)
+        expected_data = {
+            'callback_url': 'http://192.0.2.1:9999',
+            'agent_version': version.version_info.release_string()}
+        self.assertEqual(jsonutils.dumps(expected_data), data)
 
     def test_successful_heartbeat_ip6(self):
         response = FakeResponse(status_code=202)
 
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
+        self.api_client._ironic_api_version = (
+            ironic_api_client.AGENT_VERSION_IRONIC_VERSION)
 
         self.api_client.heartbeat(
             uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
@@ -91,8 +146,31 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
         data = self.api_client.session.request.call_args[1]['data']
         self.assertEqual('POST', request_args[0])
         self.assertEqual(API_URL + heartbeat_path, request_args[1])
-        self.assertEqual('{"callback_url": "http://[fc00:1111::4]:9999"}',
-                         data)
+        expected_data = {
+            'callback_url': 'http://[fc00:1111::4]:9999',
+            'agent_version': version.version_info.release_string()}
+        self.assertEqual(jsonutils.dumps(expected_data), data)
+
+    def test_heartbeat_agent_version_unsupported(self):
+        response = FakeResponse(status_code=202)
+
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+        self.api_client._ironic_api_version = (1, 31)
+
+        self.api_client.heartbeat(
+            uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+            advertise_address=('fc00:1111::4', '9999')
+        )
+
+        heartbeat_path = 'v1/heartbeat/deadbeef-dabb-ad00-b105-f00d00bab10c'
+        request_args = self.api_client.session.request.call_args[0]
+        data = self.api_client.session.request.call_args[1]['data']
+        self.assertEqual('POST', request_args[0])
+        self.assertEqual(API_URL + heartbeat_path, request_args[1])
+        expected_data = {
+            'callback_url': 'http://[fc00:1111::4]:9999'}
+        self.assertEqual(jsonutils.dumps(expected_data), data)
 
     def test_heartbeat_requests_exception(self):
         self.api_client.session.request = mock.Mock()
@@ -123,8 +201,9 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
                           uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
                           advertise_address=('192.0.2.1', '9999'))
 
-    @mock.patch('eventlet.greenthread.sleep')
-    @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup')
+    @mock.patch('eventlet.greenthread.sleep', autospec=True)
+    @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup',
+                autospec=True)
     def test_lookup_node(self, lookup_mock, sleep_mock):
         content = {
             'node': {
@@ -143,8 +222,9 @@ class TestBaseIronicPythonAgent(test_base.BaseTestCase):
 
         self.assertEqual(content, returned_content)
 
-    @mock.patch('eventlet.greenthread.sleep')
-    @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup')
+    @mock.patch('eventlet.greenthread.sleep', autospec=True)
+    @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup',
+                autospec=True)
     def test_lookup_timeout(self, lookup_mock, sleep_mock):
         lookup_mock.side_effect = loopingcall.LoopingCallTimeOut()
         self.assertRaises(errors.LookupNodeError,

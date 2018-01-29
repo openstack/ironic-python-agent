@@ -1,0 +1,119 @@
+- job:
+    name: legacy-ipa-dsvm-base
+    # NOTE: We do not use 'legacy-ironic-dsvm-base' as simpler and less
+    # confusing to define it all here and then use 'legacy-dsvm-base'
+    parent: legacy-dsvm-base
+    irrelevant-files:
+      - ^test-requirements.txt$
+      - ^.*\.rst$
+      - ^doc/.*$
+      - ^ironic_python_agent/tests/.*$
+      - ^releasenotes/.*$
+      - ^setup.cfg$
+      - ^tools/.*$
+      - ^tox.ini$
+    required-projects:
+      - openstack-infra/devstack-gate
+      - openstack/ironic
+      - openstack/ironic-lib
+      - openstack/ironic-python-agent
+      - openstack/ironic-tempest-plugin
+      - openstack/pyghmi
+      - openstack/python-ironicclient
+      - openstack/tempest
+      - openstack/virtualbmc
+
+- job:
+    name: ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src/post.yaml
+    timeout: 5400
+
+- job:
+    name: ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src/post.yaml
+    timeout: 5400
+
+- job:
+    name: ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src/post.yaml
+    timeout: 5400
+
+- job:
+    name: ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src/post.yaml
+    timeout: 5400
+
+- job:
+    name: ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa-src/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa-src/post.yaml
+    timeout: 5400
+
+- job:
+    name: ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src/post.yaml
+    timeout: 5400
+
+- job:
+    name: ipa-tempest-dsvm-partition-bios-pxe_ipmitool-coreos-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-pxe_ipmitool-coreos-src/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-pxe_ipmitool-coreos-src/post.yaml
+    timeout: 5400
+
+- job:
+    name: ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src/post.yaml
+    timeout: 5400
+
+- job:
+    name: ipa-tempest-dsvm-ironic-inspector-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/tempest-dsvm-ironic-inspector-src/run.yaml
+    post-run: playbooks/legacy/tempest-dsvm-ironic-inspector-src/post.yaml
+    timeout: 10800
+    required-projects:
+      # These are in addition to what is in legacy-ipa-dsvm-base
+      - openstack/ironic-inspector
+      - openstack/python-ironic-inspector-client
+
+- job:
+    name: ironic-python-agent-buildimage-coreos
+    parent: legacy-publish-openstack-artifacts
+    run: playbooks/legacy/ironic-python-agent-buildimage-coreos/run.yaml
+    post-run: playbooks/legacy/ironic-python-agent-buildimage-coreos/post.yaml
+    timeout: 1800
+
+- job:
+    name: ironic-python-agent-buildimage-tinyipa
+    parent: legacy-publish-openstack-artifacts
+    run: playbooks/legacy/ironic-python-agent-buildimage-tinyipa/run.yaml
+    post-run: playbooks/legacy/ironic-python-agent-buildimage-tinyipa/post.yaml
+    timeout: 1800
+
+- job:
+    name: ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa256-src
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa256-src/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa256-src/post.yaml
+    timeout: 5400
+
+- job:
+    name: ipa-tempest-dsvm-partition-pxe_ipmitool-tinyipa-python3
+    parent: legacy-ipa-dsvm-base
+    run: playbooks/legacy/ipa-tempest-dsvm-partition-pxe_ipmitool-tinyipa-python3/run.yaml
+    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-pxe_ipmitool-tinyipa-python3/post.yaml
+    timeout: 5400

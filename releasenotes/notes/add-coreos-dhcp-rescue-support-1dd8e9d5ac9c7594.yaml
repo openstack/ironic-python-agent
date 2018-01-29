@@ -1,0 +1,4 @@
+---
+features:
+  - Adds an extension to support rescue mode for a CoreOS-based ramdisk using
+    DHCP for the tenant network.

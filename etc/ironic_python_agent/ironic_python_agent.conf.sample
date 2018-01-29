@@ -13,7 +13,7 @@
 # The IP address to listen on. Can be supplied as "ipa-listen-
 # host" kernel parameter. (string value)
 # Deprecated group/name - [DEFAULT]/listen_host
-#listen_host = 0.0.0.0
+#listen_host = ::
 
 # The port to listen on. Can be supplied as "ipa-listen-port"
 # kernel parameter. (integer value)
@@ -118,9 +118,9 @@
 #disk_wait_attempts = 10
 
 # How much time (in seconds) to wait between attempts to check
-# if at least one suitable disk has appeared in inventory. Can
-# be supplied as "ipa-disk-wait-delay" kernel parameter.
-# (integer value)
+# if at least one suitable disk has appeared in inventory. Set
+# to zero to disable. Can be supplied as "ipa-disk-wait-delay"
+# kernel parameter. (integer value)
 #disk_wait_delay = 3
 
 # Verify HTTPS connections. Can be supplied as "ipa-insecure"
@@ -152,13 +152,6 @@
 # instead of the default INFO level. (boolean value)
 # Note: This option can be changed without restarting.
 #debug = false
-
-# DEPRECATED: If set to false, the logging level will be set
-# to WARNING instead of the default INFO level. (boolean
-# value)
-# This option is deprecated for removal.
-# Its value may be silently ignored in the future.
-#verbose = true
 
 # The name of a logging configuration file. This file is
 # appended to any existing logging configuration files. For
@@ -203,6 +196,13 @@
 # ignored if log_config_append is set. (boolean value)
 #use_syslog = false
 
+# Enable journald for logging. If running in a systemd
+# environment you may wish to enable journal support. Doing so
+# will use the journal native protocol which includes
+# structured metadata in addition to log messages.This option
+# is ignored if log_config_append is set. (boolean value)
+#use_journal = false
+
 # Syslog facility to receive log lines. This option is ignored
 # if log_config_append is set. (string value)
 #syslog_log_facility = LOG_USER
@@ -233,7 +233,7 @@
 
 # List of package logging levels in logger=LEVEL pairs. This
 # option is ignored if log_config_append is set. (list value)
-#default_log_levels = amqp=WARN,amqplib=WARN,boto=WARN,qpid=WARN,sqlalchemy=WARN,suds=INFO,oslo.messaging=INFO,iso8601=WARN,requests.packages.urllib3.connectionpool=WARN,urllib3.connectionpool=WARN,websocket=WARN,requests.packages.urllib3.util.retry=WARN,urllib3.util.retry=WARN,keystonemiddleware=WARN,routes.middleware=WARN,stevedore=WARN,taskflow=WARN,keystoneauth=WARN,oslo.cache=INFO,dogpile.core.dogpile=INFO
+#default_log_levels = amqp=WARN,amqplib=WARN,boto=WARN,qpid=WARN,sqlalchemy=WARN,suds=INFO,oslo.messaging=INFO,oslo_messaging=INFO,iso8601=WARN,requests.packages.urllib3.connectionpool=WARN,urllib3.connectionpool=WARN,websocket=WARN,requests.packages.urllib3.util.retry=WARN,urllib3.util.retry=WARN,keystonemiddleware=WARN,routes.middleware=WARN,stevedore=WARN,taskflow=WARN,keystoneauth=WARN,oslo.cache=INFO,dogpile.core.dogpile=INFO
 
 # Enables or disables publication of error events. (boolean
 # value)

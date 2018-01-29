@@ -21,13 +21,13 @@ import time
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
-from oslotest import base as test_base
 import requests
 import stevedore
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
@@ -46,7 +46,7 @@ class AcceptingFailure(mock.Mock):
             failure, expect_error)
 
 
-class TestMisc(test_base.BaseTestCase):
+class TestMisc(base.IronicAgentTest):
     def test_default_collector_loadable(self):
         ext = inspector.extension_manager([inspector.DEFAULT_COLLECTOR])
         self.assertIs(ext[inspector.DEFAULT_COLLECTOR].plugin,
@@ -59,20 +59,18 @@ class TestMisc(test_base.BaseTestCase):
                                ['foobar'])
 
 
-@mock.patch.object(inspector, 'setup_ipmi_credentials', autospec=True)
 @mock.patch.object(inspector, 'call_inspector', new_callable=AcceptingFailure)
 @mock.patch.object(stevedore, 'NamedExtensionManager', autospec=True)
-class TestInspect(test_base.BaseTestCase):
+class TestInspect(base.IronicAgentTest):
     def setUp(self):
         super(TestInspect, self).setUp()
-        CONF.set_override('inspection_callback_url', 'http://foo/bar',
-                          enforce_type=True)
-        CONF.set_override('inspection_collectors', '', enforce_type=True)
+        CONF.set_override('inspection_callback_url', 'http://foo/bar')
+        CONF.set_override('inspection_collectors', '')
         self.mock_collect = AcceptingFailure()
         self.mock_ext = mock.Mock(spec=['plugin', 'name'],
                                   plugin=self.mock_collect)
 
-    def test_ok(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
+    def test_ok(self, mock_ext_mgr, mock_call):
         mock_ext_mgr.return_value = [self.mock_ext]
         mock_call.return_value = {'uuid': 'uuid1'}
 
@@ -81,11 +79,9 @@ class TestInspect(test_base.BaseTestCase):
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure()
         self.assertEqual('uuid1', result)
-        mock_setup_ipmi.assert_called_once_with(mock_call.return_value)
 
-    def test_collectors_option(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
-        CONF.set_override('inspection_collectors', 'foo,bar',
-                          enforce_type=True)
+    def test_collectors_option(self, mock_ext_mgr, mock_call):
+        CONF.set_override('inspection_collectors', 'foo,bar')
         mock_ext_mgr.return_value = [
             mock.Mock(spec=['name', 'plugin'], plugin=AcceptingFailure()),
             mock.Mock(spec=['name', 'plugin'], plugin=AcceptingFailure()),
@@ -97,7 +93,7 @@ class TestInspect(test_base.BaseTestCase):
             fake_ext.plugin.assert_called_with_failure()
         mock_call.assert_called_with_failure()
 
-    def test_collector_failed(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
+    def test_collector_failed(self, mock_ext_mgr, mock_call):
         mock_ext_mgr.return_value = [self.mock_ext]
         self.mock_collect.side_effect = RuntimeError('boom')
 
@@ -106,19 +102,16 @@ class TestInspect(test_base.BaseTestCase):
 
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure(expect_error=True)
-        self.assertFalse(mock_setup_ipmi.called)
 
-    def test_extensions_failed(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
-        CONF.set_override('inspection_collectors', 'foo,bar',
-                          enforce_type=True)
+    def test_extensions_failed(self, mock_ext_mgr, mock_call):
+        CONF.set_override('inspection_collectors', 'foo,bar')
         mock_ext_mgr.side_effect = RuntimeError('boom')
 
         self.assertRaisesRegex(RuntimeError, 'boom', inspector.inspect)
 
         mock_call.assert_called_with_failure(expect_error=True)
-        self.assertFalse(mock_setup_ipmi.called)
 
-    def test_inspector_error(self, mock_ext_mgr, mock_call, mock_setup_ipmi):
+    def test_inspector_error(self, mock_ext_mgr, mock_call):
         mock_call.return_value = None
         mock_ext_mgr.return_value = [self.mock_ext]
 
@@ -127,15 +120,13 @@ class TestInspect(test_base.BaseTestCase):
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure()
         self.assertIsNone(result)
-        self.assertFalse(mock_setup_ipmi.called)
 
 
 @mock.patch.object(requests, 'post', autospec=True)
-class TestCallInspector(test_base.BaseTestCase):
+class TestCallInspector(base.IronicAgentTest):
     def setUp(self):
         super(TestCallInspector, self).setUp()
-        CONF.set_override('inspection_callback_url', 'url',
-                          enforce_type=True)
+        CONF.set_override('inspection_callback_url', 'url')
 
     def test_ok(self, mock_post):
         failures = utils.AccumulatedFailures()
@@ -175,59 +166,7 @@ class TestCallInspector(test_base.BaseTestCase):
         self.assertIsNone(res)
 
 
-@mock.patch.object(utils, 'execute', autospec=True)
-class TestSetupIpmiCredentials(test_base.BaseTestCase):
-    def setUp(self):
-        super(TestSetupIpmiCredentials, self).setUp()
-        self.resp = {'ipmi_username': 'user',
-                     'ipmi_password': 'pwd',
-                     'ipmi_setup_credentials': True}
-
-    def test_disabled(self, mock_call):
-        del self.resp['ipmi_setup_credentials']
-
-        inspector.setup_ipmi_credentials(self.resp)
-
-        self.assertFalse(mock_call.called)
-
-    def test_ok(self, mock_call):
-        inspector.setup_ipmi_credentials(self.resp)
-
-        expected = [
-            mock.call('ipmitool', 'user', 'set', 'name', '2', 'user'),
-            mock.call('ipmitool', 'user', 'set', 'password', '2', 'pwd'),
-            mock.call('ipmitool', 'user', 'enable', '2'),
-            mock.call('ipmitool', 'channel', 'setaccess', '1', '2',
-                      'link=on', 'ipmi=on', 'callin=on', 'privilege=4'),
-        ]
-        self.assertEqual(expected, mock_call.call_args_list)
-
-    def test_user_failed(self, mock_call):
-        mock_call.side_effect = processutils.ProcessExecutionError()
-
-        self.assertRaises(errors.InspectionError,
-                          inspector.setup_ipmi_credentials,
-                          self.resp)
-
-        mock_call.assert_called_once_with('ipmitool', 'user', 'set', 'name',
-                                          '2', 'user')
-
-    def test_password_failed(self, mock_call):
-        mock_call.side_effect = iter((None,
-                                      processutils.ProcessExecutionError))
-
-        self.assertRaises(errors.InspectionError,
-                          inspector.setup_ipmi_credentials,
-                          self.resp)
-
-        expected = [
-            mock.call('ipmitool', 'user', 'set', 'name', '2', 'user'),
-            mock.call('ipmitool', 'user', 'set', 'password', '2', 'pwd')
-        ]
-        self.assertEqual(expected, mock_call.call_args_list)
-
-
-class BaseDiscoverTest(test_base.BaseTestCase):
+class BaseDiscoverTest(base.IronicAgentTest):
     def setUp(self):
         super(BaseDiscoverTest, self).setUp()
         self.inventory = {
@@ -273,10 +212,9 @@ class TestCollectDefault(BaseDiscoverTest):
 
         inspector.collect_default(self.data, self.failures)
 
-        for key in ('memory', 'interfaces', 'cpu', 'disks'):
+        for key in ('memory', 'interfaces', 'cpu', 'disks', 'bmc_address'):
             self.assertTrue(self.data['inventory'][key])
 
-        self.assertEqual('1.2.3.4', self.data['ipmi_address'])
         self.assertEqual('boot:if', self.data['boot_interface'])
         self.assertEqual(self.inventory['disks'][0].name,
                          self.data['root_disk'].name)
@@ -290,10 +228,9 @@ class TestCollectDefault(BaseDiscoverTest):
 
         inspector.collect_default(self.data, self.failures)
 
-        for key in ('memory', 'interfaces', 'cpu'):
+        for key in ('memory', 'interfaces', 'cpu', 'bmc_address'):
             self.assertTrue(self.data['inventory'][key])
 
-        self.assertEqual('1.2.3.4', self.data['ipmi_address'])
         self.assertEqual('boot:if', self.data['boot_interface'])
         self.assertNotIn('root_disk', self.data)
 
@@ -302,7 +239,7 @@ class TestCollectDefault(BaseDiscoverTest):
 
 
 @mock.patch.object(utils, 'collect_system_logs', autospec=True)
-class TestCollectLogs(test_base.BaseTestCase):
+class TestCollectLogs(base.IronicAgentTest):
 
     def test(self, mock_collect):
         data = {}
@@ -320,7 +257,7 @@ class TestCollectLogs(test_base.BaseTestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestCollectExtraHardware(test_base.BaseTestCase):
+class TestCollectExtraHardware(base.IronicAgentTest):
     def setUp(self):
         super(TestCollectExtraHardware, self).setUp()
         self.data = {}
@@ -366,7 +303,7 @@ class TestCollectExtraHardware(test_base.BaseTestCase):
 
 
 @mock.patch.object(os, 'listdir', autospec=True)
-class TestCollectPciDevicesInfo(test_base.BaseTestCase):
+class TestCollectPciDevicesInfo(base.IronicAgentTest):
     def setUp(self):
         super(TestCollectPciDevicesInfo, self).setUp()
         self.data = {}
@@ -421,7 +358,7 @@ class TestCollectPciDevicesInfo(test_base.BaseTestCase):
 
 @mock.patch.object(utils, 'get_agent_params', lambda: {'BOOTIF': '01-cdef'})
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-class TestWaitForDhcp(test_base.BaseTestCase):
+class TestWaitForDhcp(base.IronicAgentTest):
     def setUp(self):
         super(TestWaitForDhcp, self).setUp()
         CONF.set_override('inspection_dhcp_wait_timeout',
@@ -483,10 +420,12 @@ class TestWaitForDhcp(test_base.BaseTestCase):
         self.assertEqual(1, mocked_sleep.call_count)
         self.assertEqual(2, mocked_dispatch.call_count)
 
-    @mock.patch.object(inspector, '_DHCP_RETRY_INTERVAL', 0.01)
-    def test_timeout(self, mocked_dispatch):
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(time, 'time', autospec=True,
+                       side_effect=[1.0, 1.1, 3.1, 3.2])
+    def test_timeout(self, mocked_time, mocked_sleep, mocked_dispatch):
         CONF.set_override('inspection_dhcp_all_interfaces', True)
-        CONF.set_override('inspection_dhcp_wait_timeout', 0.02)
+        CONF.set_override('inspection_dhcp_wait_timeout', 1)
 
         mocked_dispatch.return_value = [
             hardware.NetworkInterface(name='em0', mac_addr='abcd',
@@ -496,8 +435,11 @@ class TestWaitForDhcp(test_base.BaseTestCase):
         ]
 
         self.assertFalse(inspector.wait_for_dhcp())
-
         mocked_dispatch.assert_called_with('list_network_interfaces')
+        mocked_sleep.assert_called_once_with(inspector._DHCP_RETRY_INTERVAL)
+        # time.time() was called 3 times explicitly in wait_for_dhcp(),
+        # and 1 in LOG.warning()
+        self.assertEqual(4, mocked_time.call_count)
 
     def test_disabled(self, mocked_dispatch):
         CONF.set_override('inspection_dhcp_wait_timeout', 0)
@@ -507,7 +449,7 @@ class TestWaitForDhcp(test_base.BaseTestCase):
         self.assertFalse(mocked_dispatch.called)
 
 
-class TestNormalizeMac(test_base.BaseTestCase):
+class TestNormalizeMac(base.IronicAgentTest):
     def test_correct_mac(self):
         self.assertEqual('11:22:33:aa:bb:cc',
                          inspector._normalize_mac('11:22:33:aa:BB:cc'))

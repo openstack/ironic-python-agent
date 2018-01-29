@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Collects the BIOS-given NIC's name and adds ``biosdevname`` field to the
+    network interface inventory collected by the ``default`` collector of IPA.
+    The utility ``biosdevname`` is used for this purpose.
+
+    This feature is not available for Debian-based and CoreOS images as
+    ``biosdevname`` is not packaged for Debian-based distributions.
+issues:
+  - Collection of the BIOS-given names of network interfaces is not possible on
+    Debian-based images as the utility ``biosdevname`` is not available on
+    them. This applies to any CoreOS images as well, as they utilize a
+    Debian-based chroot.

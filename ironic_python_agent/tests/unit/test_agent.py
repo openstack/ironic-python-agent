@@ -14,15 +14,14 @@
 
 import socket
 import time
+from wsgiref import simple_server
 
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-from oslotest import base as test_base
 import pkg_resources
 from stevedore import extension
-from wsgiref import simple_server
 
 from ironic_python_agent import agent
 from ironic_python_agent import encoding
@@ -31,6 +30,7 @@ from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
 from ironic_python_agent import netutils
+from ironic_python_agent.tests.unit import base as ironic_agent_base
 from ironic_python_agent import utils
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
@@ -49,7 +49,7 @@ class FakeExtension(base.BaseAgentExtension):
     pass
 
 
-class TestHeartbeater(test_base.BaseTestCase):
+class TestHeartbeater(ironic_agent_base.IronicAgentTest):
     def setUp(self):
         super(TestHeartbeater, self).setUp()
         self.mock_agent = mock.Mock()
@@ -60,10 +60,10 @@ class TestHeartbeater(test_base.BaseTestCase):
             hardware.HardwareManager)
         self.heartbeater.stop_event = mock.Mock()
 
-    @mock.patch('os.read')
-    @mock.patch('select.poll')
-    @mock.patch('ironic_python_agent.agent._time')
-    @mock.patch('random.uniform')
+    @mock.patch('os.read', autospec=True)
+    @mock.patch('select.poll', autospec=True)
+    @mock.patch('ironic_python_agent.agent._time', autospec=True)
+    @mock.patch('random.uniform', autospec=True)
     def test_heartbeat(self, mock_uniform, mock_time, mock_poll, mock_read):
         time_responses = []
         uniform_responses = []
@@ -127,9 +127,9 @@ class TestHeartbeater(test_base.BaseTestCase):
         self.assertEqual(2.7, self.heartbeater.error_delay)
 
 
-@mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
+@mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
-class TestBaseAgent(test_base.BaseTestCase):
+class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
         super(TestBaseAgent, self).setUp()
@@ -151,6 +151,7 @@ class TestBaseAgent(test_base.BaseTestCase):
                                                     FakeExtension())])
         self.sample_nw_iface = hardware.NetworkInterface(
             "eth9", "AA:BB:CC:DD:EE:FF", "1.2.3.4", True)
+        hardware.NODE = None
 
     def assertEqualEncoded(self, a, b):
         # Evidently JSONEncoder.default() can't handle None (??) so we have to
@@ -171,15 +172,25 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertEqual(pkg_resources.get_distribution('ironic-python-agent')
                          .version, status.version)
 
-    @mock.patch.object(agent.IronicPythonAgent,
-                       '_wait_for_interface')
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    def test_run(self, mock_make_server, mock_dispatch, mock_wait):
-        CONF.set_override('inspection_callback_url', '', enforce_type=True)
-        wsgi_server = mock_make_server.return_value
-        wsgi_server.start.side_effect = KeyboardInterrupt()
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
+    @mock.patch('wsgiref.simple_server.WSGIServer', autospec=True)
+    @mock.patch.object(hardware, 'load_managers', autospec=True)
+    def test_run(self, mock_load_managers, mock_wsgi,
+                 mock_wait, mock_dispatch):
+        CONF.set_override('inspection_callback_url', '')
 
+        wsgi_server = mock_wsgi.return_value
+
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server.handle_request.side_effect = set_serve_api
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
         self.agent.api_client.lookup_node.return_value = {
@@ -190,32 +201,85 @@ class TestBaseAgent(test_base.BaseTestCase):
                 'heartbeat_timeout': 300
             }
         }
+
         self.agent.run()
 
         listen_addr = agent.Host('192.0.2.1', 9999)
-        mock_make_server.assert_called_once_with(
-            listen_addr.hostname,
-            listen_addr.port,
-            self.agent.api,
-            server_class=simple_server.WSGIServer)
-        wsgi_server.serve_forever.assert_called_once_with()
-        mock_wait.assert_called_once_with()
-        mock_dispatch.assert_called_once_with("list_hardware_info")
+        mock_wsgi.assert_called_once_with(
+            (listen_addr.hostname,
+             listen_addr.port),
+            simple_server.WSGIRequestHandler)
+        wsgi_server.set_app.assert_called_once_with(self.agent.api)
+        self.assertTrue(wsgi_server.handle_request.called)
+        mock_wait.assert_called_once_with(mock.ANY)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
-                       '_wait_for_interface')
+                       '_wait_for_interface', autospec=True)
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch('wsgiref.simple_server.WSGIServer', autospec=True)
+    @mock.patch.object(hardware, 'load_managers', autospec=True)
+    def test_run_raise_exception(self, mock_load_managers, mock_wsgi,
+                                 mock_dispatch, mock_wait):
+        CONF.set_override('inspection_callback_url', '')
+
+        wsgi_server = mock_wsgi.return_value
+        wsgi_server.handle_request.side_effect = KeyboardInterrupt()
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'config': {
+                'heartbeat_timeout': 300
+            }
+        }
+
+        self.assertRaisesRegex(errors.IronicAPIError,
+                               'Failed due to unknow exception.',
+                               self.agent.run)
+
+        self.assertTrue(mock_wait.called)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
+        listen_addr = agent.Host('192.0.2.1', 9999)
+        mock_wsgi.assert_called_once_with(
+            (listen_addr.hostname,
+             listen_addr.port),
+            simple_server.WSGIRequestHandler)
+        wsgi_server.set_app.assert_called_once_with(self.agent.api)
+        self.assertTrue(wsgi_server.handle_request.called)
+        self.agent.heartbeater.start.assert_called_once_with()
+        self.assertTrue(wsgi_server.handle_request.called)
+
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
+                mock.Mock())
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
-    def test_run_with_inspection(self, mock_list_hardware, mock_make_server,
+    @mock.patch('wsgiref.simple_server.WSGIServer', autospec=True)
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
+    def test_run_with_inspection(self, mock_list_hardware, mock_wsgi,
                                  mock_dispatch, mock_inspector, mock_wait):
-        CONF.set_override('inspection_callback_url', 'http://foo/bar',
-                          enforce_type=True)
+        CONF.set_override('inspection_callback_url', 'http://foo/bar')
 
-        wsgi_server = mock_make_server.return_value
-        wsgi_server.start.side_effect = KeyboardInterrupt()
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server = mock_wsgi.return_value
+        wsgi_server.handle_request.side_effect = set_serve_api
 
         mock_inspector.return_value = 'uuid'
 
@@ -232,31 +296,38 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.agent.run()
 
         listen_addr = agent.Host('192.0.2.1', 9999)
-        mock_make_server.assert_called_once_with(
-            listen_addr.hostname,
-            listen_addr.port,
-            self.agent.api,
-            server_class=simple_server.WSGIServer)
-        wsgi_server.serve_forever.assert_called_once_with()
+        mock_wsgi.assert_called_once_with(
+            (listen_addr.hostname,
+             listen_addr.port),
+            simple_server.WSGIRequestHandler)
+        self.assertTrue(mock_wsgi.called)
+
         mock_inspector.assert_called_once_with()
         self.assertEqual(1, self.agent.api_client.lookup_node.call_count)
         self.assertEqual(
             'uuid',
             self.agent.api_client.lookup_node.call_args[1]['node_uuid'])
 
-        mock_wait.assert_called_once_with()
-        mock_dispatch.assert_called_once_with("list_hardware_info")
+        mock_wait.assert_called_once_with(mock.ANY)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
-                       '_wait_for_interface')
+                       '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
+    @mock.patch('wsgiref.simple_server.WSGIServer', autospec=True)
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
     def test_run_with_inspection_without_apiurl(self,
                                                 mock_list_hardware,
-                                                mock_make_server,
+                                                mock_wsgi,
                                                 mock_dispatch,
                                                 mock_inspector,
                                                 mock_wait):
@@ -264,8 +335,7 @@ class TestBaseAgent(test_base.BaseTestCase):
         # agent starts, ensure that the inspection will be called and wsgi
         # server will work as usual. Also, make sure api_client and heartbeater
         # will not be initialized in this case.
-        CONF.set_override('inspection_callback_url', 'http://foo/bar',
-                          enforce_type=True)
+        CONF.set_override('inspection_callback_url', 'http://foo/bar')
 
         self.agent = agent.IronicPythonAgent(None,
                                              agent.Host('203.0.113.1', 9990),
@@ -279,32 +349,40 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertFalse(hasattr(self.agent, 'api_client'))
         self.assertFalse(hasattr(self.agent, 'heartbeater'))
 
-        wsgi_server = mock_make_server.return_value
-        wsgi_server.start.side_effect = KeyboardInterrupt()
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server = mock_wsgi.return_value
+        wsgi_server.handle_request.side_effect = set_serve_api
 
         self.agent.run()
 
         listen_addr = agent.Host('192.0.2.1', 9999)
-        mock_make_server.assert_called_once_with(
-            listen_addr.hostname,
-            listen_addr.port,
-            self.agent.api,
-            server_class=simple_server.WSGIServer)
-        wsgi_server.serve_forever.assert_called_once_with()
+        mock_wsgi.assert_called_once_with(
+            (listen_addr.hostname,
+             listen_addr.port),
+            simple_server.WSGIRequestHandler)
+        self.assertTrue(wsgi_server.handle_request.called)
+
         mock_inspector.assert_called_once_with()
 
         self.assertFalse(mock_wait.called)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
-                       '_wait_for_interface')
+                       '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
+    @mock.patch('wsgiref.simple_server.WSGIServer', autospec=True)
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
     def test_run_without_inspection_and_apiurl(self,
                                                mock_list_hardware,
-                                               mock_make_server,
+                                               mock_wsgi,
                                                mock_dispatch,
                                                mock_inspector,
                                                mock_wait):
@@ -312,8 +390,7 @@ class TestBaseAgent(test_base.BaseTestCase):
         # the agent starts, ensure that the inspection will be skipped and wsgi
         # server will work as usual. Also, make sure api_client and heartbeater
         # will not be initialized in this case.
-        CONF.set_override('inspection_callback_url', None,
-                          enforce_type=True)
+        CONF.set_override('inspection_callback_url', None)
 
         self.agent = agent.IronicPythonAgent(None,
                                              agent.Host('203.0.113.1', 9990),
@@ -327,18 +404,20 @@ class TestBaseAgent(test_base.BaseTestCase):
         self.assertFalse(hasattr(self.agent, 'api_client'))
         self.assertFalse(hasattr(self.agent, 'heartbeater'))
 
-        wsgi_server = mock_make_server.return_value
-        wsgi_server.start.side_effect = KeyboardInterrupt()
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server = mock_wsgi.return_value
+        wsgi_server.handle_request.side_effect = set_serve_api
 
         self.agent.run()
 
         listen_addr = agent.Host('192.0.2.1', 9999)
-        mock_make_server.assert_called_once_with(
-            listen_addr.hostname,
-            listen_addr.port,
-            self.agent.api,
-            server_class=simple_server.WSGIServer)
-        wsgi_server.serve_forever.assert_called_once_with()
+        mock_wsgi.assert_called_once_with(
+            (listen_addr.hostname,
+             listen_addr.port),
+            simple_server.WSGIRequestHandler)
+        self.assertTrue(wsgi_server.handle_request.called)
 
         self.assertFalse(mock_inspector.called)
         self.assertFalse(mock_wait.called)
@@ -367,17 +446,21 @@ class TestBaseAgent(test_base.BaseTestCase):
         mock_dispatch.assert_has_calls(expected_dispatch_calls)
         mock_sleep.assert_has_calls(expected_sleep_calls)
 
-    @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
-                autospec=True)
+    @mock.patch.object(hardware, 'load_managers', autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
-    @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
-    def test_run_with_sleep(self, mock_check_for_iscsi, mock_list_hardware,
-                            mock_make_server, mock_sleep, mock_cna):
-        CONF.set_override('inspection_callback_url', '', enforce_type=True)
+    @mock.patch.object(agent.IronicPythonAgent, '_wait_for_interface',
+                       autospec=True)
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch('wsgiref.simple_server.WSGIServer', autospec=True)
+    def test_run_with_sleep(self, mock_make_server, mock_dispatch,
+                            mock_wait, mock_sleep, mock_load_managers):
+        CONF.set_override('inspection_callback_url', '')
+
+        def set_serve_api():
+            self.agent.serve_api = False
+
         wsgi_server = mock_make_server.return_value
-        wsgi_server.start.side_effect = KeyboardInterrupt()
+        wsgi_server.handle_request.side_effect = set_serve_api
 
         self.agent.hardware_initialization_delay = 10
         self.agent.heartbeater = mock.Mock()
@@ -390,20 +473,21 @@ class TestBaseAgent(test_base.BaseTestCase):
                 'heartbeat_timeout': 300
             }
         }
-        mock_cna.return_value = False
         self.agent.run()
 
         listen_addr = agent.Host('192.0.2.1', 9999)
         mock_make_server.assert_called_once_with(
-            listen_addr.hostname,
-            listen_addr.port,
-            self.agent.api,
-            server_class=simple_server.WSGIServer)
-        wsgi_server.serve_forever.assert_called_once_with()
+            (listen_addr.hostname,
+             listen_addr.port),
+            simple_server.WSGIRequestHandler)
 
         self.agent.heartbeater.start.assert_called_once_with()
         mock_sleep.assert_called_once_with(10)
-        self.assertTrue(mock_check_for_iscsi.called)
+        self.assertTrue(mock_load_managers.called)
+        self.assertTrue(mock_wait.called)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
 
     def test_async_command_success(self):
         result = base.AsyncCommandResult('foo_command', {'fail': False},
@@ -481,6 +565,14 @@ class TestBaseAgent(test_base.BaseTestCase):
         source = self.agent._get_route_source('XXX')
         self.assertEqual('1:2::3:4', source)
 
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_route_source_ipv6_linklocal(self, mock_execute):
+        mock_execute.return_value = (
+            'XXX src fe80::1234:1234:1234:1234 metric XXX\n    cache', None)
+
+        source = self.agent._get_route_source('XXX')
+        self.assertIsNone(source)
+
     @mock.patch.object(agent, 'LOG', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_route_source_indexerror(self, mock_execute, mock_log):
@@ -491,9 +583,9 @@ class TestBaseAgent(test_base.BaseTestCase):
         mock_log.warning.assert_called_once()
 
 
-@mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
+@mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
-class TestAgentStandalone(test_base.BaseTestCase):
+class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
         super(TestAgentStandalone, self).setUp()
@@ -511,42 +603,50 @@ class TestAgentStandalone(test_base.BaseTestCase):
                                              'agent_ipmitool',
                                              True)
 
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
     @mock.patch('wsgiref.simple_server.make_server', autospec=True)
-    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info')
-    def test_run(self, mock_list_hardware, mock_make_server):
+    @mock.patch('wsgiref.simple_server.WSGIServer', autospec=True)
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
+    @mock.patch.object(hardware, 'load_managers', autospec=True)
+    def test_run(self, mock_load_managers, mock_list_hardware,
+                 mock_wsgi, mock_make_server):
         wsgi_server = mock_make_server.return_value
         wsgi_server.start.side_effect = KeyboardInterrupt()
+        wsgi_server_request = mock_wsgi.return_value
+
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server_request.handle_request.side_effect = set_serve_api
 
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
-        self.agent.api_client.lookup_node.return_value = {
-            'node': {
-                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
-            },
-            'config': {
-                'heartbeat_timeout': 300
-            }
-        }
+
         self.agent.run()
 
+        self.assertTrue(mock_load_managers.called)
         listen_addr = agent.Host('192.0.2.1', 9999)
-        mock_make_server.assert_called_once_with(
-            listen_addr.hostname,
-            listen_addr.port,
-            self.agent.api,
-            server_class=simple_server.WSGIServer)
-        wsgi_server.serve_forever.assert_called_once_with()
+        mock_wsgi.assert_called_once_with(
+            (listen_addr.hostname,
+             listen_addr.port),
+            simple_server.WSGIRequestHandler)
+        wsgi_server_request.set_app.assert_called_once_with(self.agent.api)
 
+        self.assertTrue(wsgi_server_request.handle_request.called)
         self.assertFalse(self.agent.heartbeater.called)
         self.assertFalse(self.agent.api_client.lookup_node.called)
 
 
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
-@mock.patch.object(hardware.GenericHardwareManager, '_wait_for_disks',
+@mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 @mock.patch.object(socket, 'gethostbyname', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestAdvertiseAddress(test_base.BaseTestCase):
+class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
     def setUp(self):
         super(TestAdvertiseAddress, self).setUp()
 

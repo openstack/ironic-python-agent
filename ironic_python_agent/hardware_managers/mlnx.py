@@ -13,10 +13,11 @@
 # limitations under the License.
 import os
 
+from oslo_log import log
+
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import netutils
-from oslo_log import log
 
 LOG = log.getLogger()
 # Mellanox NIC Vendor ID

@@ -82,6 +82,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
     root_partition = _get_partition(device, uuid=root_uuid)
     efi_partition = None
     efi_partition_mount_point = None
+    efi_mounted = False
 
     try:
         # Mount the partition and binds
@@ -101,6 +102,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
             if not os.path.exists(efi_partition_mount_point):
                 os.makedirs(efi_partition_mount_point)
             utils.execute('mount', efi_partition, efi_partition_mount_point)
+            efi_mounted = True
 
         binary_name = "grub"
         if os.path.exists(os.path.join(path, 'usr/sbin/grub2-install')):
@@ -108,12 +110,14 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
 
         # Add /bin to PATH variable as grub requires it to find efibootmgr
         # when running in uefi boot mode.
+        # Add /usr/sbin to PATH variable to ensure it is there as we do
+        # not use full path to grub binary anymore.
         path_variable = os.environ.get('PATH', '')
-        path_variable = '%s:/bin' % path_variable
+        path_variable = '%s:/bin:/usr/sbin' % path_variable
 
         # Install grub
         utils.execute('chroot %(path)s /bin/sh -c '
-                      '"/usr/sbin/%(bin)s-install %(dev)s"' %
+                      '"%(bin)s-install %(dev)s"' %
                       {'path': path, 'bin': binary_name, 'dev': device},
                       shell=True, env_variables={'PATH': path_variable})
         # Also run grub-install with --removable, this installs grub to the
@@ -126,13 +130,13 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
         # prevents NVRAM from being updated.
         if efi_partition:
             utils.execute('chroot %(path)s /bin/sh -c '
-                          '"/usr/sbin/%(bin)s-install %(dev)s --removable"' %
+                          '"%(bin)s-install %(dev)s --removable"' %
                           {'path': path, 'bin': binary_name, 'dev': device},
                           shell=True, env_variables={'PATH': path_variable})
 
         # Generate the grub configuration file
         utils.execute('chroot %(path)s /bin/sh -c '
-                      '"/usr/sbin/%(bin)s-mkconfig -o '
+                      '"%(bin)s-mkconfig -o '
                       '/boot/%(bin)s/grub.cfg"' %
                       {'path': path, 'bin': binary_name}, shell=True,
                       env_variables={'PATH': path_variable})
@@ -153,7 +157,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
         # If umount fails for efi partition, then we cannot be sure that all
         # the changes were written back to the filesystem.
         try:
-            if efi_partition:
+            if efi_mounted:
                 utils.execute('umount', efi_partition_mount_point, attempts=3,
                               delay_on_retry=True)
         except processutils.ProcessExecutionError as e:

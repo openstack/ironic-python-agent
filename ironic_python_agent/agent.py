@@ -19,7 +19,9 @@ import select
 import socket
 import threading
 import time
+from wsgiref import simple_server
 
+import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -27,7 +29,6 @@ from oslo_utils import netutils
 import pkg_resources
 from six.moves.urllib import parse as urlparse
 from stevedore import extension
-from wsgiref import simple_server
 
 from ironic_python_agent.api import app
 from ironic_python_agent import encoding
@@ -192,6 +193,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.network_interface = network_interface
         self.standalone = standalone
         self.hardware_initialization_delay = hardware_initialization_delay
+        # IPA will stop serving requests and exit after this is set to False
+        self.serve_api = True
 
     def get_status(self):
         """Retrieve a serializable status.
@@ -214,7 +217,12 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             return
 
         try:
-            return out.strip().split('\n')[0].split('src')[1].split()[0]
+            source = out.strip().split('\n')[0].split('src')[1].split()[0]
+            if netaddr.IPAddress(source).is_link_local():
+                LOG.info('Ignoring link-local source to %(dest)s: %(rec)s',
+                         {'dest': dest, 'rec': out})
+                return
+            return source
         except IndexError:
             LOG.warning('No route to host %(dest)s, route record: %(rec)s',
                         {'dest': dest, 'rec': out})
@@ -316,6 +324,30 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             LOG.warning("No valid network interfaces found. "
                         "Node lookup will probably fail.")
 
+    def serve_ipa_api(self):
+        """Serve the API until an extension terminates it."""
+        if netutils.is_ipv6_enabled():
+            # Listens to both IP versions, assuming IPV6_V6ONLY isn't enabled,
+            # (the default behaviour in linux)
+            simple_server.WSGIServer.address_family = socket.AF_INET6
+        server = simple_server.WSGIServer((self.listen_address.hostname,
+                                           self.listen_address.port),
+                                          simple_server.WSGIRequestHandler)
+        server.set_app(self.api)
+
+        if not self.standalone and self.api_url:
+            # Don't start heartbeating until the server is listening
+            self.heartbeater.start()
+
+        while self.serve_api:
+            try:
+                server.handle_request()
+            except BaseException as e:
+                msg = "Failed due to unknow exception. Error %s" % e
+                LOG.exception(msg)
+                raise errors.IronicAPIError(msg)
+        LOG.info('shutting down')
+
     def run(self):
         """Run the Ironic Python Agent."""
         # Get the UUID so we can heartbeat to Ironic. Raises LookupNodeError
@@ -369,24 +401,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                 LOG.error('Neither ipa-api-url nor inspection_callback_url'
                           'found, please check your pxe append parameters.')
 
-        if netutils.is_ipv6_enabled():
-            # Listens to both IP versions, assuming IPV6_V6ONLY isn't enabled,
-            # (the default behaviour in linux)
-            simple_server.WSGIServer.address_family = socket.AF_INET6
-        wsgi = simple_server.make_server(
-            self.listen_address.hostname,
-            self.listen_address.port,
-            self.api,
-            server_class=simple_server.WSGIServer)
-
-        if not self.standalone and self.api_url:
-            # Don't start heartbeating until the server is listening
-            self.heartbeater.start()
-
-        try:
-            wsgi.serve_forever()
-        except BaseException:
-            LOG.exception('shutting down')
+        self.serve_ipa_api()
 
         if not self.standalone and self.api_url:
             self.heartbeater.stop()

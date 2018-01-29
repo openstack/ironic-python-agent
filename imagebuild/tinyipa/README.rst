@@ -92,16 +92,46 @@ before running make or build-tinyipa.sh run::
     export PYOPTIMIZE_TINYIPA=false
 
 
-Enabling SSH access to the ramdisk
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Enabling/disabling SSH access to the ramdisk
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you want to enable SSH access to the image, set ``ENABLE_SSH`` variable in
-your shell before building the tinyipa::
+By default tinyipa will be built with OpenSSH server installed but no
+public SSH keys authorized to access it.
 
-  export ENABLE_SSH=true
+If you want to enable SSH access to the image, set ``AUTHORIZE_SSH`` variable
+in your shell before building the tinyipa::
+
+  export AUTHORIZE_SSH=true
 
 By default it will use public RSA or DSA keys of the user running the build.
 To provide other public SSH key, export path to it in your shell before
 building tinyipa as follows::
 
   export SSH_PUBLIC_KEY=<full-path-to-public-key>
+
+If you want to disable SSH altogether, set ``INSTALL_SSH`` variable in your
+shell to ``false`` before building the tinyipa::
+
+    export INSTALL_SSH=false
+
+You can also rebuild an already built tinyipa image by using ``addssh`` make
+tagret::
+
+    make addssh
+
+This will fetch the pre-built tinyipa image from "tarballs.openstack.org"
+using the version specified as ``BRANCH_NAME`` shell variable as described
+above, or it may use an already downloaded ramdisk image if path to it is set
+as ``TINYIPA_RAMDISK_FILE`` shell variable before running this make target.
+It will install and configure OpenSSH if needed and add public SSH keys for
+``tc`` user using the same ``SSH_PUBLIC_KEY`` shell variable as described
+above.
+
+Enabling biosdevname in the ramdisk
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to collect BIOS given names of NICs in the inventory, set
+``TINYIPA_REQUIRE_BIOSDEVNAME`` variable in your shell before building the
+tinyipa::
+
+  export TINYIPA_REQUIRE_BIOSDEVNAME=true

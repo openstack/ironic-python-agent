@@ -15,18 +15,18 @@
 import time
 
 import mock
-from oslotest import base as test_base
 import pecan
 import pecan.testing
 
 from ironic_python_agent import agent
 from ironic_python_agent.extensions import base
+from ironic_python_agent.tests.unit import base as ironic_agent_base
 
 
 PATH_PREFIX = '/v1'
 
 
-class TestIronicAPI(test_base.BaseTestCase):
+class TestIronicAPI(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
         super(TestIronicAPI, self).setUp()
@@ -192,7 +192,7 @@ class TestIronicAPI(test_base.BaseTestCase):
 
         self.mock_agent.execute_command.return_value = result
 
-        with mock.patch.object(result, 'join') as join_mock:
+        with mock.patch.object(result, 'join', autospec=True) as join_mock:
             response = self.post_json('/commands', command)
             self.assertFalse(join_mock.called)
 
@@ -219,7 +219,7 @@ class TestIronicAPI(test_base.BaseTestCase):
 
         self.mock_agent.execute_command.return_value = result
 
-        with mock.patch.object(result, 'join') as join_mock:
+        with mock.patch.object(result, 'join', autospec=True) as join_mock:
             response = self.post_json('/commands?wait=true', command)
             join_mock.assert_called_once_with()
 
@@ -245,7 +245,7 @@ class TestIronicAPI(test_base.BaseTestCase):
 
         self.mock_agent.execute_command.return_value = result
 
-        with mock.patch.object(result, 'join') as join_mock:
+        with mock.patch.object(result, 'join', autospec=True) as join_mock:
             response = self.post_json('/commands?wait=false', command)
             self.assertFalse(join_mock.called)
 

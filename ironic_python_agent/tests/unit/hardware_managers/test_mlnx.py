@@ -15,17 +15,17 @@
 import os
 
 import mock
-from oslotest import base as test_base
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent.hardware_managers import mlnx
+from ironic_python_agent.tests.unit import base
 
 IB_ADDRESS = 'a0:00:00:27:fe:80:00:00:00:00:00:00:7c:fe:90:03:00:29:26:52'
 CLIENT_ID = 'ff:00:00:00:00:00:02:00:00:02:c9:00:7c:fe:90:03:00:29:26:52'
 
 
-class MlnxHardwareManager(test_base.BaseTestCase):
+class MlnxHardwareManager(base.IronicAgentTest):
     def setUp(self):
         super(MlnxHardwareManager, self).setUp()
         self.hardware = mlnx.MellanoxDeviceHardwareManager()
@@ -42,8 +42,8 @@ class MlnxHardwareManager(test_base.BaseTestCase):
             CLIENT_ID,
             mlnx._generate_client_id(IB_ADDRESS))
 
-    @mock.patch.object(os, 'listdir')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test_detect_hardware(self, mocked_open, mock_listdir):
         mock_listdir.return_value = ['eth0', 'ib0']
         mocked_open.return_value.__enter__ = lambda s: s
@@ -52,8 +52,8 @@ class MlnxHardwareManager(test_base.BaseTestCase):
         read_mock.side_effect = ['0x8086\n', '0x15b3\n']
         self.assertTrue(mlnx._detect_hardware())
 
-    @mock.patch.object(os, 'listdir')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test_detect_hardware_no_mlnx(self, mocked_open, mock_listdir):
         mock_listdir.return_value = ['eth0', 'eth1']
         mocked_open.return_value.__enter__ = lambda s: s
@@ -62,8 +62,8 @@ class MlnxHardwareManager(test_base.BaseTestCase):
         read_mock.side_effect = ['0x8086\n', '0x8086\n']
         self.assertFalse(mlnx._detect_hardware())
 
-    @mock.patch.object(os, 'listdir')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test_detect_hardware_error(self, mocked_open, mock_listdir):
         mock_listdir.return_value = ['eth0', 'ib0']
         mocked_open.return_value.__enter__ = lambda s: s
@@ -72,8 +72,8 @@ class MlnxHardwareManager(test_base.BaseTestCase):
         read_mock.side_effect = ['0x8086\n', OSError('boom')]
         self.assertFalse(mlnx._detect_hardware())
 
-    @mock.patch.object(os, 'listdir')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test_evaluate_hardware_support(self, mocked_open, mock_listdir):
         mock_listdir.return_value = ['eth0', 'ib0']
         mocked_open.return_value.__enter__ = lambda s: s
@@ -84,8 +84,8 @@ class MlnxHardwareManager(test_base.BaseTestCase):
             hardware.HardwareSupport.MAINLINE,
             self.hardware.evaluate_hardware_support())
 
-    @mock.patch.object(os, 'listdir')
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test_evaluate_hardware_support_no_mlnx(
             self, mocked_open, mock_listdir):
         mock_listdir.return_value = ['eth0', 'eth1']
@@ -97,7 +97,7 @@ class MlnxHardwareManager(test_base.BaseTestCase):
             hardware.HardwareSupport.NONE,
             self.hardware.evaluate_hardware_support())
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test_get_interface_info(self, mocked_open):
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
@@ -109,7 +109,7 @@ class MlnxHardwareManager(test_base.BaseTestCase):
         self.assertEqual('0x15b3', network_interface.vendor)
         self.assertEqual(CLIENT_ID, network_interface.client_id)
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test_get_interface_info_no_ib_interface(self, mocked_open):
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
@@ -119,7 +119,7 @@ class MlnxHardwareManager(test_base.BaseTestCase):
             errors.IncompatibleHardwareMethodError,
             self.hardware.get_interface_info, 'eth0')
 
-    @mock.patch('six.moves.builtins.open')
+    @mock.patch('six.moves.builtins.open', autospec=True)
     def test_get_interface_info_no_mlnx_interface(self, mocked_open):
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()

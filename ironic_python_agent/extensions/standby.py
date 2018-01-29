@@ -14,15 +14,15 @@
 
 import hashlib
 import os
-import requests
-import six
 import time
 
+from ironic_lib import disk_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
+import requests
+import six
 
-from ironic_lib import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
@@ -32,14 +32,6 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 IMAGE_CHUNK_SIZE = 1024 * 1024  # 1MB
-
-
-def _configdrive_location():
-    """Get the configdrive location in the local file system.
-
-    :returns: The full, absolute path to the configdrive as a string.
-    """
-    return '/tmp/configdrive'
 
 
 def _image_location(image_info):
@@ -162,7 +154,17 @@ def _message_format(msg, image_info, device, partition_uuids):
             result_msg = msg + 'root_uuid={}'
             message = result_msg.format(image_info['id'], device, root_uuid)
     else:
-        message = result_msg.format(image_info['id'], device)
+        try:
+            # NOTE(TheJulia): ironic-lib disk_utils.get_disk_identifier
+            # can raise OSError if hexdump is not found.
+            root_uuid = disk_utils.get_disk_identifier(device)
+            result_msg = msg + 'root_uuid={}'
+            message = result_msg.format(image_info['id'], device, root_uuid)
+        except OSError as e:
+            LOG.warning('Failed to call get_disk_identifier: '
+                        'Unable to obtain the root_uuid parameter: '
+                        'The hexdump tool may be missing in IPA: %s', e)
+            message = result_msg.format(image_info['id'], device)
     return message
 
 
@@ -204,17 +206,15 @@ class ImageDownload(object):
                 failtime = time.time() - self._time
                 log_msg = ('URL: {}; time: {} '
                            'seconds. Error: {}').format(
-                    url, failtime, e.details)
-                LOG.warning('Image download failed. %s', log_msg)
-                details += log_msg
+                    url, failtime, e.secondary_message)
+                LOG.warning(log_msg)
+                details.append(log_msg)
                 continue
             else:
                 break
         else:
-            details = '/n'.join(details)
-            msg = ('Image download failed for all URLs with following errors: '
-                   '{}'.format(details))
-            raise errors.ImageDownloadError(image_info['id'], msg)
+            details = '\n '.join(details)
+            raise errors.ImageDownloadError(image_info['id'], details)
 
     def _download_file(self, image_info, url):
         """Opens a download stream for the given URL.

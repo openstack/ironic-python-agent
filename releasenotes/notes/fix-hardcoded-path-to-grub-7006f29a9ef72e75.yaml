@@ -1,0 +1,5 @@
+---
+fixes:
+  - Uses the ``PATH`` environment variable to get the grub2 binary location
+    instead of assuming it to be ``/usr/sbin``. This fixes installing a boot
+    loader when the grub2 binary is located somewhere else.

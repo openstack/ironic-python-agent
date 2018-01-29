@@ -15,13 +15,13 @@
 import time
 
 import mock
-from oslotest import base as test_base
 from stevedore import enabled
 from stevedore import extension
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent.extensions import flow
+from ironic_python_agent.tests.unit import base as test_base
 
 
 FLOW_INFO = [
@@ -45,7 +45,7 @@ class FakeExtension(base.BaseAgentExtension):
         time.sleep(sleep_info['time'])
 
 
-class TestFlowExtension(test_base.BaseTestCase):
+class TestFlowExtension(test_base.IronicAgentTest):
     def setUp(self):
         super(TestFlowExtension, self).setUp()
         self.agent_extension = flow.FlowExtension()

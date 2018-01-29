@@ -98,9 +98,6 @@ def inspect():
         LOG.info('stopping inspection, as inspector returned an error')
         return
 
-    # Optionally update IPMI credentials
-    setup_ipmi_credentials(resp)
-
     LOG.info('inspection finished successfully')
     return resp.get('uuid')
 
@@ -125,36 +122,6 @@ def call_inspector(data, failures):
         return
 
     return resp.json()
-
-
-def setup_ipmi_credentials(resp):
-    """Setup IPMI credentials, if requested.
-
-    :param resp: JSON response from inspector.
-    """
-    if not resp.get('ipmi_setup_credentials'):
-        LOG.info('setting IPMI credentials was not requested')
-        return
-
-    user, password = resp['ipmi_username'], resp['ipmi_password']
-    LOG.debug('setting IPMI credentials: user %s', user)
-
-    commands = [
-        ('user', 'set', 'name', '2', user),
-        ('user', 'set', 'password', '2', password),
-        ('user', 'enable', '2'),
-        ('channel', 'setaccess', '1', '2',
-         'link=on', 'ipmi=on', 'callin=on', 'privilege=4'),
-    ]
-
-    for cmd in commands:
-        try:
-            utils.execute('ipmitool', *cmd)
-        except processutils.ProcessExecutionError:
-            LOG.exception('failed to update IPMI credentials')
-            raise errors.InspectionError('failed to update IPMI credentials')
-
-    LOG.info('successfully set IPMI credentials: user %s', user)
 
 
 def _normalize_mac(mac):
@@ -237,12 +204,11 @@ def collect_default(data, failures):
     else:
         data['root_disk'] = root_disk
         LOG.debug('default root device is %s', root_disk.name)
-    # Both boot interface and IPMI address might not be present,
-    # we don't count it as failure
+    # The boot interface might not be present, we don't count it as failure.
+    # TODO(dtantsur): stop using the boot_interface field.
     data['boot_interface'] = inventory['boot'].pxe_interface
     LOG.debug('boot devices was %s', data['boot_interface'])
-    data['ipmi_address'] = inventory.get('bmc_address')
-    LOG.debug('BMC IP address: %s', data['ipmi_address'])
+    LOG.debug('BMC IP address: %s', inventory.get('bmc_address'))
 
 
 def collect_logs(data, failures):

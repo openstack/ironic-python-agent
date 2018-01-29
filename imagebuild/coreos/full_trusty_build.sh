@@ -36,8 +36,20 @@ else
     cp $BUILD_DIR/coreos_production_pxe.vmlinuz $BUILD_DIR/coreos_production_pxe-$BRANCH_PATH.vmlinuz
 fi
 
+# Generate checksum files
+pushd $BUILD_DIR > /dev/null
+for x in *.vmlinuz *.cpio.gz; do
+    sha256sum $x > $x.sha256
+done
+popd > /dev/null
+
 tar czf ipa-coreos-$BRANCH_PATH.tar.gz $BUILD_DIR/coreos_production_pxe_image-oem-$BRANCH_PATH.cpio.gz $BUILD_DIR/coreos_production_pxe-$BRANCH_PATH.vmlinuz
 if [ "$BRANCH_PATH" = "master" ]; then
     # again, publish with and without the branch on master for historical reasons
     cp ipa-coreos-$BRANCH_PATH.tar.gz ipa-coreos.tar.gz
 fi
+
+# Generate checksum files
+for x in *.tar.gz; do
+    sha256sum $x > $x.sha256
+done

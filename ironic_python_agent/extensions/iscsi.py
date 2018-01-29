@@ -36,10 +36,14 @@ DEFAULT_ISCSI_PORTAL_PORT = 3260
 def _execute(cmd, error_msg, **kwargs):
     try:
         stdout, stderr = utils.execute(*cmd, **kwargs)
-    except (processutils.ProcessExecutionError, OSError) as e:
+    except processutils.ProcessExecutionError as e:
         LOG.error(error_msg)
         raise errors.ISCSICommandError(error_msg, e.exit_code,
                                        e.stdout, e.stderr)
+    except OSError as e:
+        LOG.error("Error: %(error)s: OS Error: %(os_error)s",
+                  {'error': error_msg, 'os_error': e})
+        raise errors.ISCSICommandError(e, e.errno, None, None)
 
 
 def _wait_for_tgtd(attempts=10):
@@ -150,8 +154,11 @@ class ISCSIExtension(base.BaseAgentExtension):
                            portal_port=None):
         """Expose the disk as an ISCSI target.
 
+        :param iqn: IQN for iSCSI target. If None, a new IQN is generated.
         :param wipe_disk_metadata: if the disk metadata should be wiped out
                                    before the disk is exposed.
+        :param portal_port: customized port for iSCSI port, can be None.
+        :returns: a dict that provides IQN of iSCSI target.
         """
         # If iqn is not given, generate one
         if iqn is None:

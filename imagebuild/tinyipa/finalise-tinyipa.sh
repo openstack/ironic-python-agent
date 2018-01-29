@@ -2,29 +2,31 @@
 
 set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
-source ${WORKDIR}/tc-mirror.sh
-BUILDDIR="$WORKDIR/tinyipabuild"
 FINALDIR="$WORKDIR/tinyipafinal"
+DST_DIR=$FINALDIR
+source ${WORKDIR}/common.sh
+
+BUILDDIR="$WORKDIR/tinyipabuild"
 BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-true}
 TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
 ENABLE_SSH=${ENABLE_SSH:-false}
+INSTALL_SSH=${INSTALL_SSH:-true}
+AUTHORIZE_SSH=${ENABLE_SSH:-false}
+
+if $ENABLE_SSH; then
+    echo "WARNING: using ENABLE_SSH is deprecated, use INSTALL_SSH and AUTHORIZE_SSH variables instead"
+    INSTALL_SSH=true
+    AUTHORIZE_SSH=true
+fi
+
 SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 PYOPTIMIZE_TINYIPA=${PYOPTIMIZE_TINYIPA:-true}
-
-TC=1001
-STAFF=50
-
-CHROOT_PATH="/tmp/overides:/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-CHROOT_CMD="sudo chroot $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
-TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $FINALDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
+TINYIPA_REQUIRE_BIOSDEVNAME=${TINYIPA_REQUIRE_BIOSDEVNAME:-false}
+TINYIPA_REQUIRE_IPMITOOL=${TINYIPA_REQUIRE_IPMITOOL:-true}
 
 echo "Finalising tinyipa:"
 
-# Find a working TC mirror if none is explicitly provided
-choose_tc_mirror
-
-
-if $ENABLE_SSH ; then
+if $AUTHORIZE_SSH ; then
     echo "Validating location of public SSH key"
     if [ -n "$SSH_PUBLIC_KEY" ]; then
         if [ -f "$SSH_PUBLIC_KEY" ]; then
@@ -59,15 +61,9 @@ mkdir "$FINALDIR"
 # Download get-pip into ramdisk
 ( cd "$FINALDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
 
-#####################################
+
 # Setup Final Dir
-#####################################
-
-sudo cp $FINALDIR/etc/resolv.conf $FINALDIR/etc/resolv.conf.old
-sudo cp /etc/resolv.conf $FINALDIR/etc/resolv.conf
-
-sudo cp -a $FINALDIR/opt/tcemirror $FINALDIR/opt/tcemirror.old
-sudo sh -c "echo $TINYCORE_MIRROR_URL > $FINALDIR/opt/tcemirror"
+setup_tce "$DST_DIR"
 
 # Modify ldconfig for x86-64
 $CHROOT_CMD cp /sbin/ldconfig /sbin/ldconfigold
@@ -78,17 +74,14 @@ $CHROOT_CMD chmod u+x /sbin/ldconfig
 # Copy python wheels from build to final dir
 cp -Rp "$BUILDDIR/tmp/wheels" "$FINALDIR/tmp/wheelhouse"
 
-mkdir -p $FINALDIR/tmp/builtin/optional
-$CHROOT_CMD chown -R tc.staff /tmp/builtin
-$CHROOT_CMD chmod -R a+w /tmp/builtin
-$CHROOT_CMD ln -sf /tmp/builtin /etc/sysconfig/tcedir
-echo "tc" | $CHROOT_CMD tee -a /etc/sysconfig/tcuser
-
 cp $WORKDIR/build_files/tgt.* $FINALDIR/tmp/builtin/optional
 cp $WORKDIR/build_files/qemu-utils.* $FINALDIR/tmp/builtin/optional
-
-# Mount /proc for chroot commands
-sudo mount --bind /proc $FINALDIR/proc
+if $TINYIPA_REQUIRE_BIOSDEVNAME; then
+    cp $WORKDIR/build_files/biosdevname.* $FINALDIR/tmp/builtin/optional
+fi
+if $TINYIPA_REQUIRE_IPMITOOL; then
+    cp $WORKDIR/build_files/ipmitool.* $FINALDIR/tmp/builtin/optional
+fi
 
 mkdir $FINALDIR/tmp/overides
 cp $WORKDIR/build_files/fakeuname $FINALDIR/tmp/overides/uname
@@ -97,7 +90,7 @@ while read line; do
     $TC_CHROOT_CMD tce-load -wic $line
 done < $WORKDIR/build_files/finalreqs.lst
 
-if $ENABLE_SSH ; then
+if $INSTALL_SSH ; then
     # Install and configure bare minimum for SSH access
     $TC_CHROOT_CMD tce-load -wic openssh
     # Configure OpenSSH
@@ -113,41 +106,43 @@ if $ENABLE_SSH ; then
     echo "HostKey /usr/local/etc/ssh/ssh_host_ed25519_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
 
     # setup user and SSH keys
-    $CHROOT_CMD mkdir -p /home/tc
-    $CHROOT_CMD chown -R tc.staff /home/tc
-    $TC_CHROOT_CMD mkdir -p /home/tc/.ssh
-    cat $_found_ssh_key | $TC_CHROOT_CMD tee /home/tc/.ssh/authorized_keys
-    $CHROOT_CMD chown tc.staff /home/tc/.ssh/authorized_keys
-    $TC_CHROOT_CMD chmod 600 /home/tc/.ssh/authorized_keys
+    if $AUTHORIZE_SSH; then
+        $CHROOT_CMD mkdir -p /home/tc
+        $CHROOT_CMD chown -R tc.staff /home/tc
+        $TC_CHROOT_CMD mkdir -p /home/tc/.ssh
+        cat $_found_ssh_key | $TC_CHROOT_CMD tee /home/tc/.ssh/authorized_keys
+        $CHROOT_CMD chown tc.staff /home/tc/.ssh/authorized_keys
+        $TC_CHROOT_CMD chmod 600 /home/tc/.ssh/authorized_keys
+    fi
 fi
 
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/tgt.tcz
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/qemu-utils.tcz
+if $TINYIPA_REQUIRE_BIOSDEVNAME; then
+    $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/biosdevname.tcz
+fi
+if $TINYIPA_REQUIRE_IPMITOOL; then
+    $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/ipmitool.tcz
+fi
 
 # Ensure tinyipa picks up installed kernel modules
 $CHROOT_CMD depmod -a `$WORKDIR/build_files/fakeuname -r`
 
 # If flag is set install the python now
 if $BUILD_AND_INSTALL_TINYIPA ; then
-    cp -a $BUILDDIR/tmp/upper-constraints.txt $FINALDIR/tmp/upper-constraints.txt
-    $CHROOT_CMD python /tmp/get-pip.py -c /tmp/upper-constraints.txt --no-wheel --no-index --find-links=file:///tmp/wheelhouse ironic_python_agent
-    rm -rf $FINALDIR/tmp/upper-constraints.txt
+    $CHROOT_CMD python /tmp/get-pip.py --no-wheel --no-index --find-links=file:///tmp/wheelhouse --pre ironic_python_agent
     rm -rf $FINALDIR/tmp/wheelhouse
     rm -rf $FINALDIR/tmp/get-pip.py
 fi
 
 # Unmount /proc and clean up everything
-sudo umount $FINALDIR/proc
-sudo rm -rf $FINALDIR/tmp/builtin
-sudo rm -rf $FINALDIR/tmp/tcloop
-sudo rm -rf $FINALDIR/usr/local/tce.installed
-sudo mv $FINALDIR/opt/tcemirror.old $FINALDIR/opt/tcemirror
-sudo mv $FINALDIR/etc/resolv.conf.old $FINALDIR/etc/resolv.conf
-sudo rm $FINALDIR/etc/sysconfig/tcuser
-sudo rm $FINALDIR/etc/sysconfig/tcedir
+cleanup_tce "$DST_DIR"
 
 # Copy bootlocal.sh to opt
 sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
+
+# Copy udhcpc.script to opt
+sudo cp "$WORKDIR/udhcpc.script" "$FINALDIR/opt/"
 
 # Disable ZSwap
 sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"
@@ -160,6 +155,14 @@ if $PYOPTIMIZE_TINYIPA; then
     set -e
     find $FINALDIR/usr/local/lib/python2.7 -name "*.py" -not -path "*ironic_python_agent/api/config.py" | sudo xargs --no-run-if-empty rm
     find $FINALDIR/usr/local/lib/python2.7 -name "*.pyc" | sudo xargs --no-run-if-empty rm
+    if $INSTALL_SSH && $AUTHORIZE_SSH ; then
+        # NOTE(pas-ha) for Ansible+Python to work we need to ensure that
+        # PYTHONOPTIMIZE=1 is set for all sessions from 'tc' user including
+        # those that are elevated with 'sudo' afterwards
+        echo "PYTHONOPTIMIZE=1" | $TC_CHROOT_CMD tee -a /home/tc/.ssh/environment
+        echo "PermitUserEnvironment yes" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+        echo 'Defaults env_keep += "PYTHONOPTIMIZE"' | $CHROOT_CMD tee -a /etc/sudoers
+    fi
 else
     sudo sed -i "s/PYTHONOPTIMIZE=1/PYTHONOPTIMIZE=0/" "$FINALDIR/opt/bootlocal.sh"
 fi
@@ -167,22 +170,48 @@ fi
 # Delete unnecessary Babel .dat files
 find $FINALDIR -path "*babel/locale-data/*.dat" -not -path "*en_US*" | sudo xargs --no-run-if-empty rm
 
-# Allow an extension to be added to the generated files by specifying
-# $BRANCH_PATH e.g. export BRANCH_PATH=master results in tinyipa-master.gz etc
-branch_ext=''
-if [ -n "$BRANCH_PATH" ]; then
-    branch_ext="-$BRANCH_PATH"
-fi
+# NOTE(pas-ha) Apparently on TinyCore Ansible's 'command' module is
+# not searching for executables in the '/usr/local/(s)bin' paths.
+# Thus we symlink everything from there to '/usr/(s)bin' which is being searched,
+# so that 'command' module picks full utilities installed by 'util-linux'
+# instead of built-in simplified BusyBox ones.
+set +x
+echo "Symlink all from /usr/local/sbin to /usr/sbin"
+pushd "$FINALDIR/usr/local/sbin"
+for target in *; do
+    if [ ! -f "$FINALDIR/usr/sbin/$target" ]; then
+        $CHROOT_CMD ln -s "/usr/local/sbin/$target" "/usr/sbin/$target"
+    fi
+done
+popd
+echo "Symlink all from /usr/local/bin to /usr/bin"
+# this also includes symlinking Python to the place expected by Ansible
+pushd "$FINALDIR/usr/local/bin"
+for target in *; do
+    if [ ! -f "$FINALDIR/usr/bin/$target" ]; then
+        $CHROOT_CMD ln -s "/usr/local/bin/$target" "/usr/bin/$target"
+    fi
+done
+popd
+set -x
 
 # Rebuild build directory into gz file
-( cd "$FINALDIR" && sudo find | sudo cpio -o -H newc | gzip -9 > "$WORKDIR/tinyipa${branch_ext}.gz" )
+( cd "$FINALDIR" && sudo find | sudo cpio -o -H newc | gzip -9 > "$WORKDIR/tinyipa${BRANCH_EXT}.gz" )
 
 # Copy vmlinuz to new name
-cp "$WORKDIR/build_files/vmlinuz64" "$WORKDIR/tinyipa${branch_ext}.vmlinuz"
+cp "$WORKDIR/build_files/vmlinuz64" "$WORKDIR/tinyipa${BRANCH_EXT}.vmlinuz"
 
 # Create tar.gz containing tinyipa files
-tar czf tinyipa${branch_ext}.tar.gz tinyipa${branch_ext}.gz tinyipa${branch_ext}.vmlinuz
+tar czf tinyipa${BRANCH_EXT}.tar.gz tinyipa${BRANCH_EXT}.gz tinyipa${BRANCH_EXT}.vmlinuz
+
+# Create sha256 files which will be uploaded by the publish jobs along with
+# the tinyipa ones in order to provide a way to verify the integrity of the tinyipa
+# builds.
+for f in tinyipa${BRANCH_EXT}.{gz,tar.gz,vmlinuz}; do
+    sha256sum $f > $f.sha256
+done
 
 # Output files with sizes created by this script
 echo "Produced files:"
-du -h tinyipa${branch_ext}.gz tinyipa${branch_ext}.tar.gz tinyipa${branch_ext}.vmlinuz
+du -h tinyipa${BRANCH_EXT}.gz tinyipa${BRANCH_EXT}.tar.gz tinyipa${BRANCH_EXT}.vmlinuz
+echo "Checksums: " tinyipa${BRANCH_EXT}.*sha256

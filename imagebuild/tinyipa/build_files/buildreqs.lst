@@ -7,6 +7,8 @@ hdparm.tcz
 parted.tcz
 python.tcz
 python-dev.tcz
+pciutils.tcz
+libpci-dev.tcz
 raid-dm-4.2.9-tinycore64.tcz
 scsi-4.2.9-tinycore64.tcz
 udev-lib.tcz
@@ -16,3 +18,4 @@ zlib_base-dev.tcz
 glib2-dev.tcz
 pixman-dev.tcz
 binutils.tcz
+git.tcz

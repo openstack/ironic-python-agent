@@ -15,11 +15,11 @@
 import collections
 
 import mock
-from oslotest import base as test_base
 from stevedore import extension
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
+from ironic_python_agent.tests.unit import base
 
 
 def counted(fn):
@@ -105,7 +105,7 @@ class FakeMainlineHardwareManager(hardware.HardwareManager):
         return hardware.HardwareSupport.MAINLINE
 
 
-class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
+class TestMultipleHardwareManagerLoading(base.IronicAgentTest):
     def setUp(self):
         super(TestMultipleHardwareManagerLoading, self).setUp()
         fake_ep = mock.Mock()
@@ -118,14 +118,12 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
         self.fake_ext_mgr = extension.ExtensionManager.make_test_instance(
             [self.generic_hwm, self.mainline_hwm])
 
-        self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager')
+        self.extension_mgr_patcher = mock.patch('stevedore.ExtensionManager',
+                                                autospec=True)
+        self.addCleanup(self.extension_mgr_patcher.stop)
         self.mocked_extension_mgr = self.extension_mgr_patcher.start()
         self.mocked_extension_mgr.return_value = self.fake_ext_mgr
         hardware._global_managers = None
-
-    def tearDown(self):
-        super(TestMultipleHardwareManagerLoading, self).tearDown()
-        self.extension_mgr_patcher.stop()
 
     def test_mainline_method_only(self):
         hardware.dispatch_to_managers('specific_only')
@@ -211,12 +209,12 @@ class TestMultipleHardwareManagerLoading(test_base.BaseTestCase):
                           'unexpected_fail')
 
 
-class TestNoHardwareManagerLoading(test_base.BaseTestCase):
+class TestNoHardwareManagerLoading(base.IronicAgentTest):
     def setUp(self):
         super(TestNoHardwareManagerLoading, self).setUp()
         self.empty_ext_mgr = extension.ExtensionManager.make_test_instance([])
 
-    @mock.patch('stevedore.ExtensionManager')
+    @mock.patch('stevedore.ExtensionManager', autospec=True)
     def test_no_managers_found(self, mocked_extension_mgr_constructor):
         mocked_extension_mgr_constructor.return_value = self.empty_ext_mgr
         hardware._global_managers = None

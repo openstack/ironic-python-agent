@@ -1,0 +1,37 @@
+- project:
+    name: openstack/ironic-python-agent
+    check:
+      jobs:
+        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src
+        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-coreos-src
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src
+        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src
+        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src
+        # Non-voting jobs
+        - ipa-tempest-dsvm-ironic-inspector-src:
+            voting: false
+        - openstack-tox-functional:
+            voting: false
+    gate:
+      queue: ironic
+      jobs:
+        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src
+        - ipa-tempest-dsvm-partition-bios-agent_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-coreos-src
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-coreos-src
+        - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src
+        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src
+        - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src
+    experimental:
+      jobs:
+        - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa256-src
+        - ipa-tempest-dsvm-partition-pxe_ipmitool-tinyipa-python3
+    post:
+      jobs:
+        - ironic-python-agent-buildimage-coreos
+        - ironic-python-agent-buildimage-tinyipa
+

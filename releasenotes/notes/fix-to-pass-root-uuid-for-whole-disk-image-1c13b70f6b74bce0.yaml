@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Now correctly returns ``root_uuid`` as part of command status when
+    provisioning a whole disk image using the ``direct`` deploy interface. See
+    `bug 1713916 <https://bugs.launchpad.net/bugs/1713916>`_ for details.

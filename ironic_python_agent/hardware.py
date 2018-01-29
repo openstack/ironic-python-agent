@@ -21,6 +21,7 @@ import time
 
 from ironic_lib import disk_utils
 from ironic_lib import utils as il_utils
+import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -38,6 +39,8 @@ from ironic_python_agent import utils
 _global_managers = None
 LOG = log.getLogger()
 CONF = cfg.CONF
+
+WARN_BIOSDEVNAME_NOT_FOUND = False
 
 UNIT_CONVERTER = pint.UnitRegistry(filename=None)
 UNIT_CONVERTER.define('MB = []')
@@ -110,6 +113,27 @@ def list_all_block_devices(block_type='disk'):
     """
     _udev_settle()
 
+    # map device names to /dev/disk/by-path symbolic links that points to it
+
+    by_path_mapping = {}
+
+    disk_by_path_dir = '/dev/disk/by-path'
+
+    try:
+        paths = os.listdir(disk_by_path_dir)
+
+        for path in paths:
+            path = os.path.join(disk_by_path_dir, path)
+            # Turn possibly relative symbolic link into absolute
+            devname = os.path.join(disk_by_path_dir, os.readlink(path))
+            devname = os.path.abspath(devname)
+            by_path_mapping[devname] = path
+
+    except OSError as e:
+        LOG.warning("Path %(path)s is inaccessible, /dev/disk/by-path/* "
+                    "version of block device name is unavailable "
+                    "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
+
     columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
     report = utils.execute('lsblk', '-Pbdi', '-o{}'.format(','.join(columns)),
                            check_exit_code=[0])[0]
@@ -136,7 +160,8 @@ def list_all_block_devices(block_type='disk'):
             raise errors.BlockDeviceError(
                 '%s must be returned by lsblk.' % ', '.join(sorted(missing)))
 
-        name = '/dev/' + device['KNAME']
+        name = os.path.join('/dev', device['KNAME'])
+
         try:
             udev = pyudev.Device.from_device_file(context, name)
         # pyudev started raising another error in 0.18
@@ -164,12 +189,16 @@ def list_all_block_devices(block_type='disk'):
             LOG.warning('Could not find the SCSI address (HCTL) for '
                         'device %s. Skipping', name)
 
+        # Not all /dev entries are pointed to from /dev/disk/by-path
+        by_path_name = by_path_mapping.get(name)
+
         devices.append(BlockDevice(name=name,
                                    model=device['MODEL'],
                                    size=int(device['SIZE']),
                                    rotational=bool(int(device['ROTA'])),
                                    vendor=_get_device_info(device['KNAME'],
                                                            'block', 'vendor'),
+                                   by_path=by_path_name,
                                    **extra))
     return devices
 
@@ -198,11 +227,11 @@ class HardwareType(object):
 class BlockDevice(encoding.SerializableComparable):
     serializable_fields = ('name', 'model', 'size', 'rotational',
                            'wwn', 'serial', 'vendor', 'wwn_with_extension',
-                           'wwn_vendor_extension', 'hctl')
+                           'wwn_vendor_extension', 'hctl', 'by_path')
 
     def __init__(self, name, model, size, rotational, wwn=None, serial=None,
                  vendor=None, wwn_with_extension=None,
-                 wwn_vendor_extension=None, hctl=None):
+                 wwn_vendor_extension=None, hctl=None, by_path=None):
         self.name = name
         self.model = model
         self.size = size
@@ -213,15 +242,17 @@ class BlockDevice(encoding.SerializableComparable):
         self.wwn_with_extension = wwn_with_extension
         self.wwn_vendor_extension = wwn_vendor_extension
         self.hctl = hctl
+        self.by_path = by_path
 
 
 class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'ipv4_address',
                            'has_carrier', 'lldp', 'vendor', 'product',
-                           'client_id')
+                           'client_id', 'biosdevname')
 
     def __init__(self, name, mac_addr, ipv4_address=None, has_carrier=True,
-                 lldp=None, vendor=None, product=None, client_id=None):
+                 lldp=None, vendor=None, product=None, client_id=None,
+                 biosdevname=None):
         self.name = name
         self.mac_address = mac_addr
         self.ipv4_address = ipv4_address
@@ -229,6 +260,7 @@ class NetworkInterface(encoding.SerializableComparable):
         self.lldp = lldp
         self.vendor = vendor
         self.product = product
+        self.biosdevname = biosdevname
         # client_id is used for InfiniBand only. we calculate the DHCP
         # client identifier Option to allow DHCP to work over InfiniBand.
         # see https://tools.ietf.org/html/rfc4390
@@ -363,6 +395,37 @@ class HardwareManager(object):
             erase_results[block_device.name] = result
         return erase_results
 
+    def wait_for_disks(self):
+        """Wait for the root disk to appear.
+
+        Wait for at least one suitable disk to show up or a specific disk
+        if any device hint is specified. Otherwise neither inspection
+        not deployment have any chances to succeed.
+
+        """
+        if not CONF.disk_wait_attempts:
+            return
+
+        max_waits = CONF.disk_wait_attempts - 1
+        for attempt in range(CONF.disk_wait_attempts):
+            try:
+                self.get_os_install_device()
+            except errors.DeviceNotFound:
+                LOG.debug('Still waiting for the root device to appear, '
+                          'attempt %d of %d', attempt + 1,
+                          CONF.disk_wait_attempts)
+
+                if attempt < max_waits:
+                    time.sleep(CONF.disk_wait_delay)
+            else:
+                break
+        else:
+            if max_waits:
+                LOG.warning('The root device was not detected in %d seconds',
+                            CONF.disk_wait_delay * max_waits)
+            else:
+                LOG.warning('The root device was not detected')
+
     def list_hardware_info(self):
         """Return full hardware inventory as a serializable dict.
 
@@ -472,31 +535,8 @@ class GenericHardwareManager(HardwareManager):
     def evaluate_hardware_support(self):
         # Do some initialization before we declare ourself ready
         _check_for_iscsi()
-        self._wait_for_disks()
+        self.wait_for_disks()
         return HardwareSupport.GENERIC
-
-    def _wait_for_disks(self):
-        """Wait for disk to appear
-
-        Wait for at least one suitable disk to show up, otherwise neither
-        inspection not deployment have any chances to succeed.
-
-        """
-
-        for attempt in range(CONF.disk_wait_attempts):
-            try:
-                block_devices = self.list_block_devices()
-                utils.guess_root_disk(block_devices)
-            except errors.DeviceNotFound:
-                LOG.debug('Still waiting for at least one disk to appear, '
-                          'attempt %d of %d', attempt + 1,
-                          CONF.disk_wait_attempts)
-                time.sleep(CONF.disk_wait_delay)
-            else:
-                break
-        else:
-            LOG.warning('No disks detected in %d seconds',
-                        CONF.disk_wait_delay * CONF.disk_wait_attempts)
 
     def collect_lldp_data(self, interface_names):
         """Collect and convert LLDP info from the node.
@@ -546,10 +586,42 @@ class GenericHardwareManager(HardwareManager):
             ipv4_address=self.get_ipv4_addr(interface_name),
             has_carrier=netutils.interface_has_carrier(interface_name),
             vendor=_get_device_info(interface_name, 'net', 'vendor'),
-            product=_get_device_info(interface_name, 'net', 'device'))
+            product=_get_device_info(interface_name, 'net', 'device'),
+            biosdevname=self.get_bios_given_nic_name(interface_name))
 
     def get_ipv4_addr(self, interface_id):
         return netutils.get_ipv4_addr(interface_id)
+
+    def get_bios_given_nic_name(self, interface_name):
+        """Collect the BIOS given NICs name.
+
+        This function uses the biosdevname utility to collect the BIOS given
+        name of network interfaces.
+
+        The collected data is added to the network interface inventory with an
+        extra field named ``biosdevname``.
+
+        :param interface_name: list of names of node's interfaces.
+        :return: the BIOS given NIC name of node's interfaces or default
+                 as None.
+        """
+        global WARN_BIOSDEVNAME_NOT_FOUND
+        try:
+            stdout, _ = utils.execute('biosdevname', '-i',
+                                      interface_name)
+            return stdout.rstrip('\n')
+        except OSError:
+            if not WARN_BIOSDEVNAME_NOT_FOUND:
+                LOG.warning("Executable 'biosdevname' not found")
+                WARN_BIOSDEVNAME_NOT_FOUND = True
+        except processutils.ProcessExecutionError as e:
+            # NOTE(alezil) biosdevname returns 4 if running in a
+            # virtual machine.
+            if e.exit_code == 4:
+                LOG.info('The system is a virtual machine, so biosdevname '
+                         'utility does not provide names for virtual NICs.')
+            else:
+                LOG.warning('Biosdevname returned exit code %s', e.exit_code)
 
     def _is_device(self, interface_name):
         device_path = '{}/class/net/{}/device'.format(self.sys_path,
@@ -710,10 +782,12 @@ class GenericHardwareManager(HardwareManager):
         root_device_hints = None
         if cached_node is not None:
             root_device_hints = cached_node['properties'].get('root_device')
+            LOG.debug('Looking for a device matching root hints %s',
+                      root_device_hints)
 
         block_devices = self.list_block_devices()
         if not root_device_hints:
-            return utils.guess_root_disk(block_devices).name
+            dev_name = utils.guess_root_disk(block_devices).name
         else:
             serialized_devs = [dev.serialize() for dev in block_devices]
             try:
@@ -734,7 +808,13 @@ class GenericHardwareManager(HardwareManager):
                     "No suitable device was found for "
                     "deployment using these hints %s" % root_device_hints)
 
-            return device['name']
+            dev_name = device['name']
+
+        LOG.info('Picked root device %(dev)s for node %(node)s based on '
+                 'root device hints %(hints)s',
+                 {'dev': dev_name, 'hints': root_device_hints,
+                  'node': cached_node['uuid'] if cached_node else None})
+        return dev_name
 
     def get_system_vendor_info(self):
         product_name = None
@@ -819,7 +899,7 @@ class GenericHardwareManager(HardwareManager):
 
         :param node: Ironic node object
         :param ports: list of Ironic port objects
-        :raises BlockDeviceEraseError when there's an error erasing the
+        :raises BlockDeviceEraseError: when there's an error erasing the
                 block device
         """
         block_devices = self.list_block_devices()
@@ -862,9 +942,8 @@ class GenericHardwareManager(HardwareManager):
         try:
             utils.execute(*args)
         except (processutils.ProcessExecutionError, OSError) as e:
-            msg = ("Erasing block device %(dev)s failed with error %(err)s ",
-                   {'dev': block_device.name, 'err': e})
-            LOG.error(msg)
+            msg = "Erasing block device %(dev)s failed with error %(err)s"
+            LOG.error(msg, {'dev': block_device.name, 'err': e})
             return False
 
         return True
@@ -971,25 +1050,44 @@ class GenericHardwareManager(HardwareManager):
         return True
 
     def get_bmc_address(self):
+        """Attempt to detect BMC IP address
+
+        :return: IP address of lan channel or 0.0.0.0 in case none of them is
+                 configured properly
+        """
         # These modules are rarely loaded automatically
         utils.try_execute('modprobe', 'ipmi_msghandler')
         utils.try_execute('modprobe', 'ipmi_devintf')
         utils.try_execute('modprobe', 'ipmi_si')
 
         try:
-            out, _e = utils.execute(
-                "ipmitool lan print | grep -e 'IP Address [^S]' "
-                "| awk '{ print $4 }'", shell=True)
-            if out.strip() == '0.0.0.0':
-                out, _e = utils.execute(
-                    "ipmitool lan print 8 | grep -e 'IP Address [^S]' "
-                    "| awk '{ print $4 }'", shell=True)
+            # From all the channels 0-15, only 1-7 can be assigned to different
+            # types of communication media and protocols and effectively used
+            for channel in range(1, 8):
+                out, e = utils.execute(
+                    "ipmitool lan print {} | awk '/IP Address[[:space:]]*:/"
+                    " {{print $4}}'".format(channel), shell=True)
+                if e.startswith("Invalid channel"):
+                    continue
+                out = out.strip()
+
+                try:
+                    netaddr.IPAddress(out)
+                except netaddr.AddrFormatError:
+                    LOG.warning('Invalid IP address: %s', out)
+                    continue
+
+                # In case we get 0.0.0.0 on a valid channel, we need to keep
+                # querying
+                if out != '0.0.0.0':
+                    return out
+                  
         except (processutils.ProcessExecutionError, OSError) as e:
             # Not error, because it's normal in virtual environment
             LOG.warning("Cannot get BMC address: %s", e)
             return
 
-        return out.strip()
+        return '0.0.0.0'
 
     def get_clean_steps(self, node, ports):
         return [
@@ -1157,10 +1255,21 @@ def cache_node(node):
     Stores the node object in the hardware module to facilitate the
     access of a node information in the hardware extensions.
 
+    If the new node does not match the previously cached one, wait for the
+    expected root device to appear.
+
     :param node: Ironic node object
     """
     global NODE
+    new_node = NODE is None or NODE['uuid'] != node['uuid']
     NODE = node
+
+    if new_node:
+        LOG.info('Cached node %s, waiting for its root device to appear',
+                 node['uuid'])
+        # Root device hints, stored in the new node, can change the expected
+        # root device. So let us wait for it to appear again.
+        dispatch_to_managers('wait_for_disks')
 
 
 def get_cached_node():
