@@ -1081,7 +1081,7 @@ class GenericHardwareManager(HardwareManager):
                 # querying
                 if out != '0.0.0.0':
                     return out
-                  
+
         except (processutils.ProcessExecutionError, OSError) as e:
             # Not error, because it's normal in virtual environment
             LOG.warning("Cannot get BMC address: %s", e)
