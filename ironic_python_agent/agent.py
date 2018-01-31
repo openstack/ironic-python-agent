@@ -343,7 +343,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             try:
                 server.handle_request()
             except BaseException as e:
-                msg = "Failed due to unknow exception. Error %s" % e
+                msg = "Failed due to an unknown exception. Error %s" % e
                 LOG.exception(msg)
                 raise errors.IronicAPIError(msg)
         LOG.info('shutting down')
