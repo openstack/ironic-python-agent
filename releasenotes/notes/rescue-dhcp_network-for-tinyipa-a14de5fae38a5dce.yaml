@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adds DHCP network support for TinyIPA. This support is required for
+    rescue feature when used with TinyIPA.
