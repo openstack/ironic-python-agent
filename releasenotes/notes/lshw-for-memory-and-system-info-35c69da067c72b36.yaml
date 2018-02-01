@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Switched to ``lshw`` for memory configuration and system information collection
+    when using the default hardware manager. This information can now be retrieved
+    on both DMI capable and OpenFirmware capable systems. ``dmidecode`` is no longer
+    used by the default hardware manager.
+fixes:
+  - |
+    The default hardware manager is now capable of collecting memory configuration
+    and system information on OpenFirmware (PowerPC) capable systems, in addition
+    to the already supported DMI (x86 and ARM) capable systems.
+upgrade:
+  - |
+    ``lshw`` is now a dependency of the default hardware manager.

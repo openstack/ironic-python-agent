@@ -76,6 +76,8 @@ cp -Rp "$BUILDDIR/tmp/wheels" "$FINALDIR/tmp/wheelhouse"
 
 cp $WORKDIR/build_files/tgt.* $FINALDIR/tmp/builtin/optional
 cp $WORKDIR/build_files/qemu-utils.* $FINALDIR/tmp/builtin/optional
+cp $WORKDIR/build_files/lshw.* $FINALDIR/tmp/builtin/optional
+
 if $TINYIPA_REQUIRE_BIOSDEVNAME; then
     cp $WORKDIR/build_files/biosdevname.* $FINALDIR/tmp/builtin/optional
 fi
@@ -118,6 +120,7 @@ fi
 
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/tgt.tcz
 $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/qemu-utils.tcz
+$TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/lshw.tcz
 if $TINYIPA_REQUIRE_BIOSDEVNAME; then
     $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/biosdevname.tcz
 fi
