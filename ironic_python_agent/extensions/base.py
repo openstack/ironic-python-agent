@@ -282,7 +282,7 @@ def async_command(command_name, validator=None):
     def async_decorator(func):
         func.command_name = command_name
 
-        @functools.wraps(func)
+        @six.wraps(func)
         def wrapper(self, **command_params):
             # Run a validator before passing everything off to async.
             # validators should raise exceptions or return silently.
@@ -311,7 +311,7 @@ def sync_command(command_name, validator=None):
     def sync_decorator(func):
         func.command_name = command_name
 
-        @functools.wraps(func)
+        @six.wraps(func)
         def wrapper(self, **command_params):
             # Run a validator before invoking the function.
             # validators should raise exceptions or return silently.
