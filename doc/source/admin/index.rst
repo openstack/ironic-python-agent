@@ -17,6 +17,7 @@ Index
 
 .. toctree::
     how_it_works
+    rescue
     troubleshooting
 
 Indices and tables

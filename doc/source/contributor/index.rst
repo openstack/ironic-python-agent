@@ -19,6 +19,7 @@ Index
 
     hardware_managers
     metrics
+    rescue
 
 Generated Developer Documentation
 =================================
