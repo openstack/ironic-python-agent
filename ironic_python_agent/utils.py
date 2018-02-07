@@ -313,7 +313,7 @@ def is_journalctl_present():
     :returns: True if journalctl is present, False if not.
     """
     try:
-        devnull = open(os.devnull)
+        devnull = open(os.devnull, 'w')
         subprocess.check_call(['journalctl', '--version'], stdout=devnull,
                               stderr=devnull)
     except OSError as e:
