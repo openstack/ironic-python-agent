@@ -29,6 +29,16 @@ invoked, it triggers rescue mode::
 
 ``rescue_password`` is a required parameter for this command.
 
+Upon success, it returns following data in response::
+
+    {"command_name": "finalize_rescue",
+     "command_params": {
+        "rescue_password": "p455w0rd"},
+     "command_status": "SUCCEEDED"
+     "command_result": null
+     "command_error": null
+    }
+
 If successful, this synchronous command will:
 
 1. Write the salted and crypted ``rescue_password`` to
