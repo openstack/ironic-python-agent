@@ -92,9 +92,9 @@ class MellanoxDeviceHardwareManager(hardware.HardwareManager):
             2. Calculate the client-id according to InfiniBand GUID
         """
 
-        addr_path = '/sys/class/net/{0}/address'.format(interface_name)
-        with open(addr_path) as addr_file:
-            address = addr_file.read().strip()
+        address = netutils.get_mac_addr(interface_name)
+        if address is None:
+            raise errors.IncompatibleHardwareMethodError()
         vendor = hardware._get_device_info(interface_name, 'net', 'vendor')
         if (len(address) != netutils.INFINIBAND_ADDR_LEN or
             vendor != MLNX_VENDOR_ID):
