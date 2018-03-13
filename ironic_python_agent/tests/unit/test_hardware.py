@@ -27,6 +27,7 @@ from stevedore import extension
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
+from ironic_python_agent import netutils
 from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
@@ -479,7 +480,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
     def test_list_network_interfaces(self,
+                                     mock_has_carrier,
+                                     mock_get_mac,
                                      mocked_execute,
                                      mocked_open,
                                      mocked_exists,
@@ -492,11 +497,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['00:0c:29:8c:11:b1\n', '1']
+        read_mock.side_effect = ['1']
         mocked_ifaddresses.return_value = {
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
         mocked_execute.return_value = ('em0\n', '')
+        mock_get_mac.mock_has_carrier = True
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
@@ -512,7 +519,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
     def test_list_network_interfaces_with_biosdevname(self,
+                                                      mock_has_carrier,
+                                                      mock_get_mac,
                                                       mocked_execute,
                                                       mocked_open,
                                                       mocked_exists,
@@ -525,12 +536,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['00:0c:29:8c:11:b1\n', '1']
+        read_mock.side_effect = ['1']
         mocked_ifaddresses.return_value = {
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
         mocked_execute.return_value = ('em0\n', '')
-
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
+        mock_has_carrier.return_value = True
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
@@ -598,7 +610,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
     def test_list_network_interfaces_with_lldp(self,
+                                               mock_has_carrier,
+                                               mock_get_mac,
                                                mocked_execute,
                                                mocked_open,
                                                mocked_exists,
@@ -613,7 +629,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['00:0c:29:8c:11:b1\n', '1']
+        read_mock.side_effect = ['1']
         mocked_ifaddresses.return_value = {
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
@@ -623,6 +639,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             (2, b'\x05Ethernet1/18'),
             (3, b'\x00x')]
         }
+        mock_has_carrier.return_value = True
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
         mocked_execute.return_value = ('em0\n', '')
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
@@ -639,6 +657,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertTrue(interfaces[0].has_carrier)
         self.assertEqual('em0', interfaces[0].biosdevname)
 
+    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
     @mock.patch('ironic_python_agent.hardware._get_managers', autospec=True)
     @mock.patch('ironic_python_agent.netutils.get_lldp_info', autospec=True)
     @mock.patch('netifaces.ifaddresses', autospec=True)
@@ -648,7 +668,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_network_interfaces_with_lldp_error(
             self, mocked_execute, mocked_open, mocked_exists, mocked_listdir,
-            mocked_ifaddresses, mocked_lldp_info, mocked_get_managers):
+            mocked_ifaddresses, mocked_lldp_info, mocked_get_managers,
+            mock_get_mac, mock_has_carrier):
         mocked_get_managers.return_value = [hardware.GenericHardwareManager()]
         CONF.set_override('collect_lldp', True)
         mocked_listdir.return_value = ['lo', 'eth0']
@@ -656,12 +677,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['00:0c:29:8c:11:b1\n', '1']
+        read_mock.side_effect = ['1']
         mocked_ifaddresses.return_value = {
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
         mocked_lldp_info.side_effect = Exception('Boom!')
         mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = True
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
@@ -677,7 +700,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
     def test_list_network_interfaces_no_carrier(self,
+                                                mock_has_carrier,
+                                                mock_get_mac,
                                                 mocked_execute,
                                                 mocked_open,
                                                 mocked_exists,
@@ -691,11 +718,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['00:0c:29:8c:11:b1\n', OSError('boom')]
+        read_mock.side_effect = [OSError('boom')]
         mocked_ifaddresses.return_value = {
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
         mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = False
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
@@ -711,7 +740,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('os.path.exists', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
     def test_list_network_interfaces_with_vendor_info(self,
+                                                      mock_has_carrier,
+                                                      mock_get_mac,
                                                       mocked_execute,
                                                       mocked_open,
                                                       mocked_exists,
@@ -725,11 +758,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
         mac = '00:0c:29:8c:11:b1'
-        read_mock.side_effect = [mac + '\n', '1', '0x15b3\n', '0x1014\n']
+        read_mock.side_effect = ['0x15b3\n', '0x1014\n']
         mocked_ifaddresses.return_value = {
             netifaces.AF_INET: [{'addr': '192.168.1.2'}]
         }
         mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = True
+        mock_get_mac.return_value = mac
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
