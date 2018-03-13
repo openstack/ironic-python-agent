@@ -19,6 +19,7 @@ import mock
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent.hardware_managers import mlnx
+from ironic_python_agent import netutils
 from ironic_python_agent.tests.unit import base
 
 IB_ADDRESS = 'a0:00:00:27:fe:80:00:00:00:00:00:00:7c:fe:90:03:00:29:26:52'
@@ -43,88 +44,86 @@ class MlnxHardwareManager(base.IronicAgentTest):
             mlnx._generate_client_id(IB_ADDRESS))
 
     @mock.patch.object(os, 'listdir', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    def test_detect_hardware(self, mocked_open, mock_listdir):
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
+    def test_detect_hardware(self, mocked_get_device_info, mock_listdir):
         mock_listdir.return_value = ['eth0', 'ib0']
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['0x8086\n', '0x15b3\n']
+        mocked_get_device_info.side_effect = ['0x8086', '0x15b3']
         self.assertTrue(mlnx._detect_hardware())
 
     @mock.patch.object(os, 'listdir', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    def test_detect_hardware_no_mlnx(self, mocked_open, mock_listdir):
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
+    def test_detect_hardware_no_mlnx(
+            self, mocked_get_device_info, mock_listdir):
         mock_listdir.return_value = ['eth0', 'eth1']
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['0x8086\n', '0x8086\n']
+        mocked_get_device_info.side_effect = ['0x8086', '0x8086']
         self.assertFalse(mlnx._detect_hardware())
 
     @mock.patch.object(os, 'listdir', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    def test_detect_hardware_error(self, mocked_open, mock_listdir):
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
+    def test_detect_hardware_error(
+            self, mocked_get_device_info, mock_listdir):
         mock_listdir.return_value = ['eth0', 'ib0']
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['0x8086\n', OSError('boom')]
+        mocked_get_device_info.side_effect = ['0x8086', None]
         self.assertFalse(mlnx._detect_hardware())
 
     @mock.patch.object(os, 'listdir', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    def test_evaluate_hardware_support(self, mocked_open, mock_listdir):
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
+    def test_evaluate_hardware_support(
+            self, mocked_get_device_info, mock_listdir):
         mock_listdir.return_value = ['eth0', 'ib0']
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['0x8086\n', '0x15b3\n']
+        mocked_get_device_info.side_effect = ['0x8086', '0x15b3']
         self.assertEqual(
             hardware.HardwareSupport.MAINLINE,
             self.hardware.evaluate_hardware_support())
 
     @mock.patch.object(os, 'listdir', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_evaluate_hardware_support_no_mlnx(
-            self, mocked_open, mock_listdir):
+            self, mocked_get_device_info, mock_listdir):
         mock_listdir.return_value = ['eth0', 'eth1']
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['0x8086\n', '0x8086\n']
+        mocked_get_device_info.side_effect = ['0x8086', '0x8086']
         self.assertEqual(
             hardware.HardwareSupport.NONE,
             self.hardware.evaluate_hardware_support())
 
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    def test_get_interface_info(self, mocked_open):
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = [IB_ADDRESS, '0x15b3\n']
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
+    def test_get_interface_info(self, mocked_get_device_info, mock_get_mac):
+        mocked_get_device_info.side_effect = ['0x15b3', '0x0014']
+        mock_get_mac.return_value = IB_ADDRESS
         network_interface = self.hardware.get_interface_info('ib0')
         self.assertEqual('ib0', network_interface.name)
         self.assertEqual('7c:fe:90:29:26:52', network_interface.mac_address)
         self.assertEqual('0x15b3', network_interface.vendor)
+        self.assertEqual('0x0014', network_interface.product)
         self.assertEqual(CLIENT_ID, network_interface.client_id)
 
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    def test_get_interface_info_no_ib_interface(self, mocked_open):
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['7c:fe:90:29:26:52', '0x15b3\n']
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
+    def test_get_interface_info_no_ib_interface(
+            self, mocked_get_device_info, mock_get_mac):
+        mocked_get_device_info.side_effect = ['0x15b3']
+        mock_get_mac.return_value = '7c:fe:90:29:26:52'
         self.assertRaises(
             errors.IncompatibleHardwareMethodError,
             self.hardware.get_interface_info, 'eth0')
 
-    @mock.patch('six.moves.builtins.open', autospec=True)
-    def test_get_interface_info_no_mlnx_interface(self, mocked_open):
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = [IB_ADDRESS, '0x8086\n']
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
+    def test_get_interface_info_no_mlnx_interface(
+            self, mocked_get_device_info, mock_get_mac):
+        mocked_get_device_info.side_effect = ['0x8086']
+        mock_get_mac.return_value = IB_ADDRESS
         self.assertRaises(
             errors.IncompatibleHardwareMethodError,
             self.hardware.get_interface_info, 'ib0')
+
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
+    def test_get_interface_info_no_mac_address(
+            self, mocked_get_device_info, mock_get_mac):
+        mock_get_mac.return_value = None
+        self.assertRaises(
+            errors.IncompatibleHardwareMethodError,
+            self.hardware.get_interface_info, 'ib0')
+        self.assertFalse(mocked_get_device_info.called)

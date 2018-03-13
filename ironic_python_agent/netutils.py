@@ -212,6 +212,15 @@ def get_ipv4_addr(interface_id):
         return None
 
 
+def get_mac_addr(interface_id):
+    try:
+        addrs = netifaces.ifaddresses(interface_id)
+        return addrs[netifaces.AF_LINK][0]['addr']
+    except (ValueError, IndexError, KeyError):
+        # No mac address found
+        return None
+
+
 def interface_has_carrier(interface_name):
     path = '/sys/class/net/{}/carrier'.format(interface_name)
     try:
