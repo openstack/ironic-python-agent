@@ -14,6 +14,7 @@
             voting: false
         - openstack-tox-functional:
             voting: false
+        - openstack-tox-lower-constraints
     gate:
       queue: ironic
       jobs:
@@ -25,6 +26,7 @@
         - ipa-tempest-dsvm-wholedisk-bios-agent_ipmitool-tinyipa-src
         - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-coreos-src
         - ipa-tempest-dsvm-wholedisk-bios-pxe_ipmitool-tinyipa-src
+        - openstack-tox-lower-constraints
     experimental:
       jobs:
         - ipa-tempest-dsvm-partition-bios-pxe_ipmitool-tinyipa256-src
