@@ -38,9 +38,9 @@ section of the Ironic dev-quickstart guide.
 
 Project Resources
 =================
-Project status, bugs, and blueprints are tracked on Launchpad:
+Project status, features, and bugs are tracked on StoryBoard:
 
-  https://launchpad.net/ironic-python-agent
+  https://storyboard.openstack.org/#!/project/947
 
 Developer documentation can be found here:
 
