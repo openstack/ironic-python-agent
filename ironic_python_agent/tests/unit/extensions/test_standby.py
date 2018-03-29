@@ -603,6 +603,10 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
+    @mock.patch('ironic_python_agent.utils.execute',
+                autospec=True)
+    @mock.patch('ironic_lib.disk_utils.list_partitions',
+                autospec=True)
     @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
@@ -615,12 +619,15 @@ class TestStandbyExtension(base.IronicAgentTest):
                            download_mock,
                            write_mock,
                            dispatch_mock,
-                           configdrive_copy_mock):
+                           configdrive_copy_mock,
+                           list_part_mock,
+                           execute_mock):
         image_info = _build_fake_image_info()
         download_mock.return_value = None
         write_mock.return_value = None
         dispatch_mock.return_value = 'manager'
         configdrive_copy_mock.return_value = None
+        list_part_mock.return_value = [mock.MagicMock()]
 
         async_result = self.agent_extension.prepare_image(
             image_info=image_info,
@@ -640,7 +647,14 @@ class TestStandbyExtension(base.IronicAgentTest):
         cmd_result = ('prepare_image: image ({}) written to device {} '
                       'root_uuid=ROOT').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
+        list_part_mock.assert_called_with('manager')
+        execute_mock.assert_called_with('partprobe', 'manager',
+                                        run_as_root=True,
+                                        attempts=mock.ANY)
 
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch('ironic_lib.disk_utils.list_partitions',
+                autospec=True)
     @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
@@ -653,12 +667,15 @@ class TestStandbyExtension(base.IronicAgentTest):
                                      download_mock,
                                      write_mock,
                                      dispatch_mock,
-                                     configdrive_copy_mock):
+                                     configdrive_copy_mock,
+                                     list_part_mock,
+                                     execute_mock):
         image_info = _build_fake_partition_image_info()
         download_mock.return_value = None
         write_mock.return_value = {'root uuid': 'root_uuid'}
         dispatch_mock.return_value = 'manager'
         configdrive_copy_mock.return_value = None
+        list_part_mock.return_value = [mock.MagicMock()]
 
         async_result = self.agent_extension.prepare_image(
             image_info=image_info,
@@ -698,10 +715,17 @@ class TestStandbyExtension(base.IronicAgentTest):
                       'root_uuid={}').format(
             image_info['id'], 'manager', 'root_uuid')
         self.assertEqual(cmd_result, async_result.command_result['result'])
+        list_part_mock.assert_called_with('manager')
+        execute_mock.assert_called_with('partprobe', 'manager',
+                                        run_as_root=True,
+                                        attempts=mock.ANY)
 
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
+                autospec=True)
+    @mock.patch('ironic_lib.disk_utils.list_partitions',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
@@ -713,12 +737,15 @@ class TestStandbyExtension(base.IronicAgentTest):
                                           download_mock,
                                           write_mock,
                                           dispatch_mock,
-                                          configdrive_copy_mock):
+                                          list_part_mock,
+                                          configdrive_copy_mock,
+                                          execute_mock):
         image_info = _build_fake_image_info()
         download_mock.return_value = None
         write_mock.return_value = None
         dispatch_mock.return_value = 'manager'
         configdrive_copy_mock.return_value = None
+        list_part_mock.return_value = [mock.MagicMock()]
 
         async_result = self.agent_extension.prepare_image(
             image_info=image_info,
@@ -737,6 +764,55 @@ class TestStandbyExtension(base.IronicAgentTest):
                       'root_uuid=ROOT').format(image_info['id'], 'manager')
         self.assertEqual(cmd_result, async_result.command_result['result'])
 
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                lambda dev: 'ROOT')
+    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
+    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
+                autospec=True)
+    @mock.patch('ironic_lib.disk_utils.list_partitions',
+                autospec=True)
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._write_image',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._download_image',
+                autospec=True)
+    def test_prepare_image_bad_partition(self,
+                                         download_mock,
+                                         write_mock,
+                                         dispatch_mock,
+                                         list_part_mock,
+                                         configdrive_copy_mock,
+                                         work_on_disk_mock):
+        list_part_mock.side_effect = processutils.ProcessExecutionError
+        image_info = _build_fake_image_info()
+        download_mock.return_value = None
+        write_mock.return_value = None
+        dispatch_mock.return_value = 'manager'
+        configdrive_copy_mock.return_value = None
+        work_on_disk_mock.return_value = {
+            'root uuid': 'a318821b-2a60-40e5-a011-7ac07fce342b',
+            'partitions': {
+                'root': '/dev/foo-part1',
+            }
+        }
+
+        async_result = self.agent_extension.prepare_image(
+            image_info=image_info,
+            configdrive=None
+        )
+        async_result.join()
+
+        download_mock.assert_called_once_with(image_info)
+        write_mock.assert_called_once_with(image_info, 'manager')
+        dispatch_mock.assert_called_once_with('get_os_install_device')
+
+        self.assertFalse(configdrive_copy_mock.called)
+        self.assertEqual('FAILED', async_result.command_status)
+
+    @mock.patch('ironic_python_agent.utils.execute', mock.Mock())
+    @mock.patch('ironic_lib.disk_utils.list_partitions',
+                lambda _dev: [mock.Mock()])
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
     @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
