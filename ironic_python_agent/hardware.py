@@ -574,10 +574,10 @@ class GenericHardwareManager(HardwareManager):
             return self.lldp_data.get(interface_name)
 
     def get_interface_info(self, interface_name):
-        addr_path = '{}/class/net/{}/address'.format(self.sys_path,
-                                                     interface_name)
-        with open(addr_path) as addr_file:
-            mac_addr = addr_file.read().strip()
+
+        mac_addr = netutils.get_mac_addr(interface_name)
+        if mac_addr is None:
+            raise errors.IncompatibleHardwareMethodError()
 
         return NetworkInterface(
             interface_name, mac_addr,
