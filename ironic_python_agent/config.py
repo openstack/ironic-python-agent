@@ -26,7 +26,7 @@ cli_opts = [
     cfg.StrOpt('api_url',
                default=APARAMS.get('ipa-api-url'),
                deprecated_name='api-url',
-               regex='^http(s?):\/\/.+',
+               regex='^http(s?):\\/\\/.+',
                help='URL of the Ironic API. '
                     'Can be supplied as "ipa-api-url" kernel parameter.'
                     'The value must start with either http:// or https://.'),

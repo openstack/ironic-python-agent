@@ -258,6 +258,7 @@ coreos:
         ExecStartPre=-/usr/sbin/modprobe ipmi_devintf
         ExecStartPre=-/usr/sbin/modprobe ipmi_si
         ExecStart=/usr/bin/chroot /opt/ironic-python-agent \
+                                  env PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH \
                                   /usr/local/bin/ironic-python-agent
         ExecStopPost=/usr/share/oem/finalize_rescue.sh
         Restart=on-failure

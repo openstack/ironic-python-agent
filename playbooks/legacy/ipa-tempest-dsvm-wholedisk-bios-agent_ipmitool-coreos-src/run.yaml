@@ -27,7 +27,10 @@
     - shell:
         cmd: |
           cat << 'EOF' >> ironic-extra-vars
-            export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_SPECS_RAM=1280"
+            export DEVSTACK_GATE_OS_TEST_TIMEOUT=2400
+            export DEVSTACK_GATE_TEMPEST_BAREMETAL_BUILD_TIMEOUT=1200
+            export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_SPECS_CPU=2"
+            export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_SPECS_RAM=2048"
             export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_RAMDISK_TYPE=coreos"
           EOF
         chdir: '{{ ansible_user_dir }}/workspace'

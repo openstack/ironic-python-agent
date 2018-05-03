@@ -144,8 +144,8 @@ def _message_format(msg, image_info, device, partition_uuids):
         root_uuid = partition_uuids.get('root uuid')
         efi_system_partition_uuid = (
             partition_uuids.get('efi system partition uuid'))
-        if (image_info.get('deploy_boot_mode') == 'uefi' and
-                image_info.get('boot_option') == 'local'):
+        if (image_info.get('deploy_boot_mode') == 'uefi'
+                and image_info.get('boot_option') == 'local'):
             result_msg = msg + 'root_uuid={} efi_system_partition_uuid={}'
             message = result_msg.format(image_info['id'], device,
                                         root_uuid,
@@ -461,8 +461,8 @@ class StandbyExtension(base.BaseAgentExtension):
                 LOG.debug('Already had %s cached, overwriting',
                           self.cached_image_id)
 
-            if (stream_raw_images and disk_format == 'raw' and
-                image_info.get('image_type') != 'partition'):
+            if (stream_raw_images and disk_format == 'raw'
+                    and image_info.get('image_type') != 'partition'):
                 self._stream_raw_image_onto_device(image_info, device)
             else:
                 self._cache_and_write_image(image_info, device)
