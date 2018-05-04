@@ -53,6 +53,8 @@ configure_dhcp_network() {
 
     # NOTE(TheJulia): We may need to add a short wait here as
     # network interface plugging actions may not be asynchronous.
+    echo "Sleeping 30 sec as network interface is being updated"
+    sleep 30
     INTERFACES=$(ip -o link |grep "LOWER_UP"|cut -f2 -d" "|sed 's/://'|grep -v "lo")
     for interface in $INTERFACES; do
         pidfile="/var/run/udhcpc/${interface}.pid"

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes bug where TinyIPA fails to acquire IP address when
+    in RESCUE state and in multi-tenant environment.
