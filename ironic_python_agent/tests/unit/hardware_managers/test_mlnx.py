@@ -42,6 +42,42 @@ class MlnxHardwareManager(base.IronicAgentTest):
             CLIENT_ID,
             mlnx._generate_client_id(IB_ADDRESS))
 
+    def test_get_clean_steps(self):
+        expected_clean_steps = [
+            {'abortable': False,
+             'argsinfo': {
+                 'images': {
+                     'description': 'Json blob contains a list of images, '
+                                    'where each image contains a map of '
+                                    'url: to firmware image (file://, '
+                                    'http://), '
+                                    'checksum: of the provided image, '
+                                    'checksumType: md5/sha512/sha256, '
+                                    'componentProfile: PSID of the nic, '
+                                    'version: of the FW',
+                     'required': True}},
+             'interface': 'deploy',
+             'priority': 0,
+             'reboot_requested': True,
+             'step': 'update_nvidia_nic_firmware_image'},
+            {'abortable': False,
+             'argsinfo': {
+                 'settings': {
+                     'description': 'Json blob contains a list of settings '
+                                    'per device ID, where each settings '
+                                    'contains a map of '
+                                    'deviceID: device ID '
+                                    'globalConfig: global config '
+                                    'function0Config: function 0 config '
+                                    'function1Config: function 1 config',
+                     'required': True}},
+             'interface': 'deploy',
+             'priority': 0,
+             'reboot_requested': True,
+             'step': 'update_nvidia_nic_firmware_settings'}]
+        self.assertEqual(self.hardware.get_clean_steps(self.node, []),
+                         expected_clean_steps)
+
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_detect_hardware(self, mocked_get_device_info, mock_listdir):

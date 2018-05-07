@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add two clean steps MellanoxDeviceHardwareManager to update
+    NVIDIA NICs firmware images and settings,
+    * update_nvidia_nic_firmware_image
+    * update_nvidia_nic_firmware_settings

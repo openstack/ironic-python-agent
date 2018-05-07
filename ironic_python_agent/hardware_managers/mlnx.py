@@ -11,12 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
 
 from oslo_log import log
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
+from ironic_python_agent.hardware_managers.nvidia import nvidia_fw_update
 from ironic_python_agent import netutils
 
 LOG = log.getLogger()
@@ -111,3 +113,53 @@ class MellanoxDeviceHardwareManager(hardware.HardwareManager):
             vendor=vendor,
             product=hardware._get_device_info(interface_name, 'net', 'device'),
             client_id=client_id)
+
+    def get_clean_steps(self, node, ports):
+        """Get a list of clean steps with priority.
+
+        :param node: The node object as provided by Ironic.
+        :param ports: Port objects as provided by Ironic.
+        :returns: A list of cleaning steps, as a list of dicts.
+        """
+        return [{'step': 'update_nvidia_nic_firmware_image',
+                 'priority': 0,
+                 'interface': 'deploy',
+                 'reboot_requested': True,
+                 'abortable': False,
+                 'argsinfo': {
+                     'images': {
+                         'description': 'Json blob contains a list of images,'
+                                        ' where each image contains a map of '
+                                        'url: to firmware image (file://, '
+                                        'http://), '
+                                        'checksum: of the provided image, '
+                                        'checksumType: md5/sha512/sha256, '
+                                        'componentProfile: PSID of the nic, '
+                                        'version: of the FW',
+                         'required': True,
+                     }, }
+                 },
+                {'step': 'update_nvidia_nic_firmware_settings',
+                 'priority': 0,
+                 'interface': 'deploy',
+                 'reboot_requested': True,
+                 'abortable': False,
+                 'argsinfo': {
+                     'settings': {
+                         'description': 'Json blob contains a list of '
+                                        'settings per device ID, where each '
+                                        'settings contains a map of '
+                                        'deviceID: device ID '
+                                        'globalConfig: global config '
+                                        'function0Config: function 0 config '
+                                        'function1Config: function 1 config',
+                         'required': True,
+                     }, }
+                 }
+                ]
+
+    def update_nvidia_nic_firmware_image(self, node, ports, images):
+        nvidia_fw_update.update_nvidia_nic_firmware_image(images)
+
+    def update_nvidia_nic_firmware_settings(self, node, ports, settings):
+        nvidia_fw_update.update_nvidia_nic_firmware_settings(settings)
