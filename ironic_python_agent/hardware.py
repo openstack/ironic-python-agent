@@ -898,39 +898,57 @@ class GenericHardwareManager(HardwareManager):
         if 'supported' not in security_lines:
             return False
 
-        if 'enabled' in security_lines:
-            # Attempt to unlock the drive in the event it has already been
-            # locked by a previous failed attempt.
-            try:
-                utils.execute('hdparm', '--user-master', 'u',
-                              '--security-unlock', 'NULL', block_device.name)
-                security_lines = self._get_ata_security_lines(block_device)
-            except processutils.ProcessExecutionError as e:
-                raise errors.BlockDeviceEraseError('Security password set '
-                                                   'failed for device '
-                                                   '%(name)s: %(err)s' %
-                                                   {'name': block_device.name,
-                                                    'err': e})
-
-        if 'enabled' in security_lines:
-            raise errors.BlockDeviceEraseError(
-                ('Block device {} already has a security password set'
-                 ).format(block_device.name))
+        # At this point, we could be SEC1,2,4,5,6
 
         if 'not frozen' not in security_lines:
+            # In SEC2 or 6
             raise errors.BlockDeviceEraseError(
                 ('Block device {} is frozen and cannot be erased'
                  ).format(block_device.name))
 
-        try:
-            utils.execute('hdparm', '--user-master', 'u',
-                          '--security-set-pass', 'NULL', block_device.name)
-        except processutils.ProcessExecutionError as e:
-            raise errors.BlockDeviceEraseError('Security password set '
-                                               'failed for device '
-                                               '%(name)s: %(err)s' %
-                                               {'name': block_device.name,
-                                                'err': e})
+        # At this point, we could be in SEC1,4,5
+
+        # Attempt to unlock the drive in the event it has already been
+        # locked by a previous failed attempt. We try the empty string as
+        # versions of hdparm < 9.51, interpreted NULL as the literal string,
+        # "NULL", as opposed to the empty string.
+        unlock_passwords = ['NULL', '']
+        for password in unlock_passwords:
+            if 'not locked' in security_lines:
+                break
+            try:
+                utils.execute('hdparm', '--user-master', 'u',
+                              '--security-unlock', password,
+                              block_device.name)
+            except processutils.ProcessExecutionError as e:
+                LOG.info('Security unlock failed for device '
+                         '%(name)s using password "%(password)s": %(err)s',
+                         {'name': block_device.name,
+                          'password': password,
+                          'err': e})
+            security_lines = self._get_ata_security_lines(block_device)
+
+        # If the unlock failed we will still be in SEC4, otherwise, we will be
+        # in SEC1 or SEC5
+
+        if 'not locked' not in security_lines:
+            # In SEC4
+            raise errors.BlockDeviceEraseError(
+                ('Block device {} already has a security password set'
+                 ).format(block_device.name))
+
+        # At this point, we could be in SEC1 or 5
+        if 'not enabled' in security_lines:
+            # SEC1. Try to transition to SEC5 by setting empty user
+            # password.
+            try:
+                utils.execute('hdparm', '--user-master', 'u',
+                              '--security-set-pass', 'NULL', block_device.name)
+            except processutils.ProcessExecutionError as e:
+                error_msg = ('Security password set failed for device '
+                             '{name}: {err}'
+                             ).format(name=block_device.name, err=e)
+                raise errors.BlockDeviceEraseError(error_msg)
 
         # Use the 'enhanced' security erase option if it's supported.
         erase_option = '--security-erase'
@@ -949,10 +967,12 @@ class GenericHardwareManager(HardwareManager):
         # Verify that security is now 'not enabled'
         security_lines = self._get_ata_security_lines(block_device)
         if 'not enabled' not in security_lines:
+            # Not SEC1 - fail
             raise errors.BlockDeviceEraseError(
                 ('An unknown error occurred erasing block device {}'
                  ).format(block_device.name))
 
+        # In SEC1 security state
         return True
 
     def get_bmc_address(self):

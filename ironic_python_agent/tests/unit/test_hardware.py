@@ -113,7 +113,7 @@ HDPARM_INFO_TEMPLATE = (
     '\tMaster password revision code = 65534\n'
     '\t%(supported)s\n'
     '\t%(enabled)s\n'
-    '\tnot\tlocked\n'
+    '\t%(locked)s\n'
     '\t%(frozen)s\n'
     '\tnot\texpired: security count\n'
     '\t%(enhanced_erase)s\n'
@@ -1441,15 +1441,49 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             'shred', '--force', '--zero', '--verbose', '--iterations', '1',
             '/dev/sda')
 
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_erase_block_device_ata_security_unlock_fallback_pass(
+            self, mocked_execute):
+        hdparm_output = create_hdparm_info(
+            supported=True, enabled=True, locked=True
+        )
+        hdparm_output_unlocked = create_hdparm_info(
+            supported=True, enabled=True, frozen=False, enhanced_erase=False)
+        hdparm_output_not_enabled = create_hdparm_info(
+            supported=True, enabled=False, frozen=False, enhanced_erase=False)
+        mocked_execute.side_effect = [
+            (hdparm_output, ''),
+            processutils.ProcessExecutionError(),  # NULL fails to unlock
+            (hdparm_output, ''),  # recheck security lines
+            None,  # security unlock with ""
+            (hdparm_output_unlocked, ''),
+            '',
+            (hdparm_output_not_enabled, '')
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+
+        self.hardware.erase_block_device(self.node, block_device)
+
+        mocked_execute.assert_any_call('hdparm', '--user-master', 'u',
+                                       '--security-unlock', '', '/dev/sda')
+
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_security_enabled(
             self, mocked_execute, mock_shred):
+        # Tests that an exception is thrown if all of the recovery passwords
+        # fail to unlock the device without throwing exception
         hdparm_output = create_hdparm_info(
-            supported=True, enabled=True, frozen=False, enhanced_erase=False)
+            supported=True, enabled=True, locked=True)
 
         mocked_execute.side_effect = [
+            (hdparm_output, ''),
+            None,
+            (hdparm_output, ''),
+            None,
             (hdparm_output, ''),
             None,
             (hdparm_output, '')
@@ -1457,12 +1491,15 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-
         self.assertRaises(
             errors.IncompatibleHardwareMethodError,
             self.hardware.erase_block_device,
             self.node,
             block_device)
+        mocked_execute.assert_any_call('hdparm', '--user-master', 'u',
+                                       '--security-unlock', '', '/dev/sda')
+        mocked_execute.assert_any_call('hdparm', '--user-master', 'u',
+                                       '--security-unlock', 'NULL', '/dev/sda')
         self.assertFalse(mock_shred.called)
 
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
@@ -1471,7 +1508,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     def test_erase_block_device_ata_security_enabled_unlock_attempt(
             self, mocked_execute, mock_shred):
         hdparm_output = create_hdparm_info(
-            supported=True, enabled=True, frozen=False, enhanced_erase=False)
+            supported=True, enabled=True, locked=True)
         hdparm_output_not_enabled = create_hdparm_info(
             supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
@@ -1493,34 +1530,36 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test__ata_erase_security_enabled_unlock_exception(
             self, mocked_execute):
+        # test that an exception is thrown when security unlock fails with
+        # ProcessExecutionError
         hdparm_output = create_hdparm_info(
-            supported=True, enabled=True, frozen=False, enhanced_erase=False)
-
+            supported=True, enabled=True, locked=True)
         mocked_execute.side_effect = [
             (hdparm_output, ''),
-            processutils.ProcessExecutionError()
+            processutils.ProcessExecutionError(),
+            (hdparm_output, ''),
+            processutils.ProcessExecutionError(),
+            (hdparm_output, ''),
         ]
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
-
         self.assertRaises(errors.BlockDeviceEraseError,
                           self.hardware._ata_erase,
                           block_device)
+        mocked_execute.assert_any_call('hdparm', '--user-master', 'u',
+                                       '--security-unlock', '', '/dev/sda')
+        mocked_execute.assert_any_call('hdparm', '--user-master', 'u',
+                                       '--security-unlock', 'NULL', '/dev/sda')
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test__ata_erase_security_enabled_set_password_exception(
             self, mocked_execute):
         hdparm_output = create_hdparm_info(
-            supported=True, enabled=True, frozen=False, enhanced_erase=False)
-        hdparm_output_not_enabled = create_hdparm_info(
             supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
-            '',
-            (hdparm_output_not_enabled, ''),
-            '',
             processutils.ProcessExecutionError()
         ]
 
@@ -1534,17 +1573,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test__ata_erase_security_erase_exec_exception(
             self, mocked_execute):
+        # Exception on security erase
         hdparm_output = create_hdparm_info(
-            supported=True, enabled=True, frozen=False, enhanced_erase=False)
-        hdparm_output_not_enabled = create_hdparm_info(
             supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
         mocked_execute.side_effect = [
             (hdparm_output, '', '-1'),
-            '',
-            (hdparm_output_not_enabled, ''),
-            '',
-            processutils.ProcessExecutionError()
+            '',  # security-set-pass
+            processutils.ProcessExecutionError()  # security-erase
         ]
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
@@ -2003,8 +2039,8 @@ class TestModuleFunctions(base.IronicAgentTest):
             mock.call('iscsistart', '-f')])
 
 
-def create_hdparm_info(supported=False, enabled=False, frozen=False,
-                       enhanced_erase=False):
+def create_hdparm_info(supported=False, enabled=False, locked=False,
+                       frozen=False, enhanced_erase=False):
 
     def update_values(values, state, key):
         if not state:
@@ -2013,12 +2049,14 @@ def create_hdparm_info(supported=False, enabled=False, frozen=False,
     values = {
         'supported': '\tsupported',
         'enabled': '\tenabled',
+        'locked': '\tlocked',
         'frozen': '\tfrozen',
         'enhanced_erase': '\tsupported: enhanced erase',
     }
 
     update_values(values, supported, 'supported')
     update_values(values, enabled, 'enabled')
+    update_values(values, locked, 'locked')
     update_values(values, frozen, 'frozen')
     update_values(values, enhanced_erase, 'enhanced_erase')
 
