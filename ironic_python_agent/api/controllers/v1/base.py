@@ -45,9 +45,10 @@ class MultiType(wtypes.UserType):
 
     Used for validating that a value is an instance of one of the types.
 
-    :param \*types: Variable-length list of types.
+    :param types: Variable-length list of types.
 
     """
+
     def __init__(self, *types):
         self.types = types
 

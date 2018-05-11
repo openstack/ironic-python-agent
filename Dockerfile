@@ -23,9 +23,10 @@ RUN echo 'deb http://http.us.debian.org/debian jessie-backports main' > /etc/apt
 # image on disk
 RUN proxy.sh apt-get update && \
     proxy.sh apt-get -y upgrade && \
-    proxy.sh apt-get install -y --no-install-recommends gdisk python2.7 python2.7-dev \
-        python-pip qemu-utils parted hdparm util-linux genisoimage git gcc \
-        bash coreutils tgt dmidecode ipmitool psmisc dosfstools bsdmainutils && \
+    proxy.sh apt-get install -y --no-install-recommends netbase gdisk \
+        python2.7 python2.7-dev python-pip qemu-utils parted hdparm \
+        util-linux genisoimage git gcc bash coreutils tgt dmidecode \
+        ipmitool psmisc dosfstools bsdmainutils open-iscsi udev && \
     proxy.sh apt-get --only-upgrade -t jessie-backports install -y qemu-utils
 
 # Some cleanup

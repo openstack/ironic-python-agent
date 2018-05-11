@@ -96,8 +96,8 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
         get_cache_mock.return_value = {}
         kernel_params = {'boot_method': 'vmedia'}
         vmedia_params = {'a': 'b'}
-        expected_params = dict(list(kernel_params.items()) +
-                               list(vmedia_params.items()))
+        expected_params = dict(
+            list(kernel_params.items()) + list(vmedia_params.items()))
         read_params_mock.return_value = kernel_params
         get_vmedia_params_mock.return_value = vmedia_params
 

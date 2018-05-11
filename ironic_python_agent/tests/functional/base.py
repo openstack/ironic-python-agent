@@ -65,8 +65,8 @@ class FunctionalBase(test_base.BaseTestCase):
                 time.sleep(sleep_time)
                 tries += 1
 
-        raise IOError('Agent did not start after %s seconds.' % (max_tries *
-                                                                 sleep_time))
+        raise IOError('Agent did not start after %s seconds.'
+                      % (max_tries * sleep_time))
 
     def request(self, method, path, expect_error=None, expect_json=True,
                 **kwargs):

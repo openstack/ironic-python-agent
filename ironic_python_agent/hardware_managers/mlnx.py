@@ -62,8 +62,8 @@ def _detect_hardware():
     """
     iface_names = os.listdir('/sys/class/net')
     for ifname in iface_names:
-        if (hardware._get_device_info(ifname, 'net', 'vendor') ==
-            MLNX_VENDOR_ID):
+        if (hardware._get_device_info(
+                ifname, 'net', 'vendor') == MLNX_VENDOR_ID):
             return True
     return False
 
@@ -96,8 +96,8 @@ class MellanoxDeviceHardwareManager(hardware.HardwareManager):
         if address is None:
             raise errors.IncompatibleHardwareMethodError()
         vendor = hardware._get_device_info(interface_name, 'net', 'vendor')
-        if (len(address) != netutils.INFINIBAND_ADDR_LEN or
-            vendor != MLNX_VENDOR_ID):
+        if (len(address) != netutils.INFINIBAND_ADDR_LEN
+                or vendor != MLNX_VENDOR_ID):
             raise errors.IncompatibleHardwareMethodError()
 
         mac_addr = _infiniband_address_to_mac(address)
