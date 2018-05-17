@@ -36,7 +36,7 @@ DEVICE="$2"
 # In production this will be replaced with secure erasing the drives
 # For now we need to ensure there aren't any old (GPT) partitions on the drive
 log "Erasing existing GPT and MBR data structures from ${DEVICE}"
-sgdisk -Z $DEVICE
+sgdisk -Z $DEVICE || sgdisk -o $DEVICE
 
 log "Imaging $IMAGEFILE to $DEVICE"
 
