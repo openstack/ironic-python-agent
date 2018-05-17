@@ -146,13 +146,13 @@ class IronicPythonAgentHeartbeater(threading.Thread):
                                    self.max_delay)
 
     def force_heartbeat(self):
-        os.write(self.writer, 'b')
+        os.write(self.writer, b'b')
 
     def stop(self):
         """Stop the heartbeat thread."""
         if self.writer is not None:
             LOG.info('stopping heartbeater')
-            os.write(self.writer, 'a')
+            os.write(self.writer, b'a')
             return self.join()
 
 
