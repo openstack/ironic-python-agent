@@ -48,7 +48,7 @@ def _get_partition(device, uuid):
             LOG.warning("Couldn't re-read the partition table "
                         "on device %s", device)
 
-        report = utils.execute('lsblk', '-PbioKNAME,UUID,TYPE', device)[0]
+        report = utils.execute('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE', device)[0]
         for line in report.split('\n'):
             part = {}
             # Split into KEY=VAL pairs
@@ -60,6 +60,10 @@ def _get_partition(device, uuid):
                 continue
 
             if part.get('UUID') == uuid:
+                LOG.debug("Partition %(uuid)s found on device "
+                          "%(dev)s", {'uuid': uuid, 'dev': device})
+                return '/dev/' + part.get('KNAME')
+            if part.get('PARTUUID') == uuid:
                 LOG.debug("Partition %(uuid)s found on device "
                           "%(dev)s", {'uuid': uuid, 'dev': device})
                 return '/dev/' + part.get('KNAME')
