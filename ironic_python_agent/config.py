@@ -39,11 +39,11 @@ cli_opts = [
                help='The IP address to listen on. '
                     'Can be supplied as "ipa-listen-host" kernel parameter.'),
 
-    cfg.IntOpt('listen_port',
-               default=int(APARAMS.get('ipa-listen-port', 9999)),
-               deprecated_name='listen-port',
-               help='The port to listen on. '
-                    'Can be supplied as "ipa-listen-port" kernel parameter.'),
+    cfg.PortOpt('listen_port',
+                default=int(APARAMS.get('ipa-listen-port', 9999)),
+                deprecated_name='listen-port',
+                help='The port to listen on. '
+                     'Can be supplied as "ipa-listen-port" kernel parameter.'),
 
     cfg.StrOpt('advertise_host',
                default=APARAMS.get('ipa-advertise-host', None),
@@ -53,15 +53,16 @@ cli_opts = [
                     'Can be supplied as "ipa-advertise-host" '
                     'kernel parameter.'),
 
-    cfg.IntOpt('advertise_port',
-               default=int(APARAMS.get('ipa-advertise-port', 9999)),
-               deprecated_name='advertise-port',
-               help='The port to tell Ironic to reply and send '
-                    'commands to. '
-                    'Can be supplied as "ipa-advertise-port" '
-                    'kernel parameter.'),
+    cfg.PortOpt('advertise_port',
+                default=int(APARAMS.get('ipa-advertise-port', 9999)),
+                deprecated_name='advertise-port',
+                help='The port to tell Ironic to reply and send '
+                     'commands to. '
+                     'Can be supplied as "ipa-advertise-port" '
+                     'kernel parameter.'),
 
     cfg.IntOpt('ip_lookup_attempts',
+               min=1,
                default=int(APARAMS.get('ipa-ip-lookup-attempts', 3)),
                deprecated_name='ip-lookup-attempts',
                help='The number of times to try and automatically '
@@ -70,6 +71,7 @@ cli_opts = [
                     'kernel parameter.'),
 
     cfg.IntOpt('ip_lookup_sleep',
+               min=0,
                default=int(APARAMS.get('ipa-ip-lookup-timeout', 10)),
                deprecated_name='ip-lookup-sleep',
                help='The amount of time to sleep between attempts '
@@ -85,6 +87,7 @@ cli_opts = [
                     'kernel parameter.'),
 
     cfg.IntOpt('lookup_timeout',
+               min=0,
                default=int(APARAMS.get('ipa-lookup-timeout', 300)),
                deprecated_name='lookup-timeout',
                help='The amount of time to retry the initial lookup '
@@ -94,6 +97,7 @@ cli_opts = [
                     'kernel parameter.'),
 
     cfg.IntOpt('lookup_interval',
+               min=0,
                default=int(APARAMS.get('ipa-lookup-interval', 1)),
                deprecated_name='lookup-interval',
                help='The initial interval for retries on the initial '
@@ -142,6 +146,7 @@ cli_opts = [
                     'kernel parameter.'),
 
     cfg.IntOpt('inspection_dhcp_wait_timeout',
+               min=0,
                default=APARAMS.get('ipa-inspection-dhcp-wait-timeout',
                                    inspector.DEFAULT_DHCP_WAIT_TIMEOUT),
                help='Maximum time (in seconds) to wait for the PXE NIC '
@@ -162,6 +167,7 @@ cli_opts = [
                      'kernel parameter.'),
 
     cfg.IntOpt('hardware_initialization_delay',
+               min=0,
                default=APARAMS.get('ipa-hardware-initialization-delay', 0),
                help='How much time (in seconds) to wait for hardware to '
                     'initialize before proceeding with any actions. '
@@ -169,6 +175,7 @@ cli_opts = [
                     'kernel parameter.'),
 
     cfg.IntOpt('disk_wait_attempts',
+               min=0,
                default=APARAMS.get('ipa-disk-wait-attempts', 10),
                help='The number of times to try and check to see if '
                     'at least one suitable disk has appeared in inventory '
@@ -177,6 +184,7 @@ cli_opts = [
                     'kernel parameter.'),
 
     cfg.IntOpt('disk_wait_delay',
+               min=0,
                default=APARAMS.get('ipa-disk-wait-delay', 3),
                help='How much time (in seconds) to wait between attempts '
                     'to check if at least one suitable disk has appeared '
