@@ -46,6 +46,9 @@ Developer documentation can be found here:
 
   https://docs.openstack.org/ironic-python-agent
 
+Release notes for the project are available at:
+  https://docs.openstack.org/releasenotes/ironic-python-agent/
+
 Additional resources are linked from the project wiki page:
 
   https://wiki.openstack.org/wiki/Ironic-python-agent
