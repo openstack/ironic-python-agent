@@ -1541,11 +1541,15 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         # Exception on security erase
         hdparm_output = create_hdparm_info(
             supported=True, enabled=False, frozen=False, enhanced_erase=False)
-
+        hdparm_unlocked_output = create_hdparm_info(
+            supported=True, locked=True, frozen=False, enhanced_erase=False)
         mocked_execute.side_effect = [
             (hdparm_output, '', '-1'),
             '',  # security-set-pass
-            processutils.ProcessExecutionError()  # security-erase
+            processutils.ProcessExecutionError(),  # security-erase
+            (hdparm_unlocked_output, '', '-1'),
+            '',  # attempt security unlock
+            (hdparm_output, '', '-1')
         ]
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,

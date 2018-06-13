@@ -889,6 +889,31 @@ class GenericHardwareManager(HardwareManager):
         return security_lines
 
     def _ata_erase(self, block_device):
+
+        def __attempt_unlock_drive(block_device, security_lines=None):
+            # Attempt to unlock the drive in the event it has already been
+            # locked by a previous failed attempt. We try the empty string as
+            # versions of hdparm < 9.51, interpreted NULL as the literal
+            # string, "NULL", as opposed to the empty string.
+            if not security_lines:
+                security_lines = self._get_ata_security_lines(block_device)
+            unlock_passwords = ['NULL', '']
+            for password in unlock_passwords:
+                if 'not locked' in security_lines:
+                    break
+                try:
+                    utils.execute('hdparm', '--user-master', 'u',
+                                  '--security-unlock', password,
+                                  block_device.name)
+                except processutils.ProcessExecutionError as e:
+                    LOG.info('Security unlock failed for device '
+                             '%(name)s using password "%(password)s": %(err)s',
+                             {'name': block_device.name,
+                              'password': password,
+                              'err': e})
+                security_lines = self._get_ata_security_lines(block_device)
+            return security_lines
+
         security_lines = self._get_ata_security_lines(block_device)
 
         # If secure erase isn't supported return False so erase_block_device
@@ -907,26 +932,8 @@ class GenericHardwareManager(HardwareManager):
                  ).format(block_device.name))
 
         # At this point, we could be in SEC1,4,5
-
-        # Attempt to unlock the drive in the event it has already been
-        # locked by a previous failed attempt. We try the empty string as
-        # versions of hdparm < 9.51, interpreted NULL as the literal string,
-        # "NULL", as opposed to the empty string.
-        unlock_passwords = ['NULL', '']
-        for password in unlock_passwords:
-            if 'not locked' in security_lines:
-                break
-            try:
-                utils.execute('hdparm', '--user-master', 'u',
-                              '--security-unlock', password,
-                              block_device.name)
-            except processutils.ProcessExecutionError as e:
-                LOG.info('Security unlock failed for device '
-                         '%(name)s using password "%(password)s": %(err)s',
-                         {'name': block_device.name,
-                          'password': password,
-                          'err': e})
-            security_lines = self._get_ata_security_lines(block_device)
+        # Attempt to unlock the drive if it has failed in a prior attempt.
+        security_lines = __attempt_unlock_drive(block_device, security_lines)
 
         # If the unlock failed we will still be in SEC4, otherwise, we will be
         # in SEC1 or SEC5
@@ -959,6 +966,10 @@ class GenericHardwareManager(HardwareManager):
             utils.execute('hdparm', '--user-master', 'u', erase_option,
                           'NULL', block_device.name)
         except processutils.ProcessExecutionError as e:
+            # NOTE(TheJulia): Attempt unlock to allow fallback to shred
+            # to occur, otherwise shred will fail as well, as the security
+            # mode will prevent IO operations to the disk.
+            __attempt_unlock_drive(block_device)
             raise errors.BlockDeviceEraseError('Erase failed for device '
                                                '%(name)s: %(err)s' %
                                                {'name': block_device.name,
