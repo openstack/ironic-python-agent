@@ -888,6 +888,42 @@ class GenericHardwareManager(HardwareManager):
 
         return security_lines
 
+    def _smartctl_security_check(self, block_device):
+        """Checks if we can query security via smartctl.
+
+            :param block_device: A block_device object
+
+            :returns: True if we can query the block device via ATA
+                      or the smartctl binary is not present.
+                      False if we cannot query the device.
+        """
+        try:
+            # NOTE(TheJulia): smartctl has a concept of drivers being how
+            # to query or interpret data from the device. We want to use `ata`
+            # instead of `scsi` or `sat` as smartctl will not be able to read
+            # a bridged device that it doesn't understand, and accordingly
+            # return an error code.
+            output = utils.execute('smartctl', '-d', 'ata', block_device.name,
+                                   '-g', 'security',
+                                   check_exit_code=[0, 127])[0]
+            if 'Unavailable' in output:
+                # Smartctl is reporting it is unavailable, lets return false.
+                LOG.debug('Smartctl has reported that security is '
+                          'unavailable on device %s.', block_device.name)
+                return False
+            return True
+        except processutils.ProcessExecutionError:
+            # Things don't look so good....
+            LOG.warning('Refusing to permit ATA Secure Erase as direct '
+                        'ATA commands via the `smartctl` utility with device '
+                        '%s do not succeed.', block_device.name)
+            return False
+        except OSError:
+            # Processutils can raise OSError if a path is not found,
+            # and it is okay that we tollerate that since it was the
+            # prior behavior.
+            return True
+
     def _ata_erase(self, block_device):
 
         def __attempt_unlock_drive(block_device, security_lines=None):
@@ -920,7 +956,8 @@ class GenericHardwareManager(HardwareManager):
         # can try another mechanism. Below here, if secure erase is supported
         # but fails in some way, error out (operators of hardware that supports
         # secure erase presumably expect this to work).
-        if 'supported' not in security_lines:
+        if (not self._smartctl_security_check(block_device)
+                or 'supported' not in security_lines):
             return False
 
         # At this point, we could be SEC1,2,4,5,6
