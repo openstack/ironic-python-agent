@@ -771,14 +771,15 @@ class GenericHardwareManager(HardwareManager):
             LOG.info("Skipping the erase of virtual media device %s",
                      block_device.name)
             return
-
+        info = node.get('driver_internal_info', {})
         # Note(TheJulia) Use try/except to capture and log the failure
         # and then revert to attempting to shred the volume if enabled.
         try:
-            if self._ata_erase(block_device):
+            execute_secure_erase = info.get(
+                'agent_enable_ata_secure_erase', True)
+            if execute_secure_erase and self._ata_erase(block_device):
                 return
         except errors.BlockDeviceEraseError as e:
-            info = node.get('driver_internal_info', {})
             execute_shred = info.get(
                 'agent_continue_if_ata_erase_failed', False)
             if execute_shred:
