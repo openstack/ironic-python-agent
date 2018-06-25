@@ -1,0 +1,16 @@
+---
+fixes:
+  - |
+    Fixes the ATA Secure Erase logic to attempt an immediate unlock in the
+    event of a failed attempt to Secure Erase. This is required to permit
+    fallback to make use of the ``shred`` disk utility.
+
+    In the event that an ATA Secure Erase operation fails during cleaning,
+    the disk will be write locked. In this case, the disk must be explicitly
+    unlocked.
+
+    This should also prevent failures where an ATA Secure Erase operation
+    fails with a pass-through disk controller, which may prevent the disk
+    from being available after a reboot operation. For additional information,
+    please see
+    `story 2002546 <https://storyboard.openstack.org/#!/story/2002546>`_.
