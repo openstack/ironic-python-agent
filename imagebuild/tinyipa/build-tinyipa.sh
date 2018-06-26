@@ -67,7 +67,7 @@ if $TINYIPA_REQUIRE_BIOSDEVNAME; then
     wget -N -O - https://linux.dell.com/biosdevname/biosdevname-0.7.2/biosdevname-0.7.2.tar.gz | tar -xz -C "${BUILDDIR}/tmp" -f -
 fi
 if $TINYIPA_REQUIRE_IPMITOOL; then
-    wget -N -O - https://sourceforge.net/projects/ipmitool/files/ipmitool/1.8.18/ipmitool-1.8.18.tar.gz/download | tar -xz -C "${BUILDDIR}/tmp" -f -
+    wget -N -O - https://github.com/ipmitool/ipmitool/archive/IPMITOOL_1_8_18.tar.gz | tar -xz -C "${BUILDDIR}/tmp" -f -
 fi
 
 # Create directory for python local mirror
@@ -155,7 +155,8 @@ fi
 
 if $TINYIPA_REQUIRE_IPMITOOL; then
     rm -rf $WORKDIR/build_files/ipmitool.tcz
-    $CHROOT_CMD /bin/sh -c "cd /tmp/ipmitool-* && ./configure && make && make install DESTDIR=/tmp/ipmitool"
+    # NOTE(TheJulia): Explicitly add the libtool path since /usr/local/ is not in path from the chroot.
+    $CHROOT_CMD /bin/sh -c "cd /tmp/ipmitool-* && env LIBTOOL='/usr/local/bin/libtool' ./bootstrap && ./configure && make && make install DESTDIR=/tmp/ipmitool"
     find $BUILDDIR/tmp/ipmitool/ -type f -executable | xargs file | awk -F ':' '/ELF/ {print $1}' | sudo xargs strip
     cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/ipmitool ipmitool.tcz && md5sum ipmitool.tcz > ipmitool.tcz.md5.txt
 fi
