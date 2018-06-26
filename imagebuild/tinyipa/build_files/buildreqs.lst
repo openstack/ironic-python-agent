@@ -17,3 +17,9 @@ glib2-dev.tcz
 pixman-dev.tcz
 binutils.tcz
 git.tcz
+autoconf.tcz
+autogen.tcz
+autogen-dev.tcz
+automake.tcz
+libtool.tcz
+libtool-dev.tcz
