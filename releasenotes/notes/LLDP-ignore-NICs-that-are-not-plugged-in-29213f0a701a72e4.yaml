@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes bug in LLDP discovery code which lead to no LLDP information being
+    discovered for any network interface if one network interface raised an
+    exception, for example if the network interface incorrectly indicates its
+    ready to read. `<https://bugs.launchpad.net/ironic-python-agent/+bug/1665025>`_
