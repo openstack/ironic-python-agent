@@ -1,6 +1,6 @@
 - hosts: all
-  name: Autoconverted job legacy-tempest-dsvm-ironic-ipa-wholedisk-bios-agent_ipmitool-coreos-src
-    from old job gate-tempest-dsvm-ironic-ipa-wholedisk-bios-agent_ipmitool-coreos-src-ubuntu-xenial
+  name: Autoconverted job legacy-tempest-dsvm-ironic-ipa-wholedisk-bios-pxe_ipmitool-coreos-src
+    from old job gate-tempest-dsvm-ironic-ipa-wholedisk-bios-pxe_ipmitool-coreos-src-ubuntu-xenial
   tasks:
 
     - name: Ensure legacy workspace directory
@@ -28,7 +28,7 @@
         cmd: |
           cat << 'EOF' >> ironic-extra-vars
             export DEVSTACK_GATE_OS_TEST_TIMEOUT=2400
-            export DEVSTACK_GATE_TEMPEST_BAREMETAL_BUILD_TIMEOUT=1200
+            export DEVSTACK_GATE_TEMPEST_BAREMETAL_BUILD_TIMEOUT=1800
             export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_SPECS_CPU=2"
             export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_SPECS_RAM=2048"
             export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_RAMDISK_TYPE=coreos"
@@ -73,10 +73,6 @@
           export DEVSTACK_GATE_VIRT_DRIVER=ironic
           export DEVSTACK_GATE_CONFIGDRIVE=1
           export DEVSTACK_GATE_IRONIC_DRIVER=ipmi
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_DEFAULT_DEPLOY_INTERFACE=direct"
-          # direct deploy requires Swift temporary URLs
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"SWIFT_ENABLE_TEMPURLS=True"
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"SWIFT_TEMPURL_KEY=secretkey"
 
           if [[ ! "stable/newton stable/ocata stable/pike" =~ $ZUUL_BRANCH ]] ; then
               export DEVSTACK_GATE_TLSPROXY=1
