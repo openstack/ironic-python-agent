@@ -32,7 +32,7 @@
             export DEVSTACK_GATE_OS_TEST_TIMEOUT=2400
             export DEVSTACK_GATE_TEMPEST_BAREMETAL_BUILD_TIMEOUT=1800
             export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_ENGINE=auto"
-            export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_SPECS_CPU=2"
+            export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_SPECS_CPU=1"
             export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_SPECS_RAM=2048"
             export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_RAMDISK_TYPE=coreos"
           EOF
