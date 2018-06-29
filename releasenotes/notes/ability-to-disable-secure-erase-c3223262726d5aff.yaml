@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Adds the ability for the Bare Metal service conductor
+    service to explicitly choose to disable ATA Secure Erase
+    from being executed.

@@ -1785,6 +1785,22 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.erase_block_device(self.node, block_device)
         self.assertTrue(mock_shred.called)
 
+    @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
+                       autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_erase_block_device_ata_erase_disabled(
+            self, mocked_execute, mock_shred):
+
+        info = self.node['driver_internal_info']
+        info['agent_enable_ata_secure_erase'] = False
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+
+        self.hardware.erase_block_device(self.node, block_device)
+        self.assertTrue(mock_shred.called)
+        self.assertFalse(mocked_execute.called)
+
     def test_normal_vs_enhanced_security_erase(self):
         @mock.patch.object(utils, 'execute', autospec=True)
         def test_security_erase_option(test_case,
