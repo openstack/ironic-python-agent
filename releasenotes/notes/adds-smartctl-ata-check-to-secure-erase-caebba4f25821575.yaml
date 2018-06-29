@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Adds an additional check if the ``smartctl`` utility is present from the
+    ``smartmontools`` package, which performs an ATA disk specific check that
+    should prevent ATA Secure Erase from being performed if a pass-thru
+    device is detected that requires a non-ATA command signling sequence.
+    Devices such as these can be `smart` disk interfaces such as
+    RAID controllers and USB disk adapters, which can cause failures
+    when attempting to Secure Erase, which may render the disk unreachable.

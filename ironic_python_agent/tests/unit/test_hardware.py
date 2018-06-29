@@ -349,6 +349,20 @@ LSHW_JSON_OUTPUT = ("""
 }
 """, "")
 
+SMARTCTL_NORMAL_OUTPUT = ("""
+smartctl 6.2 2017-02-27 r4394 [x86_64-linux-3.10.0-693.21.1.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
+
+ATA Security is:  Disabled, NOT FROZEN [SEC1]
+""")  # noqa
+
+SMARTCTL_UNAVAILABLE_OUTPUT = ("""
+smartctl 6.2 2017-02-27 r4394 [x86_64-linux-3.10.0-693.21.1.el7.x86_64] (local build)
+Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
+
+ATA Security is:  Unavailable
+""")  # noqa
+
 
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
@@ -1270,6 +1284,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             (create_hdparm_info(
                 supported=True, enabled=False, frozen=False,
                 enhanced_erase=False), ''),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             ('', ''),
             ('', ''),
             (create_hdparm_info(
@@ -1282,6 +1297,36 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.erase_block_device(self.node, block_device)
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('smartctl', '-d', 'ata', '/dev/sda', '-g', 'security',
+                      check_exit_code=[0, 127]),
+            mock.call('hdparm', '--user-master', 'u', '--security-set-pass',
+                      'NULL', '/dev/sda'),
+            mock.call('hdparm', '--user-master', 'u', '--security-erase',
+                      'NULL', '/dev/sda'),
+            mock.call('hdparm', '-I', '/dev/sda'),
+        ])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_erase_block_device_ata_success_no_smartctl(self, mocked_execute):
+        mocked_execute.side_effect = [
+            (create_hdparm_info(
+                supported=True, enabled=False, frozen=False,
+                enhanced_erase=False), ''),
+            OSError('boom'),
+            ('', ''),
+            ('', ''),
+            (create_hdparm_info(
+                supported=True, enabled=False, frozen=False,
+                enhanced_erase=False), ''),
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+        self.hardware.erase_block_device(self.node, block_device)
+        mocked_execute.assert_has_calls([
+            mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('smartctl', '-d', 'ata', '/dev/sda', '-g', 'security',
+                      check_exit_code=[0, 127]),
             mock.call('hdparm', '--user-master', 'u', '--security-set-pass',
                       'NULL', '/dev/sda'),
             mock.call('hdparm', '--user-master', 'u', '--security-erase',
@@ -1295,6 +1340,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
+            (SMARTCTL_UNAVAILABLE_OUTPUT, ''),
             (SHRED_OUTPUT_1_ITERATION_ZERO_TRUE, '')
         ]
 
@@ -1303,6 +1349,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.erase_block_device(self.node, block_device)
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('smartctl', '-d', 'ata', '/dev/sda', '-g', 'security',
+                      check_exit_code=[0, 127]),
             mock.call('shred', '--force', '--zero', '--verbose',
                       '--iterations', '1', '/dev/sda')
         ])
@@ -1314,6 +1362,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
+            (SMARTCTL_UNAVAILABLE_OUTPUT, ''),
             (SHRED_OUTPUT_1_ITERATION_ZERO_TRUE, '')
         ]
 
@@ -1322,6 +1371,54 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.erase_block_device(self.node, block_device)
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('smartctl', '-d', 'ata', '/dev/sda', '-g', 'security',
+                      check_exit_code=[0, 127]),
+            mock.call('shred', '--force', '--zero', '--verbose',
+                      '--iterations', '1', '/dev/sda')
+        ])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_erase_block_device_smartctl_unsupported_shred(self,
+                                                           mocked_execute):
+        hdparm_output = create_hdparm_info(
+            supported=True, enabled=False, frozen=False, enhanced_erase=False)
+
+        mocked_execute.side_effect = [
+            (hdparm_output, ''),
+            (SMARTCTL_UNAVAILABLE_OUTPUT, ''),
+            (SHRED_OUTPUT_1_ITERATION_ZERO_TRUE, '')
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+        self.hardware.erase_block_device(self.node, block_device)
+        mocked_execute.assert_has_calls([
+            mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('smartctl', '-d', 'ata', '/dev/sda', '-g', 'security',
+                      check_exit_code=[0, 127]),
+            mock.call('shred', '--force', '--zero', '--verbose',
+                      '--iterations', '1', '/dev/sda')
+        ])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_erase_block_device_smartctl_fails_security_fallback_to_shred(
+            self, mocked_execute):
+        hdparm_output = create_hdparm_info(
+            supported=True, enabled=False, frozen=False, enhanced_erase=False)
+
+        mocked_execute.side_effect = [
+            (hdparm_output, ''),
+            processutils.ProcessExecutionError(),
+            (SHRED_OUTPUT_1_ITERATION_ZERO_TRUE, '')
+        ]
+
+        block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
+                                            True)
+        self.hardware.erase_block_device(self.node, block_device)
+        mocked_execute.assert_has_calls([
+            mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('smartctl', '-d', 'ata', '/dev/sda', '-g', 'security',
+                      check_exit_code=[0, 127]),
             mock.call('shred', '--force', '--zero', '--verbose',
                       '--iterations', '1', '/dev/sda')
         ])
@@ -1337,6 +1434,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             (SHRED_OUTPUT_2_ITERATIONS_ZERO_FALSE, '')
         ]
 
@@ -1345,6 +1443,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.erase_block_device(self.node, block_device)
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('smartctl', '-d', 'ata', '/dev/sda', '-g', 'security',
+                      check_exit_code=[0, 127]),
             mock.call('shred', '--force', '--verbose',
                       '--iterations', '2', '/dev/sda')
         ])
@@ -1360,6 +1460,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
+            (SMARTCTL_UNAVAILABLE_OUTPUT, ''),
             (SHRED_OUTPUT_0_ITERATIONS_ZERO_FALSE, '')
         ]
 
@@ -1368,6 +1469,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.erase_block_device(self.node, block_device)
         mocked_execute.assert_has_calls([
             mock.call('hdparm', '-I', '/dev/sda'),
+            mock.call('smartctl', '-d', 'ata', '/dev/sda', '-g', 'security',
+                      check_exit_code=[0, 127]),
             mock.call('shred', '--force', '--verbose',
                       '--iterations', '0', '/dev/sda')
         ])
@@ -1453,6 +1556,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             supported=True, enabled=False, frozen=False, enhanced_erase=False)
         mocked_execute.side_effect = [
             (hdparm_output, ''),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             processutils.ProcessExecutionError(),  # NULL fails to unlock
             (hdparm_output, ''),  # recheck security lines
             None,  # security unlock with ""
@@ -1481,6 +1585,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             None,
             (hdparm_output, ''),
             None,
@@ -1514,6 +1619,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             '',
             (hdparm_output_not_enabled, ''),
             '',
@@ -1536,6 +1642,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             supported=True, enabled=True, locked=True)
         mocked_execute.side_effect = [
             (hdparm_output, ''),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             processutils.ProcessExecutionError(),
             (hdparm_output, ''),
             processutils.ProcessExecutionError(),
@@ -1560,6 +1667,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             (hdparm_output, ''),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             processutils.ProcessExecutionError()
         ]
 
@@ -1580,6 +1688,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             supported=True, locked=True, frozen=False, enhanced_erase=False)
         mocked_execute.side_effect = [
             (hdparm_output, '', '-1'),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             '',  # security-set-pass
             processutils.ProcessExecutionError(),  # security-erase
             (hdparm_unlocked_output, '', '-1'),
@@ -1602,7 +1711,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             supported=True, enabled=False, frozen=True, enhanced_erase=False)
 
         mocked_execute.side_effect = [
-            (hdparm_output, '')
+            (hdparm_output, ''),
+            (SMARTCTL_NORMAL_OUTPUT, '')
         ]
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
@@ -1628,6 +1738,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             (hdparm_output_before, ''),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             ('', ''),
             ('', ''),
             (hdparm_output_after, ''),
@@ -1662,6 +1773,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             (hdparm_output_before, ''),
+            (SMARTCTL_NORMAL_OUTPUT, ''),
             ('', ''),
             ('', ''),
             (hdparm_output_after, ''),
@@ -1683,6 +1795,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 (create_hdparm_info(
                     supported=True, enabled=False, frozen=False,
                     enhanced_erase=enhanced_erase), ''),
+                (SMARTCTL_NORMAL_OUTPUT, ''),
                 ('', ''),
                 ('', ''),
                 (create_hdparm_info(
