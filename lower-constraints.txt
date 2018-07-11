@@ -87,7 +87,6 @@ sphinxcontrib-pecanwsme==0.8.0
 sphinxcontrib-websupport==1.0.1
 stestr==1.0.0
 stevedore==1.20.0
-testrepository==0.0.20
 testtools==2.2.0
 traceback2==1.4.0
 unittest2==1.1.0
