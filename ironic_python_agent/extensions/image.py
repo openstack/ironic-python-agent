@@ -76,7 +76,8 @@ def _get_partition(device, uuid):
         raise errors.CommandExecutionError(error_msg)
 
 
-def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
+def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
+                   prep_boot_part_uuid=None):
     """Install GRUB2 bootloader on a given device."""
     LOG.debug("Installing GRUB2 bootloader on device %s", device)
     root_partition = _get_partition(device, uuid=root_uuid)
@@ -91,6 +92,10 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
         if efi_system_part_uuid:
             efi_partition = _get_partition(device, uuid=efi_system_part_uuid)
             efi_partition_mount_point = os.path.join(path, "boot/efi")
+
+        # For power we want to install grub directly onto the PreP partition
+        if prep_boot_part_uuid:
+            device = _get_partition(device, uuid=prep_boot_part_uuid)
 
         utils.execute('mount', root_partition, path)
         for fs in BIND_MOUNTS:
@@ -196,13 +201,17 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None):
 class ImageExtension(base.BaseAgentExtension):
 
     @base.sync_command('install_bootloader')
-    def install_bootloader(self, root_uuid, efi_system_part_uuid=None):
+    def install_bootloader(self, root_uuid, efi_system_part_uuid=None,
+                           prep_boot_part_uuid=None):
         """Install the GRUB2 bootloader on the image.
 
         :param root_uuid: The UUID of the root partition.
         :param efi_system_part_uuid: The UUID of the efi system partition.
             To be used only for uefi boot mode.  For uefi boot mode, the
             boot loader will be installed here.
+        :param prep_boot_part_uuid: The UUID of the PReP Boot partition.
+            Used only for booting ppc64* partition images locally. In this
+            scenario the bootloader will be installed here.
         :raises: CommandExecutionError if the installation of the
                  bootloader fails.
         :raises: DeviceNotFound if the root partition is not found.
@@ -212,4 +221,5 @@ class ImageExtension(base.BaseAgentExtension):
         iscsi.clean_up(device)
         _install_grub2(device,
                        root_uuid=root_uuid,
-                       efi_system_part_uuid=efi_system_part_uuid)
+                       efi_system_part_uuid=efi_system_part_uuid,
+                       prep_boot_part_uuid=prep_boot_part_uuid)

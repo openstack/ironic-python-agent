@@ -73,6 +73,9 @@ def _write_partition_image(image, image_info, device):
     disk_label = image_info.get('disk_label', 'msdos')
     image_mb = disk_utils.get_image_mb(image)
     root_mb = image_info['root_mb']
+
+    cpu_arch = hardware.dispatch_to_managers('get_cpus').architecture
+
     if image_mb > int(root_mb):
         msg = ('Root partition is too small for requested image. Image '
                'virtual size: {} MB, Root size: {} MB').format(image_mb,
@@ -88,7 +91,8 @@ def _write_partition_image(image, image_info, device):
                                        configdrive=configdrive,
                                        boot_option=boot_option,
                                        boot_mode=boot_mode,
-                                       disk_label=disk_label)
+                                       disk_label=disk_label,
+                                       cpu_arch=cpu_arch)
     except processutils.ProcessExecutionError as e:
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
 
