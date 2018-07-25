@@ -61,6 +61,11 @@ while :; do
       OPT_O=true
       shift
       ;;
+    -rs)
+      OPT_R=true
+      OPT_S=true
+      shift
+      ;;
     *)
       if [ ! -z "$1" ]; then
         echo "uname -asnrpvmio"
