@@ -19,6 +19,7 @@ from oslo_concurrency import processutils
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import standby
+from ironic_python_agent import hardware
 from ironic_python_agent.tests.unit import base
 
 
@@ -58,6 +59,11 @@ class TestStandbyExtension(base.IronicAgentTest):
     def setUp(self):
         super(TestStandbyExtension, self).setUp()
         self.agent_extension = standby.StandbyExtension()
+        self.fake_cpu = hardware.CPU(model_name='fuzzypickles',
+                                     frequency=1024,
+                                     count=1,
+                                     architecture='generic',
+                                     flags='')
 
     def test_validate_image_info_success(self):
         standby._validate_image_info(None, _build_fake_image_info())
@@ -137,13 +143,15 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         execute_mock.assert_called_once_with(*command, check_exit_code=[0])
 
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
     @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
     def test_write_partition_image_exception(self, work_on_disk_mock,
                                              image_mb_mock,
-                                             execute_mock, open_mock):
+                                             execute_mock, open_mock,
+                                             dispatch_mock):
         image_info = _build_fake_partition_image_info()
         device = '/dev/sda'
         root_mb = image_info['root_mb']
@@ -156,10 +164,12 @@ class TestStandbyExtension(base.IronicAgentTest):
         boot_mode = image_info['deploy_boot_mode']
         boot_option = image_info['boot_option']
         disk_label = image_info['disk_label']
+        cpu_arch = self.fake_cpu.architecture
 
         image_path = standby._image_location(image_info)
 
         image_mb_mock.return_value = 1
+        dispatch_mock.return_value = self.fake_cpu
         exc = errors.ImageWriteError
         Exception_returned = processutils.ProcessExecutionError
         work_on_disk_mock.side_effect = Exception_returned
@@ -176,15 +186,18 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
                                                   boot_option=boot_option,
-                                                  disk_label=disk_label)
+                                                  disk_label=disk_label,
+                                                  cpu_arch=cpu_arch)
 
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
     @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
     def test_write_partition_image_no_node_uuid(self, work_on_disk_mock,
                                                 image_mb_mock,
-                                                execute_mock, open_mock):
+                                                execute_mock, open_mock,
+                                                dispatch_mock):
         image_info = _build_fake_partition_image_info()
         image_info['node_uuid'] = None
         device = '/dev/sda'
@@ -198,10 +211,12 @@ class TestStandbyExtension(base.IronicAgentTest):
         boot_mode = image_info['deploy_boot_mode']
         boot_option = image_info['boot_option']
         disk_label = image_info['disk_label']
+        cpu_arch = self.fake_cpu.architecture
 
         image_path = standby._image_location(image_info)
 
         image_mb_mock.return_value = 1
+        dispatch_mock.return_value = self.fake_cpu
         uuids = {'root uuid': 'root_uuid'}
         expected_uuid = {'root uuid': 'root_uuid'}
         image_mb_mock.return_value = 1
@@ -218,11 +233,13 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
                                                   boot_option=boot_option,
-                                                  disk_label=disk_label)
+                                                  disk_label=disk_label,
+                                                  cpu_arch=cpu_arch)
 
         self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
         self.assertIsNone(node_uuid)
 
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
@@ -231,12 +248,15 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                       work_on_disk_mock,
                                                       image_mb_mock,
                                                       execute_mock,
-                                                      open_mock):
+                                                      open_mock,
+                                                      dispatch_mock):
+        dispatch_mock.return_value = self.fake_cpu
         image_info = _build_fake_partition_image_info()
         device = '/dev/sda'
         image_path = standby._image_location(image_info)
 
         image_mb_mock.return_value = 20
+
         exc = errors.InvalidCommandParamsError
 
         self.assertRaises(exc, standby._write_image, image_info,
@@ -244,12 +264,13 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_mb_mock.assert_called_once_with(image_path)
         self.assertFalse(work_on_disk_mock.called)
 
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
     def test_write_partition_image(self, image_mb_mock, work_on_disk_mock,
-                                   execute_mock, open_mock):
+                                   execute_mock, open_mock, dispatch_mock):
         image_info = _build_fake_partition_image_info()
         device = '/dev/sda'
         root_mb = image_info['root_mb']
@@ -262,11 +283,13 @@ class TestStandbyExtension(base.IronicAgentTest):
         boot_mode = image_info['deploy_boot_mode']
         boot_option = image_info['boot_option']
         disk_label = image_info['disk_label']
+        cpu_arch = self.fake_cpu.architecture
 
         image_path = standby._image_location(image_info)
         uuids = {'root uuid': 'root_uuid'}
         expected_uuid = {'root uuid': 'root_uuid'}
         image_mb_mock.return_value = 1
+        dispatch_mock.return_value = self.fake_cpu
         work_on_disk_mock.return_value = uuids
 
         standby._write_image(image_info, device)
@@ -280,7 +303,8 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
                                                   boot_option=boot_option,
-                                                  disk_label=disk_label)
+                                                  disk_label=disk_label,
+                                                  cpu_arch=cpu_arch)
 
         self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
 

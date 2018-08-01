@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    If a PReP boot partition is created, and the machine being deployed to is
+    of ppc64le architecture, the grub2 bootloader will be installed directly
+    there. This enables booting partition images locally on ppc64* hardware.
+
+    Using this feature requires ``ironic-lib`` version 2.14 as support to
+    create the PReP partition was introduced there.
