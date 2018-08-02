@@ -203,13 +203,22 @@ def _get_lldp_info(interfaces):
     return lldp_info
 
 
-def get_ipv4_addr(interface_id):
+def get_default_ip_addr(type, interface_id):
+    """Retrieve default IPv4 or IPv6 address."""
     try:
         addrs = netifaces.ifaddresses(interface_id)
-        return addrs[netifaces.AF_INET][0]['addr']
+        return addrs[type][0]['addr']
     except (ValueError, IndexError, KeyError):
-        # No default IPv4 address found
+        # No default IP address found
         return None
+
+
+def get_ipv4_addr(interface_id):
+    return get_default_ip_addr(netifaces.AF_INET, interface_id)
+
+
+def get_ipv6_addr(interface_id):
+    return get_default_ip_addr(netifaces.AF_INET6, interface_id)
 
 
 def get_mac_addr(interface_id):
