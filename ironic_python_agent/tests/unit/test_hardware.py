@@ -154,6 +154,32 @@ BLK_DEVICE_TEMPLATE_SMALL_DEVICES = [
                          vendor="FooTastic"),
 ]
 
+# NOTE(TheJulia): This list intentionally contains duplicates
+# as the code filters them out by kernel device name.
+RAID_BLK_DEVICE_TEMPLATE = (
+    'KNAME="sda" MODEL="DRIVE 0" SIZE="1765517033472" '
+    'ROTA="1" TYPE="disk"\n'
+    'KNAME="sdb" MODEL="DRIVE 1" SIZE="1765517033472" '
+    'ROTA="1" TYPE="disk"\n'
+    'KNAME="sdb" MODEL="DRIVE 1" SIZE="1765517033472" '
+    'ROTA="1" TYPE="disk"\n'
+    'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
+    'ROTA="0" TYPE="raid1"\n'
+    'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
+    'ROTA="0" TYPE="raid1"'
+)
+RAID_BLK_DEVICE_TEMPLATE_DEVICES = [
+    hardware.BlockDevice(name='/dev/sda', model='DRIVE 0',
+                         size=1765517033472, rotational=True,
+                         vendor="FooTastic"),
+    hardware.BlockDevice(name='/dev/sdb', model='DRIVE 1',
+                         size=1765517033472, rotational=True,
+                         vendor="FooTastic"),
+    hardware.BlockDevice(name='/dev/md0', model='RAID',
+                         size=1765517033470, rotational=False,
+                         vendor="FooTastic"),
+]
+
 SHRED_OUTPUT_0_ITERATIONS_ZERO_FALSE = ()
 
 SHRED_OUTPUT_1_ITERATION_ZERO_TRUE = (
@@ -813,7 +839,29 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            check_exit_code=[0])
+        mock_cached_node.assert_called_once_with()
+
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_os_install_device_raid(self, mocked_execute,
+                                        mock_cached_node, mocked_listdir,
+                                        mocked_readlink):
+        # NOTE(TheJulia): The readlink and listdir mocks are just to satisfy
+        # what is functionally an available path check and that information
+        # is stored in the returned result for use by root device hints.
+        mocked_readlink.side_effect = '../../sda'
+        mocked_listdir.return_value = ['1:0:0:0']
+        mock_cached_node.return_value = None
+        mocked_execute.return_value = (RAID_BLK_DEVICE_TEMPLATE, '')
+        # This should ideally select the smallest device and in theory raid
+        # should always be smaller
+        self.assertEqual('/dev/md0', self.hardware.get_os_install_device())
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         mock_cached_node.assert_called_once_with()
 
@@ -832,7 +880,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ex = self.assertRaises(errors.DeviceNotFound,
                                self.hardware.get_os_install_device)
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertIn(str(4 * units.Gi), ex.details)
         mock_cached_node.assert_called_once_with()
@@ -2137,9 +2185,28 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertEqual(BLK_DEVICE_TEMPLATE_SMALL_DEVICES, result)
+        mocked_udev.assert_called_once_with()
+
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(hardware, '_get_device_info',
+                       lambda x, y, z: 'FooTastic')
+    @mock.patch.object(hardware, '_udev_settle', autospec=True)
+    @mock.patch.object(hardware.pyudev.Device, "from_device_file",
+                       autospec=False)
+    def test_list_all_block_devices_success_raid(self, mocked_fromdevfile,
+                                                 mocked_udev, mocked_readlink,
+                                                 mocked_execute):
+        mocked_readlink.return_value = '../../sda'
+        mocked_fromdevfile.return_value = {}
+        mocked_execute.return_value = (RAID_BLK_DEVICE_TEMPLATE, '')
+        result = hardware.list_all_block_devices()
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            check_exit_code=[0])
+        self.assertEqual(RAID_BLK_DEVICE_TEMPLATE_DEVICES, result)
         mocked_udev.assert_called_once_with()
 
     @mock.patch.object(hardware, '_get_device_info',
@@ -2150,7 +2217,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.return_value = ('TYPE="foo" MODEL="model"', '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbdi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertEqual([], result)
         mocked_udev.assert_called_once_with()
