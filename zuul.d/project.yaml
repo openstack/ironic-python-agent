@@ -1,4 +1,10 @@
 - project:
+    templates:
+      - openstack-python-jobs
+      - openstack-python35-jobs
+      - publish-openstack-sphinx-docs
+      - check-requirements
+      - release-notes-jobs
     check:
       jobs:
         - ipa-tempest-dsvm-partition-bios-agent_ipmitool-coreos-src
