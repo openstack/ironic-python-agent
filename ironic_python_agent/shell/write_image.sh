@@ -36,7 +36,13 @@ DEVICE="$2"
 # In production this will be replaced with secure erasing the drives
 # For now we need to ensure there aren't any old (GPT) partitions on the drive
 log "Erasing existing GPT and MBR data structures from ${DEVICE}"
-sgdisk -Z $DEVICE || sgdisk -o $DEVICE
+
+# NOTE(gfidente): GPT uses 33*512 sectors, this is an attempt to avoid bug:
+# https://bugs.launchpad.net/ironic-python-agent/+bug/1737556
+DEVICE_SECTORS_COUNT=`blockdev --getsz $DEVICE`
+dd bs=512 if=/dev/zero of=$DEVICE count=33
+dd bs=512 if=/dev/zero of=$DEVICE count=33 seek=$((${DEVICE_SECTORS_COUNT} - 33))
+sgdisk -Z $DEVICE
 
 log "Imaging $IMAGEFILE to $DEVICE"
 
