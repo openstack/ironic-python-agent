@@ -1148,6 +1148,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         list_mock.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    def test_list_block_devices_including_partitions(self, list_mock):
+        device = hardware.BlockDevice('/dev/hdaa', 'small', 65535, False)
+        partition = hardware.BlockDevice('/dev/hdaa1', '', 32767, False)
+        list_mock.side_effect = [[device], [partition]]
+        devices = self.hardware.list_block_devices(include_partitions=True)
+
+        self.assertEqual([device, partition], devices)
+
+        self.assertEqual([mock.call(), mock.call(block_type='part',
+                                                 ignore_raid=True)],
+                         list_mock.call_args_list)
+
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
@@ -1965,18 +1978,24 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         block_devices = [
             hardware.BlockDevice('/dev/sr0', 'vmedia', 12345, True),
             hardware.BlockDevice('/dev/sda', 'small', 65535, False),
+            hardware.BlockDevice('/dev/sda1', '', 32767, False),
         ]
-        mock_list_devs.return_value = block_devices
-        mock__is_vmedia.side_effect = (True, False)
+        # NOTE(coreywright): Don't return the list, but a copy of it, because
+        # we depend on its elements' order when referencing it later during
+        # verification, but the method under test sorts the list changing it.
+        mock_list_devs.return_value = list(block_devices)
+        mock__is_vmedia.side_effect = lambda _, dev: dev.name == '/dev/sr0'
 
         self.hardware.erase_devices_metadata(self.node, [])
-        mock_metadata.assert_called_once_with(
-            '/dev/sda', self.node['uuid'])
-        mock_list_devs.assert_called_once_with(mock.ANY)
-        mock__is_vmedia.assert_has_calls([
-            mock.call(mock.ANY, block_devices[0]),
-            mock.call(mock.ANY, block_devices[1])
-        ])
+        self.assertEqual([mock.call('/dev/sda1', self.node['uuid']),
+                          mock.call('/dev/sda', self.node['uuid'])],
+                         mock_metadata.call_args_list)
+        mock_list_devs.assert_called_once_with(self.hardware,
+                                               include_partitions=True)
+        self.assertEqual([mock.call(self.hardware, block_devices[0]),
+                          mock.call(self.hardware, block_devices[2]),
+                          mock.call(self.hardware, block_devices[1])],
+                         mock__is_vmedia.call_args_list)
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_virtual_media_device', autospec=True)
@@ -1990,28 +2009,33 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             hardware.BlockDevice('/dev/sdb', 'big', 10737418240, True),
         ]
         mock__is_vmedia.return_value = False
-        mock_list_devs.return_value = block_devices
-        # Simulate /dev/sda failing and /dev/sdb succeeding
+        # NOTE(coreywright): Don't return the list, but a copy of it, because
+        # we depend on its elements' order when referencing it later during
+        # verification, but the method under test sorts the list changing it.
+        mock_list_devs.return_value = list(block_devices)
+        # Simulate first call to destroy_disk_metadata() failing, which is for
+        # /dev/sdb due to erase_devices_metadata() reverse sorting block
+        # devices by name, and second call succeeding, which is for /dev/sda
         error_output = 'Booo00000ooommmmm'
+        error_regex = '(?s)/dev/sdb.*' + error_output
         mock_metadata.side_effect = (
             processutils.ProcessExecutionError(error_output),
             None,
         )
 
-        self.assertRaisesRegex(errors.BlockDeviceEraseError, error_output,
+        self.assertRaisesRegex(errors.BlockDeviceEraseError, error_regex,
                                self.hardware.erase_devices_metadata,
                                self.node, [])
         # Assert all devices are erased independent if one of them
         # failed previously
-        mock_metadata.assert_has_calls([
-            mock.call('/dev/sda', self.node['uuid']),
-            mock.call('/dev/sdb', self.node['uuid']),
-        ])
-        mock_list_devs.assert_called_once_with(mock.ANY)
-        mock__is_vmedia.assert_has_calls([
-            mock.call(mock.ANY, block_devices[0]),
-            mock.call(mock.ANY, block_devices[1])
-        ])
+        self.assertEqual([mock.call('/dev/sdb', self.node['uuid']),
+                          mock.call('/dev/sda', self.node['uuid'])],
+                         mock_metadata.call_args_list)
+        mock_list_devs.assert_called_once_with(self.hardware,
+                                               include_partitions=True)
+        self.assertEqual([mock.call(self.hardware, block_devices[1]),
+                          mock.call(self.hardware, block_devices[0])],
+                         mock__is_vmedia.call_args_list)
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address(self, mocked_execute):

@@ -363,7 +363,12 @@ class HardwareManager(object):
     def get_cpus(self):
         raise errors.IncompatibleHardwareMethodError
 
-    def list_block_devices(self):
+    def list_block_devices(self, include_partitions=False):
+        """List physical block devices
+
+        :param include_partitions: If to include partitions
+        :return: A list of BlockDevices
+        """
         raise errors.IncompatibleHardwareMethodError
 
     def get_memory(self):
@@ -762,8 +767,14 @@ class GenericHardwareManager(HardwareManager):
 
         return Memory(total=total, physical_mb=physical)
 
-    def list_block_devices(self):
-        return list_all_block_devices()
+    def list_block_devices(self, include_partitions=False):
+        block_devices = list_all_block_devices()
+        if include_partitions:
+            block_devices.extend(
+                list_all_block_devices(block_type='part',
+                                       ignore_raid=True)
+            )
+        return block_devices
 
     def get_os_install_device(self):
         cached_node = get_cached_node()
@@ -866,7 +877,11 @@ class GenericHardwareManager(HardwareManager):
         :raises BlockDeviceEraseError: when there's an error erasing the
                 block device
         """
-        block_devices = self.list_block_devices()
+        block_devices = self.list_block_devices(include_partitions=True)
+        # NOTE(coreywright): Reverse sort by device name so a partition (eg
+        # sda1) is processed before it disappears when its associated disk (eg
+        # sda) has its partition table erased and the kernel notified.
+        block_devices.sort(key=lambda dev: dev.name, reverse=True)
         erase_errors = {}
         for dev in block_devices:
             if self._is_virtual_media_device(dev):
