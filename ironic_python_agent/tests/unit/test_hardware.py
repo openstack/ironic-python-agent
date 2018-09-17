@@ -451,7 +451,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 (2, '02626172')],
         }
         result = self.hardware.collect_lldp_data(if_names)
-        self.assertEqual(True, if_names[0] in result)
+        self.assertIn(if_names[0], result)
         self.assertEqual(expected_lldp_data, result)
 
     @mock.patch('ironic_python_agent.netutils.get_lldp_info', autospec=True)
@@ -485,7 +485,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         }
         result = self.hardware.collect_lldp_data(if_names)
         mock_log.warning.assert_called_once()
-        self.assertEqual(True, if_names[0] in result)
+        self.assertIn(if_names[0], result)
         self.assertEqual(expected_lldp_data, result)
 
     @mock.patch('ironic_python_agent.hardware._get_managers', autospec=True)

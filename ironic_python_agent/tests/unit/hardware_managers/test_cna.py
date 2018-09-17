@@ -46,7 +46,7 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
 
         mock_listdir.return_value = ['eth0', 'eth1']
         mock_execute.side_effect = mock_return_execute
-        self.assertEqual(True, cna._detect_cna_card())
+        self.assertTrue(cna._detect_cna_card())
 
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
@@ -61,7 +61,7 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
 
         mock_listdir.return_value = ['eth0', 'eth1', 'eth2']
         mock_execute.side_effect = mock_return_execute
-        self.assertEqual(False, cna._detect_cna_card())
+        self.assertFalse(cna._detect_cna_card())
 
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
@@ -74,7 +74,7 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
 
         mock_listdir.return_value = ['eth0', 'eth1']
         mock_execute.side_effect = mock_return_execute
-        self.assertEqual(False, cna._detect_cna_card())
+        self.assertFalse(cna._detect_cna_card())
 
     @mock.patch.object(cna, 'LOG', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
@@ -87,7 +87,7 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
         with mock.patch('six.moves.builtins.open', write_mock, create=True):
             cna._disable_embedded_lldp_agent_in_cna_card()
             write_mock().write.assert_called_with('lldp stop')
-            self.assertEqual(False, mock_log.warning.called)
+            self.assertFalse(mock_log.warning.called)
 
     @mock.patch.object(cna, 'LOG', autospec=True)
     @mock.patch.object(os.path, 'exists', autospec=True)
