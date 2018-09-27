@@ -1,14 +1,15 @@
-========================
+===================
+Ironic Python Agent
+===================
+
 Team and repository tags
 ========================
 
 .. image:: https://governance.openstack.org/tc/badges/ironic-python-agent.svg
     :target: https://governance.openstack.org/tc/reference/tags/index.html
 
-.. Change things from this point on
-
-ironic-python-agent
-===================
+Overview
+========
 
 An agent for controlling and deploying Ironic controlled baremetal nodes.
 
@@ -47,11 +48,8 @@ Developer documentation can be found here:
   https://docs.openstack.org/ironic-python-agent
 
 Release notes for the project are available at:
+
   https://docs.openstack.org/releasenotes/ironic-python-agent/
-
-Additional resources are linked from the project wiki page:
-
-  https://wiki.openstack.org/wiki/Ironic-python-agent
 
 IRC channel:
     #openstack-ironic
