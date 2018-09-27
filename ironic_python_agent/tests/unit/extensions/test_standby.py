@@ -649,6 +649,7 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
+    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
     @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
@@ -659,9 +660,21 @@ class TestStandbyExtension(base.IronicAgentTest):
                 '._stream_raw_image_onto_device', autospec=True)
     def _test_prepare_image_raw(self, image_info, stream_mock,
                                 cache_write_mock, dispatch_mock,
-                                configdrive_copy_mock):
-        dispatch_mock.return_value = '/dev/foo'
+                                configdrive_copy_mock, work_on_disk_mock,
+                                partition=False):
+        # Calls get_cpus().architecture with partition images
+        dispatch_mock.side_effect = ['/dev/foo', self.fake_cpu]
         configdrive_copy_mock.return_value = None
+        work_on_disk_mock.return_value = {
+            'root uuid': 'a318821b-2a60-40e5-a011-7ac07fce342b',
+            'partitions': {
+                'root': '/dev/foo-part1',
+            }
+        }
+        if partition:
+            expected_device = '/dev/foo-part1'
+        else:
+            expected_device = '/dev/foo'
 
         async_result = self.agent_extension.prepare_image(
             image_info=image_info,
@@ -669,14 +682,15 @@ class TestStandbyExtension(base.IronicAgentTest):
         )
         async_result.join()
 
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_any_call('get_os_install_device')
         self.assertFalse(configdrive_copy_mock.called)
 
         # Assert we've streamed the image or not
         if image_info['stream_raw_images']:
             stream_mock.assert_called_once_with(mock.ANY, image_info,
-                                                '/dev/foo')
+                                                expected_device)
             self.assertFalse(cache_write_mock.called)
+            self.assertIs(partition, work_on_disk_mock.called)
         else:
             cache_write_mock.assert_called_once_with(mock.ANY, image_info,
                                                      '/dev/foo')
@@ -693,6 +707,18 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_info['disk_format'] = 'raw'
         image_info['stream_raw_images'] = False
         self._test_prepare_image_raw(image_info)
+
+    def test_prepare_partition_image_raw_stream_true(self):
+        image_info = _build_fake_partition_image_info()
+        image_info['disk_format'] = 'raw'
+        image_info['stream_raw_images'] = True
+        self._test_prepare_image_raw(image_info, partition=True)
+
+    def test_prepare_partition_image_raw_and_stream_false(self):
+        image_info = _build_fake_partition_image_info()
+        image_info['disk_format'] = 'raw'
+        image_info['stream_raw_images'] = False
+        self._test_prepare_image_raw(image_info, partition=True)
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_run_shutdown_command_invalid(self, execute_mock):

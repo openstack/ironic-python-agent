@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adds support for streaming raw partition images onto target partition
+    without caching them in memory.
