@@ -92,7 +92,7 @@
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"USE_SUBNETPOOL=False"
 
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"IRONIC_VM_COUNT=1"
-
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"LIBVIRT_NIC_DRIVER=e1000"
           # Ensure the ironic-vars-EARLY file exists
           touch ironic-vars-early
           # Pull in the EARLY variables injected by the optional builders
