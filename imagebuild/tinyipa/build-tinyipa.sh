@@ -8,6 +8,7 @@ BUILD_AND_INSTALL_TINYIPA=${BUILD_AND_INSTALL_TINYIPA:-false}
 TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
 TINYIPA_REQUIRE_BIOSDEVNAME=${TINYIPA_REQUIRE_BIOSDEVNAME:-false}
 TINYIPA_REQUIRE_IPMITOOL=${TINYIPA_REQUIRE_IPMITOOL:-true}
+IRONIC_LIB_SOURCE=${IRONIC_LIB_SOURCE:-}
 
 CHROOT_PATH="/tmp/overides:/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 CHROOT_CMD="sudo chroot $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
@@ -79,7 +80,18 @@ rm -rf *.egg-info
 python setup.py sdist --dist-dir "$BUILDDIR/tmp/localpip" --quiet
 cp requirements.txt $BUILDDIR/tmp/ipa-requirements.txt
 
+if [ -n "$IRONIC_LIB_SOURCE" ]; then
+    pushd $IRONIC_LIB_SOURCE
+    rm -rf *.egg-info
+    python setup.py sdist --dist-dir "$BUILDDIR/tmp/localpip" --quiet
+    cp requirements.txt $BUILDDIR/tmp/ironic-lib-requirements.txt
+    popd
+fi
+
 imagebuild/common/generate_upper_constraints.sh upper-constraints.txt
+if [ -n "$IRONIC_LIB_SOURCE" ]; then
+    sed -i '/ironic-lib/d' upper-constraints.txt $BUILDDIR/tmp/ipa-requirements.txt
+fi
 cp upper-constraints.txt $BUILDDIR/tmp/upper-constraints.txt
 echo Using upper-constraints:
 cat upper-constraints.txt
@@ -120,6 +132,10 @@ $CHROOT_CMD pip install pbr
 $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels setuptools
 $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels pip
 $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels -r /tmp/ipa-requirements.txt
+if [ -n "$IRONIC_LIB_SOURCE" ]; then
+    $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels -r /tmp/ironic-lib-requirements.txt
+    $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --no-index --pre --wheel-dir /tmp/wheels --find-links=/tmp/localpip --find-links=/tmp/wheels ironic-lib
+fi
 $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --no-index --pre --wheel-dir /tmp/wheels --find-links=/tmp/localpip --find-links=/tmp/wheels ironic-python-agent
 echo Resulting wheels:
 ls -1 $BUILDDIR/tmp/wheels
