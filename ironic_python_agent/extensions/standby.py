@@ -198,9 +198,21 @@ class ImageDownload(object):
         :raises: ImageDownloadError if starting the image download fails for
                  any reason.
         """
-        self._md5checksum = hashlib.md5()
         self._time = time_obj or time.time()
+        self._image_info = image_info
         self._request = None
+
+        # Determine the hash algorithm and value will be used for calculation
+        # and verification, fallback to md5 if algorithm is not set or not
+        # supported.
+        algo = image_info.get('os_hash_algo')
+        if algo and algo in hashlib.algorithms_available:
+            self._hash_algo = hashlib.new(algo)
+            self._expected_hash_value = image_info.get('os_hash_value')
+        else:
+            self._hash_algo = hashlib.md5()
+            self._expected_hash_value = image_info['checksum']
+
         details = []
         for url in image_info['urls']:
             try:
@@ -249,41 +261,31 @@ class ImageDownload(object):
                   which is a constant in this module.
         """
         for chunk in self._request.iter_content(IMAGE_CHUNK_SIZE):
-            self._md5checksum.update(chunk)
+            self._hash_algo.update(chunk)
             yield chunk
 
-    def md5sum(self):
-        """Computes and returns the md5 checksum of the downloaded image.
+    def verify_image(self, image_location):
+        """Verifies the checksum of the local images matches expectations.
 
-        Note that md5sum will not return the true checksum of the image until
-        the download has been fully completed through this object's
-        iterator inferface.
+        If this function does not raise ImageChecksumError then it is very
+        likely that the local copy of the image was transmitted and stored
+        correctly.
 
-        :returns: The md5 checksum of the image as a string in hexadecimal.
+        :param image_location: The location of the local image.
+        :raises: ImageChecksumError if the checksum of the local image does
+                 not match the checksum as reported by glance in image_info.
         """
-        return self._md5checksum.hexdigest()
-
-
-def _verify_image(image_info, image_location, checksum):
-    """Verifies the checksum of the local images matches expectations.
-
-    If this function does not raise ImageChecksumError then it is very likely
-    that the local copy of the image was transmitted and stored correctly.
-
-    :param image_info: Image information dictionary.
-    :param image_location: The location of the local image.
-    :param checksum: The computed checksum of the local image.
-    :raises: ImageChecksumError if the checksum of the local image does not
-             match the checksum as reported by glance in image_info.
-    """
-    LOG.debug('Verifying image at {} against MD5 checksum '
-              '{}'.format(image_location, checksum))
-    if checksum != image_info['checksum']:
-        LOG.error(errors.ImageChecksumError.details_str.format(
-            image_location, image_info['id'],
-            image_info['checksum'], checksum))
-        raise errors.ImageChecksumError(image_location, image_info['id'],
-                                        image_info['checksum'], checksum)
+        checksum = self._hash_algo.hexdigest()
+        LOG.debug('Verifying image at {} against {} checksum '
+                  '{}'.format(image_location, self._hash_algo.name, checksum))
+        if checksum != self._expected_hash_value:
+            LOG.error(errors.ImageChecksumError.details_str.format(
+                image_location, self._image_info['id'],
+                self._expected_hash_value, checksum))
+            raise errors.ImageChecksumError(image_location,
+                                            self._image_info['id'],
+                                            self._expected_hash_value,
+                                            checksum)
 
 
 def _download_image(image_info):
@@ -310,7 +312,7 @@ def _download_image(image_info):
     totaltime = time.time() - starttime
     LOG.info("Image downloaded from {} in {} seconds".format(image_location,
                                                              totaltime))
-    _verify_image(image_info, image_location, image_download.md5sum())
+    image_download.verify_image(image_location)
 
 
 def _validate_image_info(ext, image_info=None, **kwargs):
@@ -340,6 +342,18 @@ def _validate_image_info(ext, image_info=None, **kwargs):
             or not image_info['checksum']):
         raise errors.InvalidCommandParamsError(
             'Image \'checksum\' must be a non-empty string.')
+
+    os_hash_algo = image_info.get('os_hash_algo')
+    os_hash_value = image_info.get('os_hash_value')
+    if os_hash_algo or os_hash_value:
+        if (not isinstance(os_hash_algo, six.string_types) or
+                not os_hash_algo):
+            raise errors.InvalidCommandParamsError(
+                'Image \'os_hash_algo\' must be a non-empty string.')
+        if (not isinstance(os_hash_value, six.string_types) or
+                not os_hash_value):
+            raise errors.InvalidCommandParamsError(
+                'Image \'os_hash_value\' must be a non-empty string.')
 
 
 class StandbyExtension(base.BaseAgentExtension):
@@ -397,7 +411,7 @@ class StandbyExtension(base.BaseAgentExtension):
         LOG.info("Image streamed onto device {} in {} "
                  "seconds".format(device, totaltime))
         # Verify if the checksum of the streamed image is correct
-        _verify_image(image_info, device, image_download.md5sum())
+        image_download.verify_image(device)
 
     @base.async_command('cache_image', _validate_image_info)
     def cache_image(self, image_info=None, force=False):
