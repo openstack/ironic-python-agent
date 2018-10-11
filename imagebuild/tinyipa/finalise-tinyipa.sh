@@ -23,6 +23,7 @@ SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
 PYOPTIMIZE_TINYIPA=${PYOPTIMIZE_TINYIPA:-true}
 TINYIPA_REQUIRE_BIOSDEVNAME=${TINYIPA_REQUIRE_BIOSDEVNAME:-false}
 TINYIPA_REQUIRE_IPMITOOL=${TINYIPA_REQUIRE_IPMITOOL:-true}
+TINYIPA_UDEV_SETTLE_TIMEOUT=${TINYIPA_UDEV_SETTLE_TIMEOUT:-20}
 
 echo "Finalising tinyipa:"
 
@@ -146,6 +147,10 @@ sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
 
 # Copy udhcpc.script to opt
 sudo cp "$WORKDIR/udhcpc.script" "$FINALDIR/opt/"
+
+# Replace etc/init.d/dhcp.sh
+sudo cp "$WORKDIR/build_files/dhcp.sh" "$FINALDIR/etc/init.d/dhcp.sh"
+sudo sed -i "s/%UDEV_SETTLE_TIMEOUT%/$TINYIPA_UDEV_SETTLE_TIMEOUT/" "$FINALDIR/etc/init.d/dhcp.sh"
 
 # Disable ZSwap
 sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"
