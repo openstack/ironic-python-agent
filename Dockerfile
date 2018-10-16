@@ -27,7 +27,7 @@ RUN proxy.sh apt-get update && \
         python2.7 python2.7-dev python-pip qemu-utils parted hdparm \
         util-linux genisoimage git gcc bash coreutils tgt dmidecode \
         ipmitool psmisc dosfstools bsdmainutils open-iscsi udev \
-        smartmontools && \
+        smartmontools iptables lshw && \
     proxy.sh apt-get --only-upgrade -t jessie-backports install -y qemu-utils
 
 # Some cleanup
