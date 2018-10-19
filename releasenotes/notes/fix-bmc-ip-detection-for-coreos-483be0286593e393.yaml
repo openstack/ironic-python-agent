@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes detection of IPMI address in CoreOS-based images, by ensuring that
+    parsing of ``ipmitool`` output is compatible with the bundled
+    implementation of ``awk`` (``mawk``).
