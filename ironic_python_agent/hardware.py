@@ -1051,7 +1051,7 @@ class GenericHardwareManager(HardwareManager):
             # types of communication media and protocols and effectively used
             for channel in range(1, 8):
                 out, e = utils.execute(
-                    "ipmitool lan print {} | awk '/IP Address[[:space:]]*:/"
+                    "ipmitool lan print {} | awk '/IP Address[ \\t]*:/"
                     " {{print $4}}'".format(channel), shell=True)
                 if e.startswith("Invalid channel"):
                     continue
