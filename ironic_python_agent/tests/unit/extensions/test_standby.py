@@ -68,6 +68,12 @@ class TestStandbyExtension(base.IronicAgentTest):
     def test_validate_image_info_success(self):
         standby._validate_image_info(None, _build_fake_image_info())
 
+    def test_validate_image_info_success_with_new_hash_fields(self):
+        image_info = _build_fake_image_info()
+        image_info['os_hash_algo'] = 'md5'
+        image_info['os_hash_value'] = 'fake-checksum'
+        standby._validate_image_info(None, image_info)
+
     def test_validate_image_info_missing_field(self):
         for field in ['id', 'urls', 'checksum']:
             invalid_info = _build_fake_image_info()
@@ -104,6 +110,22 @@ class TestStandbyExtension(base.IronicAgentTest):
     def test_validate_image_info_empty_checksum(self):
         invalid_info = _build_fake_image_info()
         invalid_info['checksum'] = ''
+
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          standby._validate_image_info,
+                          invalid_info)
+
+    def test_validate_image_info_no_hash_value(self):
+        invalid_info = _build_fake_image_info()
+        invalid_info['os_hash_algo'] = 'sha512'
+
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          standby._validate_image_info,
+                          invalid_info)
+
+    def test_validate_image_info_no_hash_algo(self):
+        invalid_info = _build_fake_image_info()
+        invalid_info['os_hash_value'] = 'fake-checksum'
 
         self.assertRaises(errors.InvalidCommandParamsError,
                           standby._validate_image_info,
@@ -385,19 +407,87 @@ class TestStandbyExtension(base.IronicAgentTest):
                           standby._download_image,
                           image_info)
 
-    def test_verify_image_success(self):
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_verify_image_success(self, requests_mock, open_mock, md5_mock):
         image_info = _build_fake_image_info()
+        response = requests_mock.return_value
+        response.status_code = 200
+        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['checksum']
         image_location = '/foo/bar'
-        checksum = image_info['checksum']
-        standby._verify_image(image_info, image_location, checksum)
+        image_download = standby.ImageDownload(image_info)
+        image_download.verify_image(image_location)
 
-    def test_verify_image_failure(self):
+    @mock.patch('hashlib.new', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_verify_image_success_with_new_hash_fields(self, requests_mock,
+                                                       open_mock,
+                                                       hashlib_mock):
         image_info = _build_fake_image_info()
+        image_info['os_hash_algo'] = 'sha512'
+        image_info['os_hash_value'] = 'fake-sha512-value'
+        response = requests_mock.return_value
+        response.status_code = 200
+        hexdigest_mock = hashlib_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['os_hash_value']
         image_location = '/foo/bar'
-        checksum = 'invalid-checksum'
+        image_download = standby.ImageDownload(image_info)
+        image_download.verify_image(image_location)
+        hashlib_mock.assert_called_with('sha512')
+
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_verify_image_success_with_md5_fallback(self, requests_mock,
+                                                    open_mock, md5_mock):
+        image_info = _build_fake_image_info()
+        image_info['os_hash_algo'] = 'algo-beyond-milky-way'
+        image_info['os_hash_value'] = 'mysterious-alien-codes'
+        response = requests_mock.return_value
+        response.status_code = 200
+        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['checksum']
+        image_location = '/foo/bar'
+        image_download = standby.ImageDownload(image_info)
+        image_download.verify_image(image_location)
+
+    @mock.patch('hashlib.new', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_verify_image_failure_with_new_hash_fields(self, requests_mock,
+                                                       open_mock,
+                                                       hashlib_mock):
+        image_info = _build_fake_image_info()
+        image_info['os_hash_algo'] = 'sha512'
+        image_info['os_hash_value'] = 'fake-sha512-value'
+        response = requests_mock.return_value
+        response.status_code = 200
+        image_download = standby.ImageDownload(image_info)
+        image_location = '/foo/bar'
+        hexdigest_mock = hashlib_mock.return_value.hexdigest
+        hexdigest_mock.return_value = 'invalid-checksum'
         self.assertRaises(errors.ImageChecksumError,
-                          standby._verify_image,
-                          image_info, image_location, checksum)
+                          image_download.verify_image,
+                          image_location)
+        hashlib_mock.assert_called_with('sha512')
+
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_verify_image_failure(self, requests_mock, open_mock, md5_mock):
+        image_info = _build_fake_image_info()
+        response = requests_mock.return_value
+        response.status_code = 200
+        image_download = standby.ImageDownload(image_info)
+        image_location = '/foo/bar'
+        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock.return_value = 'invalid-checksum'
+        self.assertRaises(errors.ImageChecksumError,
+                          image_download.verify_image,
+                          image_location)
 
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
@@ -945,7 +1035,8 @@ class TestImageDownload(base.IronicAgentTest):
         requests_mock.assert_called_once_with(image_info['urls'][0],
                                               cert=None, verify=True,
                                               stream=True, proxies={})
-        self.assertEqual(image_info['checksum'], image_download.md5sum())
+        self.assertEqual(image_info['checksum'],
+                         image_download._hash_algo.hexdigest())
 
     @mock.patch('time.time', autospec=True)
     @mock.patch('requests.get', autospec=True)

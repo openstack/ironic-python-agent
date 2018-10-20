@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Adds enhanced checksum support to IPA, when ``os_hash_algo`` and
+    ``os_hash_value`` are passed in via ``image_info``, it will be used
+    for image checksum calculation and verification. The md5 checksum
+    is supported if these information are absent.
