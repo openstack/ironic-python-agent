@@ -1308,17 +1308,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         apply_result.get = lambda: 'erased device'
         mocked_async.return_value = apply_result
 
+        blkdev1 = hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True)
+        blkdev2 = hardware.BlockDevice('/dev/hdaa', 'small', 65535, False)
         self.hardware.list_block_devices = mock.Mock()
-        self.hardware.list_block_devices.return_value = [
-            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
-            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
-        ]
+        self.hardware.list_block_devices.return_value = [blkdev1, blkdev2]
 
         expected = {'/dev/hdaa': 'erased device', '/dev/sdj': 'erased device'}
 
         result = self.hardware.erase_devices(self.node, [])
 
-        self.assertTrue(mocked_async.called)
+        calls = [mock.call(mock.ANY, mocked_dispatch, ('erase_block_device',),
+                           {'node': self.node, 'block_device': dev})
+                 for dev in (blkdev1, blkdev2)]
+        mocked_async.assert_has_calls(calls)
         self.assertEqual(expected, result)
 
     @mock.patch.object(hardware, 'ThreadPool', autospec=True)
