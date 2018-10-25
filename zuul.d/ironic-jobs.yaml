@@ -1,0 +1,87 @@
+- job:
+    name: ironic-ipa-base
+    parent: ironic-base
+    irrelevant-files:
+      - ^test-requirements.txt$
+      - ^.*\.rst$
+      - ^doc/.*$
+      - ^ironic_python_agent/tests/.*$
+      - ^releasenotes/.*$
+      - ^setup.cfg$
+      - ^tools/.*$
+      - ^tox.ini$
+    required-projects:
+      - openstack/ironic-lib
+    vars:
+      devstack_localrc:
+        IRONIC_BUILD_DEPLOY_RAMDISK: True
+        USE_PYTHON3: True
+
+- job:
+    name: ipa-tempest-dsvm-wholedisk-bios-ipmi-direct-tinyipa-src
+    parent: ironic-ipa-base
+    timeout: 7200
+    vars:
+      devstack_services:
+        s-account: True
+        s-container: True
+        s-object: True
+        s-proxy: True
+      devstack_localrc:
+        IRONIC_DEPLOY_DRIVER: ipmi
+        IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+        USE_PYTHON3: False
+        IRONIC_VM_EPHEMERAL_DISK: 0
+
+- job:
+    name: ipa-tempest-dsvm-partition-bios-ipmi-direct-tinyipa-src
+    parent: ironic-ipa-base
+    timeout: 7200
+    vars:
+      devstack_services:
+        s-account: True
+        s-container: True
+        s-object: True
+        s-proxy: True
+      devstack_localrc:
+        IRONIC_DEPLOY_DRIVER: ipmi
+        IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
+        USE_PYTHON3: False
+
+- job:
+    name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa-src
+    parent: ironic-ipa-base
+    timeout: 7200
+    vars:
+        IRONIC_DEPLOY_DRIVER: ipmi
+        IRONIC_DEFAULT_DEPLOY_INTERFACE: iscsi
+
+- job:
+    name: ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-tinyipa-src
+    parent: ironic-ipa-base
+    timeout: 7200
+    vars:
+      devstack_localrc:
+        IRONIC_DEPLOY_DRIVER: ipmi
+        IRONIC_DEFAULT_DEPLOY_INTERFACE: iscsi
+        IRONIC_VM_EPHEMERAL_DISK: 0
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+
+- job:
+    name: ipa-tempest-dsvm-ironic-inspector-src
+    parent: ironic-ipa-base
+    timeout: 10800
+    required-projects:
+      # These are in addition to what is in ironic-ipa-base
+      - openstack/ironic-inspector
+      - openstack/python-ironic-inspector-client
+    vars:
+      devstack_localrc:
+        DEVSTACK_GATE_TEMPEST_REGEX: InspectorBasicTest
+        DEVSTACK_GATE_IRONIC_INSPECTOR: 1
+        IRONIC_VM_EPHEMERAL_DISK: 0
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+        IRONIC_INSPECTOR_BUILD_RAMDISK: True
+      devstack_plugins:
+        ironic-inspector: git://git.openstack.org/openstack/ironic-inspector

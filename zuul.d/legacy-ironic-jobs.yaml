@@ -38,34 +38,6 @@
     timeout: 5400
 
 - job:
-    name: ipa-tempest-dsvm-wholedisk-bios-ipmi-direct-tinyipa-src
-    parent: legacy-ipa-dsvm-base
-    run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-ipmi-direct-tinyipa-src/run.yaml
-    post-run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-ipmi-direct-tinyipa-src/post.yaml
-    timeout: 7200
-
-- job:
-    name: ipa-tempest-dsvm-partition-bios-ipmi-direct-tinyipa-src
-    parent: legacy-ipa-dsvm-base
-    run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-ipmi-direct-tinyipa-src/run.yaml
-    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-ipmi-direct-tinyipa-src/post.yaml
-    timeout: 7200
-
-- job:
-    name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa-src
-    parent: legacy-ipa-dsvm-base
-    run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa-src/run.yaml
-    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa-src/post.yaml
-    timeout: 7200
-
-- job:
-    name: ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-tinyipa-src
-    parent: legacy-ipa-dsvm-base
-    run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-tinyipa-src/run.yaml
-    post-run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-tinyipa-src/post.yaml
-    timeout: 7200
-
-- job:
     name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-coreos-src
     parent: legacy-ipa-dsvm-base
     run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-ipmi-iscsi-coreos-src/run.yaml
@@ -78,17 +50,6 @@
     run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-coreos-src/run.yaml
     post-run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-coreos-src/post.yaml
     timeout: 7200
-
-- job:
-    name: ipa-tempest-dsvm-ironic-inspector-src
-    parent: legacy-ipa-dsvm-base
-    run: playbooks/legacy/tempest-dsvm-ironic-inspector-src/run.yaml
-    post-run: playbooks/legacy/tempest-dsvm-ironic-inspector-src/post.yaml
-    timeout: 10800
-    required-projects:
-      # These are in addition to what is in legacy-ipa-dsvm-base
-      - openstack/ironic-inspector
-      - openstack/python-ironic-inspector-client
 
 - job:
     name: ironic-python-agent-buildimage-coreos
