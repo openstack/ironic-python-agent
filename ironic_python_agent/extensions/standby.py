@@ -57,6 +57,7 @@ def _write_partition_image(image, image_info, device):
     """Call disk_util to create partition and write the partition image.
 
     :param image: Local path to image file to be written to the partition.
+        If ``None``, the image is not populated.
     :param image_info: Image information dictionary.
     :param device: The device name, as a string, on which to store the image.
                    Example: '/dev/sda'
@@ -71,16 +72,18 @@ def _write_partition_image(image, image_info, device):
     boot_option = image_info.get('boot_option', 'netboot')
     boot_mode = image_info.get('deploy_boot_mode', 'bios')
     disk_label = image_info.get('disk_label', 'msdos')
-    image_mb = disk_utils.get_image_mb(image)
     root_mb = image_info['root_mb']
 
     cpu_arch = hardware.dispatch_to_managers('get_cpus').architecture
 
-    if image_mb > int(root_mb):
-        msg = ('Root partition is too small for requested image. Image '
-               'virtual size: {} MB, Root size: {} MB').format(image_mb,
-                                                               root_mb)
-        raise errors.InvalidCommandParamsError(msg)
+    if image is not None:
+        image_mb = disk_utils.get_image_mb(image)
+        if image_mb > int(root_mb):
+            msg = ('Root partition is too small for requested image. Image '
+                   'virtual size: {} MB, Root size: {} MB').format(image_mb,
+                                                                   root_mb)
+            raise errors.InvalidCommandParamsError(msg)
+
     try:
         return disk_utils.work_on_disk(device, root_mb,
                                        image_info['swap_mb'],
@@ -479,9 +482,16 @@ class StandbyExtension(base.BaseAgentExtension):
                 LOG.debug('Already had %s cached, overwriting',
                           self.cached_image_id)
 
-            if (stream_raw_images and disk_format == 'raw'
-                    and image_info.get('image_type') != 'partition'):
-                self._stream_raw_image_onto_device(image_info, device)
+            if stream_raw_images and disk_format == 'raw':
+                if image_info.get('image_type') == 'partition':
+                    self.partition_uuids = _write_partition_image(None,
+                                                                  image_info,
+                                                                  device)
+                    stream_to = self.partition_uuids['partitions']['root']
+                else:
+                    stream_to = device
+
+                self._stream_raw_image_onto_device(image_info, stream_to)
             else:
                 self._cache_and_write_image(image_info, device)
 
