@@ -1,0 +1,18 @@
+---
+fixes:
+  - |
+    Fixes an issue where devices offered via ATARAID
+    (or even software RAID setup by a hardware manager)
+    were excluded from the list as they are not returned
+    as type disk, even though they should be considered
+    both disks and block devices.
+    See `story <https://storyboard.openstack.org/#!/story/2003445>`_
+    for more details.
+upgrade:
+  - |
+    Operators with custom hardware managers to support software RAID
+    may wish to ensure that they have removed the software RAID prior
+    to any stock cleaning step for erasing block devices executes.
+    As a result of a bug fix, such devices may now be picked up in
+    the list of possible devices to delete, which may extend cleaning
+    depending on the deployment configuration.

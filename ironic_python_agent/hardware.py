@@ -112,19 +112,31 @@ def _check_for_iscsi():
                     "Error: %s", e)
 
 
-def list_all_block_devices(block_type='disk'):
+def list_all_block_devices(block_type='disk',
+                           ignore_raid=False):
     """List all physical block devices
 
     The switches we use for lsblk: P for KEY="value" output, b for size output
-    in bytes, d to exclude dependent devices (like md or dm devices), i to
-    ensure ascii characters only, and o to specify the fields/columns we need.
+    in bytes, i to ensure ascii characters only, and o to specify the
+    fields/columns we need.
 
     Broken out as its own function to facilitate custom hardware managers that
     don't need to subclass GenericHardwareManager.
 
     :param block_type: Type of block device to find
+    :param ignore_raid: Ignore auto-identified raid devices, example: md0
+                        Defaults to false as these are generally disk
+                        devices and should be treated as such if encountered.
     :return: A list of BlockDevices
     """
+
+    def _is_known_device(existing, new_device_name):
+        """Return true if device name is already known."""
+        for known_dev in existing:
+            if os.path.join('/dev', new_device_name) == known_dev.name:
+                return True
+        return False
+
     _udev_settle()
 
     # map device names to /dev/disk/by-path symbolic links that points to it
@@ -144,14 +156,16 @@ def list_all_block_devices(block_type='disk'):
             by_path_mapping[devname] = path
 
     except OSError as e:
+        # NOTE(TheJulia): This is for multipath detection, and will raise
+        # some warning logs with unrelated tests.
         LOG.warning("Path %(path)s is inaccessible, /dev/disk/by-path/* "
                     "version of block device name is unavailable "
                     "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
 
     columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
-    report = utils.execute('lsblk', '-Pbdi', '-o{}'.format(','.join(columns)),
+    report = utils.execute('lsblk', '-Pbi', '-o{}'.format(','.join(columns)),
                            check_exit_code=[0])[0]
-    lines = report.split('\n')
+    lines = report.splitlines()
     context = pyudev.Context()
 
     devices = []
@@ -162,11 +176,26 @@ def list_all_block_devices(block_type='disk'):
         for key, val in (v.split('=', 1) for v in vals):
             device[key] = val.strip()
         # Ignore block types not specified
-        if device.get('TYPE') != block_type:
-            LOG.debug(
-                "TYPE did not match. Wanted: {!r} but found: {!r}".format(
-                    block_type, line))
+        devtype = device.get('TYPE')
+
+        # We already have devices, we should ensure we don't store duplicates.
+        if _is_known_device(devices, device.get('KNAME')):
             continue
+
+        # Search for raid in the reply type, as RAID is a
+        # disk device, and we should honor it if is present.
+        # Other possible type values, which we skip recording:
+        #   lvm, part, rom, loop
+        if devtype != block_type:
+            if devtype is not None and 'raid' in devtype and not ignore_raid:
+                LOG.debug(
+                    "TYPE detected to contain 'raid', signifying a RAID "
+                    "volume. Found: {!r}".format(line))
+            else:
+                LOG.debug(
+                    "TYPE did not match. Wanted: {!r} but found: {!r}".format(
+                        block_type, line))
+                continue
 
         # Ensure all required columns are at least present, even if blank
         missing = set(columns) - set(device)
