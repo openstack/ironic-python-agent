@@ -5,7 +5,7 @@ fixes:
     if a drive was left in the security-enabled state. This could
     occur if a previous attempt to perform a secure erase had failed
     e.g if there was a power failure mid-way through the cleaning
-    proccess. See `Story 2001762
+    process. See `Story 2001762
     <https://storyboard.openstack.org/#!/story/2001762>`_
     and `Story 2001763
     <https://storyboard.openstack.org/#!/story/2001763>`_
