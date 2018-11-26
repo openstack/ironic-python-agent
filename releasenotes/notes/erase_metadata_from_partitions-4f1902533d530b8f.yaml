@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Erase metadata on disk partitions to prevent the Linux kernel from
+    automatically recreating storage entities (eg LVM, RAID) described by the
+    metadata. The Hardware Manager API was correspondingly modified to
+    optionally include partitions when listing block devices. See `story
+    2003673 <https://storyboard.openstack.org/#!/story/2003673>`_ for details.
