@@ -12,7 +12,7 @@ CoreOS
 ------
 One way to build a ramdisk image for IPA is with the CoreOS image [0]_.
 Prebuilt copies of the CoreOS image, suitable for pxe, are available on
-`tarballs.openstack.org <http://tarballs.openstack.org/ironic-python-agent/coreos/files/>`__.
+`tarballs.openstack.org <https://tarballs.openstack.org/ironic-python-agent/coreos/files/>`__.
 
 Build process
 ~~~~~~~~~~~~~
