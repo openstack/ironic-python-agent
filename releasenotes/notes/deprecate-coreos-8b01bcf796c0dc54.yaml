@@ -1,0 +1,32 @@
+---
+deprecations:
+  - |
+    Ironic community provided CoreOS IPA images are deprecated. These images
+    utilize contents that are injected into CoreOS images which utilize a
+    chroot environment to enable full and unrestricted hardware access.
+
+    This decision is not taken lightly, and is due to multiple constraints
+    combined with technical changes over time as CoreOS has evolved.
+
+    Per the `CoreOS limitations <https://coreos.com/os/docs/latest/booting-with-iso.html#known-limitations>`_,
+    as of January 2019, CoreOS:
+
+    1) Current CoreOS images require 2GB of RAM to operate.
+    As a result of the RAM requirement, it is problematic for continious
+    integration testing to occur with the CoreOS based Ironic-Python-Agent
+    image in OpenStack testing infrastructure.
+
+    2) UEFI is not a supported configuration. CoreOS details the required
+    use of BIOS compatibility mode. Intel is anticipated to remove
+    BIOS compatibility by `2020 <https://arstechnica.com/gadgets/2017/11/intel-to-kill-off-the-last-vestiges-of-the-ancient-pc-bios-by-2020/>`_.
+
+    3) CoreOS is moving to require container use via passing ignition
+    configuration. Limitations explicitly state there are no strait-forward
+    methods of passing ignition configuration to a CoreOS instance. Mainly the
+    developed intent is for such data to be passed in via a metadata service or
+    configuration drive.
+
+    4) With the previously mentioned use of containers and ignition
+    configuration, the OEM loading path previously used with CoreOS
+    is no longer available moving forward as it has been changed to read
+    ignition `configuration files <https://github.com/coreos/ignition/pull/475>`_.

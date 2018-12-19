@@ -24,13 +24,7 @@
         # pointless, and the odds seem to enable them to pass
         # more often than not.
         # https://storyboard.openstack.org/#!/story/2003985
-        - ipa-tempest-dsvm-partition-bios-ipmi-direct-coreos-src:
-            voting: false
-        - ipa-tempest-dsvm-partition-bios-ipmi-iscsi-coreos-src:
-            voting: false
         - ipa-tempest-dsvm-wholedisk-bios-ipmi-direct-coreos-src:
-            voting: false
-        - ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-coreos-src:
             voting: false
         - openstack-tox-functional:
             voting: false
