@@ -51,6 +51,10 @@ Release notes for the project are available at:
 
   https://docs.openstack.org/releasenotes/ironic-python-agent/
 
+Source code repository for the project is located at:
+
+  https://git.openstack.org/cgit/openstack/ironic-python-agent/
+
 IRC channel:
     #openstack-ironic
 
