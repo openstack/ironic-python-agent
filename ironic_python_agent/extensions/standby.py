@@ -17,6 +17,7 @@ import os
 import time
 
 from ironic_lib import disk_utils
+from ironic_lib import exception
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -359,6 +360,40 @@ def _validate_image_info(ext, image_info=None, **kwargs):
                 'Image \'os_hash_value\' must be a non-empty string.')
 
 
+def _validate_partitioning(device):
+    """Validate the final partition table.
+
+    Check if after writing the image to disk we have a valid partition
+    table by trying to read it. This will fail if the disk is junk.
+    """
+    try:
+        # Ensure we re-read the partition table before we try to list
+        # partitions
+        utils.execute('partprobe', device, run_as_root=True,
+                      attempts=CONF.disk_utils.partprobe_attempts)
+    except (processutils.UnknownArgumentError,
+            processutils.ProcessExecutionError, OSError) as e:
+        LOG.warning("Unable to probe for partitions on device %(device)s "
+                    "after writing the image, the partitioning table may "
+                    "be broken. Error: %(error)s",
+                    {'device': device, 'error': e})
+
+    try:
+        nparts = len(disk_utils.list_partitions(device))
+    except (processutils.UnknownArgumentError,
+            processutils.ProcessExecutionError, OSError) as e:
+        msg = ("Unable to find a valid partition table on the disk after "
+               "writing the image. Error {}".format(e))
+        raise exception.InstanceDeployFailure(msg)
+
+    # Check if there is at least one partition in the partition table after
+    # deploy
+    if not nparts:
+        msg = ("No partitions found on the device {} after writing "
+               "the image.".format(device))
+        raise exception.InstanceDeployFailure(msg)
+
+
 class StandbyExtension(base.BaseAgentExtension):
     """Extension which adds stand-by related functionality to agent."""
     def __init__(self, agent=None):
@@ -494,6 +529,8 @@ class StandbyExtension(base.BaseAgentExtension):
                 self._stream_raw_image_onto_device(image_info, stream_to)
             else:
                 self._cache_and_write_image(image_info, device)
+
+        _validate_partitioning(device)
 
         # the configdrive creation is taken care by ironic-lib's
         # work_on_disk().

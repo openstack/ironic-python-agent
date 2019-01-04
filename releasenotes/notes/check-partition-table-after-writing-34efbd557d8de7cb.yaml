@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes a bug with bad whole disk images and config drives, where we would
+    attempt to write a config drive partition to the disk without a valid
+    partition table.
