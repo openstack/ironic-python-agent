@@ -9,12 +9,12 @@
       - release-notes-jobs-python3
     check:
       jobs:
-        - ipa-tempest-dsvm-partition-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa-src
-        - ipa-tempest-dsvm-wholedisk-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-tinyipa-src
+        - ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
+        - ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
+        - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
+        - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
         # Non-voting jobs
-        - ipa-tempest-dsvm-ironic-inspector-src:
+        - ipa-tempest-ironic-inspector-src:
             voting: false
         # NOTE(TheJulia): CoreOS jobs have a high failure rate.
         # In order to reduce the odds of things like nested virt
@@ -38,10 +38,10 @@
     gate:
       queue: ironic
       jobs:
-        - ipa-tempest-dsvm-partition-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa-src
-        - ipa-tempest-dsvm-wholedisk-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-tinyipa-src
+        - ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
+        - ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
+        - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
+        - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
         - openstack-tox-lower-constraints
     experimental:
       jobs:
@@ -51,4 +51,3 @@
       jobs:
         - ironic-python-agent-buildimage-coreos
         - ironic-python-agent-buildimage-tinyipa
-
