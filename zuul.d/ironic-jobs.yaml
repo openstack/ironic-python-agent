@@ -18,7 +18,7 @@
         USE_PYTHON3: True
 
 - job:
-    name: ipa-tempest-dsvm-wholedisk-bios-ipmi-direct-tinyipa-src
+    name: ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
     parent: ironic-ipa-base
     timeout: 7200
     vars:
@@ -35,7 +35,7 @@
         IRONIC_VM_EPHEMERAL_DISK: 0
 
 - job:
-    name: ipa-tempest-dsvm-partition-bios-ipmi-direct-tinyipa-src
+    name: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
     parent: ironic-ipa-base
     timeout: 7200
     vars:
@@ -50,7 +50,7 @@
         USE_PYTHON3: False
 
 - job:
-    name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa-src
+    name: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
     parent: ironic-ipa-base
     timeout: 7200
     vars:
@@ -58,7 +58,7 @@
         IRONIC_DEFAULT_DEPLOY_INTERFACE: iscsi
 
 - job:
-    name: ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-tinyipa-src
+    name: ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
     parent: ironic-ipa-base
     timeout: 7200
     vars:
@@ -69,7 +69,7 @@
         IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
 
 - job:
-    name: ipa-tempest-dsvm-ironic-inspector-src
+    name: ipa-tempest-ironic-inspector-src
     parent: ironic-ipa-base
     timeout: 10800
     required-projects:
