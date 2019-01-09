@@ -104,12 +104,20 @@ sudo mount --bind /proc $BUILDDIR/proc
 sudo mount --bind /dev/pts $BUILDDIR/dev/pts
 
 if [ -d /opt/stack/new ]; then
+    CI_DIR=/opt/stack/new
+elif [ -d /opt/stack ]; then
+    CI_DIR=/opt/stack
+else
+    CI_DIR=
+fi
+
+if [ -n "$CI_DIR" ]; then
     # Running in CI environment, make checkouts available
-    $CHROOT_CMD mkdir -p /opt/stack/new
-    for project in $(ls /opt/stack/new); do
+    $CHROOT_CMD mkdir -p $CI_DIR
+    for project in $(ls $CI_DIR); do
         if grep -q "$project" $BUILDDIR/tmp/upper-constraints.txt &&
-            [ -d "/opt/stack/new/$project/.git" ]; then
-            sudo cp -R "/opt/stack/new/$project" $BUILDDIR/opt/stack/new/
+            [ -d "$CI_DIR/$project/.git" ]; then
+            sudo cp -R "$CI_DIR/$project" $BUILDDIR/$CI_DIR/
         fi
     done
 fi

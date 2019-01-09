@@ -58,7 +58,11 @@ download_uc() {
 }
 
 copy_new_requirements_uc() {
-    copy "/opt/stack/new/requirements/upper-constraints.txt" "${DESTINATION}"
+    if [ -e "/opt/stack/new/requirements" ]; then
+        copy "/opt/stack/new/requirements/upper-constraints.txt" "${DESTINATION}"
+    elif [ -e "/opt/stack/requirements" ]; then
+        copy "/opt/stack/requirements/upper-constraints.txt" "${DESTINATION}"
+    fi
 }
 
 download_from_tox_ini_url() {
