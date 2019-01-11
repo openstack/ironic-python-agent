@@ -67,7 +67,7 @@ class V1(base.APIBase):
                                 '',
                                 bookmark=True),
             link.Link.make_link('describedby',
-                                'http://docs.openstack.org',
+                                'https://docs.openstack.org',
                                 'developer',
                                 'ironic-python-agent',
                                 bookmark=True,
