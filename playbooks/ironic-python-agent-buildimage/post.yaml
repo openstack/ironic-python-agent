@@ -3,14 +3,14 @@
 
     - name: Ensure artifacts directory exists
       file:
-        path: '{{ zuul.executor.work_root }}/artifacts/coreos/files'
+        path: '{{ zuul.executor.work_root }}/artifacts/{{ image_name }}/files'
         state: directory
       delegate_to: localhost
 
-    - name: Copy files from {{ ansible_user_dir }}/workspace/ on node
+    - name: Copy files from {{ ansible_user_dir }}/src/ironic-python-agent on node
       synchronize:
-        src: '{{ ansible_user_dir }}/workspace/UPLOAD_RAW/'
-        dest: '{{ zuul.executor.work_root }}/artifacts/coreos/files/'
+        src: '{{ ansible_user_dir }}/src/ironic-python-agent/UPLOAD_RAW/'
+        dest: '{{ zuul.executor.work_root }}/artifacts/{{ image_name }}/files/'
         mode: pull
         copy_links: true
         verify_host: true
@@ -18,10 +18,10 @@
           - --include=/*
           - --prune-empty-dirs
 
-    - name: Copy files from {{ ansible_user_dir }}/workspace/ on node
+    - name: Copy files from {{ ansible_user_dir }}/src/ironic-python-agent on node
       synchronize:
-        src: '{{ ansible_user_dir }}/workspace/UPLOAD_TAR/'
-        dest: '{{ zuul.executor.work_root }}/artifacts/coreos/'
+        src: '{{ ansible_user_dir }}/src/ironic-python-agent/UPLOAD_TAR/'
+        dest: '{{ zuul.executor.work_root }}/artifacts/{{ image_name }}/'
         mode: pull
         copy_links: true
         verify_host: true
@@ -29,9 +29,9 @@
           - --include=/*
           - --prune-empty-dirs
 
-    - name: Copy files from {{ ansible_user_dir }}/workspace/ on node
+    - name: Copy files from {{ ansible_user_dir }}/src/ironic-python-agent on node
       synchronize:
-        src: '{{ ansible_user_dir }}/workspace/'
+        src: '{{ ansible_user_dir }}/src/ironic-python-agent/'
         dest: '{{ zuul.executor.log_root }}'
         mode: pull
         copy_links: true
