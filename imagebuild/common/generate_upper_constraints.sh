@@ -62,6 +62,10 @@ copy_new_requirements_uc() {
         copy "/opt/stack/new/requirements/upper-constraints.txt" "${DESTINATION}"
     elif [ -e "/opt/stack/requirements" ]; then
         copy "/opt/stack/requirements/upper-constraints.txt" "${DESTINATION}"
+    else
+        log "No local requirements repository, will download upper-constraints"
+        # Allow the caller to handle the failure
+        return 1
     fi
 }
 
