@@ -85,3 +85,24 @@
         IRONIC_INSPECTOR_BUILD_RAMDISK: True
       devstack_plugins:
         ironic-inspector: git://git.openstack.org/openstack/ironic-inspector
+
+- job:
+    name: ironic-python-agent-buildimage-base
+    parent: publish-openstack-artifacts
+    run: playbooks/ironic-python-agent-buildimage/run.yaml
+    post-run: playbooks/ironic-python-agent-buildimage/post.yaml
+    timeout: 1800
+    required-projects:
+      - openstack/ironic-python-agent
+
+- job:
+    name: ironic-python-agent-buildimage-coreos
+    parent: ironic-python-agent-buildimage-base
+    vars:
+      image_name: 'coreos'
+
+- job:
+    name: ironic-python-agent-buildimage-tinyipa
+    parent: ironic-python-agent-buildimage-base
+    vars:
+      image_name: 'tinyipa'

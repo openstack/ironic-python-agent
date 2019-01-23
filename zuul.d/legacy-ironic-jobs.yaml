@@ -52,20 +52,6 @@
     timeout: 7200
 
 - job:
-    name: ironic-python-agent-buildimage-coreos
-    parent: legacy-publish-openstack-artifacts
-    run: playbooks/legacy/ironic-python-agent-buildimage-coreos/run.yaml
-    post-run: playbooks/legacy/ironic-python-agent-buildimage-coreos/post.yaml
-    timeout: 1800
-
-- job:
-    name: ironic-python-agent-buildimage-tinyipa
-    parent: legacy-publish-openstack-artifacts
-    run: playbooks/legacy/ironic-python-agent-buildimage-tinyipa/run.yaml
-    post-run: playbooks/legacy/ironic-python-agent-buildimage-tinyipa/post.yaml
-    timeout: 1800
-
-- job:
     name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
     parent: legacy-ipa-dsvm-base
     run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src/run.yaml
