@@ -1,9 +1,10 @@
 #!/bin/sh
+
 S="Linux"
 N="box"
-R="4.2.9-tinycore64"
+R="4.8.17-tinycore64"
 P="unknown"
-V="#777 SMP (2016-02-29)"
+V="#2017 SMP"
 M="x86_64"
 I="unknown"
 O="GNU/Linux"

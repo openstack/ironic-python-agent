@@ -8,8 +8,8 @@ parted.tcz
 popt.tcz
 python.tcz
 pciutils.tcz
-raid-dm-4.2.9-tinycore64.tcz
-scsi-4.2.9-tinycore64.tcz
+raid-dm-4.8.17-tinycore64.tcz
+scsi-4.8.17-tinycore64.tcz
 udev-lib.tcz
 util-linux.tcz
 glib2.tcz

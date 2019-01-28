@@ -40,8 +40,8 @@ fi
 choose_tc_mirror
 
 cd $WORKDIR/build_files
-wget -N $TINYCORE_MIRROR_URL/7.x/x86_64/release/distribution_files/corepure64.gz
-wget -N $TINYCORE_MIRROR_URL/7.x/x86_64/release/distribution_files/vmlinuz64
+wget -N $TINYCORE_MIRROR_URL/8.x/x86_64/release/distribution_files/corepure64.gz
+wget -N $TINYCORE_MIRROR_URL/8.x/x86_64/release/distribution_files/vmlinuz64
 cd $WORKDIR
 
 ########################################################
@@ -56,9 +56,6 @@ mkdir "$BUILDDIR"
 
 # Configure mirror
 sudo sh -c "echo $TINYCORE_MIRROR_URL > $BUILDDIR/opt/tcemirror"
-
-# Download get-pip into ramdisk
-( cd "$BUILDDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
 
 # Download TGT, Qemu-utils, Biosdevname and IPMItool source
 clone_and_checkout "https://github.com/fujita/tgt.git" "${BUILDDIR}/tmp/tgt" "v1.0.62"
@@ -135,10 +132,9 @@ while read line; do
 done < $WORKDIR/build_files/buildreqs.lst
 
 # Build python wheels
-$CHROOT_CMD python /tmp/get-pip.py
+$CHROOT_CMD python -m ensurepip
+$CHROOT_CMD pip install --upgrade pip wheel
 $CHROOT_CMD pip install pbr
-$CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels setuptools
-$CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels pip
 $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels -r /tmp/ipa-requirements.txt
 if [ -n "$IRONIC_LIB_SOURCE" ]; then
     $CHROOT_CMD pip wheel -c /tmp/upper-constraints.txt --wheel-dir /tmp/wheels -r /tmp/ironic-lib-requirements.txt

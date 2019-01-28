@@ -59,16 +59,12 @@ mkdir "$FINALDIR"
 # Extract rootfs from .gz file
 ( cd "$FINALDIR" && zcat $WORKDIR/build_files/corepure64.gz | sudo cpio -i -H newc -d )
 
-# Download get-pip into ramdisk
-( cd "$FINALDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
-
-
 # Setup Final Dir
 setup_tce "$DST_DIR"
 
 # Modify ldconfig for x86-64
 $CHROOT_CMD cp /sbin/ldconfig /sbin/ldconfigold
-printf '/sbin/ldconfigold $@ | sed "s/unknown/libc6,x86-64/"' | $CHROOT_CMD tee -a /sbin/ldconfignew
+printf '#!/bin/sh\n/sbin/ldconfigold $@ | sed -r "s/libc6|ELF/libc6,x86-64/"' | $CHROOT_CMD tee -a /sbin/ldconfignew
 $CHROOT_CMD cp /sbin/ldconfignew /sbin/ldconfig
 $CHROOT_CMD chmod u+x /sbin/ldconfig
 
@@ -132,11 +128,13 @@ fi
 # Ensure tinyipa picks up installed kernel modules
 $CHROOT_CMD depmod -a `$WORKDIR/build_files/fakeuname -r`
 
+# Install pip
+$CHROOT_CMD python -m ensurepip --upgrade
+
 # If flag is set install the python now
 if $BUILD_AND_INSTALL_TINYIPA ; then
-    $CHROOT_CMD python /tmp/get-pip.py --no-wheel --no-index --find-links=file:///tmp/wheelhouse --pre ironic_python_agent
+    $CHROOT_CMD pip install --no-index --find-links=file:///tmp/wheelhouse --pre ironic_python_agent
     rm -rf $FINALDIR/tmp/wheelhouse
-    rm -rf $FINALDIR/tmp/get-pip.py
 fi
 
 # Unmount /proc and clean up everything
