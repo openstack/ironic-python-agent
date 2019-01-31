@@ -1,0 +1,4 @@
+---
+other:
+  - Updates the tinyipa build scripts to support building and running Ironic
+    Python Agent with python3.6.
