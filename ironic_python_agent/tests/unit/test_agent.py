@@ -111,7 +111,7 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
         expected_poll_calls.append(mock.call(1000 * 25.0))
         # Stop now
         poll_responses.append(True)
-        mock_read.return_value = 'a'
+        mock_read.return_value = b'a'
 
         # Hook it up and run it
         mock_time.side_effect = time_responses

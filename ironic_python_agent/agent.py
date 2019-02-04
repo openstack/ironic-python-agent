@@ -111,7 +111,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         try:
             while True:
                 if p.poll(interval * 1000):
-                    if os.read(self.reader, 1) == 'a':
+                    if os.read(self.reader, 1).decode() == 'a':
                         break
 
                 self.do_heartbeat()
