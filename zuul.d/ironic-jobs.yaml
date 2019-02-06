@@ -54,6 +54,7 @@
     parent: ironic-ipa-base
     timeout: 7200
     vars:
+      devstack_localrc:
         IRONIC_DEPLOY_DRIVER: ipmi
         IRONIC_DEFAULT_DEPLOY_INTERFACE: iscsi
 

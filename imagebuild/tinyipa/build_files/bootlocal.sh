@@ -20,7 +20,11 @@ fi
 
 # Install IPA and dependecies
 if ! type "ironic-python-agent" > /dev/null ; then
-    pip install --no-index --find-links=file:///tmp/wheelhouse ironic_python_agent
+    PIP_COMMAND="pip"
+    if hash pip3 2>/dev/null; then
+        PIP_COMMAND="pip3"
+    fi
+    $PIP_COMMAND install --no-index --find-links=file:///tmp/wheelhouse ironic_python_agent
 fi
 
 # Create ipa-rescue-config directory for rescue password

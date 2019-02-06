@@ -24,6 +24,8 @@ PYOPTIMIZE_TINYIPA=${PYOPTIMIZE_TINYIPA:-true}
 TINYIPA_REQUIRE_BIOSDEVNAME=${TINYIPA_REQUIRE_BIOSDEVNAME:-false}
 TINYIPA_REQUIRE_IPMITOOL=${TINYIPA_REQUIRE_IPMITOOL:-true}
 TINYIPA_UDEV_SETTLE_TIMEOUT=${TINYIPA_UDEV_SETTLE_TIMEOUT:-20}
+USE_PYTHON3=${USE_PYTHON3:-False}
+
 
 echo "Finalising tinyipa:"
 
@@ -85,9 +87,14 @@ fi
 mkdir $FINALDIR/tmp/overides
 cp $WORKDIR/build_files/fakeuname $FINALDIR/tmp/overides/uname
 
+PY_REQS="finalreqs_python2.lst"
+if [[ $USE_PYTHON3 == "True" ]]; then
+    PY_REQS="finalreqs_python3.lst"
+fi
+
 while read line; do
     $TC_CHROOT_CMD tce-load -wic $line
-done < $WORKDIR/build_files/finalreqs.lst
+done < <(paste $WORKDIR/build_files/finalreqs.lst $WORKDIR/build_files/$PY_REQS)
 
 if $INSTALL_SSH ; then
     # Install and configure bare minimum for SSH access
@@ -128,12 +135,19 @@ fi
 # Ensure tinyipa picks up installed kernel modules
 $CHROOT_CMD depmod -a `$WORKDIR/build_files/fakeuname -r`
 
-# Install pip
-$CHROOT_CMD python -m ensurepip --upgrade
+PIP_COMMAND="pip"
+TINYIPA_PYTHON_EXE="python"
+if [[ $USE_PYTHON3 == "True" ]]; then
+    PIP_COMMAND="pip3"
+    TINYIPA_PYTHON_EXE="python3"
+fi
 
-# If flag is set install the python now
+# Install pip
+$CHROOT_CMD ${TINYIPA_PYTHON_EXE} -m ensurepip --upgrade
+
+# If flag is set install python now
 if $BUILD_AND_INSTALL_TINYIPA ; then
-    $CHROOT_CMD pip install --no-index --find-links=file:///tmp/wheelhouse --pre ironic_python_agent
+    $CHROOT_CMD $PIP_COMMAND install --no-index --find-links=file:///tmp/wheelhouse --pre ironic_python_agent
     rm -rf $FINALDIR/tmp/wheelhouse
 fi
 
@@ -156,6 +170,15 @@ sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"
 
 if $PYOPTIMIZE_TINYIPA; then
     # Precompile all python
+    if [[ $USE_PYTHON3 == "True" ]]; then
+        set +e
+        $CHROOT_CMD /bin/bash -c "python3 -OO -m compileall /usr/local/lib/python3.6"
+        set -e
+        find $FINALDIR/usr/local/lib/python3.6 -name "*.py" -not -path "*ironic_python_agent/api/config.py" | sudo xargs --no-run-if-empty rm
+        find $FINALDIR/usr/local/lib/python3.6 -name "*.pyc" ! -name "*opt-2*" | sudo xargs --no-run-if-empty rm
+        sudo find $FINALDIR/usr/local/lib/python3.6 -type d -name __pycache__ -exec sh -c 'cd "$1"; for f in *; do mv -i "$f" .. ; done' find-sh {} \;
+        find $FINALDIR/usr/local/lib/python3.6 -name "*.cpython-36.opt-2*" | sed 'p;s/\.cpython-36\.opt-2//' | sudo xargs -n2 --no-run-if-empty mv
+    fi
     set +e
     $CHROOT_CMD /bin/bash -c "python -OO -m compileall /usr/local/lib/python2.7"
     set -e

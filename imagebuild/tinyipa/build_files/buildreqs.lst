@@ -18,8 +18,6 @@ parted.tcz
 pciutils.tcz
 pixman-dev.tcz
 pkg-config.tcz
-python-dev.tcz
-python.tcz
 raid-dm-4.8.17-tinycore64.tcz
 scsi-4.8.17-tinycore64.tcz
 udev-lib.tcz
