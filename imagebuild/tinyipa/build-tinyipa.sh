@@ -9,7 +9,7 @@ TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-}
 TINYIPA_REQUIRE_BIOSDEVNAME=${TINYIPA_REQUIRE_BIOSDEVNAME:-false}
 TINYIPA_REQUIRE_IPMITOOL=${TINYIPA_REQUIRE_IPMITOOL:-true}
 IRONIC_LIB_SOURCE=${IRONIC_LIB_SOURCE:-}
-USE_PYTHON3=${USE_PYTHON3:-False}
+USE_PYTHON3=${USE_PYTHON3:-True}
 
 CHROOT_PATH="/tmp/overides:/usr/local/sbin:/usr/local/bin:/apps/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 CHROOT_CMD="sudo chroot $BUILDDIR /usr/bin/env -i PATH=$CHROOT_PATH http_proxy=$http_proxy https_proxy=$https_proxy no_proxy=$no_proxy"
