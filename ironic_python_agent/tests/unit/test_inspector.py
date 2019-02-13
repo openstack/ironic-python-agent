@@ -216,7 +216,7 @@ class TestCollectDefault(BaseDiscoverTest):
             self.assertTrue(self.data['inventory'][key])
 
         self.assertEqual('boot:if', self.data['boot_interface'])
-        self.assertEqual(self.inventory['disks'][0].name,
+        self.assertEqual(self.inventory['disks'][2].name,
                          self.data['root_disk'].name)
 
         mock_dispatch.assert_called_once_with('list_hardware_info')

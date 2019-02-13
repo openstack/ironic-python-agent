@@ -30,6 +30,7 @@ import six
 import testtools
 
 from ironic_python_agent import errors
+from ironic_python_agent import hardware
 from ironic_python_agent.tests.unit import base as ironic_agent_base
 from ironic_python_agent import utils
 
@@ -410,6 +411,67 @@ class TestUtils(testtools.TestCase):
         mock_execute.assert_called_once_with(
             'foo', binary=True, log_stdout=False)
         self.assertEqual(contents, data.read())
+
+    @mock.patch.object(subprocess, 'check_call', autospec=True)
+    def test_guess_root_disk_primary_sort(self, mock_call):
+        block_devices = [
+            hardware.BlockDevice(name='/dev/sdc',
+                                 model='too small',
+                                 size=4294967295,
+                                 rotational=True),
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='bigger than sdb',
+                                 size=21474836480,
+                                 rotational=True),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='',
+                                 size=10737418240,
+                                 rotational=True),
+            hardware.BlockDevice(name='/dev/sdd',
+                                 model='bigger than sdb',
+                                 size=21474836480,
+                                 rotational=True),
+        ]
+        device = utils.guess_root_disk(block_devices)
+        self.assertEqual(device.name, '/dev/sdb')
+
+    @mock.patch.object(subprocess, 'check_call', autospec=True)
+    def test_guess_root_disk_secondary_sort(self, mock_call):
+        block_devices = [
+            hardware.BlockDevice(name='/dev/sdc',
+                                 model='_',
+                                 size=10737418240,
+                                 rotational=True),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='_',
+                                 size=10737418240,
+                                 rotational=True),
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='_',
+                                 size=10737418240,
+                                 rotational=True),
+            hardware.BlockDevice(name='/dev/sdd',
+                                 model='_',
+                                 size=10737418240,
+                                 rotational=True),
+        ]
+        device = utils.guess_root_disk(block_devices)
+        self.assertEqual(device.name, '/dev/sda')
+
+    @mock.patch.object(subprocess, 'check_call', autospec=True)
+    def test_guess_root_disk_disks_too_small(self, mock_call):
+        block_devices = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='too small',
+                                 size=4294967295,
+                                 rotational=True),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='way too small',
+                                 size=1,
+                                 rotational=True),
+        ]
+        self.assertRaises(errors.DeviceNotFound,
+                          utils.guess_root_disk, block_devices)
 
     @mock.patch.object(subprocess, 'check_call', autospec=True)
     def test_is_journalctl_present(self, mock_call):

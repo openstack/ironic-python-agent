@@ -290,12 +290,15 @@ class AccumulatedFailures(object):
 def guess_root_disk(block_devices, min_size_required=4 * units.Gi):
     """Find suitable disk provided that root device hints are not given.
 
-    If no hints are passed find the first device larger than min_size_required,
-    assume it is the OS disk
+    If no hints are passed, order the devices by size (primary key) and
+    name (secondary key), and return the first device larger than
+    min_size_required as the root disk.
     """
-    # TODO(russellhaering): This isn't a valid assumption in
-    # all cases, is there a more reasonable default behavior?
-    block_devices.sort(key=lambda device: device.size)
+    # NOTE(arne_wiebalck): Order devices by size and name. Secondary
+    # ordering by name is done to increase chances of successful
+    # booting for BIOSes which try only one (the "first") disk.
+    block_devices.sort(key=lambda device: (device.size, device.name))
+
     if not block_devices or block_devices[-1].size < min_size_required:
         raise errors.DeviceNotFound(
             "No suitable device was found "
