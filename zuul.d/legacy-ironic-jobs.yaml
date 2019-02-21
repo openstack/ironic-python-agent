@@ -50,17 +50,3 @@
     run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-coreos-src/run.yaml
     post-run: playbooks/legacy/ipa-tempest-dsvm-wholedisk-bios-ipmi-iscsi-coreos-src/post.yaml
     timeout: 7200
-
-- job:
-    name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
-    parent: legacy-ipa-dsvm-base
-    run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src/run.yaml
-    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src/post.yaml
-    timeout: 7200
-
-- job:
-    name: ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa-python3
-    parent: legacy-ipa-dsvm-base
-    run: playbooks/legacy/ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa-python3/run.yaml
-    post-run: playbooks/legacy/ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa-python3/post.yaml
-    timeout: 7200
