@@ -142,7 +142,7 @@ class ImageDownloadError(RESTError):
     message = 'Error downloading image'
 
     def __init__(self, image_id, msg):
-        details = 'Download of image id {} failed: {}'.format(image_id, msg)
+        details = 'Download of image {} failed: {}'.format(image_id, msg)
         self.secondary_message = msg
         super(ImageDownloadError, self).__init__(details)
 

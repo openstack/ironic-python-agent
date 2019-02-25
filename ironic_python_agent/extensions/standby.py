@@ -23,6 +23,7 @@ from oslo_config import cfg
 from oslo_log import log
 import requests
 import six
+from six.moves.urllib import parse as urlparse
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
@@ -52,6 +53,60 @@ def _path_to_script(script):
     """
     cwd = os.path.dirname(os.path.realpath(__file__))
     return os.path.join(cwd, '..', script)
+
+
+def _download_with_proxy(image_info, url, image_id):
+    """Opens a download stream for the given URL.
+
+    :param image_info: Image information dictionary.
+    :param url: The URL string to request the image from.
+    :param image_id: Image ID or URL for logging.
+
+    :raises: ImageDownloadError if the download stream was not started
+             properly.
+    """
+    no_proxy = image_info.get('no_proxy')
+    if no_proxy:
+        os.environ['no_proxy'] = no_proxy
+    proxies = image_info.get('proxies', {})
+    verify, cert = utils.get_ssl_client_options(CONF)
+    resp = requests.get(url, stream=True, proxies=proxies,
+                        verify=verify, cert=cert)
+    if resp.status_code != 200:
+        msg = ('Received status code {} from {}, expected 200. Response '
+               'body: {}').format(resp.status_code, url, resp.text)
+        raise errors.ImageDownloadError(image_id, msg)
+    return resp
+
+
+def _fetch_checksum(checksum, image_info):
+    """Fetch checksum from remote location, if needed."""
+    if not (checksum.startswith('http://') or checksum.startswith('https://')):
+        # Not a remote checksum, return as it is.
+        return checksum
+
+    LOG.debug('Downloading checksums file from %s', checksum)
+    resp = _download_with_proxy(image_info, checksum, checksum).text
+    lines = [line.strip() for line in resp.split('\n') if line.strip()]
+    if not lines:
+        raise errors.ImageDownloadError(checksum, "Empty checksum file")
+    elif len(lines) == 1:
+        # Special case - checksums file with only the checksum itself
+        if ' ' not in lines[0]:
+            return lines[0]
+
+    # FIXME(dtantsur): can we assume the same name for all images?
+    expected_fname = os.path.basename(
+        urlparse.urlparse(image_info['urls'][0]).path)
+    for line in lines:
+        checksum, fname = line.strip().split(None, 1)
+        # The star symbol designates binary mode, which is the same as text
+        # mode on GNU systems.
+        if fname.strip().lstrip('*') == expected_fname:
+            return checksum.strip()
+
+    raise errors.ImageDownloadError(
+        checksum, "Checksum file does not contain name %s" % expected_fname)
 
 
 def _write_partition_image(image, image_info, device):
@@ -217,11 +272,15 @@ class ImageDownload(object):
             self._hash_algo = hashlib.md5()
             self._expected_hash_value = image_info['checksum']
 
+        self._expected_hash_value = _fetch_checksum(self._expected_hash_value,
+                                                    image_info)
+
         details = []
         for url in image_info['urls']:
             try:
                 LOG.info("Attempting to download image from {}".format(url))
-                self._request = self._download_file(image_info, url)
+                self._request = _download_with_proxy(image_info, url,
+                                                     image_info['id'])
             except errors.ImageDownloadError as e:
                 failtime = time.time() - self._time
                 log_msg = ('URL: {}; time: {} '
@@ -235,28 +294,6 @@ class ImageDownload(object):
         else:
             details = '\n '.join(details)
             raise errors.ImageDownloadError(image_info['id'], details)
-
-    def _download_file(self, image_info, url):
-        """Opens a download stream for the given URL.
-
-        :param image_info: Image information dictionary.
-        :param url: The URL string to request the image from.
-
-        :raises: ImageDownloadError if the download stream was not started
-                 properly.
-        """
-        no_proxy = image_info.get('no_proxy')
-        if no_proxy:
-            os.environ['no_proxy'] = no_proxy
-        proxies = image_info.get('proxies', {})
-        verify, cert = utils.get_ssl_client_options(CONF)
-        resp = requests.get(url, stream=True, proxies=proxies,
-                            verify=verify, cert=cert)
-        if resp.status_code != 200:
-            msg = ('Received status code {} from {}, expected 200. Response '
-                   'body: {}').format(resp.status_code, url, resp.text)
-            raise errors.ImageDownloadError(image_info['id'], msg)
-        return resp
 
     def __iter__(self):
         """Downloads and returns the next chunk of the image.

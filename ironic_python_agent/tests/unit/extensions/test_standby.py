@@ -23,13 +23,11 @@ from ironic_python_agent import hardware
 from ironic_python_agent.tests.unit import base
 
 
-def _build_fake_image_info():
+def _build_fake_image_info(url='http://example.org'):
     return {
         'id': 'fake_id',
         'node_uuid': '1be26c0b-03f2-4d2e-ae87-c02d7f33c123',
-        'urls': [
-            'http://example.org',
-        ],
+        'urls': [url],
         'checksum': 'abc123',
         'image_type': 'whole-disk-image',
     }
@@ -1119,10 +1117,10 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertEqual(expected_msg, result_msg)
 
 
+@mock.patch('hashlib.md5', autospec=True)
+@mock.patch('requests.get', autospec=True)
 class TestImageDownload(base.IronicAgentTest):
 
-    @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('requests.get', autospec=True)
     def test_download_image(self, requests_mock, md5_mock):
         content = ['SpongeBob', 'SquarePants']
         response = requests_mock.return_value
@@ -1140,16 +1138,14 @@ class TestImageDownload(base.IronicAgentTest):
         self.assertEqual(image_info['checksum'],
                          image_download._hash_algo.hexdigest())
 
-    @mock.patch('time.time', autospec=True)
-    @mock.patch('requests.get', autospec=True)
     def test_download_image_fail(self, requests_mock, time_mock):
         response = requests_mock.return_value
         response.status_code = 401
         response.text = 'Unauthorized'
         time_mock.return_value = 0.0
         image_info = _build_fake_image_info()
-        msg = ('Error downloading image: Download of image id fake_id failed: '
-               'URL: http://example.org; time: 0.0 seconds. Error: '
+        msg = ('Error downloading image: Download of image fake_id failed: '
+               'URL: http://example.org; time: .* seconds. Error: '
                'Received status code 401 from http://example.org, expected '
                '200. Response body: Unauthorized')
         self.assertRaisesRegex(errors.ImageDownloadError, msg,
@@ -1157,3 +1153,117 @@ class TestImageDownload(base.IronicAgentTest):
         requests_mock.assert_called_once_with(image_info['urls'][0],
                                               cert=None, verify=True,
                                               stream=True, proxies={})
+
+    def test_download_image_and_checksum(self, requests_mock, md5_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = "019fe036425da1c562f2e9f5299820bf"
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = fake_cs + '\n'
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info()
+        image_info['checksum'] = 'http://example.com/checksum'
+        md5_mock.return_value.hexdigest.return_value = fake_cs
+        image_download = standby.ImageDownload(image_info)
+
+        self.assertEqual(content, list(image_download))
+        requests_mock.assert_has_calls([
+            mock.call('http://example.com/checksum', cert=None, verify=True,
+                      stream=True, proxies={}),
+            mock.call(image_info['urls'][0], cert=None, verify=True,
+                      stream=True, proxies={}),
+        ])
+        self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
+
+    def test_download_image_and_checksum_multiple(self, requests_mock,
+                                                  md5_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = "019fe036425da1c562f2e9f5299820bf"
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = """
+foobar  irrelevant file.img
+%s  image.img
+""" % fake_cs
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['checksum'] = 'http://example.com/checksum'
+        md5_mock.return_value.hexdigest.return_value = fake_cs
+        image_download = standby.ImageDownload(image_info)
+
+        self.assertEqual(content, list(image_download))
+        requests_mock.assert_has_calls([
+            mock.call('http://example.com/checksum', cert=None, verify=True,
+                      stream=True, proxies={}),
+            mock.call(image_info['urls'][0], cert=None, verify=True,
+                      stream=True, proxies={}),
+        ])
+        self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
+
+    def test_download_image_and_checksum_unknown_file(self, requests_mock,
+                                                      md5_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = "019fe036425da1c562f2e9f5299820bf"
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = """
+foobar  irrelevant file.img
+%s  not-my-image.img
+""" % fake_cs
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['checksum'] = 'http://example.com/checksum'
+        md5_mock.return_value.hexdigest.return_value = fake_cs
+        self.assertRaisesRegex(errors.ImageDownloadError,
+                               'Checksum file does not contain name image.img',
+                               standby.ImageDownload, image_info)
+
+    def test_download_image_and_checksum_empty_file(self, requests_mock,
+                                                    md5_mock):
+        content = ['SpongeBob', 'SquarePants']
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = " "
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['checksum'] = 'http://example.com/checksum'
+        self.assertRaisesRegex(errors.ImageDownloadError,
+                               'Empty checksum file',
+                               standby.ImageDownload, image_info)
+
+    def test_download_image_and_checksum_failed(self, requests_mock, md5_mock):
+        content = ['SpongeBob', 'SquarePants']
+        cs_response = mock.Mock()
+        cs_response.status_code = 400
+        cs_response.text = " "
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['checksum'] = 'http://example.com/checksum'
+        self.assertRaisesRegex(errors.ImageDownloadError,
+                               'Received status code 400 from '
+                               'http://example.com/checksum',
+                               standby.ImageDownload, image_info)
