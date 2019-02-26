@@ -143,7 +143,7 @@ def _get_component_devices(raid_device):
     return component_devices
 
 
-def _get_holder_disks(raid_device):
+def get_holder_disks(raid_device):
     """Get the holder disks of a Software RAID device.
 
     Examine an md device and return its underlying disks.
@@ -155,6 +155,7 @@ def _get_holder_disks(raid_device):
         return []
 
     holder_disks = []
+
     try:
         out, _ = utils.execute('mdadm', '--detail', raid_device,
                                use_standard_locale=True)
@@ -173,7 +174,7 @@ def _get_holder_disks(raid_device):
     return holder_disks
 
 
-def _is_md_device(raid_device):
+def is_md_device(raid_device):
     """Check if a device is an md device
 
     Check if a device is a Software RAID (md) device.
@@ -190,7 +191,7 @@ def _is_md_device(raid_device):
         return False
 
 
-def _md_restart(raid_device):
+def md_restart(raid_device):
     """Restart an md device
 
     Stop and re-assemble a Software RAID (md) device.
@@ -1282,8 +1283,8 @@ class GenericHardwareManager(HardwareManager):
                  valid or if there was an error when creating the RAID
                  devices.
         """
-        LOG.info("Creating Software RAID")
 
+        # No RAID config: do nothing
         raid_config = node.get('target_raid_config', {})
 
         # No 'software' controller: do nothing. If 'controller' is
@@ -1332,7 +1333,6 @@ class GenericHardwareManager(HardwareManager):
                 raise errors.SoftwareRAIDError(msg)
 
         # Create the partitions which will become the component devices.
-        logical_disks = raid_config.get('logical_disks')
         sector = '2048s'
         for logical_disk in logical_disks:
             psize = logical_disk['size_gb']
@@ -1404,7 +1404,7 @@ class GenericHardwareManager(HardwareManager):
             component_devices = _get_component_devices(raid_device.name)
             LOG.debug("Found component devices {}".format(
                       component_devices))
-            holder_disks = _get_holder_disks(raid_device.name)
+            holder_disks = get_holder_disks(raid_device.name)
             LOG.debug("Found holder disks {}".format(
                       holder_disks))
 
