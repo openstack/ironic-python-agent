@@ -54,4 +54,4 @@
           esac
           ERRORS=0
         executable: /bin/bash
-        chdir: '{{ ansible_user_dir }}/src/ironic-python-agent'
+        chdir: '{{ ansible_user_dir }}/src/git.openstack.org/openstack/ironic-python-agent'
