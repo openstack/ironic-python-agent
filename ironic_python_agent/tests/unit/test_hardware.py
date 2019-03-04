@@ -392,6 +392,37 @@ ATA Security is:  Unavailable
 """)  # noqa
 
 
+IPMITOOL_LAN6_PRINT_DYNAMIC_ADDR = """
+IPv6 Dynamic Address 0:
+    Source/Type:    DHCPv6
+    Address:        2001:1234:1234:1234:1234:1234:1234:1234/64
+    Status:         active
+IPv6 Dynamic Address 1:
+    Source/Type:    DHCPv6
+    Address:        ::/0
+    Status:         active
+IPv6 Dynamic Address 2:
+    Source/Type:    DHCPv6
+    Address:        ::/0
+    Status:         active
+"""
+
+IPMITOOL_LAN6_PRINT_STATIC_ADDR = """
+IPv6 Static Address 0:
+    Enabled:        yes
+    Address:        2001:5678:5678:5678:5678:5678:5678:5678/64
+    Status:         active
+IPv6 Static Address 1:
+    Enabled:        no
+    Address:        ::/0
+    Status:         disabled
+IPv6 Static Address 2:
+    Enabled:        no
+    Address:        ::/0
+    Status:         disabled
+"""
+
+
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
         self._hardware_support = hardware_support
@@ -1126,6 +1157,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             current_boot_mode='bios', pxe_interface='boot:if')
 
         self.hardware.get_bmc_address = mock.Mock()
+        self.hardware.get_bmc_v6address = mock.Mock()
         self.hardware.get_system_vendor_info = mock.Mock()
 
         hardware_info = self.hardware.list_hardware_info()
@@ -2084,6 +2116,101 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     def test_get_bmc_address_not_available(self, mocked_execute):
         mocked_execute.return_value = '', ''
         self.assertEqual('0.0.0.0', self.hardware.get_bmc_address())
+
+    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_v6address_not_enabled(self, mocked_execute, mte):
+        mocked_execute.side_effect = [('ipv4\n', '')] * 7
+        self.assertEqual('::/0', self.hardware.get_bmc_v6address())
+
+    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_v6address_dynamic_address(self, mocked_execute, mte):
+        mocked_execute.side_effect = [
+            ('ipv6\n', ''),
+            (IPMITOOL_LAN6_PRINT_DYNAMIC_ADDR, '')
+        ]
+        self.assertEqual('2001:1234:1234:1234:1234:1234:1234:1234',
+                         self.hardware.get_bmc_v6address())
+
+    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_v6address_static_address_both(self, mocked_execute, mte):
+        dynamic_disabled = \
+            IPMITOOL_LAN6_PRINT_DYNAMIC_ADDR.replace('active', 'disabled')
+        mocked_execute.side_effect = [
+            ('both\n', ''),
+            (dynamic_disabled, ''),
+            (IPMITOOL_LAN6_PRINT_STATIC_ADDR, '')
+        ]
+        self.assertEqual('2001:5678:5678:5678:5678:5678:5678:5678',
+                         self.hardware.get_bmc_v6address())
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_v6address_virt(self, mocked_execute):
+        mocked_execute.side_effect = processutils.ProcessExecutionError()
+        self.assertIsNone(self.hardware.get_bmc_v6address())
+
+    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_v6address_invalid_enables(self, mocked_execute, mte):
+        def side_effect(*args, **kwargs):
+            if args[0].startswith('ipmitool lan6 print'):
+                return '', 'Failed to get IPv6/IPv4 Addressing Enables'
+
+        mocked_execute.side_effect = side_effect
+        self.assertEqual('::/0', self.hardware.get_bmc_v6address())
+
+    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_v6address_invalid_get_address(self, mocked_execute, mte):
+        def side_effect(*args, **kwargs):
+            if args[0].startswith('ipmitool lan6 print'):
+                if args[0].endswith('dynamic_addr') \
+                        or args[0].endswith('static_addr'):
+                    raise processutils.ProcessExecutionError()
+                return 'ipv6', ''
+
+        mocked_execute.side_effect = side_effect
+        self.assertEqual('::/0', self.hardware.get_bmc_v6address())
+
+    @mock.patch.object(hardware, 'LOG', autospec=True)
+    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_v6address_impitool_invalid_stdout_format(
+            self, mocked_execute, mte, mocked_log):
+        def side_effect(*args, **kwargs):
+            if args[0].startswith('ipmitool lan6 print'):
+                if args[0].endswith('dynamic_addr') \
+                        or args[0].endswith('static_addr'):
+                    return 'Invalid\n\tyaml', ''
+                return 'ipv6', ''
+
+        mocked_execute.side_effect = side_effect
+        self.assertEqual('::/0', self.hardware.get_bmc_v6address())
+        one_call = mock.call('Cannot process output of "%(cmd)s" '
+                             'command: %(e)s', mock.ANY)
+        mocked_log.warning.assert_has_calls([one_call] * 14)
+
+    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_v6address_channel_7(self, mocked_execute, mte):
+        def side_effect(*args, **kwargs):
+            if not args[0].startswith('ipmitool lan6 print 7'):
+                # ipv6 is not enabled for channels 1-6
+                if 'enables |' in args[0]:
+                    return '', ''
+            else:
+                if 'enables |' in args[0]:
+                    return 'ipv6', ''
+                if args[0].endswith('dynamic_addr'):
+                    raise processutils.ProcessExecutionError()
+                elif args[0].endswith('static_addr'):
+                    return IPMITOOL_LAN6_PRINT_STATIC_ADDR, ''
+
+        mocked_execute.side_effect = side_effect
+        self.assertEqual('2001:5678:5678:5678:5678:5678:5678:5678',
+                         self.hardware.get_bmc_v6address())
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_system_vendor_info(self, mocked_execute):

@@ -18,6 +18,7 @@ import functools
 import json
 from multiprocessing.pool import ThreadPool
 import os
+import re
 import shlex
 import time
 
@@ -32,6 +33,7 @@ import psutil
 import pyudev
 import six
 import stevedore
+import yaml
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
@@ -380,6 +382,9 @@ class HardwareManager(object):
     def get_bmc_address(self):
         raise errors.IncompatibleHardwareMethodError()
 
+    def get_bmc_v6address(self):
+        raise errors.IncompatibleHardwareMethodError()
+
     def get_boot_info(self):
         raise errors.IncompatibleHardwareMethodError()
 
@@ -493,6 +498,7 @@ class HardwareManager(object):
         hardware_info['disks'] = self.list_block_devices()
         hardware_info['memory'] = self.get_memory()
         hardware_info['bmc_address'] = self.get_bmc_address()
+        hardware_info['bmc_v6address'] = self.get_bmc_v6address()
         hardware_info['system_vendor'] = self.get_system_vendor_info()
         hardware_info['boot'] = self.get_boot_info()
         return hardware_info
@@ -1136,6 +1142,76 @@ class GenericHardwareManager(HardwareManager):
 
         return '0.0.0.0'
 
+    def get_bmc_v6address(self):
+        """Attempt to detect BMC v6 address
+
+        :return: IPv6 address of lan channel or ::/0 in case none of them is
+                 configured properly. May return None value if it cannot
+                 interract with system tools or critical error occurs.
+        """
+        # These modules are rarely loaded automatically
+        utils.try_execute('modprobe', 'ipmi_msghandler')
+        utils.try_execute('modprobe', 'ipmi_devintf')
+        utils.try_execute('modprobe', 'ipmi_si')
+
+        null_address_re = re.compile(r'^::(/\d{1,3})*$')
+
+        def get_addr(channel, dynamic=False):
+            cmd = "ipmitool lan6 print {} {}_addr".format(
+                channel, 'dynamic' if dynamic else 'static')
+            try:
+                out, e = utils.execute(cmd, shell=True)
+            except processutils.ProcessExecutionError:
+                return
+
+            # NOTE: More likely ipmitool was not intended to return
+            #       stdout in yaml format. Fortunately, output of
+            #       dynamic_addr and static_addr commands is a valid yaml.
+            try:
+                out = yaml.safe_load(out.strip())
+            except yaml.YAMLError as e:
+                LOG.warning('Cannot process output of "%(cmd)s" '
+                            'command: %(e)s', {'cmd': cmd, 'e': e})
+                return
+
+            for addr_dict in out.values():
+                address = addr_dict['Address']
+                if dynamic:
+                    enabled = addr_dict['Source/Type'] in ['DHCPv6', 'SLAAC']
+                else:
+                    enabled = addr_dict['Enabled']
+
+                if addr_dict['Status'] == 'active' and enabled \
+                        and not null_address_re.match(address):
+                    return address
+
+        try:
+            # From all the channels 0-15, only 1-7 can be assigned to different
+            # types of communication media and protocols and effectively used
+            for channel in range(1, 8):
+                addr_mode, e = utils.execute(
+                    r"ipmitool lan6 print {} enables | "
+                    r"awk '/IPv6\/IPv4 Addressing Enables[ \t]*:/"
+                    r"{{print $NF}}'".format(channel), shell=True)
+                if addr_mode.strip() not in ['ipv6', 'both']:
+                    continue
+
+                address = get_addr(channel, dynamic=True) or get_addr(channel)
+                if not address:
+                    continue
+
+                try:
+                    return str(netaddr.IPNetwork(address).ip)
+                except netaddr.AddrFormatError:
+                    LOG.warning('Invalid IP address: %s', address)
+                    continue
+        except (processutils.ProcessExecutionError, OSError) as e:
+            # Not error, because it's normal in virtual environment
+            LOG.warning("Cannot get BMC v6 address: %s", e)
+            return
+
+        return '::/0'
+
     def get_clean_steps(self, node, ports):
         return [
             {
@@ -1213,8 +1289,8 @@ def dispatch_to_all_managers(method, *args, **kwargs):
     {HardwareManagerClassName: response}.
 
     :param method: hardware manager method to dispatch
-    :param *args: arguments to dispatched method
-    :param **kwargs: keyword arguments to dispatched method
+    :param args: arguments to dispatched method
+    :param kwargs: keyword arguments to dispatched method
     :raises errors.HardwareManagerMethodNotFound: if all managers raise
         IncompatibleHardwareMethodError.
     :returns: a dictionary with keys for each hardware manager that returns
@@ -1257,8 +1333,8 @@ def dispatch_to_managers(method, *args, **kwargs):
     any result without raising an IncompatibleHardwareMethodError.
 
     :param method: hardware manager method to dispatch
-    :param *args: arguments to dispatched method
-    :param **kwargs: keyword arguments to dispatched method
+    :param args: arguments to dispatched method
+    :param kwargs: keyword arguments to dispatched method
 
     :returns: result of successful dispatch of method
     :raises HardwareManagerMethodNotFound: if all managers failed the method
