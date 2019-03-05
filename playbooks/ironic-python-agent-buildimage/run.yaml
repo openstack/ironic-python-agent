@@ -4,9 +4,8 @@
         cmd: |
           set -e
           set -x
-          BRANCH=$ZUUL_REFNAME
-          # After migration to zuulv3 BRANCH now looks like refs/heads/master
-          export BRANCH_PATH=`echo $BRANCH | sed -e "s/refs\/heads\///" | tr / -`
+          BRANCH={{ zuul.branch }}
+          export BRANCH_PATH=`echo $BRANCH | tr / -`
 
           mkdir UPLOAD_RAW
           mkdir UPLOAD_TAR
