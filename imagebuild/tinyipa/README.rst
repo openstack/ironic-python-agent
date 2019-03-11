@@ -67,7 +67,7 @@ For cleaning up just the iso or just the ramdisk build::
 
 or::
 
-  make clean_tinyipa
+  make clean_build
 
 Advanced options
 ----------------
