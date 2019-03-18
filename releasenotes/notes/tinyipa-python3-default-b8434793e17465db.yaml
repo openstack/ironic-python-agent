@@ -1,9 +1,7 @@
 ---
 prelude: >
-    Tinyipa is the base image for testing Ironic Python Agent.
-    In the effort of moving toward a full Python 3 friendly environment,
-    with this patch we start building the tinyipa image with Python 3 by
-    default.
+    Starting with this release, the Ironic Python Agent images used in the CI
+    (tinyipa) run with Python 3 by default.
 other:
   - Change the Python default version used to build and run the Ironic
     Python Agent in the Tiny Core based image to 3.6.

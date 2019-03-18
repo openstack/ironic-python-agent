@@ -2,7 +2,7 @@
 features:
   - |
     Adds secondary sorting by device name when guessing the root disk. This
-    makes the selection process more predicatble and increases the chances
+    makes the selection process more predictable and increases the chances
     that systems which try only one device for booting will actually
     successfully boot after deployment. As the primary sorting is still done
     by size, the root device hints still take priority, and the current
