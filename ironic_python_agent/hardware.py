@@ -503,6 +503,8 @@ class HardwareManager(object):
         Returns a list of steps. Each step is represented by a dict::
 
           {
+           'interface': the name of the driver interface that should execute
+                        the step.
            'step': the HardwareManager function to call.
            'priority': the order steps will be run in. Ironic will sort all
                        the clean steps from all the drivers, with the largest
