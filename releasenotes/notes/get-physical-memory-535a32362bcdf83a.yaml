@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes an issue with retrieving all available physical memory.
+    For more details see:
+    `story 2005308 <https://storyboard.openstack.org/#!/story/2005308>`
