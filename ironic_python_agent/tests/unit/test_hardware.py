@@ -268,7 +268,7 @@ CPUINFO_FLAGS_OUTPUT = """
 flags           : fpu vme de pse
 """
 
-LSHW_JSON_OUTPUT = ("""
+LSHW_JSON_OUTPUT_V1 = ("""
 {
   "id": "fuzzypickles",
   "product": "ABC123 (GENERIC_SERVER)",
@@ -372,6 +372,194 @@ LSHW_JSON_OUTPUT = ("""
         "ethernet": true,
         "physical": "Physical interface"
       }
+    }
+  ]
+}
+""", "")
+
+LSHW_JSON_OUTPUT_V2 = ("""
+{
+  "id" : "bumblebee",
+  "class" : "system",
+  "claimed" : true,
+  "handle" : "DMI:0001",
+  "description" : "Rack Mount Chassis",
+  "product" : "ABCD",
+  "vendor" : "ABCD",
+  "version" : "1234",
+  "serial" : "1234",
+  "width" : 64,
+  "configuration" : {
+    "boot" : "normal",
+    "chassis" : "rackmount",
+    "family" : "Intel Grantley EP",
+    "sku" : "NULL",
+    "uuid" : "00010002-0003-0004-0005-000600070008"
+  },
+  "capabilities" : {
+    "smbios-2.8" : "SMBIOS version 2.8",
+    "dmi-2.7" : "DMI version 2.7",
+    "vsyscall32" : "32-bit processes"
+  },
+  "children" : [
+    {
+      "id" : "core",
+      "class" : "bus",
+      "claimed" : true,
+      "handle" : "DMI:0002",
+      "description" : "Motherboard",
+      "product" : "ABCD",
+      "vendor" : "ABCD",
+      "physid" : "0",
+      "version" : "1234",
+      "serial" : "1234",
+      "slot" : "NULL",
+      "children" : [
+        {
+          "id" : "memory:0",
+          "class" : "memory",
+          "claimed" : true,
+          "handle" : "DMI:004A",
+          "description" : "System Memory",
+          "physid" : "4a",
+          "slot" : "System board or motherboard",
+          "children" : [
+            {
+              "id" : "bank:0",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:004C",
+              "description" : "DIMM Synchronous 2133 MHz (0.5 ns)",
+              "product" : "36ASF2G72PZ-2G1A2",
+              "vendor" : "Micron",
+              "physid" : "0",
+              "serial" : "101B6543",
+              "slot" : "DIMM_A0",
+              "units" : "bytes",
+              "size" : 17179869184,
+              "width" : 64,
+              "clock" : 2133000000
+            },
+            {
+              "id" : "bank:1",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:004E",
+              "description" : "DIMM Synchronous [empty]",
+              "product" : "NO DIMM",
+              "vendor" : "NO DIMM",
+              "physid" : "1",
+              "serial" : "NO DIMM",
+              "slot" : "DIMM_A1"
+            },
+            {
+              "id" : "bank:2",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:004F",
+              "description" : "DIMM Synchronous 2133 MHz (0.5 ns)",
+              "product" : "36ASF2G72PZ-2G1A2",
+              "vendor" : "Micron",
+              "physid" : "2",
+              "serial" : "101B654E",
+              "slot" : "DIMM_A2",
+              "units" : "bytes",
+              "size" : 17179869184,
+              "width" : 64,
+              "clock" : 2133000000
+            },
+            {
+              "id" : "bank:3",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0051",
+              "description" : "DIMM Synchronous [empty]",
+              "product" : "NO DIMM",
+              "vendor" : "NO DIMM",
+              "physid" : "3",
+              "serial" : "NO DIMM",
+              "slot" : "DIMM_A3"
+            }
+          ]
+        },
+        {
+          "id" : "memory:1",
+          "class" : "memory",
+          "claimed" : true,
+          "handle" : "DMI:0052",
+          "description" : "System Memory",
+          "physid" : "52",
+          "slot" : "System board or motherboard",
+          "children" : [
+            {
+              "id" : "bank:0",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0054",
+              "description" : "DIMM Synchronous 2133 MHz (0.5 ns)",
+              "product" : "36ASF2G72PZ-2G1A2",
+              "vendor" : "Micron",
+              "physid" : "0",
+              "serial" : "101B6545",
+              "slot" : "DIMM_A4",
+              "units" : "bytes",
+              "size" : 17179869184,
+              "width" : 64,
+              "clock" : 2133000000
+            },
+            {
+              "id" : "bank:1",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0056",
+              "description" : "DIMM Synchronous [empty]",
+              "product" : "NO DIMM",
+              "vendor" : "NO DIMM",
+              "physid" : "1",
+              "serial" : "NO DIMM",
+              "slot" : "DIMM_A5"
+            },
+            {
+              "id" : "bank:2",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0057",
+              "description" : "DIMM Synchronous 2133 MHz (0.5 ns)",
+              "product" : "36ASF2G72PZ-2G1A2",
+              "vendor" : "Micron",
+              "physid" : "2",
+              "serial" : "101B6540",
+              "slot" : "DIMM_A6",
+              "units" : "bytes",
+              "size" : 17179869184,
+              "width" : 64,
+              "clock" : 2133000000
+            },
+            {
+              "id" : "bank:3",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0059",
+              "description" : "DIMM Synchronous [empty]",
+              "product" : "NO DIMM",
+              "vendor" : "NO DIMM",
+              "physid" : "3",
+              "serial" : "NO DIMM",
+              "slot" : "DIMM_A7"
+            }
+          ]
+        },
+        {
+          "id" : "memory:4",
+          "class" : "memory",
+          "physid" : "1"
+        },
+        {
+          "id" : "memory:5",
+          "class" : "memory",
+          "physid" : "2"
+        }
+      ]
     }
   ]
 }
@@ -1070,9 +1258,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch('psutil.virtual_memory', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_memory_psutil(self, mocked_execute, mocked_psutil):
+    def test_get_memory_psutil_v1(self, mocked_execute, mocked_psutil):
         mocked_psutil.return_value.total = 3952 * 1024 * 1024
-        mocked_execute.return_value = LSHW_JSON_OUTPUT
+        mocked_execute.return_value = LSHW_JSON_OUTPUT_V1
         mem = self.hardware.get_memory()
 
         self.assertEqual(3952 * 1024 * 1024, mem.total)
@@ -1080,13 +1268,35 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch('psutil.virtual_memory', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_memory_psutil_exception(self, mocked_execute, mocked_psutil):
-        mocked_execute.return_value = LSHW_JSON_OUTPUT
+    def test_get_memory_psutil_v2(self, mocked_execute, mocked_psutil):
+        mocked_psutil.return_value.total = 3952 * 1024 * 1024
+        mocked_execute.return_value = LSHW_JSON_OUTPUT_V2
+        mem = self.hardware.get_memory()
+
+        self.assertEqual(3952 * 1024 * 1024, mem.total)
+        self.assertEqual(65536, mem.physical_mb)
+
+    @mock.patch('psutil.virtual_memory', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_memory_psutil_exception_v1(self, mocked_execute,
+                                            mocked_psutil):
+        mocked_execute.return_value = LSHW_JSON_OUTPUT_V1
         mocked_psutil.side_effect = AttributeError()
         mem = self.hardware.get_memory()
 
         self.assertIsNone(mem.total)
         self.assertEqual(4096, mem.physical_mb)
+
+    @mock.patch('psutil.virtual_memory', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_memory_psutil_exception_v2(self, mocked_execute,
+                                            mocked_psutil):
+        mocked_execute.return_value = LSHW_JSON_OUTPUT_V2
+        mocked_psutil.side_effect = AttributeError()
+        mem = self.hardware.get_memory()
+
+        self.assertIsNone(mem.total)
+        self.assertEqual(65536, mem.physical_mb)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
@@ -2087,7 +2297,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_system_vendor_info(self, mocked_execute):
-        mocked_execute.return_value = LSHW_JSON_OUTPUT
+        mocked_execute.return_value = LSHW_JSON_OUTPUT_V1
         vendor_info = self.hardware.get_system_vendor_info()
         self.assertEqual('ABC123 (GENERIC_SERVER)', vendor_info.product_name)
         self.assertEqual('1234567', vendor_info.serial_number)
