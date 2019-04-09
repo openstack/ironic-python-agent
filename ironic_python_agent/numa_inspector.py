@@ -49,7 +49,9 @@ def get_numa_node_id(numa_node_dir):
 def get_nodes_memory_info(numa_node_dirs):
     """Collect the NUMA nodes memory information.
 
-    "ram": [{"numa_node": <numa_node_id>, "size_kb": <memory_in_kb>}, ...]
+    The information is returned in the form of::
+
+        "ram": [{"numa_node": <numa_node_id>, "size_kb": <memory_in_kb>}, ...]
 
     :param numa_node_dirs: A list of NUMA node directories
     :raises: IncompatibleNumaFormatError: when unexpected format data
@@ -96,19 +98,22 @@ def get_nodes_memory_info(numa_node_dirs):
 def get_nodes_cores_info(numa_node_dirs):
     """Collect the NUMA nodes cpu's and thread's information.
 
-    "cpus": [
-          {
-            "cpu": <cpu_id>, "numa_node": <numa_node_id>,
-            "thread_siblings": [<list of sibling threads>]
-          },
-          ...,
-        ]
     NUMA nodes path: /sys/devices/system/node/node<node_id>
 
     Thread dirs path: /sys/devices/system/node/node<node_id>/cpu<thread_id>
 
     CPU id file path: /sys/devices/system/node/node<node_id>/cpu<thread_id>/
                       topology/core_id
+
+    The information is returned in the form of::
+
+        "cpus": [
+              {
+                "cpu": <cpu_id>, "numa_node": <numa_node_id>,
+                "thread_siblings": [<list of sibling threads>]
+              },
+              ...,
+            ]
 
     :param numa_node_dirs: A list of NUMA node directories
     :raises: IncompatibleNumaFormatError: when unexpected format data
@@ -167,10 +172,13 @@ def get_nodes_cores_info(numa_node_dirs):
 def get_nodes_nics_info(nic_device_path):
     """Collect the NUMA nodes nics information.
 
-    "nics": [
-          {"name": "<network interface name>", "numa_node": <numa_node_id>},
-          ...,
-        ]
+    The information is returned in the form of::
+
+        "nics": [
+              {"name": "<network interface name>",
+               "numa_node": <numa_node_id>},
+              ...,
+            ]
 
     :param nic_device_path: nic device directory path
     :raises: IncompatibleNumaFormatError: when unexpected format data
@@ -207,25 +215,26 @@ def get_nodes_nics_info(nic_device_path):
 def collect_numa_topology_info(data, failures):
     """Collect the NUMA topology information.
 
-    {
-      "numa_topology": {
-        "ram": [{"numa_node": <numa_node_id>, "size_kb": <memory_in_kb>}, ...],
-        "cpus": [
-          {
-            "cpu": <cpu_id>, "numa_node": <numa_node_id>,
-            "thread_siblings": [<list of sibling threads>]
-          },
-          ...,
-        ],
-        "nics": [
-          {"name": "<network interface name>", "numa_node": <numa_node_id>},
-          ...,
-        ]
-      }
-    }
-
     The data is gathered from /sys/devices/system/node/node<X> and
-    /sys/class/net/ directories.
+    /sys/class/net/ directories. The information is collected in the form of::
+
+      {
+        "numa_topology": {
+          "ram": [{"numa_node": <numa_node_id>, "size_kb": <memory_in_kb>},
+                   ...],
+          "cpus": [
+            {
+              "cpu": <cpu_id>, "numa_node": <numa_node_id>,
+              "thread_siblings": [<list of sibling threads>]
+            },
+            ...,
+          ],
+          "nics": [
+            {"name": "<network interface name>", "numa_node": <numa_node_id>},
+            ...,
+          ]
+        }
+      }
 
     :param data: mutable data that we'll send to inspector
     :param failures: AccumulatedFailures object

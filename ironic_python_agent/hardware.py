@@ -1215,8 +1215,8 @@ def dispatch_to_all_managers(method, *args, **kwargs):
     {HardwareManagerClassName: response}.
 
     :param method: hardware manager method to dispatch
-    :param *args: arguments to dispatched method
-    :param **kwargs: keyword arguments to dispatched method
+    :param args: arguments to dispatched method
+    :param kwargs: keyword arguments to dispatched method
     :raises errors.HardwareManagerMethodNotFound: if all managers raise
         IncompatibleHardwareMethodError.
     :returns: a dictionary with keys for each hardware manager that returns
@@ -1259,8 +1259,8 @@ def dispatch_to_managers(method, *args, **kwargs):
     any result without raising an IncompatibleHardwareMethodError.
 
     :param method: hardware manager method to dispatch
-    :param *args: arguments to dispatched method
-    :param **kwargs: keyword arguments to dispatched method
+    :param args: arguments to dispatched method
+    :param kwargs: keyword arguments to dispatched method
 
     :returns: result of successful dispatch of method
     :raises HardwareManagerMethodNotFound: if all managers failed the method

@@ -76,9 +76,8 @@ def try_execute(*cmd, **kwargs):
     Instead of raising an exception on failure, this method simply
     returns None in case of failure.
 
-    :param *cmd: positional arguments to pass to processutils.execute()
-    :param log_stdout: keyword-only argument: whether to log the output
-    :param **kwargs: keyword arguments to pass to processutils.execute()
+    :param cmd: positional arguments to pass to processutils.execute()
+    :param kwargs: keyword arguments to pass to processutils.execute()
     :raises: UnknownArgumentError on receiving unknown arguments
     :returns: tuple of (stdout, stderr) or None in some error cases
     """
