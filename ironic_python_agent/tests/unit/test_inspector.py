@@ -24,6 +24,7 @@ from oslo_config import cfg
 import requests
 import stevedore
 
+from ironic_python_agent import config
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
@@ -48,8 +49,9 @@ class AcceptingFailure(mock.Mock):
 
 class TestMisc(base.IronicAgentTest):
     def test_default_collector_loadable(self):
-        ext = inspector.extension_manager([inspector.DEFAULT_COLLECTOR])
-        self.assertIs(ext[inspector.DEFAULT_COLLECTOR].plugin,
+        ext = inspector.extension_manager(
+            [config.INSPECTION_DEFAULT_COLLECTOR])
+        self.assertIs(ext[config.INSPECTION_DEFAULT_COLLECTOR].plugin,
                       inspector.collect_default)
 
     def test_raise_on_wrong_collector(self):
@@ -79,6 +81,26 @@ class TestInspect(base.IronicAgentTest):
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure()
         self.assertEqual('uuid1', result)
+
+    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
+    def test_mdns(self, mock_mdns, mock_ext_mgr, mock_call):
+        CONF.set_override('inspection_callback_url', 'mdns')
+        mock_mdns.return_value = 'http://example', {
+            'ipa_inspection_collectors': 'one,two'
+        }
+        mock_ext_mgr.return_value = [self.mock_ext]
+        mock_call.return_value = {'uuid': 'uuid1'}
+
+        result = inspector.inspect()
+
+        self.mock_collect.assert_called_with_failure()
+        mock_call.assert_called_with_failure()
+        self.assertEqual('uuid1', result)
+
+        self.assertEqual('http://example/v1/continue',
+                         CONF.inspection_callback_url)
+        self.assertEqual('one,two', CONF.inspection_collectors)
+        self.assertEqual(['one', 'two'], mock_ext_mgr.call_args[1]['names'])
 
     def test_collectors_option(self, mock_ext_mgr, mock_call):
         CONF.set_override('inspection_collectors', 'foo,bar')
@@ -362,7 +384,7 @@ class TestWaitForDhcp(base.IronicAgentTest):
     def setUp(self):
         super(TestWaitForDhcp, self).setUp()
         CONF.set_override('inspection_dhcp_wait_timeout',
-                          inspector.DEFAULT_DHCP_WAIT_TIMEOUT)
+                          config.INSPECTION_DEFAULT_DHCP_WAIT_TIMEOUT)
 
     @mock.patch.object(time, 'sleep', autospec=True)
     def test_all(self, mocked_sleep, mocked_dispatch):

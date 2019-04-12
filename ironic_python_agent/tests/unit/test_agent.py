@@ -16,6 +16,7 @@ import socket
 import time
 from wsgiref import simple_server
 
+from ironic_lib import exception as lib_exc
 import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -217,6 +218,126 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                          mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
+    @mock.patch('wsgiref.simple_server.WSGIServer', autospec=True)
+    @mock.patch.object(hardware, 'load_managers', autospec=True)
+    def test_url_from_mdns_by_default(self, mock_load_managers, mock_wsgi,
+                                      mock_wait, mock_dispatch, mock_mdns):
+        CONF.set_override('inspection_callback_url', '')
+        mock_mdns.return_value = 'https://example.com', {}
+
+        wsgi_server = mock_wsgi.return_value
+
+        self.agent = agent.IronicPythonAgent(None,
+                                             agent.Host('203.0.113.1', 9990),
+                                             agent.Host('192.0.2.1', 9999),
+                                             3,
+                                             10,
+                                             'eth0',
+                                             300,
+                                             1,
+                                             False)
+
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server.handle_request.side_effect = set_serve_api
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'config': {
+                'heartbeat_timeout': 300
+            }
+        }
+
+        self.agent.run()
+
+        listen_addr = agent.Host('192.0.2.1', 9999)
+        mock_wsgi.assert_called_once_with(
+            (listen_addr.hostname,
+             listen_addr.port),
+            simple_server.WSGIRequestHandler)
+        wsgi_server.set_app.assert_called_once_with(self.agent.api)
+        self.assertTrue(wsgi_server.handle_request.called)
+        mock_wait.assert_called_once_with(mock.ANY)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
+        self.agent.heartbeater.start.assert_called_once_with()
+
+    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
+    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
+    @mock.patch('wsgiref.simple_server.WSGIServer', autospec=True)
+    @mock.patch.object(hardware, 'load_managers', autospec=True)
+    def test_url_from_mdns_explicitly(self, mock_load_managers, mock_wsgi,
+                                      mock_wait, mock_dispatch, mock_mdns):
+        CONF.set_override('inspection_callback_url', '')
+        CONF.set_override('disk_wait_attempts', 0)
+        mock_mdns.return_value = 'https://example.com', {
+            # configuration via mdns
+            'ipa_disk_wait_attempts': '42',
+        }
+
+        wsgi_server = mock_wsgi.return_value
+
+        self.agent = agent.IronicPythonAgent('mdns',
+                                             agent.Host('203.0.113.1', 9990),
+                                             agent.Host('192.0.2.1', 9999),
+                                             3,
+                                             10,
+                                             'eth0',
+                                             300,
+                                             1,
+                                             False)
+
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server.handle_request.side_effect = set_serve_api
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'config': {
+                'heartbeat_timeout': 300
+            }
+        }
+
+        self.agent.run()
+
+        listen_addr = agent.Host('192.0.2.1', 9999)
+        mock_wsgi.assert_called_once_with(
+            (listen_addr.hostname,
+             listen_addr.port),
+            simple_server.WSGIRequestHandler)
+        wsgi_server.set_app.assert_called_once_with(self.agent.api)
+        self.assertTrue(wsgi_server.handle_request.called)
+        mock_wait.assert_called_once_with(mock.ANY)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
+        self.agent.heartbeater.start.assert_called_once_with()
+        # changed via mdns
+        self.assertEqual(42, CONF.disk_wait_attempts)
+
     @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
@@ -314,6 +435,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                          mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
     @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
@@ -330,7 +452,9 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                                 mock_wsgi,
                                                 mock_dispatch,
                                                 mock_inspector,
-                                                mock_wait):
+                                                mock_wait,
+                                                mock_mdns):
+        mock_mdns.side_effect = lib_exc.ServiceLookupFailure()
         # If inspection_callback_url is configured and api_url is not when the
         # agent starts, ensure that the inspection will be called and wsgi
         # server will work as usual. Also, make sure api_client and heartbeater
@@ -369,6 +493,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertFalse(mock_wait.called)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
     @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
@@ -385,7 +510,9 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                                mock_wsgi,
                                                mock_dispatch,
                                                mock_inspector,
-                                               mock_wait):
+                                               mock_wait,
+                                               mock_mdns):
+        mock_mdns.side_effect = lib_exc.ServiceLookupFailure()
         # If both api_url and inspection_callback_url are not configured when
         # the agent starts, ensure that the inspection will be skipped and wsgi
         # server will work as usual. Also, make sure api_client and heartbeater
