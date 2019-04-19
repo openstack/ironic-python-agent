@@ -13,12 +13,12 @@
       - ^tools/.*$
       - ^tox.ini$
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/ironic
       - openstack/ironic-lib
       - openstack/ironic-python-agent
       - openstack/ironic-tempest-plugin
-      - openstack/pyghmi
+      - x/pyghmi
       - openstack/python-ironicclient
       - openstack/tempest
       - openstack/virtualbmc
