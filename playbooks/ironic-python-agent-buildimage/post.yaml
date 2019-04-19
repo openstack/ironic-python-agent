@@ -7,9 +7,9 @@
         state: directory
       delegate_to: localhost
 
-    - name: Copy files from {{ ansible_user_dir }}/src/git.openstack.org/openstack/ironic-python-agent on node
+    - name: Copy files from {{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent on node
       synchronize:
-        src: '{{ ansible_user_dir }}/src/git.openstack.org/openstack/ironic-python-agent/UPLOAD_RAW/'
+        src: '{{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent/UPLOAD_RAW/'
         dest: '{{ zuul.executor.work_root }}/artifacts/{{ image_name }}/files/'
         mode: pull
         copy_links: true
@@ -18,9 +18,9 @@
           - --include=/*
           - --prune-empty-dirs
 
-    - name: Copy files from {{ ansible_user_dir }}/src/git.openstack.org/openstack/ironic-python-agent on node
+    - name: Copy files from {{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent on node
       synchronize:
-        src: '{{ ansible_user_dir }}/src/git.openstack.org/openstack/ironic-python-agent/UPLOAD_TAR/'
+        src: '{{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent/UPLOAD_TAR/'
         dest: '{{ zuul.executor.work_root }}/artifacts/{{ image_name }}/'
         mode: pull
         copy_links: true
@@ -29,9 +29,9 @@
           - --include=/*
           - --prune-empty-dirs
 
-    - name: Copy files from {{ ansible_user_dir }}/src/git.openstack.org/openstack/ironic-python-agent on node
+    - name: Copy files from {{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent on node
       synchronize:
-        src: '{{ ansible_user_dir }}/src/git.openstack.org/openstack/ironic-python-agent/'
+        src: '{{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent/'
         dest: '{{ zuul.executor.log_root }}'
         mode: pull
         copy_links: true
