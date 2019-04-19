@@ -84,7 +84,7 @@
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
       devstack_plugins:
-        ironic-inspector: https://git.openstack.org/openstack/ironic-inspector
+        ironic-inspector: https://opendev.org/openstack/ironic-inspector
 
 - job:
     name: ironic-python-agent-buildimage-base
