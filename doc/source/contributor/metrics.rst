@@ -50,4 +50,4 @@ ship them using the provided metrics library. For example::
 References
 ==========
 For more information, please read the source of the metrics module in
-`ironic-lib <https://git.openstack.org/cgit/openstack/ironic-lib/tree/ironic_lib>`_.
+`ironic-lib <https://opendev.org/openstack/ironic-lib/src/branch/master/ironic_lib>`_.

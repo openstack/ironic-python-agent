@@ -190,7 +190,7 @@ References
 .. [0] CoreOS PXE Images - https://coreos.com/docs/running-coreos/bare-metal/booting-with-pxe/
 .. [1] CoreOS Cloud Init - https://coreos.com/docs/cluster-management/setup/cloudinit-cloud-config/
 .. [2] DIB Element for IPA - https://docs.openstack.org/diskimage-builder/latest/elements/ironic-agent/README.html
-.. [3] cloud-config.yaml - https://git.openstack.org/cgit/openstack/ironic-python-agent/tree/imagebuild/coreos/oem/cloud-config.yml
+.. [3] cloud-config.yaml - https://opendev.org/openstack/ironic-python-agent/src/branch/master/imagebuild/coreos/oem/cloud-config.yml
 
 Indices and tables
 ==================
