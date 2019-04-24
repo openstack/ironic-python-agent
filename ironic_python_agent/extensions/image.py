@@ -30,7 +30,7 @@ from ironic_python_agent import utils
 LOG = log.getLogger(__name__)
 
 
-BIND_MOUNTS = ('/dev', '/proc')
+BIND_MOUNTS = ('/dev', '/proc', '/run')
 
 
 def _get_partition(device, uuid):
