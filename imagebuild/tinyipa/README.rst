@@ -139,7 +139,7 @@ tinyipa::
 Using ironic-lib from source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`ironic-lib <https://git.openstack.org/cgit/openstack/ironic-lib>`_ contains
+`ironic-lib <https://opendev.org/openstack/ironic-lib>`_ contains
 important parts of the provisioning logic. If you need to build an IPA image
 with your local checkout of `ironic-lib`, export the following variable::
 

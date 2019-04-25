@@ -156,7 +156,7 @@ building a custom image can be found at [3]_.
 
 This essentially boils down to the following steps:
 
-#. ``git clone https://git.openstack.org/openstack/ironic-python-agent``
+#. ``git clone https://opendev.org/openstack/ironic-python-agent``
 #. ``cd ironic-python-agent``
 #. ``pip install -r ./requirements.txt``
 #. If not installed, please install the docker container engine. [5]_
