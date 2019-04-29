@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    From IPMI specification v2.0, channel number 1-Bh(1-11) can
+    be used for various types of communications channels.
+    The respectively available channels depend on the specific
+    IPMI implementation for a specific server system.
