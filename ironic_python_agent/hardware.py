@@ -1118,9 +1118,10 @@ class GenericHardwareManager(HardwareManager):
         utils.try_execute('modprobe', 'ipmi_si')
 
         try:
-            # From all the channels 0-15, only 1-7 can be assigned to different
-            # types of communication media and protocols and effectively used
-            for channel in range(1, 8):
+            # From all the channels 0-15, only 1-11 can be assigned to
+            # different types of communication media and protocols and
+            # effectively used
+            for channel in range(1, 12):
                 out, e = utils.execute(
                     "ipmitool lan print {} | awk '/IP Address[ \\t]*:/"
                     " {{print $4}}'".format(channel), shell=True)
