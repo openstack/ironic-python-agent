@@ -31,7 +31,7 @@ download() {
         return 1
     else
         log "Downloading from '${url}'"
-        curl ${url} -o "${destination}"
+        curl -L ${url} -o "${destination}"
     fi
     return 0
 }
