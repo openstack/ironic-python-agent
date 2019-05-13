@@ -117,7 +117,8 @@ def call_inspector(data, failures):
     resp = requests.post(CONF.inspection_callback_url, data=data,
                          verify=verify, cert=cert)
     if resp.status_code >= 400:
-        LOG.error('inspector error %d: %s, proceeding with lookup',
+        LOG.error('inspector %s error %d: %s, proceeding with lookup',
+                  CONF.inspection_callback_url,
                   resp.status_code, resp.content.decode('utf-8'))
         return
 
