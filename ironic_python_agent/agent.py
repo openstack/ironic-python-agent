@@ -137,11 +137,13 @@ class IronicPythonAgentHeartbeater(threading.Thread):
             self.error_delay = self.initial_delay
             LOG.info('heartbeat successful')
         except errors.HeartbeatConflictError:
-            LOG.warning('conflict error sending heartbeat')
+            LOG.warning('conflict error sending heartbeat to {}'.format(
+                self.agent.api_url))
             self.error_delay = min(self.error_delay * self.backoff_factor,
                                    self.max_delay)
         except Exception:
-            LOG.exception('error sending heartbeat')
+            LOG.exception('error sending heartbeat to {}'.format(
+                self.agent.api_url))
             self.error_delay = min(self.error_delay * self.backoff_factor,
                                    self.max_delay)
 
