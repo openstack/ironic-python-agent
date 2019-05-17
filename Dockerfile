@@ -51,4 +51,9 @@ RUN proxy.sh apt-get -y purge gcc-4.6 gcc python2.7-dev && \
 RUN rm -rf /tmp/ironic-python-agent
 RUN rm -rf /var/lib/apt/lists/*
 
+# Remove metadata_csum option when creating filesystems
+# since cirros doesn't support it.
+# This option was added in Debian stretch as default.
+RUN sed -i 's/,metadata_csum//g' /etc/mke2fs.conf
+
 CMD [ "/usr/local/bin/ironic-python-agent" ]
