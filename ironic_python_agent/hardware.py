@@ -1191,9 +1191,10 @@ class GenericHardwareManager(HardwareManager):
                     return address
 
         try:
-            # From all the channels 0-15, only 1-7 can be assigned to different
-            # types of communication media and protocols and effectively used
-            for channel in range(1, 8):
+            # From all the channels 0-15, only 1-11 can be assigned to
+            # different types of communication media and protocols and
+            # effectively used
+            for channel in range(1, 12):
                 addr_mode, e = utils.execute(
                     r"ipmitool lan6 print {} enables | "
                     r"awk '/IPv6\/IPv4 Addressing Enables[ \t]*:/"

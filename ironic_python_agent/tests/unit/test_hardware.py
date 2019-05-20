@@ -2330,7 +2330,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_not_enabled(self, mocked_execute, mte):
-        mocked_execute.side_effect = [('ipv4\n', '')] * 7
+        mocked_execute.side_effect = [('ipv4\n', '')] * 11
         self.assertEqual('::/0', self.hardware.get_bmc_v6address())
 
     @mock.patch.object(utils, 'try_execute', autospec=True)
@@ -2387,7 +2387,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, 'LOG', autospec=True)
     @mock.patch.object(utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_v6address_impitool_invalid_stdout_format(
+    def test_get_bmc_v6address_ipmitool_invalid_stdout_format(
             self, mocked_execute, mte, mocked_log):
         def side_effect(*args, **kwargs):
             if args[0].startswith('ipmitool lan6 print'):
