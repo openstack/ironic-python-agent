@@ -268,9 +268,18 @@ class ImageDownload(object):
         if algo and algo in hashlib.algorithms_available:
             self._hash_algo = hashlib.new(algo)
             self._expected_hash_value = image_info.get('os_hash_value')
-        else:
+        elif image_info.get('checksum'):
             self._hash_algo = hashlib.md5()
             self._expected_hash_value = image_info['checksum']
+        else:
+            message = ('Unable to verify image {} with available checksums. '
+                       'Please make sure the specified \'os_hash_algo\' '
+                       '(currently {}) is supported by this ramdisk, or '
+                       'provide a md5 checksum via the \'checksum\' '
+                       'field'.format(image_info['id'],
+                                      image_info.get('os_hash_algo')))
+            LOG.error(message)
+            raise errors.RESTError(details=message)
 
         self._expected_hash_value = _fetch_checksum(self._expected_hash_value,
                                                     image_info)
@@ -370,7 +379,10 @@ def _validate_image_info(ext, image_info=None, **kwargs):
     """
     image_info = image_info or {}
 
-    for field in ['id', 'urls', 'checksum']:
+    md5sum_avail = False
+    os_hash_checksum_avail = False
+
+    for field in ['id', 'urls']:
         if field not in image_info:
             msg = 'Image is missing \'{}\' field.'.format(field)
             raise errors.InvalidCommandParamsError(msg)
@@ -379,10 +391,12 @@ def _validate_image_info(ext, image_info=None, **kwargs):
         raise errors.InvalidCommandParamsError(
             'Image \'urls\' must be a list with at least one element.')
 
-    if (not isinstance(image_info['checksum'], six.string_types)
-            or not image_info['checksum']):
-        raise errors.InvalidCommandParamsError(
-            'Image \'checksum\' must be a non-empty string.')
+    if 'checksum' in image_info:
+        if (not isinstance(image_info['checksum'], six.string_types)
+                or not image_info['checksum']):
+            raise errors.InvalidCommandParamsError(
+                'Image \'checksum\' must be a non-empty string.')
+        md5sum_avail = True
 
     os_hash_algo = image_info.get('os_hash_algo')
     os_hash_value = image_info.get('os_hash_value')
@@ -395,6 +409,13 @@ def _validate_image_info(ext, image_info=None, **kwargs):
                 not os_hash_value):
             raise errors.InvalidCommandParamsError(
                 'Image \'os_hash_value\' must be a non-empty string.')
+        os_hash_checksum_avail = True
+
+    if not (md5sum_avail or os_hash_checksum_avail):
+        raise errors.InvalidCommandParamsError(
+            'Image checksum is not available, either the \'checksum\' field '
+            'or the \'os_hash_algo\' and \'os_hash_value\' fields pair must '
+            'be set for image verification.')
 
 
 def _validate_partitioning(device):

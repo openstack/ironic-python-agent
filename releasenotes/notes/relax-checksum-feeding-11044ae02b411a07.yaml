@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes an issue that md5 checksum is still required in the image
+    information when os_hash_algo and os_hash_value are present. The
+    ``checksum`` field is now optional, while ``os_hash_algo`` and
+    ``os_hash_value`` fields must be set if the ``checksum`` field is
+    not provided.
