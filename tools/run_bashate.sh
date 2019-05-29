@@ -16,6 +16,8 @@
 # Ignoring E006(Line longer than 79 characters)
 
 find  "$@"  -not \( -type d -name .?\* -prune \)                    \
+            -not \( -type d -name tinyipabuild -prune \)            \
+            -not \( -type d -name tinyipafinal -prune \)            \
             -type f                                                 \
             \(                                                      \
                 -name \*.sh                                         \
