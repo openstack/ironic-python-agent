@@ -17,6 +17,7 @@ import binascii
 import functools
 import json
 import os
+import re
 import shlex
 import time
 
@@ -46,7 +47,7 @@ WARN_BIOSDEVNAME_NOT_FOUND = False
 UNIT_CONVERTER = pint.UnitRegistry(filename=None)
 UNIT_CONVERTER.define('bytes = []')
 UNIT_CONVERTER.define('MB = 1048576 bytes')
-
+_MEMORY_ID_RE = re.compile(r'^memory(:\d+)?$')
 NODE = None
 
 
@@ -706,11 +707,13 @@ class GenericHardwareManager(HardwareManager):
             for sys_child in sys_dict['children']:
                 if sys_child['id'] == 'core':
                     for core_child in sys_child['children']:
-                        if core_child['id'] == 'memory':
-                            if core_child.get('size'):
-                                value = "%(size)s %(units)s" % core_child
-                                physical += int(UNIT_CONVERTER(value).to(
-                                    'MB').magnitude)
+                        if _MEMORY_ID_RE.match(core_child['id']):
+                            for bank in core_child.get('children', ()):
+                                if bank.get('size'):
+                                    value = ("%(size)s %(units)s" % bank)
+                                    physical += int(UNIT_CONVERTER(value).to
+                                                    ('MB').magnitude)
+
             if not physical:
                 LOG.warning('Did not find any physical RAM')
 
