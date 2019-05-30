@@ -88,7 +88,10 @@ fields:
         inspection process instead of ``total``.
 
 ``bmc_address``
-    IP address of the node's BMC (aka IPMI address), optional.
+    IPv4 address of the node's BMC (aka IPMI v4 address), optional.
+
+``bmc_v6address``
+    IPv6 address of the node's BMC (aka IPMI v6 address), optional.
 
 ``disks``
     list of disk block devices with fields: ``name``, ``model``,
