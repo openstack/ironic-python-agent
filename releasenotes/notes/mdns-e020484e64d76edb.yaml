@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Supports fetching baremetal and baremetal introspection endpoints from
+    mDNS instead of providing them via kernel parameters or a configuration
+    file. See `story 2005393
+    <https://storyboard.openstack.org/#!/story/2005393>`_ for more details.
+upgrade:
+  - |
+    When no baremetal API URL is provided (e.g. via the ``ipa-api-url`` kernel
+    parameter), ironic-python-agent now tries to get the URL using mDNS service
+    discovery.

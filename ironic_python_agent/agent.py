@@ -21,6 +21,8 @@ import threading
 import time
 from wsgiref import simple_server
 
+from ironic_lib import exception as lib_exc
+from ironic_lib import mdns
 import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -31,6 +33,7 @@ from six.moves.urllib import parse as urlparse
 from stevedore import extension
 
 from ironic_python_agent.api import app
+from ironic_python_agent import config
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
@@ -176,6 +179,21 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             invoke_kwds={'agent': self},
         )
         self.api_url = api_url
+        if not self.api_url or self.api_url == 'mdns':
+            try:
+                self.api_url, params = mdns.get_endpoint('baremetal')
+            except lib_exc.ServiceLookupFailure:
+                if self.api_url:
+                    # mDNS explicitly requested, report failure.
+                    raise
+                else:
+                    # implicit fallback to mDNS, do not fail (maybe we're only
+                    # running inspection).
+                    LOG.warning('Could not get baremetal endpoint from mDNS, '
+                                'will not heartbeat')
+            else:
+                config.override(params)
+
         if self.api_url:
             self.api_client = ironic_api_client.APIClient(self.api_url)
             self.heartbeater = IronicPythonAgentHeartbeater(self)

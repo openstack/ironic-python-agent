@@ -13,23 +13,29 @@
 # limitations under the License.
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
-from ironic_python_agent import inspector
 from ironic_python_agent import netutils
 from ironic_python_agent import utils
 
+LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
 APARAMS = utils.get_agent_params()
+
+INSPECTION_DEFAULT_COLLECTOR = 'default'
+INSPECTION_DEFAULT_DHCP_WAIT_TIMEOUT = 60
 
 cli_opts = [
     cfg.StrOpt('api_url',
                default=APARAMS.get('ipa-api-url'),
                deprecated_name='api-url',
-               regex='^http(s?):\\/\\/.+',
+               regex='^(mdns|http(s?):\\/\\/.+)',
                help='URL of the Ironic API. '
                     'Can be supplied as "ipa-api-url" kernel parameter.'
-                    'The value must start with either http:// or https://.'),
+                    'The value must start with either http:// or https://. '
+                    'A special value "mdns" can be specified to fetch the '
+                    'URL using multicast DNS service discovery.'),
 
     cfg.StrOpt('listen_host',
                default=APARAMS.get('ipa-listen-host',
@@ -133,12 +139,14 @@ cli_opts = [
                help='Endpoint of ironic-inspector. If set, hardware inventory '
                     'will be collected and sent to ironic-inspector '
                     'on start up. '
+                    'A special value "mdns" can be specified to fetch the '
+                    'URL using multicast DNS service discovery. '
                     'Can be supplied as "ipa-inspection-callback-url" '
                     'kernel parameter.'),
 
     cfg.StrOpt('inspection_collectors',
                default=APARAMS.get('ipa-inspection-collectors',
-                                   inspector.DEFAULT_COLLECTOR),
+                                   INSPECTION_DEFAULT_COLLECTOR),
                help='Comma-separated list of plugins providing additional '
                     'hardware data for inspection, empty value gives '
                     'a minimum required set of plugins. '
@@ -148,7 +156,7 @@ cli_opts = [
     cfg.IntOpt('inspection_dhcp_wait_timeout',
                min=0,
                default=APARAMS.get('ipa-inspection-dhcp-wait-timeout',
-                                   inspector.DEFAULT_DHCP_WAIT_TIMEOUT),
+                                   INSPECTION_DEFAULT_DHCP_WAIT_TIMEOUT),
                help='Maximum time (in seconds) to wait for the PXE NIC '
                     '(or all NICs if inspection_dhcp_all_interfaces is True) '
                     'to get its IP address via DHCP before inspection. '
@@ -216,3 +224,29 @@ CONF.register_cli_opts(cli_opts)
 
 def list_opts():
     return [('DEFAULT', cli_opts)]
+
+
+def override(params):
+    """Override configuration with values from a dictionary.
+
+    This is used for configuration overrides from mDNS.
+
+    :param params: new configuration parameters as a dict.
+    """
+    if not params:
+        return
+
+    LOG.debug('Overriding configuration with %s', params)
+    for key, value in params.items():
+        if key.startswith('ipa_'):
+            key = key[4:]
+        else:
+            LOG.warning('Skipping unknown configuration option %s', key)
+            continue
+
+        try:
+            CONF.set_override(key, value)
+        except Exception as exc:
+            LOG.warning('Unable to override configuration option %(key)s '
+                        'with %(value)r: %(exc)s',
+                        {'key': key, 'value': value, 'exc': exc})

@@ -16,6 +16,7 @@
 import os
 import time
 
+from ironic_lib import mdns
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -24,6 +25,7 @@ from oslo_utils import excutils
 import requests
 import stevedore
 
+from ironic_python_agent import config
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
@@ -32,8 +34,6 @@ from ironic_python_agent import utils
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
-DEFAULT_COLLECTOR = 'default'
-DEFAULT_DHCP_WAIT_TIMEOUT = 60
 
 _DHCP_RETRY_INTERVAL = 2
 _COLLECTOR_NS = 'ironic_python_agent.inspector.collectors'
@@ -63,6 +63,15 @@ def inspect():
     if not CONF.inspection_callback_url:
         LOG.info('Inspection is disabled, skipping')
         return
+
+    if CONF.inspection_callback_url == 'mdns':
+        LOG.debug('Fetching the inspection URL from mDNS')
+        url, params = mdns.get_endpoint('baremetal-introspection')
+        # We expect a proper catalog URL, which doesn't include any path.
+        CONF.set_override('inspection_callback_url',
+                          url.rstrip('/') + '/v1/continue')
+        config.override(params)
+
     collector_names = [x.strip() for x in CONF.inspection_collectors.split(',')
                        if x.strip()]
     LOG.info('inspection is enabled with collectors %s', collector_names)
