@@ -28,6 +28,8 @@
         - openstack-tox-functional:
             voting: false
         - openstack-tox-lower-constraints
+        - ipa-tox-bandit:
+            voting: false
     gate:
       queue: ironic
       jobs:

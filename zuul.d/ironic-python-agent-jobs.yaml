@@ -142,3 +142,20 @@
         s-container: True
         s-object: True
         s-proxy: True
+
+- job:
+    # Security testing for known issues
+    name: ipa-tox-bandit
+    parent: openstack-tox
+    timeout: 2400
+    vars:
+      tox_envlist: bandit
+    irrelevant-files:
+      - ^test-requirements.txt$
+      - ^.*\.rst$
+      - ^doc/.*$
+      - ^ironic_python_agent/tests/.*$
+      - ^releasenotes/.*$
+      - ^setup.cfg$
+      - ^tools/.*$
+      - ^tox.ini$
