@@ -183,7 +183,7 @@ def _is_md_device(raid_device):
     :returns: True if the device is an md device, False otherwise.
     """
     try:
-        utils.execute("mdadm --detail {}".format(raid_device))
+        utils.execute('mdadm', '--detail', raid_device)
         LOG.debug("%s is an md device", raid_device)
         return True
     except processutils.ProcessExecutionError:
@@ -201,10 +201,9 @@ def _md_restart(raid_device):
     """
     try:
         component_devices = _get_component_devices(raid_device)
-        cmd = "mdadm --stop {}".format(raid_device)
-        utils.execute(cmd)
-        utils.execute("mdadm --assemble {} {}".format(
-                      raid_device, ' '.join(component_devices)))
+        utils.execute('mdadm', '--stop', raid_device)
+        utils.execute('mdadm', '--assemble', raid_device,
+                      *component_devices)
     except processutils.ProcessExecutionError as e:
         error_msg = ('Could not restart md device %(dev)s: %(err)s' %
                      {'dev': raid_device, 'err': e})
@@ -1438,8 +1437,8 @@ class GenericHardwareManager(HardwareManager):
         raid_device_count = len(block_devices)
         for index, logical_disk in enumerate(logical_disks):
             md_device = '/dev/md%d' % index
-            component_devices = ' '.join(
-                device.name + str(index + 1) for device in block_devices)
+            component_devices = [device.name + str(index + 1)
+                                 for device in block_devices]
             raid_level = logical_disk['raid_level']
             # The schema check allows '1+0', but mdadm knows it as '10'.
             if raid_level == '1+0':
@@ -1447,14 +1446,13 @@ class GenericHardwareManager(HardwareManager):
             try:
                 LOG.debug("Creating md device {} on {}".format(
                           md_device, component_devices))
-                cmd = ("mdadm --create {} --level={} --raid-devices={} {} "
-                       "--force --run --metadata=1").format(
-                           md_device, raid_level, raid_device_count,
-                           component_devices)
-                utils.execute(cmd)
+                utils.execute('mdadm', '--create', md_device, '--force',
+                              '--run', '--metadata=1', '--level', raid_level,
+                              '--raid-devices', raid_device_count,
+                              *component_devices)
             except processutils.ProcessExecutionError as e:
                 msg = "Failed to create md device {} on {}: {}".format(
-                    md_device, component_devices, e)
+                    md_device, ' '.join(component_devices), e)
                 raise errors.SoftwareRAIDError(msg)
 
         LOG.info("Successfully created Software RAID")

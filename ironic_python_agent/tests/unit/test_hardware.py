@@ -2495,10 +2495,6 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         result = self.hardware.create_configuration(self.node, [])
 
-        cmd_md0 = ("mdadm --create /dev/md0 --level=1 --raid-devices=2 "
-                   "/dev/sda1 /dev/sdb1 --force --run --metadata=1")
-        cmd_md1 = ("mdadm --create /dev/md1 --level=0 --raid-devices=2 "
-                   "/dev/sda2 /dev/sdb2 --force --run --metadata=1")
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
@@ -2510,8 +2506,12 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       'mkpart', 'primary', 102400, '-1'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', 102400, '-1'),
-            mock.call(cmd_md0),
-            mock.call(cmd_md1)])
+            mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
+                      '--metadata=1', '--level', '1', '--raid-devices', 2,
+                      '/dev/sda1', '/dev/sdb1'),
+            mock.call('mdadm', '--create', '/dev/md1', '--force', '--run',
+                      '--metadata=1', '--level', '0', '--raid-devices', 2,
+                      '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
 
     @mock.patch.object(utils, 'execute', autospec=True)
