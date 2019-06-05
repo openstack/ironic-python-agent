@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Adds support for software RAID via the generic hardware manager. By
+    means of the target_raid_config a single RAID-1 or one RAID-1 plus
+    one RAID-N can be configured (where N can be 0, 1, and 1+0). The
+    RAID is created/deleted during manual cleaning. Note that this
+    initial implementation will use all available devices for the setup
+    of the software RAID device(s).

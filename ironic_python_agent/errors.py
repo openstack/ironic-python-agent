@@ -204,6 +204,15 @@ class BlockDeviceError(RESTError):
         super(BlockDeviceError, self).__init__(details)
 
 
+class SoftwareRAIDError(RESTError):
+    """Error raised when a Software RAID causes an error."""
+
+    message = 'Software RAID caused unknown error'
+
+    def __init__(self, details):
+        super(SoftwareRAIDError, self).__init__(details)
+
+
 class VirtualMediaBootError(RESTError):
     """Error raised when virtual media device cannot be found for config."""
 

@@ -114,6 +114,104 @@ def _check_for_iscsi():
                     "Error: %s", e)
 
 
+def _get_component_devices(raid_device):
+    """Get the component devices of a Software RAID device.
+
+    Examine an md device and return its constituent devices.
+
+    :param raid_device: A Software RAID block device name.
+    :returns: A list of the component devices.
+    """
+    if not raid_device:
+        return []
+
+    component_devices = []
+    try:
+        out, _ = utils.execute('mdadm', '--detail', raid_device,
+                               use_standard_locale=True)
+    except processutils.ProcessExecutionError as e:
+        msg = ('Could not get component devices of %(dev)s: %(err)s' %
+               {'dev': raid_device, 'err': e})
+        raise errors.SoftwareRAIDError(msg)
+
+    lines = out.splitlines()
+    for line in lines:
+        if 'active sync' not in line:
+            continue
+        device = re.findall(r'/dev/\w+', line)
+        component_devices += device
+
+    return component_devices
+
+
+def _get_holder_disks(raid_device):
+    """Get the holder disks of a Software RAID device.
+
+    Examine an md device and return its underlying disks.
+
+    :param raid_device: A Software RAID block device name.
+    :returns: A list of the holder disks.
+    """
+    if not raid_device:
+        return []
+
+    holder_disks = []
+    try:
+        out, _ = utils.execute('mdadm', '--detail', raid_device,
+                               use_standard_locale=True)
+    except processutils.ProcessExecutionError as e:
+        msg = ('Could not get holder disks of %(dev)s: %(err)s' %
+               {'dev': raid_device, 'err': e})
+        raise errors.SoftwareRAIDError(msg)
+
+    lines = out.splitlines()
+    for line in lines:
+        if 'active sync' not in line:
+            continue
+        device = re.findall(r'/dev/\D+', line)
+        holder_disks += device
+
+    return holder_disks
+
+
+def _is_md_device(raid_device):
+    """Check if a device is an md device
+
+    Check if a device is a Software RAID (md) device.
+
+    :param raid_device: A Software RAID block device name.
+    :returns: True if the device is an md device, False otherwise.
+    """
+    try:
+        utils.execute("mdadm --detail {}".format(raid_device))
+        LOG.debug("%s is an md device", raid_device)
+        return True
+    except processutils.ProcessExecutionError:
+        LOG.debug("%s is not an md device", raid_device)
+        return False
+
+
+def _md_restart(raid_device):
+    """Restart an md device
+
+    Stop and re-assemble a Software RAID (md) device.
+
+    :param raid_device: A Software RAID block device name.
+    :raises: CommandExecutionError in case the restart fails.
+    """
+    try:
+        component_devices = _get_component_devices(raid_device)
+        cmd = "mdadm --stop {}".format(raid_device)
+        utils.execute(cmd)
+        utils.execute("mdadm --assemble {} {}".format(
+                      raid_device, ' '.join(component_devices)))
+    except processutils.ProcessExecutionError as e:
+        error_msg = ('Could not restart md device %(dev)s: %(err)s' %
+                     {'dev': raid_device, 'err': e})
+        LOG.error(error_msg)
+        raise errors.CommandExecutionError(error_msg)
+
+
 def list_all_block_devices(block_type='disk',
                            ignore_raid=False):
     """List all physical block devices
@@ -1233,8 +1331,284 @@ class GenericHardwareManager(HardwareManager):
                 'interface': 'deploy',
                 'reboot_requested': False,
                 'abortable': True
+            },
+            {
+                'step': 'delete_configuration',
+                'priority': 0,
+                'interface': 'raid',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'create_configuration',
+                'priority': 0,
+                'interface': 'raid',
+                'reboot_requested': False,
+                'abortable': True
             }
         ]
+
+    def create_configuration(self, node, ports):
+        """Create a RAID configuration.
+
+        Unless overwritten by a local hardware manager, this method
+        will create a software RAID configuration as read from the
+        node's 'target_raid_config'.
+
+        :param node: A dictionary of the node object.
+        :param ports: A list of dictionaries containing information
+                      of ports for the node.
+        :returns: The current RAID configuration in the usual format.
+        :raises: SoftwareRAIDError if the desired configuration is not
+                 valid or if there was an error when creating the RAID
+                 devices.
+        """
+        LOG.info("Creating Software RAID")
+
+        raid_config = node.get('target_raid_config', {})
+
+        # No 'software' controller: do nothing. If 'controller' is
+        # set to 'software' on only one of the drives, the validation
+        # code will catch it.
+        software_raid = False
+        logical_disks = raid_config.get('logical_disks')
+        for logical_disk in logical_disks:
+            if logical_disk.get('controller') == 'software':
+                software_raid = True
+                break
+        if not software_raid:
+            LOG.debug("No Software RAID config found")
+            return {}
+
+        LOG.info("Creating Software RAID")
+
+        # Check if the config is compliant with current limitations.
+        self.validate_configuration(raid_config, node)
+
+        # Log the validated target_raid_configuration.
+        LOG.debug("Target Software RAID configuration: %s", raid_config)
+
+        # Make sure there are no partitions yet (or left behind).
+        block_devices = self.list_block_devices()
+        block_devices_partitions = self.list_block_devices(
+            include_partitions=True)
+        if len(block_devices) != len(block_devices_partitions):
+            partitions = ' '.join(
+                partition.name for partition in block_devices_partitions)
+            msg = "Partitions detected during RAID config: {}". format(
+                  partitions)
+            raise errors.SoftwareRAIDError(msg)
+
+        # Create an MBR partition table on each disk.
+        # TODO(arne_wiebalck): Check if GPT would work as well.
+        for block_device in block_devices:
+            LOG.info("Creating partition table on {}".format(
+                block_device.name))
+            try:
+                utils.execute('parted', block_device.name, '-s', '--',
+                              'mklabel', 'msdos')
+            except processutils.ProcessExecutionError as e:
+                msg = "Failed to create partition table on {}: {}".format(
+                    block_device.name, e)
+                raise errors.SoftwareRAIDError(msg)
+
+        # Create the partitions which will become the component devices.
+        logical_disks = raid_config.get('logical_disks')
+        sector = '2048s'
+        for logical_disk in logical_disks:
+            psize = logical_disk['size_gb']
+            if psize == 'MAX':
+                psize = '-1'
+            else:
+                psize = int(psize) * 1024
+            for device in block_devices:
+                try:
+                    LOG.debug("Creating partition on {}: {} {}".format(
+                        device.name, sector, psize))
+                    utils.execute('parted', device.name, '-s', '-a',
+                                  'optimal', '--', 'mkpart', 'primary',
+                                  sector, psize)
+                except processutils.ProcessExecutionError as e:
+                    msg = "Failed to create partitions on {}: {}".format(
+                        device.name, e)
+                    raise errors.SoftwareRAIDError(msg)
+            sector = psize
+
+        # Create the RAID devices.
+        raid_device_count = len(block_devices)
+        for index, logical_disk in enumerate(logical_disks):
+            md_device = '/dev/md%d' % index
+            component_devices = ' '.join(
+                device.name + str(index + 1) for device in block_devices)
+            raid_level = logical_disk['raid_level']
+            # The schema check allows '1+0', but mdadm knows it as '10'.
+            if raid_level == '1+0':
+                raid_level = '10'
+            try:
+                LOG.debug("Creating md device {} on {}".format(
+                          md_device, component_devices))
+                cmd = ("mdadm --create {} --level={} --raid-devices={} {} "
+                       "--force --run --metadata=1").format(
+                           md_device, raid_level, raid_device_count,
+                           component_devices)
+                utils.execute(cmd)
+            except processutils.ProcessExecutionError as e:
+                msg = "Failed to create md device {} on {}: {}".format(
+                    md_device, component_devices, e)
+                raise errors.SoftwareRAIDError(msg)
+
+        LOG.info("Successfully created Software RAID")
+
+        return raid_config
+
+    def delete_configuration(self, node, ports):
+        """Delete a RAID configuration.
+
+        Unless overwritten by a local hardware manager, this method
+        will delete all software RAID devices on the node.
+        NOTE(arne_wiebalck): It may be worth considering to only
+        delete RAID devices in the node's 'target_raid_config'. If
+        that config has been lost, though, the cleanup may become
+        difficult. So, for now, we delete everything we detect.
+
+        :param node: A dictionary of the node object
+        :param ports: A list of dictionaries containing information
+                      of ports for the node
+        """
+
+        raid_devices = list_all_block_devices(block_type='raid',
+                                              ignore_raid=False)
+        for raid_device in raid_devices:
+            LOG.info("Deleting Software RAID device {}".format(
+                     raid_device.name))
+
+            component_devices = _get_component_devices(raid_device.name)
+            LOG.debug("Found component devices {}".format(
+                      component_devices))
+            holder_disks = _get_holder_disks(raid_device.name)
+            LOG.debug("Found holder disks {}".format(
+                      holder_disks))
+
+            # Remove md devices.
+            try:
+                utils.execute('wipefs', '-af', raid_device.name)
+            except processutils.ProcessExecutionError as e:
+                msg = "Failed to wipefs {}: {}".format(
+                    raid_device.name, e)
+                LOG.warning(msg)
+            try:
+                utils.execute('mdadm', '--stop', raid_device.name)
+            except processutils.ProcessExecutionError as e:
+                msg = "Failed to stop {}: {}".format(
+                    raid_device.name, e)
+                LOG.warning(msg)
+
+            # Remove md metadata from component devices.
+            for component_device in component_devices:
+                try:
+                    utils.execute('mdadm', '--examine',
+                                  component_device)
+                except processutils.ProcessExecutionError as e:
+                    if "No md superblock detected" in str(e):
+                        # actually not a component device
+                        continue
+                    else:
+                        msg = "Failed to examine device {}: {}".format(
+                              component_device, e)
+                        raise errors.SoftwareRAIDError(msg)
+
+                LOG.debug("Deleting md superblock on {}".format(
+                          component_device))
+                try:
+                    utils.execute('mdadm', '--zero-superblock',
+                                  component_device)
+                except processutils.ProcessExecutionError as e:
+                    msg = "Failed to remove superblock from {}: {}".format(
+                        raid_device.name, e)
+                    LOG.warning(msg)
+
+            # Remove the partitions we created during create_configuration.
+            for holder_disk in holder_disks:
+                LOG.debug("Removing partitions on {}".format(
+                          holder_disk))
+                try:
+                    utils.execute('wipefs', '-af', holder_disk)
+                except processutils.ProcessExecutionError as e:
+                    LOG.warning("Failed to remove partitions on {}".format(
+                        holder_disk))
+
+            LOG.info("Deleted Software RAID device {}".format(
+                     raid_device.name))
+
+        LOG.debug("Finished deleting Software RAID(s)")
+
+    def validate_configuration(self, raid_config, node):
+        """Validate a (software) RAID configuration
+
+        Validate a given raid_config, in particular with respect to
+        the limitations of the current implementation of software
+        RAID support.
+
+        :param raid_config: The current RAID configuration in the usual format.
+        """
+        LOG.debug("Validating Software RAID config: {}".format(raid_config))
+
+        if not raid_config:
+            LOG.error("No RAID config passed")
+            return False
+
+        logical_disks = raid_config.get('logical_disks')
+        if not logical_disks:
+            msg = "RAID config contains no logical disks"
+            raise errors.SoftwareRAIDError(msg)
+
+        raid_errors = []
+
+        # Only one or two RAID devices are supported for now.
+        if len(logical_disks) not in [1, 2]:
+            msg = ("Software RAID configuration requires one or "
+                   "two logical disks")
+            raid_errors.append(msg)
+
+        # All disks need to be flagged for Software RAID
+        for logical_disk in logical_disks:
+            if logical_disk.get('controller') != 'software':
+                msg = ("Software RAID configuration requires all logical "
+                       "disks to have 'controller'='software'")
+                raid_errors.append(msg)
+
+        # The first RAID device needs to be RAID-1.
+        if logical_disks[0]['raid_level'] != '1':
+            msg = ("Software RAID Configuration requires RAID-1 for the "
+                   "first logical disk")
+            raid_errors.append(msg)
+
+        # Additional checks when we have two RAID devices.
+        if len(logical_disks) == 2:
+            size1 = logical_disks[0]['size_gb']
+            size2 = logical_disks[1]['size_gb']
+
+            # Only one logical disk is allowed to span the whole device.
+            if size1 == 'MAX' and size2 == 'MAX':
+                msg = ("Software RAID can have only one RAID device with "
+                       "size 'MAX'")
+                raid_errors.append(msg)
+
+            # Check the accepted RAID levels.
+            accepted_levels = ['0', '1', '1+0']
+            current_level = logical_disks[1]['raid_level']
+            if current_level not in accepted_levels:
+                msg = ("Software RAID configuration does not support "
+                       "RAID level %s" % current_level)
+                raid_errors.append(msg)
+
+        if raid_errors:
+            error = ('Could not validate Software RAID config for %(node)s: '
+                     '%(errors)s') % {'node': node['uuid'],
+                                      'errors': '; '.join(raid_errors)}
+            raise errors.SoftwareRAIDError(error)
+
+        return True
 
 
 def _compare_extensions(ext1, ext2):

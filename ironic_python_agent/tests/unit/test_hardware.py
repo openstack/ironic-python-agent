@@ -610,6 +610,35 @@ IPv6 Static Address 2:
     Status:         disabled
 """
 
+MDADM_DETAIL_OUTPUT = ("""
+/dev/md0:
+           Version : 1.0
+     Creation Time : Fri Feb 15 12:37:44 2019
+        Raid Level : raid1
+        Array Size : 1048512 (1023.94 MiB 1073.68 MB)
+     Used Dev Size : 1048512 (1023.94 MiB 1073.68 MB)
+      Raid Devices : 2
+     Total Devices : 2
+       Persistence : Superblock is persistent
+
+       Update Time : Fri Feb 15 12:38:02 2019
+             State : clean
+    Active Devices : 2
+   Working Devices : 2
+    Failed Devices : 0
+     Spare Devices : 0
+
+Consistency Policy : resync
+
+              Name : abc.xyz.com:0  (local to host abc.xyz.com)
+              UUID : 83143055:2781ddf5:2c8f44c7:9b45d92e
+            Events : 17
+
+    Number   Major   Minor   RaidDevice State
+       0     253       64        0      active sync   /dev/vde1
+       1     253       80        1      active sync   /dev/vdf1
+""")
+
 
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
@@ -670,6 +699,20 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 'step': 'erase_devices_metadata',
                 'priority': 99,
                 'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'delete_configuration',
+                'priority': 0,
+                'interface': 'raid',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'create_configuration',
+                'priority': 0,
+                'interface': 'raid',
                 'reboot_requested': False,
                 'abortable': True
             }
@@ -2421,6 +2464,325 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = side_effect
         self.assertEqual('2001:5678:5678:5678:5678:5678:5678:5678',
                          self.hardware.get_bmc_v6address())
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_validate_configuration_no_configuration(self, mocked_execute):
+        self.assertRaises(errors.SoftwareRAIDError,
+                          self.hardware.validate_configuration,
+                          self.node, [])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/sda', 'sda', 1073741824, True)
+        device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 1073741824, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.return_value = [device1, device2]
+
+        result = self.hardware.create_configuration(self.node, [])
+
+        cmd_md0 = ("mdadm --create /dev/md0 --level=1 --raid-devices=2 "
+                   "/dev/sda1 /dev/sdb1 --force --run --metadata=1")
+        cmd_md1 = ("mdadm --create /dev/md1 --level=0 --raid-devices=2 "
+                   "/dev/sda2 /dev/sdb2 --force --run --metadata=1")
+        mocked_execute.assert_has_calls([
+            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
+            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
+            mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '2048s', 102400),
+            mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '2048s', 102400),
+            mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', 102400, '-1'),
+            mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', 102400, '-1'),
+            mock.call(cmd_md0),
+            mock.call(cmd_md1)])
+        self.assertEqual(raid_config, result)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_invalid_raid_config(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.node['target_raid_config'] = raid_config
+        self.assertRaises(errors.SoftwareRAIDError,
+                          self.hardware.create_configuration,
+                          self.node, [])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_partitions_detected(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/sda', 'sda', 1073741824, True)
+        device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 1073741824, True)
+        partition1 = hardware.BlockDevice('/dev/sdb1', 'sdb1', 268435456, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.side_effect = [
+            [device1, device2],
+            [device1, device2, partition1]]
+        self.assertRaises(errors.SoftwareRAIDError,
+                          self.hardware.create_configuration,
+                          self.node, [])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_device_handling_failures(self,
+                                                           mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/sda', 'sda', 1073741824, True)
+        device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 1073741824, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.side_effect = [
+            [device1, device2],
+            [device1, device2],
+            [device1, device2],
+            [device1, device2],
+            [device1, device2],
+            [device1, device2]]
+
+        # partition table creation
+        error_regex = "Failed to create partition table on /dev/sda"
+        mocked_execute.side_effect = [
+            processutils.ProcessExecutionError]
+        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+                               self.hardware.create_configuration,
+                               self.node, [])
+        # partition creation
+        error_regex = "Failed to create partitions on /dev/sda"
+        mocked_execute.side_effect = [
+            None, None,  # partition tables on sd{a,b}
+            processutils.ProcessExecutionError]
+        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+                               self.hardware.create_configuration,
+                               self.node, [])
+        # raid device creation
+        error_regex = ("Failed to create md device /dev/md0 "
+                       "on /dev/sda1 /dev/sdb1")
+        mocked_execute.side_effect = [
+            None, None,  # partition tables on sd{a,b}
+            None, None,  # RAID-1 partitions on sd{a,b}
+            None, None,  # RAID-N partitions on sd{a,b}
+            processutils.ProcessExecutionError]
+        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+                               self.hardware.create_configuration,
+                               self.node, [])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test__get_component_devices(self, mocked_execute):
+        mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT, '')]
+        raid_device = hardware.BlockDevice('/dev/md0', 'RAID-1',
+                                           1073741824, True)
+        component_devices = hardware._get_component_devices(raid_device.name)
+        self.assertEqual(['/dev/vde1', '/dev/vdf1'], component_devices)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test__get_holder_disks(self, mocked_execute):
+        mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT, '')]
+        raid_device = hardware.BlockDevice('/dev/md0', 'RAID-1',
+                                           1073741824, True)
+        holder_disks = hardware._get_holder_disks(raid_device.name)
+        self.assertEqual(['/dev/vde', '/dev/vdf'], holder_disks)
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_delete_configuration(self, mocked_execute, mocked_list):
+        raid_device1 = hardware.BlockDevice('/dev/md0', 'RAID-1',
+                                            1073741824, True)
+        raid_device2 = hardware.BlockDevice('/dev/md1', 'RAID-0',
+                                            2147483648, True)
+        hardware.list_all_block_devices.side_effect = [
+            [raid_device1, raid_device2]]
+        hardware._get_component_devices = mock.Mock()
+        hardware._get_component_devices.side_effect = [
+            ["/dev/sda1", "/dev/sda2"],
+            ["/dev/sdb1", "/dev/sdb2"]]
+        hardware._get_holder_disks = mock.Mock()
+        hardware._get_holder_disks.side_effect = [
+            ["/dev/sda", "/dev/sdb"],
+            ["/dev/sda", "/dev/sdb"]]
+        mocked_execute.side_effect = [
+            None, None, None,
+            ['_', 'mdadm --examine output for sda1'],
+            None,
+            ['_', 'mdadm --examine output for sdb1'],
+            None, None, None,
+            None, None, None,
+            ['_', 'mdadm --examine output for sda2'],
+            None,
+            ['_', 'mdadm --examine output for sdb2'],
+            None, None, None]
+
+        self.hardware.delete_configuration(self.node, [])
+
+        mocked_execute.assert_has_calls([
+            mock.call('wipefs', '-af', '/dev/md0'),
+            mock.call('mdadm', '--stop', '/dev/md0'),
+            mock.call('mdadm', '--examine', '/dev/sda1'),
+            mock.call('mdadm', '--zero-superblock', '/dev/sda1'),
+            mock.call('mdadm', '--examine', '/dev/sda2'),
+            mock.call('mdadm', '--zero-superblock', '/dev/sda2'),
+            mock.call('wipefs', '-af', '/dev/sda'),
+            mock.call('wipefs', '-af', '/dev/sdb'),
+            mock.call('wipefs', '-af', '/dev/md1'),
+            mock.call('mdadm', '--stop', '/dev/md1'),
+            mock.call('mdadm', '--examine', '/dev/sdb1'),
+            mock.call('mdadm', '--zero-superblock', '/dev/sdb1'),
+            mock.call('mdadm', '--examine', '/dev/sdb2'),
+            mock.call('mdadm', '--zero-superblock', '/dev/sdb2'),
+            mock.call('wipefs', '-af', '/dev/sda'),
+            mock.call('wipefs', '-af', '/dev/sdb')])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_validate_configuration_valid_raid1(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.assertEqual(True,
+                         self.hardware.validate_configuration(raid_config,
+                                                              self.node))
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_validate_configuration_valid_raid1_raidN(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.assertEqual(True,
+                         self.hardware.validate_configuration(raid_config,
+                                                              self.node))
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_validate_configuration_invalid_MAX_MAX(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.assertRaises(errors.SoftwareRAIDError,
+                          self.hardware.validate_configuration,
+                          raid_config, self.node)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_validate_configuration_invalid_raid_level(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "42",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.assertRaises(errors.SoftwareRAIDError,
+                          self.hardware.validate_configuration,
+                          raid_config, self.node)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_validate_configuration_invalid_no_of_raids(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "1+0",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.assertRaises(errors.SoftwareRAIDError,
+                          self.hardware.validate_configuration,
+                          raid_config, self.node)
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_system_vendor_info(self, mocked_execute):
