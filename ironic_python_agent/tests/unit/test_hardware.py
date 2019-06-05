@@ -2628,11 +2628,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(['/dev/vde1', '/dev/vdf1'], component_devices)
 
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_holder_disks(self, mocked_execute):
+    def test_get_holder_disks(self, mocked_execute):
         mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT, '')]
         raid_device = hardware.BlockDevice('/dev/md0', 'RAID-1',
                                            1073741824, True)
-        holder_disks = hardware._get_holder_disks(raid_device.name)
+        holder_disks = hardware.get_holder_disks(raid_device.name)
         self.assertEqual(['/dev/vde', '/dev/vdf'], holder_disks)
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
@@ -2648,8 +2648,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         hardware._get_component_devices.side_effect = [
             ["/dev/sda1", "/dev/sda2"],
             ["/dev/sdb1", "/dev/sdb2"]]
-        hardware._get_holder_disks = mock.Mock()
-        hardware._get_holder_disks.side_effect = [
+        hardware.get_holder_disks = mock.Mock()
+        hardware.get_holder_disks.side_effect = [
             ["/dev/sda", "/dev/sdb"],
             ["/dev/sda", "/dev/sdb"]]
         mocked_execute.side_effect = [

@@ -48,6 +48,15 @@ def _get_partition(device, uuid):
             LOG.warning("Couldn't re-read the partition table "
                         "on device %s", device)
 
+        # If the deploy device is an md device, we want to install on
+        # the first partition. We clearly take a shortcut here for now.
+        # TODO(arne_wiebalck): Would it possible to use the partition
+        #                      UUID and use the "normal" discovery instead?
+        if hardware.is_md_device(device):
+            md_partition = device + 'p1'
+            LOG.debug("Found md device with partition %s", md_partition)
+            return md_partition
+
         lsblk = utils.execute('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE', device)
         report = lsblk[0]
         for line in report.split('\n'):
@@ -102,6 +111,16 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         if prep_boot_part_uuid:
             device = _get_partition(device, uuid=prep_boot_part_uuid)
 
+        # If the root device is an md device (or partition), restart the device
+        # (to help grub finding it) and identify the underlying holder disks
+        # to install grub.
+        disks = []
+        if hardware.is_md_device(device):
+            hardware.md_restart(device)
+            disks = hardware.get_holder_disks(device)
+        else:
+            disks.append(device)
+
         utils.execute('mount', root_partition, path)
         for fs in BIND_MOUNTS:
             utils.execute('mount', '-o', 'bind', fs, path + fs)
@@ -125,11 +144,18 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         path_variable = os.environ.get('PATH', '')
         path_variable = '%s:/bin:/usr/sbin' % path_variable
 
-        # Install grub
-        utils.execute('chroot %(path)s /bin/sh -c '
-                      '"%(bin)s-install %(dev)s"' %
-                      {'path': path, 'bin': binary_name, 'dev': device},
-                      shell=True, env_variables={'PATH': path_variable})
+        # Install grub. Normally, grub goes to one disk only. In case of
+        # md devices, grub goes to all underlying holder (RAID-1) disks.
+        LOG.info("GRUB2 will be installed on disks %s", disks)
+        for grub_disk in disks:
+            LOG.debug("Installing GRUB2 on disk %s", grub_disk)
+            utils.execute('chroot %(path)s /bin/sh -c '
+                          '"%(bin)s-install %(dev)s"' %
+                          {'path': path, 'bin': binary_name,
+                           'dev': grub_disk},
+                          shell=True, env_variables={'PATH': path_variable})
+            LOG.debug("GRUB2 successfully installed on device %s", grub_disk)
+
         # Also run grub-install with --removable, this installs grub to the
         # EFI fallback path. Useful if the NVRAM wasn't written correctly,
         # was reset or if testing with virt as libvirt resets the NVRAM

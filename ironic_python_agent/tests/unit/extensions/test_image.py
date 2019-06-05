@@ -91,12 +91,15 @@ class TestImageExtension(base.IronicAgentTest):
             prep_boot_part_uuid=self.fake_prep_boot_part_uuid)
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2(self, mock_get_part_uuid, environ_mock,
-                            mock_execute, mock_dispatch):
+                            mock_is_md_device, mock_execute,
+                            mock_dispatch):
         mock_get_part_uuid.return_value = self.fake_root_part
         environ_mock.get.return_value = '/sbin'
+        mock_is_md_device.side_effect = [False]
         image._install_grub2(self.fake_dev, self.fake_root_uuid)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
@@ -132,13 +135,16 @@ class TestImageExtension(base.IronicAgentTest):
                                                    uuid=self.fake_root_uuid)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2_prep(self, mock_get_part_uuid, environ_mock,
-                                 mock_execute, mock_dispatch):
+                                 mock_is_md_device, mock_execute,
+                                 mock_dispatch):
         mock_get_part_uuid.side_effect = [self.fake_root_part,
                                           self.fake_prep_boot_part]
         environ_mock.get.return_value = '/sbin'
+        mock_is_md_device.side_effect = [False]
         image._install_grub2(self.fake_dev, self.fake_root_uuid,
                              prep_boot_part_uuid=self.fake_prep_boot_part_uuid)
 
@@ -178,15 +184,17 @@ class TestImageExtension(base.IronicAgentTest):
                                            uuid=self.fake_prep_boot_part_uuid)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2_uefi(self, mock_get_part_uuid, mkdir_mock,
-                                 environ_mock, mock_execute,
-                                 mock_dispatch):
+                                 environ_mock, mock_is_md_device,
+                                 mock_execute, mock_dispatch):
         mock_get_part_uuid.side_effect = [self.fake_root_part,
                                           self.fake_efi_system_part]
         environ_mock.get.return_value = '/sbin'
+        mock_is_md_device.return_value = False
 
         image._install_grub2(
             self.fake_dev, root_uuid=self.fake_root_uuid,
@@ -236,14 +244,16 @@ class TestImageExtension(base.IronicAgentTest):
                                            uuid=self.fake_efi_system_part_uuid)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2_uefi_umount_fails(
-            self, mock_get_part_uuid, mkdir_mock, environ_mock, mock_execute,
-            mock_dispatch):
+            self, mock_get_part_uuid, mkdir_mock, environ_mock,
+            mock_is_md_device, mock_execute, mock_dispatch):
         mock_get_part_uuid.side_effect = [self.fake_root_part,
                                           self.fake_efi_system_part]
+        mock_is_md_device.return_value = False
 
         def umount_raise_func(*args, **kwargs):
             if args[0] == 'umount':
@@ -284,14 +294,16 @@ class TestImageExtension(base.IronicAgentTest):
                               attempts=3, delay_on_retry=True)]
         mock_execute.assert_has_calls(expected)
 
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2_uefi_mount_fails(
-            self, mock_get_part_uuid, mkdir_mock, environ_mock, mock_execute,
-            mock_dispatch):
+            self, mock_get_part_uuid, mkdir_mock, environ_mock,
+            mock_is_md_device, mock_execute, mock_dispatch):
         mock_get_part_uuid.side_effect = [self.fake_root_part,
                                           self.fake_efi_system_part]
+        mock_is_md_device.side_effect = [False]
 
         def mount_raise_func(*args, **kwargs):
             if args[0] == 'mount':
@@ -330,7 +342,10 @@ class TestImageExtension(base.IronicAgentTest):
                                                    uuid=self.fake_root_uuid)
         self.assertFalse(mock_dispatch.called)
 
-    def test__get_partition(self, mock_execute, mock_dispatch):
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    def test__get_partition(self, mock_is_md_device, mock_execute,
+                            mock_dispatch):
+        mock_is_md_device.side_effect = [False]
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" UUID="%s" TYPE="part"''' % self.fake_root_uuid)
@@ -346,8 +361,10 @@ class TestImageExtension(base.IronicAgentTest):
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
 
-    def test__get_partition_no_device_found(self, mock_execute,
-                                            mock_dispatch):
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    def test__get_partition_no_device_found(self, mock_is_md_device,
+                                            mock_execute, mock_dispatch):
+        mock_is_md_device.side_effect = [False]
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" UUID="" TYPE="part"''')
@@ -364,8 +381,10 @@ class TestImageExtension(base.IronicAgentTest):
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
 
-    def test__get_partition_command_fail(self, mock_execute,
-                                         mock_dispatch):
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    def test__get_partition_command_fail(self, mock_is_md_device,
+                                         mock_execute, mock_dispatch):
+        mock_is_md_device.side_effect = [False]
         mock_execute.side_effect = (None, None,
                                     processutils.ProcessExecutionError('boom'))
         self.assertRaises(errors.CommandExecutionError,
@@ -380,7 +399,10 @@ class TestImageExtension(base.IronicAgentTest):
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
 
-    def test__get_partition_partuuid(self, mock_execute, mock_dispatch):
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    def test__get_partition_partuuid(self, mock_is_md_device, mock_execute,
+                                     mock_dispatch):
+        mock_is_md_device.side_effect = [False]
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" PARTUUID="%s" TYPE="part"''' % self.fake_root_uuid)
