@@ -26,19 +26,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Ironic Python Agent'
 copyright = u'OpenStack Foundation'
-
-# The version info for the project you're documenting, acts as replacement for
-# |version| and |release|, also used in various other places throughout the
-# built documents.
-#
-# The short X.Y version.
-from ironic_python_agent import version as ipa_version
-# The full version, including alpha/beta/rc tags.
-release = ipa_version.version_info.release_string()
-# The short X.Y version.
-version = ipa_version.version_info.version_string()
 
 # A list of ignored prefixes for module index sorting.
 modindex_common_prefix = ['ironic_python_agent']
@@ -70,11 +58,8 @@ repository_name = 'openstack/ironic-python-agent'
 bug_project = 'ironic-python-agent'
 bug_tag = ''
 
-# Must set this variable to include year, month, day, hours, and minutes.
-html_last_updated_fmt = '%Y-%m-%d %H:%M'
-
 # Output file base name for HTML help builder.
-htmlhelp_basename = '%sdoc' % project
+htmlhelp_basename = 'Ironic Python Agentdoc' 
 
 
 # Grouping the document tree into LaTeX files. List of tuples
@@ -83,8 +68,8 @@ htmlhelp_basename = '%sdoc' % project
 latex_documents = [
     (
         'index',
-        '%s.tex' % project,
-        u'%s Documentation' % project,
+        'Ironic Python Agent.tex',
+        u'Ironic Python Agent Documentation',
         u'OpenStack Foundation',
         'manual'
     ),
