@@ -2670,17 +2670,21 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.assert_has_calls([
             mock.call('wipefs', '-af', '/dev/md0'),
             mock.call('mdadm', '--stop', '/dev/md0'),
-            mock.call('mdadm', '--examine', '/dev/sda1'),
+            mock.call('mdadm', '--examine', '/dev/sda1',
+                      use_standard_locale=True),
             mock.call('mdadm', '--zero-superblock', '/dev/sda1'),
-            mock.call('mdadm', '--examine', '/dev/sda2'),
+            mock.call('mdadm', '--examine', '/dev/sda2',
+                      use_standard_locale=True),
             mock.call('mdadm', '--zero-superblock', '/dev/sda2'),
             mock.call('wipefs', '-af', '/dev/sda'),
             mock.call('wipefs', '-af', '/dev/sdb'),
             mock.call('wipefs', '-af', '/dev/md1'),
             mock.call('mdadm', '--stop', '/dev/md1'),
-            mock.call('mdadm', '--examine', '/dev/sdb1'),
+            mock.call('mdadm', '--examine', '/dev/sdb1',
+                      use_standard_locale=True),
             mock.call('mdadm', '--zero-superblock', '/dev/sdb1'),
-            mock.call('mdadm', '--examine', '/dev/sdb2'),
+            mock.call('mdadm', '--examine', '/dev/sdb2',
+                      use_standard_locale=True),
             mock.call('mdadm', '--zero-superblock', '/dev/sdb2'),
             mock.call('wipefs', '-af', '/dev/sda'),
             mock.call('wipefs', '-af', '/dev/sdb')])
@@ -2696,9 +2700,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 },
             ]
         }
-        self.assertEqual(True,
-                         self.hardware.validate_configuration(raid_config,
-                                                              self.node))
+        self.assertIsNone(self.hardware.validate_configuration(raid_config,
+                                                               self.node))
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_valid_raid1_raidN(self, mocked_execute):
@@ -2716,9 +2719,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 },
             ]
         }
-        self.assertEqual(True,
-                         self.hardware.validate_configuration(raid_config,
-                                                              self.node))
+        self.assertIsNone(self.hardware.validate_configuration(raid_config,
+                                                               self.node))
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_invalid_MAX_MAX(self, mocked_execute):
