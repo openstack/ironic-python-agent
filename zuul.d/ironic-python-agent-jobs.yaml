@@ -159,3 +159,15 @@
       - ^setup.cfg$
       - ^tools/.*$
       - ^tox.ini$
+
+- job:
+    name: metalsmith-integration-ipa-src
+    parent: metalsmith-integration-glance-localboot-centos7
+    required-projects:
+      - openstack/ironic-python-agent
+      - openstack/ironic-lib
+    vars:
+      devstack_localrc:
+        # Don't waste time on cleaning, it's checked everywhere else
+        IRONIC_AUTOMATED_CLEAN_ENABLED: False
+        IRONIC_BUILD_DEPLOY_RAMDISK: True
