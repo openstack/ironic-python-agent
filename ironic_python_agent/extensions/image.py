@@ -16,6 +16,7 @@
 import os
 import shlex
 import shutil
+import stat
 import tempfile
 
 from oslo_concurrency import processutils
@@ -54,6 +55,13 @@ def _get_partition(device, uuid):
         #                      UUID and use the "normal" discovery instead?
         if hardware.is_md_device(device):
             md_partition = device + 'p1'
+            if (not os.path.exists(md_partition) or
+                not stat.S_ISBLK(os.stat(md_partition).st_mode)):
+                error_msg = ("Could not find partition %(part)s on md "
+                             "device %(dev)s" % {'part': md_partition,
+                                                 'dev': device})
+                LOG.error(error_msg)
+                raise errors.DeviceNotFound(error_msg)
             LOG.debug("Found md device with partition %s", md_partition)
             return md_partition
 
@@ -114,12 +122,11 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         # If the root device is an md device (or partition), restart the device
         # (to help grub finding it) and identify the underlying holder disks
         # to install grub.
-        disks = []
         if hardware.is_md_device(device):
             hardware.md_restart(device)
             disks = hardware.get_holder_disks(device)
         else:
-            disks.append(device)
+            disks = [device]
 
         utils.execute('mount', root_partition, path)
         for fs in BIND_MOUNTS:
