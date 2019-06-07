@@ -24,7 +24,7 @@ RUN proxy.sh apt-get update && \
         python2.7 python2.7-dev python-pip qemu-utils parted hdparm \
         util-linux genisoimage git gcc bash coreutils tgt dmidecode \
         ipmitool psmisc dosfstools bsdmainutils open-iscsi udev \
-        smartmontools iptables lshw
+        smartmontools iptables lshw mdadm
 
 # Some cleanup
 RUN proxy.sh apt-get -y autoremove && \
