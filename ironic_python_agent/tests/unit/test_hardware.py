@@ -2635,21 +2635,22 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         holder_disks = hardware.get_holder_disks(raid_device.name)
         self.assertEqual(['/dev/vde', '/dev/vdf'], holder_disks)
 
+    @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
+    @mock.patch.object(hardware, '_get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_delete_configuration(self, mocked_execute, mocked_list):
+    def test_delete_configuration(self, mocked_execute, mocked_list,
+                                  mocked_get_component, mocked_get_holder):
         raid_device1 = hardware.BlockDevice('/dev/md0', 'RAID-1',
                                             1073741824, True)
         raid_device2 = hardware.BlockDevice('/dev/md1', 'RAID-0',
                                             2147483648, True)
         hardware.list_all_block_devices.side_effect = [
             [raid_device1, raid_device2]]
-        hardware._get_component_devices = mock.Mock()
-        hardware._get_component_devices.side_effect = [
+        mocked_get_component.side_effect = [
             ["/dev/sda1", "/dev/sda2"],
             ["/dev/sdb1", "/dev/sdb2"]]
-        hardware.get_holder_disks = mock.Mock()
-        hardware.get_holder_disks.side_effect = [
+        mocked_get_holder.side_effect = [
             ["/dev/sda", "/dev/sdb"],
             ["/dev/sda", "/dev/sdb"]]
         mocked_execute.side_effect = [
