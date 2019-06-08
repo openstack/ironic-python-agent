@@ -52,6 +52,8 @@ UNIT_CONVERTER.define('MB = 1048576 bytes')
 _MEMORY_ID_RE = re.compile(r'^memory(:\d+)?$')
 NODE = None
 
+SUPPORTED_SOFTWARE_RAID_LEVELS = frozenset(['0', '1', '1+0'])
+
 
 def _get_device_info(dev, devclass, field):
     """Get the device info according to device class and field."""
@@ -1364,7 +1366,6 @@ class GenericHardwareManager(HardwareManager):
                  devices.
         """
 
-        # No RAID config: do nothing
         raid_config = node.get('target_raid_config', {})
 
         # No 'software' controller: do nothing. If 'controller' is
@@ -1481,31 +1482,27 @@ class GenericHardwareManager(HardwareManager):
                      raid_device.name))
 
             component_devices = _get_component_devices(raid_device.name)
-            LOG.debug("Found component devices {}".format(
-                      component_devices))
+            LOG.debug('Found component devices %s', component_devices)
             holder_disks = get_holder_disks(raid_device.name)
-            LOG.debug("Found holder disks {}".format(
-                      holder_disks))
+            LOG.debug('Found holder disks %s', holder_disks)
 
             # Remove md devices.
             try:
                 utils.execute('wipefs', '-af', raid_device.name)
             except processutils.ProcessExecutionError as e:
-                msg = "Failed to wipefs {}: {}".format(
-                    raid_device.name, e)
-                LOG.warning(msg)
+                LOG.warning('Failed to wipefs %s: %s',
+                            raid_device.name, e)
             try:
                 utils.execute('mdadm', '--stop', raid_device.name)
             except processutils.ProcessExecutionError as e:
-                msg = "Failed to stop {}: {}".format(
-                    raid_device.name, e)
-                LOG.warning(msg)
+                LOG.warning('Failed to stop %s: %s',
+                            raid_device.name, e)
 
             # Remove md metadata from component devices.
             for component_device in component_devices:
                 try:
-                    utils.execute('mdadm', '--examine',
-                                  component_device)
+                    utils.execute('mdadm', '--examine', component_device,
+                                  use_standard_locale=True)
                 except processutils.ProcessExecutionError as e:
                     if "No md superblock detected" in str(e):
                         # actually not a component device
@@ -1515,28 +1512,24 @@ class GenericHardwareManager(HardwareManager):
                               component_device, e)
                         raise errors.SoftwareRAIDError(msg)
 
-                LOG.debug("Deleting md superblock on {}".format(
-                          component_device))
+                LOG.debug('Deleting md superblock on %s', component_device)
                 try:
                     utils.execute('mdadm', '--zero-superblock',
                                   component_device)
                 except processutils.ProcessExecutionError as e:
-                    msg = "Failed to remove superblock from {}: {}".format(
-                        raid_device.name, e)
-                    LOG.warning(msg)
+                    LOG.warning('Failed to remove superblock from %s: %s',
+                                raid_device.name, e)
 
             # Remove the partitions we created during create_configuration.
             for holder_disk in holder_disks:
-                LOG.debug("Removing partitions on {}".format(
-                          holder_disk))
+                LOG.debug('Removing partitions on %s', holder_disk)
                 try:
                     utils.execute('wipefs', '-af', holder_disk)
                 except processutils.ProcessExecutionError as e:
-                    LOG.warning("Failed to remove partitions on {}".format(
-                        holder_disk))
+                    LOG.warning('Failed to remove partitions on %s',
+                                holder_disk)
 
-            LOG.info("Deleted Software RAID device {}".format(
-                     raid_device.name))
+            LOG.info('Deleted Software RAID device %s', raid_device.name)
 
         LOG.debug("Finished deleting Software RAID(s)")
 
@@ -1593,9 +1586,8 @@ class GenericHardwareManager(HardwareManager):
                 raid_errors.append(msg)
 
             # Check the accepted RAID levels.
-            accepted_levels = ['0', '1', '1+0']
             current_level = logical_disks[1]['raid_level']
-            if current_level not in accepted_levels:
+            if current_level not in SUPPORTED_SOFTWARE_RAID_LEVELS:
                 msg = ("Software RAID configuration does not support "
                        "RAID level %s" % current_level)
                 raid_errors.append(msg)
@@ -1605,8 +1597,6 @@ class GenericHardwareManager(HardwareManager):
                      '%(errors)s') % {'node': node['uuid'],
                                       'errors': '; '.join(raid_errors)}
             raise errors.SoftwareRAIDError(error)
-
-        return True
 
 
 def _compare_extensions(ext1, ext2):
