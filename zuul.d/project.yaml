@@ -15,6 +15,8 @@
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
+        - metalsmith-integration-ipa-src:
+            voting: false
         # NOTE(TheJulia): CoreOS jobs have a high failure rate.
         # In order to reduce the odds of things like nested virt
         # being detected but not available, we should treat them
