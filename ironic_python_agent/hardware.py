@@ -943,10 +943,13 @@ class GenericHardwareManager(HardwareManager):
                         pxe_interface=pxe_interface)
 
     def erase_block_device(self, node, block_device):
-
         # Check if the block device is virtual media and skip the device.
         if self._is_virtual_media_device(block_device):
-            LOG.info("Skipping the erase of virtual media device %s",
+            LOG.info("Skipping erase of virtual media device %s",
+                     block_device.name)
+            return
+        if self._is_linux_raid_member(block_device):
+            LOG.info("Skipping erase of RAID member device %s",
                      block_device.name)
             return
         info = node.get('driver_internal_info', {})
@@ -995,7 +998,11 @@ class GenericHardwareManager(HardwareManager):
         erase_errors = {}
         for dev in block_devices:
             if self._is_virtual_media_device(dev):
-                LOG.info("Skipping the erase of virtual media device %s",
+                LOG.info("Skipping metadata erase of virtual media device %s",
+                         dev.name)
+                continue
+            if self._is_linux_raid_member(dev):
+                LOG.info("Skipping metadata erase of RAID member device %s",
                          dev.name)
                 continue
 
@@ -1051,6 +1058,25 @@ class GenericHardwareManager(HardwareManager):
             if block_device.name == device:
                 return True
         return False
+
+    def _is_linux_raid_member(self, block_device):
+        """Check if a block device is a Linux RAID member.
+
+        :param block_device: a BlockDevice object
+        :returns: True if it's Linux RAID member (or if we do not
+                  manage to verify), False otherwise.
+        """
+        try:
+            # Don't use the '--nodeps' of lsblk to also catch the
+            # parent device of partitions which are RAID members.
+            out, _ = utils.execute('lsblk', '--fs', '--noheadings',
+                                   block_device.name)
+        except processutils.ProcessExecutionError as e:
+            LOG.warning("Could not determine if %s is a RAID member: %s",
+                        block_device.name, e)
+            return True
+
+        return 'linux_raid_member' in out
 
     def _get_ata_security_lines(self, block_device):
         output = utils.execute('hdparm', '-I', block_device.name)[0]
