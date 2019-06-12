@@ -117,6 +117,13 @@ fields:
     the current boot - BIOS or UEFI) and ``pxe_interface`` (interface used
     for PXE booting, if any).
 
+``hostname``
+    hostname for the system
+
+    .. note::
+        This is most likely to be set by the DHCP server. Could be localhost
+        if the DHCP server does not set it.
+
 References
 ==========
 .. [0] Enabling Drivers - https://docs.openstack.org/ironic/latest/admin/drivers/ipa.html

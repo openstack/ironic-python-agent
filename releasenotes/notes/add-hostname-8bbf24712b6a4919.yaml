@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add the hostname to the introspection data. This will likely be the
+    hostname as set by the DHCP server.

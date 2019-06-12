@@ -1382,7 +1382,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(3952 * 1024 * 1024, mem.total)
         self.assertIsNone(mem.physical_mb)
 
-    def test_list_hardware_info(self):
+    @mock.patch('ironic_python_agent.netutils.get_hostname', autospec=True)
+    def test_list_hardware_info(self, mocked_get_hostname):
         self.hardware.list_network_interfaces = mock.Mock()
         self.hardware.list_network_interfaces.return_value = [
             hardware.NetworkInterface('eth0', '00:0c:29:8c:11:b1'),
@@ -1413,6 +1414,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.get_bmc_v6address = mock.Mock()
         self.hardware.get_system_vendor_info = mock.Mock()
 
+        mocked_get_hostname.return_value = 'mock_hostname'
+
         hardware_info = self.hardware.list_hardware_info()
         self.assertEqual(self.hardware.get_memory(), hardware_info['memory'])
         self.assertEqual(self.hardware.get_cpus(), hardware_info['cpu'])
@@ -1422,6 +1425,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                          hardware_info['interfaces'])
         self.assertEqual(self.hardware.get_boot_info(),
                          hardware_info['boot'])
+        self.assertEqual('mock_hostname', hardware_info['hostname'])
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     def test_list_block_devices(self, list_mock):

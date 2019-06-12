@@ -230,6 +230,13 @@ def get_mac_addr(interface_id):
         return None
 
 
+# Other options...
+# 1. import os; os.uname()[1]
+# 2. import platform; platform.node()
+def get_hostname():
+    return socket.gethostname()
+
+
 def interface_has_carrier(interface_name):
     path = '/sys/class/net/{}/carrier'.format(interface_name)
     try:

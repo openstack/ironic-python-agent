@@ -601,6 +601,7 @@ class HardwareManager(object):
         hardware_info['bmc_v6address'] = self.get_bmc_v6address()
         hardware_info['system_vendor'] = self.get_system_vendor_info()
         hardware_info['boot'] = self.get_boot_info()
+        hardware_info['hostname'] = netutils.get_hostname()
         return hardware_info
 
     def get_clean_steps(self, node, ports):
