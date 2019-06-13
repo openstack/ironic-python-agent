@@ -1704,8 +1704,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         result = self.hardware.erase_devices({}, [])
         self.assertEqual(expected, result)
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_erase_block_device_ata_success(self, mocked_execute):
+    def test_erase_block_device_ata_success(self, mocked_execute,
+                                            mocked_raid_member):
         mocked_execute.side_effect = [
             (create_hdparm_info(
                 supported=True, enabled=False, frozen=False,
@@ -1717,6 +1720,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 supported=True, enabled=False, frozen=False,
                 enhanced_erase=False), ''),
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -1732,8 +1736,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('hdparm', '-I', '/dev/sda'),
         ])
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_erase_block_device_ata_success_no_smartctl(self, mocked_execute):
+    def test_erase_block_device_ata_success_no_smartctl(self, mocked_execute,
+                                                        mocked_raid_member):
         mocked_execute.side_effect = [
             (create_hdparm_info(
                 supported=True, enabled=False, frozen=False,
@@ -1745,6 +1752,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 supported=True, enabled=False, frozen=False,
                 enhanced_erase=False), ''),
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -1760,8 +1768,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('hdparm', '-I', '/dev/sda'),
         ])
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_erase_block_device_nosecurity_shred(self, mocked_execute):
+    def test_erase_block_device_nosecurity_shred(self, mocked_execute,
+                                                 mocked_raid_member):
         hdparm_output = HDPARM_INFO_TEMPLATE.split('\nSecurity:')[0]
 
         mocked_execute.side_effect = [
@@ -1769,6 +1780,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             (SMARTCTL_UNAVAILABLE_OUTPUT, ''),
             (SHRED_OUTPUT_1_ITERATION_ZERO_TRUE, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -1781,8 +1793,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '--iterations', '1', '/dev/sda')
         ])
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_erase_block_device_notsupported_shred(self, mocked_execute):
+    def test_erase_block_device_notsupported_shred(self, mocked_execute,
+                                                   mocked_raid_member):
         hdparm_output = create_hdparm_info(
             supported=False, enabled=False, frozen=False, enhanced_erase=False)
 
@@ -1791,6 +1806,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             (SMARTCTL_UNAVAILABLE_OUTPUT, ''),
             (SHRED_OUTPUT_1_ITERATION_ZERO_TRUE, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -1803,9 +1819,12 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '--iterations', '1', '/dev/sda')
         ])
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_smartctl_unsupported_shred(self,
-                                                           mocked_execute):
+                                                           mocked_execute,
+                                                           mocked_raid_member):
         hdparm_output = create_hdparm_info(
             supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
@@ -1814,6 +1833,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             (SMARTCTL_UNAVAILABLE_OUTPUT, ''),
             (SHRED_OUTPUT_1_ITERATION_ZERO_TRUE, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -1826,9 +1846,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '--iterations', '1', '/dev/sda')
         ])
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_smartctl_fails_security_fallback_to_shred(
-            self, mocked_execute):
+            self, mocked_execute, mocked_raid_member):
         hdparm_output = create_hdparm_info(
             supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
@@ -1837,6 +1859,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             processutils.ProcessExecutionError(),
             (SHRED_OUTPUT_1_ITERATION_ZERO_TRUE, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -1849,8 +1872,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '--iterations', '1', '/dev/sda')
         ])
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_erase_block_device_shred_uses_internal_info(self, mocked_execute):
+    def test_erase_block_device_shred_uses_internal_info(self, mocked_execute,
+                                                         mocked_raid_member):
         hdparm_output = create_hdparm_info(
             supported=False, enabled=False, frozen=False, enhanced_erase=False)
 
@@ -1863,6 +1889,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             (SMARTCTL_NORMAL_OUTPUT, ''),
             (SHRED_OUTPUT_2_ITERATIONS_ZERO_FALSE, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -1875,8 +1902,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '--iterations', '2', '/dev/sda')
         ])
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_erase_block_device_shred_0_pass_no_zeroize(self, mocked_execute):
+    def test_erase_block_device_shred_0_pass_no_zeroize(self, mocked_execute,
+                                                        mocked_raid_member):
         hdparm_output = create_hdparm_info(
             supported=False, enabled=False, frozen=False, enhanced_erase=False)
 
@@ -1889,6 +1919,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             (SMARTCTL_UNAVAILABLE_OUTPUT, ''),
             (SHRED_OUTPUT_0_ITERATIONS_ZERO_FALSE, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -1970,9 +2001,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             'shred', '--force', '--zero', '--verbose', '--iterations', '1',
             '/dev/sda')
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_security_unlock_fallback_pass(
-            self, mocked_execute):
+            self, mocked_execute, mocked_raid_member):
         hdparm_output = create_hdparm_info(
             supported=True, enabled=True, locked=True
         )
@@ -1990,6 +2023,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             '',
             (hdparm_output_not_enabled, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -1999,11 +2033,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.assert_any_call('hdparm', '--user-master', 'u',
                                        '--security-unlock', '', '/dev/sda')
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_security_enabled(
-            self, mocked_execute, mock_shred):
+            self, mocked_execute, mock_shred, mocked_raid_member):
         # Tests that an exception is thrown if all of the recovery passwords
         # fail to unlock the device without throwing exception
         hdparm_output = create_hdparm_info(
@@ -2019,6 +2055,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             None,
             (hdparm_output, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -2033,11 +2070,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                        '--security-unlock', 'NULL', '/dev/sda')
         self.assertFalse(mock_shred.called)
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_security_enabled_unlock_attempt(
-            self, mocked_execute, mock_shred):
+            self, mocked_execute, mock_shred, mocked_raid_member):
         hdparm_output = create_hdparm_info(
             supported=True, enabled=True, locked=True)
         hdparm_output_not_enabled = create_hdparm_info(
@@ -2052,6 +2091,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             '',
             (hdparm_output_not_enabled, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -2129,10 +2169,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware._ata_erase,
                           block_device)
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_erase_block_device_ata_frozen(self, mocked_execute, mock_shred):
+    def test_erase_block_device_ata_frozen(self, mocked_execute, mock_shred,
+                                           mocked_raid_member):
         hdparm_output = create_hdparm_info(
             supported=True, enabled=False, frozen=True, enhanced_erase=False)
 
@@ -2140,6 +2183,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             (hdparm_output, ''),
             (SMARTCTL_NORMAL_OUTPUT, '')
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -2150,10 +2194,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             block_device)
         self.assertFalse(mock_shred.called)
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_erase_block_device_ata_failed(self, mocked_execute, mock_shred):
+    def test_erase_block_device_ata_failed(self, mocked_execute, mock_shred,
+                                           mocked_raid_member):
         hdparm_output_before = create_hdparm_info(
             supported=True, enabled=False, frozen=False, enhanced_erase=False)
 
@@ -2169,6 +2216,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ('', ''),
             (hdparm_output_after, ''),
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -2180,11 +2228,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             block_device)
         self.assertFalse(mock_shred.called)
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_failed_continued(
-            self, mocked_execute, mock_shred):
+            self, mocked_execute, mock_shred, mocked_raid_member):
 
         info = self.node['driver_internal_info']
         info['agent_continue_if_ata_erase_failed'] = True
@@ -2204,6 +2254,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ('', ''),
             (hdparm_output_after, ''),
         ]
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -2211,14 +2262,17 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.erase_block_device(self.node, block_device)
         self.assertTrue(mock_shred.called)
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_erase_disabled(
-            self, mocked_execute, mock_shred):
+            self, mocked_execute, mock_shred, mocked_raid_member):
 
         info = self.node['driver_internal_info']
         info['agent_enable_ata_secure_erase'] = False
+        mocked_raid_member.return_value = False
 
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                             True)
@@ -2228,11 +2282,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertFalse(mocked_execute.called)
 
     def test_normal_vs_enhanced_security_erase(self):
+        @mock.patch.object(hardware.GenericHardwareManager,
+                           '_is_linux_raid_member', autospec=True)
         @mock.patch.object(utils, 'execute', autospec=True)
         def test_security_erase_option(test_case,
                                        enhanced_erase,
                                        expected_option,
-                                       mocked_execute):
+                                       mocked_execute,
+                                       mocked_raid_member):
             mocked_execute.side_effect = [
                 (create_hdparm_info(
                     supported=True, enabled=False, frozen=False,
@@ -2244,6 +2301,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                     supported=True, enabled=False, frozen=False,
                     enhanced_erase=enhanced_erase), ''),
             ]
+            mocked_raid_member.return_value = False
 
             block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
                                                 True)
@@ -2257,47 +2315,65 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         test_security_erase_option(
             self, False, '--security-erase')
 
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_virtual_media_device', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        'list_block_devices', autospec=True)
     @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
     def test_erase_devices_metadata(
-            self, mock_metadata, mock_list_devs, mock__is_vmedia):
+            self, mock_metadata, mock_list_devs, mock__is_vmedia,
+            mock_execute):
         block_devices = [
             hardware.BlockDevice('/dev/sr0', 'vmedia', 12345, True),
+            hardware.BlockDevice('/dev/sdb2', 'raid-member', 32767, False),
             hardware.BlockDevice('/dev/sda', 'small', 65535, False),
             hardware.BlockDevice('/dev/sda1', '', 32767, False),
+            hardware.BlockDevice('/dev/sda2', 'raid-member', 32767, False),
+            hardware.BlockDevice('/dev/md0', 'raid-device', 32767, False)
         ]
         # NOTE(coreywright): Don't return the list, but a copy of it, because
         # we depend on its elements' order when referencing it later during
         # verification, but the method under test sorts the list changing it.
         mock_list_devs.return_value = list(block_devices)
         mock__is_vmedia.side_effect = lambda _, dev: dev.name == '/dev/sr0'
+        mock_execute.side_effect = [
+            ('sdb2 linux_raid_member host:1 f9978968', ''),
+            ('sda2 linux_raid_member host:1 f9978969', ''),
+            ('sda1', ''), ('sda', ''), ('md0', '')]
 
         self.hardware.erase_devices_metadata(self.node, [])
+
         self.assertEqual([mock.call('/dev/sda1', self.node['uuid']),
-                          mock.call('/dev/sda', self.node['uuid'])],
+                          mock.call('/dev/sda', self.node['uuid']),
+                          mock.call('/dev/md0', self.node['uuid'])],
                          mock_metadata.call_args_list)
         mock_list_devs.assert_called_once_with(self.hardware,
                                                include_partitions=True)
         self.assertEqual([mock.call(self.hardware, block_devices[0]),
+                          mock.call(self.hardware, block_devices[1]),
+                          mock.call(self.hardware, block_devices[4]),
+                          mock.call(self.hardware, block_devices[3]),
                           mock.call(self.hardware, block_devices[2]),
-                          mock.call(self.hardware, block_devices[1])],
+                          mock.call(self.hardware, block_devices[5])],
                          mock__is_vmedia.call_args_list)
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_virtual_media_device', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        'list_block_devices', autospec=True)
     @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
     def test_erase_devices_metadata_error(
-            self, mock_metadata, mock_list_devs, mock__is_vmedia):
+            self, mock_metadata, mock_list_devs, mock__is_vmedia,
+            mock__is_raid_member):
         block_devices = [
             hardware.BlockDevice('/dev/sda', 'small', 65535, False),
             hardware.BlockDevice('/dev/sdb', 'big', 10737418240, True),
         ]
         mock__is_vmedia.return_value = False
+        mock__is_raid_member.return_value = False
         # NOTE(coreywright): Don't return the list, but a copy of it, because
         # we depend on its elements' order when referencing it later during
         # verification, but the method under test sorts the list changing it.
@@ -2325,6 +2401,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual([mock.call(self.hardware, block_devices[1]),
                           mock.call(self.hardware, block_devices[0])],
                          mock__is_vmedia.call_args_list)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test__is_linux_raid_member(self, mocked_execute):
+        raid_member = hardware.BlockDevice('/dev/sda1', 'small', 65535, False)
+        mocked_execute.return_value = ('linux_raid_member host.domain:0 '
+                                       '85fa41e4-e0ae'), ''
+        self.assertTrue(self.hardware._is_linux_raid_member(raid_member))
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test__is_linux_raid_member_false(self, mocked_execute):
+        raid_member = hardware.BlockDevice('/dev/md0', 'small', 65535, False)
+        mocked_execute.return_value = 'md0', ''
+        self.assertFalse(self.hardware._is_linux_raid_member(raid_member))
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address(self, mocked_execute):
