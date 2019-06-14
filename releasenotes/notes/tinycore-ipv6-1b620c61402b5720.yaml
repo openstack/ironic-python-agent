@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes the missing ipv6 module for TinyCore based IPA images which are used
+    in CI testing.

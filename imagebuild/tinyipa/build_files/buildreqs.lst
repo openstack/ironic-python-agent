@@ -20,6 +20,7 @@ pixman-dev.tcz
 pkg-config.tcz
 raid-dm-4.8.17-tinycore64.tcz
 scsi-4.8.17-tinycore64.tcz
+ipv6-4.8.17-tinycore64.tcz
 udev-lib.tcz
 util-linux.tcz
 zlib_base-dev.tcz
