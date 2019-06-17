@@ -76,7 +76,7 @@ def _get_system_lshw_dict():
 
     :return: A python dict from the lshw json output
     """
-    out, _e = utils.execute('lshw', '-quiet', '-json')
+    out, _e = utils.execute('lshw', '-quiet', '-json', log_stdout=False)
     return json.loads(out)
 
 
