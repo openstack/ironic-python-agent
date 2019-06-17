@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The ``lshw`` output no longer pollutes the debug logging. Instead, it's
+    stored as part of the ramdisk logs.
