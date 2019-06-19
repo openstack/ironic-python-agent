@@ -217,6 +217,18 @@ cli_opts = [
                     'Must be provided together with "certfile" option. '
                     'Default is to not present any client certificates to '
                     'the server.'),
+    cfg.BoolOpt('introspection_daemon',
+                default=False,
+                help='When the ``ironic-collect-introspection-data`` '
+                     'command is executed, continue running as '
+                     'a background process and continue to post data '
+                     'to the bare metal inspection service.'),
+    cfg.IntOpt('introspection_daemon_post_interval',
+               default=300,
+               help='The interval in seconds by which to transmit data to '
+                    'the bare metal introspection service when the '
+                    '``ironic-collect-introspection-data`` program is '
+                    'executing in daemon mode.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

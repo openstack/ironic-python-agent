@@ -137,11 +137,11 @@ class TestInspect(base.IronicAgentTest):
         mock_call.return_value = None
         mock_ext_mgr.return_value = [self.mock_ext]
 
-        result = inspector.inspect()
+        self.assertRaises(errors.InspectionError,
+                          inspector.inspect)
 
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure()
-        self.assertIsNone(result)
 
 
 @mock.patch.object(requests, 'post', autospec=True)

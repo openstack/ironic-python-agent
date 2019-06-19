@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Adds a new CLI command ``ironic-collect-introspection-data`` to enable
+    manually publishing into the ``baremetal-introspection`` service.
+    Executing this command on a system unknown to the Bare Metal service
+    will likely result in the machine becoming registered to Ironic, and
+    as such this command should be used with caution.
+
+    If the capability to update introspection data for running machines
+    has been enabled in the Bare Metal introspection service, then an
+    operator may use this command in the ``active`` or ``rescue`` states
+    to update introspection data.
