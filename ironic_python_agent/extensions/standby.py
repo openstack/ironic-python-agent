@@ -14,6 +14,7 @@
 
 import hashlib
 import os
+import tempfile
 import time
 
 from ironic_lib import disk_utils
@@ -42,7 +43,7 @@ def _image_location(image_info):
     :param image_info: Image information dictionary.
     :returns: The full, absolute path to the image as a string.
     """
-    return '/tmp/{}'.format(image_info['id'])
+    return os.path.join(tempfile.gettempdir(), image_info['id'])
 
 
 def _path_to_script(script):
