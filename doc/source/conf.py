@@ -61,6 +61,7 @@ bug_tag = ''
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'Ironic Python Agentdoc' 
 
+latex_use_xindy = False
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass
@@ -68,7 +69,7 @@ htmlhelp_basename = 'Ironic Python Agentdoc'
 latex_documents = [
     (
         'index',
-        'Ironic Python Agent.tex',
+        'doc-ironic-python-agent.tex',
         u'Ironic Python Agent Documentation',
         u'OpenStack Foundation',
         'manual'
