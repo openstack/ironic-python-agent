@@ -148,12 +148,19 @@ class APIClient(object):
                 'GET', self.lookup_api,
                 headers=self._get_ironic_api_version_header(),
                 params=params)
-        except Exception:
-            LOG.exception('Lookup failed')
+        except Exception as err:
+            LOG.exception(
+                'Unhandled error looking up node with addresses %r at %s: %s',
+                params['addresses'], self.api_url, err,
+            )
             return False
 
         if response.status_code != requests.codes.OK:
-            LOG.warning('Failure status code: %s', response.status_code)
+            LOG.warning(
+                'Failed looking up node with addresses %r at %s, '
+                'status code: %s',
+                params['addresses'], self.api_url, response.status_code,
+            )
             return False
 
         try:
@@ -164,7 +171,11 @@ class APIClient(object):
 
         # Check for valid response data
         if 'node' not in content or 'uuid' not in content['node']:
-            LOG.warning('Got invalid node data from the API: %s', content)
+            LOG.warning(
+                'Got invalid node data in response to query for node '
+                'with addresses %r from %s: %s',
+                params['addresses'], self.api_url, content,
+            )
             return False
 
         if 'config' not in content:
