@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import tempfile
 
 import mock
 from oslo_concurrency import processutils
@@ -144,7 +145,10 @@ class TestStandbyExtension(base.IronicAgentTest):
     def test_image_location(self):
         image_info = _build_fake_image_info()
         location = standby._image_location(image_info)
-        self.assertEqual('/tmp/fake_id', location)
+        # Can't hardcode /tmp here, each test is running in an isolated
+        # tempdir
+        expected_loc = os.path.join(tempfile.gettempdir(), 'fake_id')
+        self.assertEqual(expected_loc, location)
 
     @mock.patch('six.moves.builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)

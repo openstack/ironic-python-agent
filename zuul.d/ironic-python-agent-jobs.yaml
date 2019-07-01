@@ -157,7 +157,7 @@
       - ^ironic_python_agent/tests/.*$
       - ^releasenotes/.*$
       - ^setup.cfg$
-      - ^tools/.*$
+      - ^tools/(?!bandit.yml).*$
       - ^tox.ini$
 
 - job:
