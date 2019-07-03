@@ -56,6 +56,7 @@ COLLECT_LOGS_COMMANDS = {
     'df': ['df', '-a'],
     'iptables': ['iptables', '-L'],
     'ip_addr': ['ip', 'addr'],
+    'lshw': ['lshw', '-quiet', '-json'],
 }
 
 

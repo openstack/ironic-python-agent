@@ -498,12 +498,13 @@ class TestUtils(testtools.TestCase):
         self.assertEqual(ret, logs_string)
         mock_logs.assert_called_once_with(lines=None)
         calls = [mock.call(['ps', 'au']), mock.call(['df', '-a']),
-                 mock.call(['iptables', '-L']), mock.call(['ip', 'addr'])]
+                 mock.call(['iptables', '-L']), mock.call(['ip', 'addr']),
+                 mock.call(['lshw', '-quiet', '-json'])]
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
             file_list=[],
             io_dict={'journal': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
-                     'df': mock.ANY, 'iptables': mock.ANY})
+                     'df': mock.ANY, 'iptables': mock.ANY, 'lshw': mock.ANY})
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -518,12 +519,13 @@ class TestUtils(testtools.TestCase):
         self.assertEqual(ret, logs_string)
         calls = [mock.call(['dmesg']), mock.call(['ps', 'au']),
                  mock.call(['df', '-a']), mock.call(['iptables', '-L']),
-                 mock.call(['ip', 'addr'])]
+                 mock.call(['ip', 'addr']),
+                 mock.call(['lshw', '-quiet', '-json'])]
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
             file_list=['/var/log'],
             io_dict={'iptables': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
-                     'dmesg': mock.ANY, 'df': mock.ANY})
+                     'dmesg': mock.ANY, 'df': mock.ANY, 'lshw': mock.ANY})
 
     def test_get_ssl_client_options(self):
         # defaults
