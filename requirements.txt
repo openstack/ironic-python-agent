@@ -15,7 +15,7 @@ oslo.utils>=3.33.0 # Apache-2.0
 pecan!=1.0.2,!=1.0.3,!=1.0.4,!=1.2,>=1.0.0 # BSD
 Pint>=0.5 # BSD
 psutil>=3.2.2 # BSD
-pyudev>=0.16.1 # LGPLv2.1+
+pyudev>=0.18 # LGPLv2.1+
 requests>=2.14.2 # Apache-2.0
 rtslib-fb>=2.1.65 # Apache-2.0
 six>=1.10.0 # MIT

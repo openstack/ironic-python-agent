@@ -1453,7 +1453,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
-    @mock.patch.object(pyudev.Device, 'from_device_file', autospec=False)
+    @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device(self, mocked_execute, mocked_udev,
                                    mocked_dev_vendor, mock_listdir,
@@ -1468,7 +1468,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mock_listdir.return_value = [os.path.basename(x)
                                      for x in sorted(by_path_map)]
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
-        mocked_udev.side_effect = pyudev.DeviceNotFoundError()
+        mocked_udev.side_effect = pyudev.DeviceNotFoundByFileError()
         mocked_dev_vendor.return_value = 'Super Vendor'
         devices = hardware.list_all_block_devices()
         expected_devices = [
@@ -1516,26 +1516,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           for dev in range(3)]
         mock_readlink.assert_has_calls(expected_calls)
 
-    @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
-    @mock.patch.object(pyudev.Device, 'from_device_file', autospec=False)
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test_list_all_block_device_udev_17(self, mocked_execute, mocked_udev,
-                                           mocked_dev_vendor, mocked_listdir,
-                                           mocked_readlink):
-        # test compatibility with pyudev < 0.18
-        mocked_readlink.return_value = '../../sda'
-        mocked_listdir.return_value = ['1:0:0:0']
-        mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
-        mocked_udev.side_effect = OSError()
-        mocked_dev_vendor.return_value = 'Super Vendor'
-        devices = hardware.list_all_block_devices()
-        self.assertEqual(4, len(devices))
-
-    @mock.patch.object(os, 'listdir', autospec=True)
-    @mock.patch.object(hardware, '_get_device_info', autospec=True)
-    @mock.patch.object(pyudev.Device, 'from_device_file', autospec=False)
+    @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_hctl_fail(self, mocked_execute, mocked_udev,
                                              mocked_dev_vendor,
@@ -1555,7 +1538,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
-    @mock.patch.object(pyudev.Device, 'from_device_file', autospec=False)
+    @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_with_udev(self, mocked_execute, mocked_udev,
                                              mocked_dev_vendor, mocked_listdir,
@@ -3058,7 +3041,7 @@ class TestModuleFunctions(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_device_info',
                        lambda x, y, z: 'FooTastic')
     @mock.patch.object(hardware, '_udev_settle', autospec=True)
-    @mock.patch.object(hardware.pyudev.Device, "from_device_file",
+    @mock.patch.object(hardware.pyudev.Devices, "from_device_file",
                        autospec=False)
     def test_list_all_block_devices_success(self, mocked_fromdevfile,
                                             mocked_udev, mocked_readlink,
@@ -3077,7 +3060,7 @@ class TestModuleFunctions(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_device_info',
                        lambda x, y, z: 'FooTastic')
     @mock.patch.object(hardware, '_udev_settle', autospec=True)
-    @mock.patch.object(hardware.pyudev.Device, "from_device_file",
+    @mock.patch.object(hardware.pyudev.Devices, "from_device_file",
                        autospec=False)
     def test_list_all_block_devices_success_raid(self, mocked_fromdevfile,
                                                  mocked_udev, mocked_readlink,
