@@ -765,7 +765,7 @@ class GenericHardwareManager(HardwareManager):
         try:
             sys_dict = _get_system_lshw_dict()
         except (processutils.ProcessExecutionError, OSError, ValueError) as e:
-            LOG.warning('Could not retrieve vendor info from lshw: %e', e)
+            LOG.warning('Could not retrieve vendor info from lshw: %s', e)
             sys_dict = {}
         return SystemVendorInfo(product_name=sys_dict.get('product', ''),
                                 serial_number=sys_dict.get('serial', ''),
