@@ -104,8 +104,8 @@ def inspect():
     failures.raise_if_needed()
 
     if resp is None:
-        LOG.info('stopping inspection, as inspector returned an error')
-        return
+        raise errors.InspectionError('stopping inspection, as inspector '
+                                     'returned an error')
 
     LOG.info('inspection finished successfully')
     return resp.get('uuid')

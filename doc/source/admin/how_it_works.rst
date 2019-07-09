@@ -60,6 +60,33 @@ full endpoint of Ironic Inspector, for example::
 
 Make sure your DHCP environment is set to boot IPA by default.
 
+For the cases where the infrastructure operator and cloud user are the same,
+an additional tool exists that can be installed alongside the agent inside
+a running instance. This is the ``ironic-collect-introspection-data``
+command which allows for a node in ``ACTIVE`` state to publish updated
+introspection data to ironic-inspector. This ability requires ironic-inspector
+to be configured with ``[processing]permit_active_introspection`` set to
+``True``. For example::
+
+    ironic-collect-introspection-data --inspection_callback_url http://IP:5050/v1/continue
+
+Alternatively, this command may also be used with multicast DNS
+functionality to identify the `Ironic Inspector`_ service endpoint.
+For example::
+
+    ironic-collect-introspection-data --inspection_callback_url mdns
+
+An additional daemon mode may be useful for some operators who wish to receive
+regular updates, in the form of the ``[DEFAULT]introspection_daemon`` boolean
+configuration option.
+For example::
+
+    ironic-collect-introspection-data --inspection_callback_url mdns --introspection_daemon
+
+The above command will attempt to connect to introspection and will then enter
+a loop to publish every 300 seconds. This can be tuned with the
+``[DEFAULT]introspection_daemon_post_interval`` configuration option.
+
 .. _Ironic Inspector: https://docs.openstack.org/ironic-inspector/
 
 Hardware Inventory

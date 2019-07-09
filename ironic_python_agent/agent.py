@@ -388,8 +388,13 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             # lookup will fail due to unknown MAC.
             uuid = None
             if cfg.CONF.inspection_callback_url:
-                uuid = inspector.inspect()
-
+                try:
+                    # Attempt inspection. This may fail, and previously
+                    # an error would be logged.
+                    uuid = inspector.inspect()
+                except errors.InspectionError as e:
+                    LOG.error('Failed to perform inspection: %(err)s',
+                              {'error': e})
             if self.api_url:
                 self._wait_for_interface()
                 content = self.api_client.lookup_node(
