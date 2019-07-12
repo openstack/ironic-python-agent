@@ -1103,7 +1103,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         mock_cached_node.assert_called_once_with()
 
@@ -1125,7 +1125,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         # should always be smaller
         self.assertEqual('/dev/md0', self.hardware.get_os_install_device())
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         mock_cached_node.assert_called_once_with()
 
@@ -1144,7 +1144,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ex = self.assertRaises(errors.DeviceNotFound,
                                self.hardware.get_os_install_device)
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertIn(str(4 * units.Gi), ex.details)
         mock_cached_node.assert_called_once_with()
@@ -3068,7 +3068,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertEqual(BLK_DEVICE_TEMPLATE_SMALL_DEVICES, result)
         mocked_udev.assert_called_once_with()
@@ -3087,7 +3087,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.return_value = (RAID_BLK_DEVICE_TEMPLATE, '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertEqual(RAID_BLK_DEVICE_TEMPLATE_DEVICES, result)
         mocked_udev.assert_called_once_with()
@@ -3100,7 +3100,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.return_value = ('TYPE="foo" MODEL="model"', '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbi', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
         self.assertEqual([], result)
         mocked_udev.assert_called_once_with()
