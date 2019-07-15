@@ -136,8 +136,9 @@ Example::
 tinyipa
 ~~~~~~~
 
-The image built with scripts provided in ``imagebuild/tinyipa`` folder
-of Ironic Python Agent repository by default auto-logins the default
+The image built with scripts provided in ``tinyipa`` folder
+of `Ironic Python Agent Builder <https://opendev.org/openstack/ironic-python-agent-builder>`_
+repository by default auto-logins the default
 Tiny Core Linux user ``tc`` to the console.
 This user has no password and has password-less ``sudo`` permissions.
 
