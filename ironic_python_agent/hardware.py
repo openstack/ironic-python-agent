@@ -265,7 +265,7 @@ def list_all_block_devices(block_type='disk',
                     "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
 
     columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
-    report = utils.execute('lsblk', '-Pbi', '-o{}'.format(','.join(columns)),
+    report = utils.execute('lsblk', '-Pbia', '-o{}'.format(','.join(columns)),
                            check_exit_code=[0])[0]
     lines = report.splitlines()
     context = pyudev.Context()
@@ -289,10 +289,12 @@ def list_all_block_devices(block_type='disk',
         # Other possible type values, which we skip recording:
         #   lvm, part, rom, loop
         if devtype != block_type:
-            if devtype is not None and 'raid' in devtype and not ignore_raid:
+            if (devtype is not None and
+                any(x in devtype for x in ['raid', 'md']) and
+                not ignore_raid):
                 LOG.debug(
-                    "TYPE detected to contain 'raid', signifying a RAID "
-                    "volume. Found: {!r}".format(line))
+                    "TYPE detected to contain 'raid or 'md', signifying a "
+                    "RAID volume. Found: {!r}".format(line))
             else:
                 LOG.debug(
                     "TYPE did not match. Wanted: {!r} but found: {!r}".format(
@@ -338,7 +340,7 @@ def list_all_block_devices(block_type='disk',
 
         devices.append(BlockDevice(name=name,
                                    model=device['MODEL'],
-                                   size=int(device['SIZE']),
+                                   size=int(device['SIZE'] or 0),
                                    rotational=bool(int(device['ROTA'])),
                                    vendor=_get_device_info(device['KNAME'],
                                                            'block', 'vendor'),
