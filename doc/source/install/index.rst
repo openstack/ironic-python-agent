@@ -45,9 +45,11 @@ installs all the required packages and configures services as needed.
 tinyipa
 -------
 
-Ironic Python Agent repo also provides a set of scripts to build a
+Now, this method is provided
+by `Ironic Python Agent Builder <https://opendev.org/openstack/ironic-python-agent-builder>`_
+repo. It provides a set of scripts to build a
 Tiny Core Linux-based deployment kernel and ramdisk (code name ``tinyipa``)
-under ``imagebuild/tinyipa`` folder.
+under ``tinyipa`` folder.
 
 `Tiny Core Linux <http://tinycorelinux.net/>`_
 is a very minimalistic Linux distribution.
@@ -59,7 +61,7 @@ On the other hand, due to its generally newer Linux kernel it also known to
 work on real hardware if the kernel supports all necessary components
 installed.
 
-Please refer to ``imagebuild/tinyipa/README.rst`` for more information and
+Please refer to ``tinyipa/README.rst`` for more information and
 build instructions.
 
 ISO Images

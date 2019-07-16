@@ -50,4 +50,4 @@ network interfaces, and a `rescue` user will be created with the specified
 ``rescue_password``.
 
 .. _`building a CoreOS ironic-python-agent image`: https://github.com/openstack/ironic-python-agent/tree/master/imagebuild/coreos/README.rst
-.. _`build a TinyIPA image`: https://github.com/openstack/ironic-python-agent/tree/master/imagebuild/tinyipa/README.rst
+.. _`build a TinyIPA image`: https://github.com/openstack/ironic-python-agent-builder/tree/master/tinyipa/README.rst
