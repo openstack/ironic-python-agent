@@ -291,7 +291,7 @@ def list_all_block_devices(block_type='disk',
                 any(x in devtype for x in ['raid', 'md']) and
                 not ignore_raid):
                 LOG.debug(
-                    "TYPE detected to contain 'raid or 'md', signifying a "
+                    "TYPE detected to contain 'raid' or 'md', signifying a "
                     "RAID volume. Found: {!r}".format(line))
             else:
                 LOG.debug(
