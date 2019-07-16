@@ -49,5 +49,5 @@ After the ``finalize_rescue`` command completes, DHCP will be configured on all
 network interfaces, and a `rescue` user will be created with the specified
 ``rescue_password``.
 
-.. _`building a CoreOS ironic-python-agent image`: https://github.com/openstack/ironic-python-agent/tree/master/imagebuild/coreos/README.rst
-.. _`build a TinyIPA image`: https://github.com/openstack/ironic-python-agent-builder/tree/master/tinyipa/README.rst
+.. _`building a CoreOS ironic-python-agent image`: https://opendev.org/openstack/ironic-python-agent/src/branch/master/imagebuild/coreos/README.rst
+.. _`build a TinyIPA image`: https://opendev.org/openstack/ironic-python-agent-builder/src/branch/master/tinyipa/README.rst
