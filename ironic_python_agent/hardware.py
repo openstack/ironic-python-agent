@@ -137,9 +137,8 @@ def _get_component_devices(raid_device):
         raise errors.SoftwareRAIDError(msg)
 
     lines = out.splitlines()
-    for line in lines:
-        if 'active sync' not in line:
-            continue
+    # the first line contains the md device itself
+    for line in lines[1:]:
         device = re.findall(r'/dev/\w+', line)
         component_devices += device
 
@@ -168,9 +167,8 @@ def get_holder_disks(raid_device):
         raise errors.SoftwareRAIDError(msg)
 
     lines = out.splitlines()
-    for line in lines:
-        if 'active sync' not in line:
-            continue
+    # the first line contains the md device itself
+    for line in lines[1:]:
         device = re.findall(r'/dev/\D+', line)
         holder_disks += device
 

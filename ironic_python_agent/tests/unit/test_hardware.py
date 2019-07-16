@@ -610,8 +610,7 @@ IPv6 Static Address 2:
     Status:         disabled
 """
 
-MDADM_DETAIL_OUTPUT = ("""
-/dev/md0:
+MDADM_DETAIL_OUTPUT = ("""/dev/md0:
            Version : 1.0
      Creation Time : Fri Feb 15 12:37:44 2019
         Raid Level : raid1
@@ -637,6 +636,25 @@ Consistency Policy : resync
     Number   Major   Minor   RaidDevice State
        0     253       64        0      active sync   /dev/vde1
        1     253       80        1      active sync   /dev/vdf1
+""")
+
+
+MDADM_DETAIL_OUTPUT_BROKEN_RAID0 = ("""/dev/md126:
+           Version : 1.2
+        Raid Level : raid0
+     Total Devices : 1
+       Persistence : Superblock is persistent
+
+             State : inactive
+   Working Devices : 1
+
+              Name : prj6ogxgyzd:1
+              UUID : b5e136c0:a7e379b7:db25e45d:4b63928b
+            Events : 0
+
+    Number   Major   Minor   RaidDevice
+
+       -       8        2        -        /dev/sda2
 """)
 
 
@@ -2704,12 +2722,28 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(['/dev/vde1', '/dev/vdf1'], component_devices)
 
     @mock.patch.object(utils, 'execute', autospec=True)
+    def test__get_component_devices_broken_raid0(self, mocked_execute):
+        mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT_BROKEN_RAID0, '')]
+        raid_device = hardware.BlockDevice('/dev/md126', 'RAID-0',
+                                           1073741824, True)
+        component_devices = hardware._get_component_devices(raid_device.name)
+        self.assertEqual(['/dev/sda2'], component_devices)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks(self, mocked_execute):
         mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT, '')]
         raid_device = hardware.BlockDevice('/dev/md0', 'RAID-1',
                                            1073741824, True)
         holder_disks = hardware.get_holder_disks(raid_device.name)
         self.assertEqual(['/dev/vde', '/dev/vdf'], holder_disks)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_holder_disks_broken_raid0(self, mocked_execute):
+        mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT_BROKEN_RAID0, '')]
+        raid_device = hardware.BlockDevice('/dev/md126', 'RAID-0',
+                                           1073741824, True)
+        holder_disks = hardware.get_holder_disks(raid_device.name)
+        self.assertEqual(['/dev/sda'], holder_disks)
 
     @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
     @mock.patch.object(hardware, '_get_component_devices', autospec=True)
