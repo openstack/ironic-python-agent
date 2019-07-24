@@ -565,6 +565,105 @@ LSHW_JSON_OUTPUT_V2 = ("""
 }
 """, "")
 
+LSHW_JSON_OUTPUT_ARM64 = ("""
+{
+  "id" : "debian",
+  "class" : "system",
+  "claimed" : true,
+  "description" : "Computer",
+  "width" : 64,
+  "capabilities" : {
+    "cp15_barrier" : true,
+    "setend" : true,
+    "swp" : true
+  },
+  "children" : [
+    {
+      "id" : "core",
+      "class" : "bus",
+      "claimed" : true,
+      "description" : "Motherboard",
+      "physid" : "0",
+      "children" : [
+        {
+          "id" : "memory",
+          "class" : "memory",
+          "claimed" : true,
+          "description" : "System memory",
+          "physid" : "0",
+          "units" : "bytes",
+          "size" : 4143972352
+        },
+        {
+          "id" : "cpu:0",
+          "class" : "processor",
+          "claimed" : true,
+          "physid" : "1",
+          "businfo" : "cpu@0",
+          "capabilities" : {
+            "fp" : "Floating point instructions",
+            "asimd" : "Advanced SIMD",
+            "evtstrm" : "Event stream",
+            "aes" : "AES instructions",
+            "pmull" : "PMULL instruction",
+            "sha1" : "SHA1 instructions",
+            "sha2" : "SHA2 instructions",
+            "crc32" : "CRC extension",
+            "cpuid" : true
+          }
+        },
+        {
+          "id" : "pci:0",
+          "class" : "bridge",
+          "claimed" : true,
+          "handle" : "PCIBUS:0002:e9",
+          "physid" : "100",
+          "businfo" : "pci@0002:e8:00.0",
+          "version" : "01",
+          "width" : 32,
+          "clock" : 33000000,
+          "configuration" : {
+            "driver" : "pcieport"
+          },
+          "capabilities" : {
+            "pci" : true,
+            "pm" : "Power Management",
+            "msi" : "Message Signalled Interrupts",
+            "pciexpress" : "PCI Express",
+            "bus_master" : "bus mastering",
+            "cap_list" : "PCI capabilities listing"
+          }
+        }
+      ]
+    },
+    {
+      "id" : "network:0",
+      "class" : "network",
+      "claimed" : true,
+      "description" : "Ethernet interface",
+      "physid" : "2",
+      "logicalname" : "enahisic2i2",
+      "serial" : "d0:ef:c1:e9:bf:33",
+      "configuration" : {
+        "autonegotiation" : "off",
+        "broadcast" : "yes",
+        "driver" : "hns",
+        "driverversion" : "2.0",
+        "firmware" : "N/A",
+        "link" : "no",
+        "multicast" : "yes",
+        "port" : "fibre"
+      },
+      "capabilities" : {
+        "ethernet" : true,
+        "physical" : "Physical interface",
+        "fibre" : "optical fibre"
+      }
+    }
+  ]
+}
+""", "")
+
 SMARTCTL_NORMAL_OUTPUT = ("""
 smartctl 6.2 2017-02-27 r4394 [x86_64-linux-3.10.0-693.21.1.el7.x86_64] (local build)
 Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
@@ -1399,6 +1498,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         self.assertEqual(3952 * 1024 * 1024, mem.total)
         self.assertIsNone(mem.physical_mb)
+
+    @mock.patch('psutil.virtual_memory', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_memory_arm64_lshw(self, mocked_execute, mocked_psutil):
+        mocked_psutil.return_value.total = 3952 * 1024 * 1024
+        mocked_execute.return_value = LSHW_JSON_OUTPUT_ARM64
+        mem = self.hardware.get_memory()
+
+        self.assertEqual(3952 * 1024 * 1024, mem.total)
+        self.assertEqual(3952, mem.physical_mb)
 
     @mock.patch('ironic_python_agent.netutils.get_hostname', autospec=True)
     def test_list_hardware_info(self, mocked_get_hostname):

@@ -866,6 +866,11 @@ class GenericHardwareManager(HardwareManager):
                 if sys_child['id'] == 'core':
                     for core_child in sys_child['children']:
                         if _MEMORY_ID_RE.match(core_child['id']):
+                            if (not core_child.get("children") and
+                                    core_child.get('size')):
+                                value = ("%(size)s %(units)s" % core_child)
+                                physical += int(UNIT_CONVERTER(value).to
+                                                ('MB').magnitude)
                             for bank in core_child.get('children', ()):
                                 if bank.get('size'):
                                     value = ("%(size)s %(units)s" % bank)
