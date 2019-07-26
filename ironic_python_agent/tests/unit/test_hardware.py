@@ -2955,6 +2955,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('wipefs', '-af', '/dev/sda'),
             mock.call('wipefs', '-af', '/dev/sdb')])
 
+    @mock.patch.object(hardware, '_get_component_devices', autospec=True)
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_delete_configuration_partition(self, mocked_execute, mocked_list,
+                                            mocked_get_component):
+        raid_device1_part1 = hardware.BlockDevice('/dev/md0p1', 'RAID-1',
+                                                  1073741824, True)
+        hardware.list_all_block_devices.return_value = [raid_device1_part1]
+        mocked_get_component.return_value = []
+
+        self.assertIsNone(self.hardware.delete_configuration(self.node, []))
+        mocked_execute.assert_has_calls([])
+
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_valid_raid1(self, mocked_execute):
         raid_config = {
