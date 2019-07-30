@@ -18,7 +18,6 @@
       - openstack/ironic-lib
       - openstack/ironic-python-agent
       - openstack/ironic-tempest-plugin
-      - x/pyghmi
       - openstack/python-ironicclient
       - openstack/tempest
       - openstack/virtualbmc
