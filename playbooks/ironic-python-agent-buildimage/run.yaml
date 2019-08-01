@@ -37,13 +37,16 @@
           case $type in
               tinyipa)
                   export BUILD_AND_INSTALL_TINYIPA=true
-                  (cd imagebuild/tinyipa && make)
-                  mv imagebuild/tinyipa/tinyipa*.tar.gz* UPLOAD_TAR
-                  mv imagebuild/tinyipa/tinyipa*.* UPLOAD_RAW
-                  mv imagebuild/tinyipa/tiny-instance-uec*.tar.gz UPLOAD_TAR
+                  export IPA_SOURCE_DIR={{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent
+                  pushd {{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent-builder/tinyipa
+                  make
+                  mv tinyipa*.tar.gz* "$IPA_SOURCE_DIR/UPLOAD_TAR"
+                  mv tinyipa*.* "$IPA_SOURCE_DIR/UPLOAD_RAW"
+                  mv tiny-instance-uec*.tar.gz "$IPA_SOURCE_DIR/UPLOAD_TAR"
                   # NOTE(sambetts) Must clean up chroot directories before
                   # publisher rsync command tries and fails to read them
-                  (cd imagebuild/tinyipa && make clean)
+                  make clean
+                  popd
               ;;
               coreos)
                   imagebuild/coreos/full_trusty_build.sh

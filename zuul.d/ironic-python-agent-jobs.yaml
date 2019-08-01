@@ -94,6 +94,7 @@
     timeout: 1800
     required-projects:
       - openstack/ironic-python-agent
+      - openstack/ironic-python-agent-builder
 
 - job:
     name: ironic-python-agent-buildimage-coreos
