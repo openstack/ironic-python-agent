@@ -48,3 +48,4 @@
       jobs:
         - ironic-python-agent-buildimage-coreos
         - ironic-python-agent-buildimage-tinyipa
+        - ironic-python-agent-buildimage-dib

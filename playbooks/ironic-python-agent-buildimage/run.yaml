@@ -53,6 +53,13 @@
                   mv imagebuild/coreos/UPLOAD/coreos_production_pxe* UPLOAD_RAW
                   mv ipa-coreos*.tar.gz* UPLOAD_TAR
               ;;
+              dib)
+                  export IPA_SOURCE_DIR={{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent
+                  pushd {{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent-builder/dib
+                  ./build.sh
+                  mv ironic-python-agent* "$IPA_SOURCE_DIR/UPLOAD_TAR"
+                  popd
+              ;;
           esac
           ERRORS=0
         executable: /bin/bash
