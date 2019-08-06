@@ -1454,6 +1454,15 @@ class GenericHardwareManager(HardwareManager):
                     utils.execute('parted', device.name, '-s', '-a',
                                   'optimal', '--', 'mkpart', 'primary',
                                   sector, psize)
+                    # Necessary, if we want to avoid hitting
+                    # an error when creating the mdadm array below
+                    # 'mdadm: cannot open /dev/nvme1n1p1: No such file
+                    # or directory'.
+                    # The real difference between partx and partprobe is
+                    # unclear, but note that partprobe does not seem to
+                    # work synchronously for nvme drives...
+                    utils.execute("partx", "-u", device.name,
+                                  check_exit_code=False)
                 except processutils.ProcessExecutionError as e:
                     msg = "Failed to create partitions on {}: {}".format(
                         device.name, e)
@@ -1464,8 +1473,14 @@ class GenericHardwareManager(HardwareManager):
         raid_device_count = len(block_devices)
         for index, logical_disk in enumerate(logical_disks):
             md_device = '/dev/md%d' % index
-            component_devices = [device.name + str(index + 1)
-                                 for device in block_devices]
+            component_devices = []
+            for device in block_devices:
+                # The partition delimiter for all common harddrives (sd[a-z]+)
+                part_delimiter = ''
+                if 'nvme' in device.name:
+                    part_delimiter = 'p'
+                component_devices.append(
+                    device.name + part_delimiter + str(index + 1))
             raid_level = logical_disk['raid_level']
             # The schema check allows '1+0', but mdadm knows it as '10'.
             if raid_level == '1+0':

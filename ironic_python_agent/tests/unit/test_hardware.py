@@ -2594,12 +2594,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '2048s', 102400),
+            mock.call('partx', '-u', '/dev/sda', check_exit_code=False),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '2048s', 102400),
+            mock.call('partx', '-u', '/dev/sdb', check_exit_code=False),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', 102400, '-1'),
+            mock.call('partx', '-u', '/dev/sda', check_exit_code=False),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', 102400, '-1'),
+            mock.call('partx', '-u', '/dev/sdb', check_exit_code=False),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '1', '--raid-devices', 2,
                       '/dev/sda1', '/dev/sdb1'),
@@ -2696,7 +2700,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         # partition creation
         error_regex = "Failed to create partitions on /dev/sda"
         mocked_execute.side_effect = [
-            None, None,  # partition tables on sd{a,b}
+            None, None,  # partition tables and partx on sd{a,b}
             processutils.ProcessExecutionError]
         self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
                                self.hardware.create_configuration,
@@ -2706,8 +2710,116 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        "on /dev/sda1 /dev/sdb1")
         mocked_execute.side_effect = [
             None, None,  # partition tables on sd{a,b}
-            None, None,  # RAID-1 partitions on sd{a,b}
-            None, None,  # RAID-N partitions on sd{a,b}
+            None, None, None, None,  # RAID-1 partitions on sd{a,b} + partx
+            None, None, None, None,  # RAID-N partitions on sd{a,b} + partx
+            processutils.ProcessExecutionError]
+        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+                               self.hardware.create_configuration,
+                               self.node, [])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_with_nvme(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/nvme0n1', 'nvme0n1',
+                                       1073741824, True)
+        device2 = hardware.BlockDevice('/dev/nvme1n1', 'nvme1n1',
+                                       1073741824, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.return_value = [device1, device2]
+
+        result = self.hardware.create_configuration(self.node, [])
+
+        mocked_execute.assert_has_calls([
+            mock.call('parted', '/dev/nvme0n1', '-s', '--', 'mklabel',
+                      'msdos'),
+            mock.call('parted', '/dev/nvme1n1', '-s', '--', 'mklabel',
+                      'msdos'),
+            mock.call('parted', '/dev/nvme0n1', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '2048s', 102400),
+            mock.call('partx', '-u', '/dev/nvme0n1', check_exit_code=False),
+            mock.call('parted', '/dev/nvme1n1', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '2048s', 102400),
+            mock.call('partx', '-u', '/dev/nvme1n1', check_exit_code=False),
+            mock.call('parted', '/dev/nvme0n1', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', 102400, '-1'),
+            mock.call('partx', '-u', '/dev/nvme0n1', check_exit_code=False),
+            mock.call('parted', '/dev/nvme1n1', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', 102400, '-1'),
+            mock.call('partx', '-u', '/dev/nvme1n1', check_exit_code=False),
+            mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
+                      '--metadata=1', '--level', '1', '--raid-devices', 2,
+                      '/dev/nvme0n1p1', '/dev/nvme1n1p1'),
+            mock.call('mdadm', '--create', '/dev/md1', '--force', '--run',
+                      '--metadata=1', '--level', '0', '--raid-devices', 2,
+                      '/dev/nvme0n1p2', '/dev/nvme1n1p2')])
+        self.assertEqual(raid_config, result)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_failure_with_nvme(self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/nvme0n1', 'nvme0n1',
+                                       1073741824, True)
+        device2 = hardware.BlockDevice('/dev/nvme1n1', 'nvme1n1',
+                                       1073741824, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.side_effect = [
+            [device1, device2],
+            [device1, device2],
+            [device1, device2],
+            [device1, device2],
+            [device1, device2],
+            [device1, device2]]
+
+        # partition table creation
+        error_regex = "Failed to create partition table on /dev/nvme0n1"
+        mocked_execute.side_effect = [
+            processutils.ProcessExecutionError]
+        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+                               self.hardware.create_configuration,
+                               self.node, [])
+        # partition creation
+        error_regex = "Failed to create partitions on /dev/nvme0n1"
+        mocked_execute.side_effect = [
+            None, None,  # partition tables and partx on sd{a,b}
+            processutils.ProcessExecutionError]
+        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+                               self.hardware.create_configuration,
+                               self.node, [])
+        # raid device creation
+        error_regex = ("Failed to create md device /dev/md0 "
+                       "on /dev/nvme0n1p1 /dev/nvme1n1p1")
+        mocked_execute.side_effect = [
+            None, None,  # partition tables on sd{a,b}
+            None, None, None, None,  # RAID-1 partitions on sd{a,b} + partx
+            None, None, None, None,  # RAID-N partitions on sd{a,b} + partx
             processutils.ProcessExecutionError]
         self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
                                self.hardware.create_configuration,
