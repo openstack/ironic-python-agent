@@ -1502,6 +1502,12 @@ class GenericHardwareManager(HardwareManager):
                  devices.
         """
 
+        # incr starts to 1
+        # It means md0 is on the partition 1, md1 on 2...
+        # incr could be incremented if we ever decide, for example to create
+        # some additional partitions here (boot partitions)
+        incr = 1
+
         raid_config = node.get('target_raid_config', {})
         if not raid_config:
             LOG.debug("No target_raid_config found")
@@ -1544,23 +1550,50 @@ class GenericHardwareManager(HardwareManager):
                    % ', '.join(with_parts))
             raise errors.SoftwareRAIDError(msg)
 
+        partition_table_type = utils.get_partition_table_type_from_specs(node)
+        target_boot_mode = utils.get_node_boot_mode(node)
+
         parted_start_dict = {}
-        # Create an MBR partition table on each disk.
-        # TODO(arne_wiebalck): Check if GPT would work as well.
+        # Create a partition table on each disk.
         for dev_name in block_devices:
-            LOG.info("Creating partition table on {}".format(dev_name))
+            LOG.info("Creating partition table on {}".format(
+                dev_name))
             try:
                 utils.execute('parted', dev_name, '-s', '--',
-                              'mklabel', 'msdos')
+                              'mklabel', partition_table_type)
             except processutils.ProcessExecutionError as e:
                 msg = "Failed to create partition table on {}: {}".format(
                     dev_name, e)
                 raise errors.SoftwareRAIDError(msg)
 
-            out, _u = utils.execute('sgdisk', '-F', dev_name)
-            # May differ from 2048s, according to device geometry (example:
-            # 4k disks).
-            parted_start_dict[dev_name] = "%ss" % out.splitlines()[-1]
+            # TODO(rg): TBD, several options regarding boot part slots here:
+            # 1. Create boot partitions in prevision
+            # 2. Just leave space
+            # 3. Do nothing: rely on the caller to specify target_raid_config
+            # correctly according to what they intend to do (eg not set MAX if
+            # they know they will need some space for bios boot or efi parts.
+            # (Best option imo, if we accept that the target volume granularity
+            # is GiB, so you lose up to 1GiB just for a bios boot partition...)
+            if target_boot_mode == 'uefi':
+                # Leave 129MiB - start_sector s for the esp (approx 128MiB)
+                # NOTE: any image efi partition is expected to be less
+                # than 128MiB
+                # TBD: 129MiB is a waste in most cases.
+                raid_start = '129MiB'
+            else:
+                if partition_table_type == 'gpt':
+                    # Leave 8MiB - start_sector s (approx 7MiB)
+                    # for the bios boot partition or the ppc prepboot part
+                    # This should avoid grub errors saying that it cannot
+                    # install boot stage 1.5/2 (since the mbr gap does not
+                    # exist on disk holders with gpt tables)
+                    raid_start = '8MiB'
+                else:
+                    # sgdisk works fine for display data on mbr tables too
+                    out, _u = utils.execute('sgdisk', '-F', dev_name)
+                    raid_start = "{}s".format(out.splitlines()[-1])
+
+            parted_start_dict[dev_name] = raid_start
 
         LOG.debug("First available sectors per devices %s", parted_start_dict)
 
@@ -1648,7 +1681,7 @@ class GenericHardwareManager(HardwareManager):
                 if 'nvme' in device:
                     part_delimiter = 'p'
                 component_devices.append(
-                    device + part_delimiter + str(index + 1))
+                    device + part_delimiter + str(index + incr))
             raid_level = logical_disk['raid_level']
             # The schema check allows '1+0', but mdadm knows it as '10'.
             if raid_level == '1+0':
