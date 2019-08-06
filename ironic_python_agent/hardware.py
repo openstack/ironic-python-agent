@@ -1400,6 +1400,19 @@ class GenericHardwareManager(HardwareManager):
 
         raid_config = node.get('target_raid_config', {})
 
+        partition_table_type = 'msdos'
+
+        # If explicitely specified by caller let's follow orders
+        instance_info = node.get('instance_info', {})
+        capabilities = instance_info.get('capabilities', {})
+        specified_table_type = capabilities.get('disk_label')
+        if specified_table_type:
+            if specified_table_type not in ['msdos', 'gpt']:
+                msg = ("Invalid disk_label capability. "
+                       "Should either be 'msdos' or 'gpt'")
+                raise errors.SoftwareRAIDError(msg)
+            partition_table_type = specified_table_type
+
         # No 'software' controller: do nothing. If 'controller' is
         # set to 'software' on only one of the drives, the validation
         # code will catch it.
@@ -1432,14 +1445,13 @@ class GenericHardwareManager(HardwareManager):
                   partitions)
             raise errors.SoftwareRAIDError(msg)
 
-        # Create an MBR partition table on each disk.
-        # TODO(arne_wiebalck): Check if GPT would work as well.
+        # Create an MBR or GPT partition table on each disk.
         for block_device in block_devices:
             LOG.info("Creating partition table on {}".format(
                 block_device.name))
             try:
                 utils.execute('parted', block_device.name, '-s', '--',
-                              'mklabel', 'msdos')
+                              'mklabel', partition_table_type)
             except processutils.ProcessExecutionError as e:
                 msg = "Failed to create partition table on {}: {}".format(
                     block_device.name, e)

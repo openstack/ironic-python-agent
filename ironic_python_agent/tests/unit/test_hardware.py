@@ -2568,6 +2568,29 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration(self, mocked_execute):
+        self._test_create_configuration(mocked_execute, 'msdos')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_disk_label_specified(
+            self, mocked_execute):
+
+        # Override gpt default choice with msdos
+        node = {
+            'uuid': 'hello',
+            'instance_info': {
+                'capabilities': {
+                    'disk_label': 'gpt'
+                }
+            }
+        }
+        self._test_create_configuration(mocked_execute, 'msdos')
+        self._test_create_configuration(mocked_execute, 'gpt', node)
+
+    def _test_create_configuration(self, mocked_execute,
+                                   expected_partition_table_type, node=None):
+        if node is None:
+            node = self.node
+
         raid_config = {
             "logical_disks": [
                 {
@@ -2582,17 +2605,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 },
             ]
         }
-        self.node['target_raid_config'] = raid_config
+        node['target_raid_config'] = raid_config
         device1 = hardware.BlockDevice('/dev/sda', 'sda', 1073741824, True)
         device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 1073741824, True)
         self.hardware.list_block_devices = mock.Mock()
         self.hardware.list_block_devices.return_value = [device1, device2]
 
-        result = self.hardware.create_configuration(self.node, [])
+        result = self.hardware.create_configuration(node, [])
 
         mocked_execute.assert_has_calls([
-            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
+            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel',
+                      expected_partition_table_type),
+            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel',
+                      expected_partition_table_type),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '2048s', 102400),
             mock.call('partx', '-u', '/dev/sda', check_exit_code=False),
@@ -2717,6 +2742,24 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
                                self.hardware.create_configuration,
                                self.node, [])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_bad_disk_label(self, mocked_execute):
+
+        # Override gpt default choice with msdos
+        node = {
+            'uuid': 'hello',
+            'instance_info': {
+                'capabilities': {
+                    'disk_label': 'invalid'
+                }
+            }
+        }
+        error_regex = \
+            "Invalid disk_label capability. Should either be 'msdos' or 'gpt'"
+        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+                               self.hardware.create_configuration,
+                               node, [])
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_with_nvme(self, mocked_execute):
