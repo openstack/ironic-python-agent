@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    No longer tries to use zRAM devices for anything.

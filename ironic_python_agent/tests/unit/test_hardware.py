@@ -137,7 +137,8 @@ BLK_DEVICE_TEMPLATE = (
     ' ROTA="0" TYPE="disk"\n'
     'KNAME="sdd" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
     ' ROTA="0" TYPE="disk"\n'
-    'KNAME="loop0" MODEL="" SIZE="109109248" ROTA="1" TYPE="loop"'
+    'KNAME="loop0" MODEL="" SIZE="109109248" ROTA="1" TYPE="loop"\n'
+    'KNAME="zram0" MODEL="" SIZE="" ROTA="0" TYPE="disk"'
 )
 
 # NOTE(pas-ha) largest device is 1 byte smaller than 4GiB
