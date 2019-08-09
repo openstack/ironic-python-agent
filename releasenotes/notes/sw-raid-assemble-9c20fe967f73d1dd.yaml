@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Tries to assemble software RAID automatically on start up to avoid problems
+    with ramdisks that don't do it automatically (like tinyipa).
