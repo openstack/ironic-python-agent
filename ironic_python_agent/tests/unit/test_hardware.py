@@ -639,6 +639,34 @@ Consistency Policy : resync
        1     253       80        1      active sync   /dev/vdf1
 """)
 
+MDADM_DETAIL_OUTPUT_NVME = ("""/dev/md0:
+        Version : 1.2
+  Creation Time : Wed Aug  7 13:47:27 2019
+     Raid Level : raid1
+     Array Size : 439221248 (418.87 GiB 449.76 GB)
+  Used Dev Size : 439221248 (418.87 GiB 449.76 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+  Intent Bitmap : Internal
+
+    Update Time : Wed Aug  7 14:37:21 2019
+          State : clean
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+           Name : rescue:0  (local to host rescue)
+           UUID : abe222bc:98735860:ab324674:e4076313
+         Events : 426
+
+    Number   Major   Minor   RaidDevice State
+       0     259        2        0      active sync   /dev/nvme0n1p1
+       1     259        3        1      active sync   /dev/nvme1n1p1
+""")
+
 
 MDADM_DETAIL_OUTPUT_BROKEN_RAID0 = ("""/dev/md126:
            Version : 1.2
@@ -2872,33 +2900,43 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_component_devices(self, mocked_execute):
         mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT, '')]
-        raid_device = hardware.BlockDevice('/dev/md0', 'RAID-1',
-                                           1073741824, True)
-        component_devices = hardware._get_component_devices(raid_device.name)
+        component_devices = hardware._get_component_devices('/dev/md0')
         self.assertEqual(['/dev/vde1', '/dev/vdf1'], component_devices)
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_component_devices_broken_raid0(self, mocked_execute):
         mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT_BROKEN_RAID0, '')]
-        raid_device = hardware.BlockDevice('/dev/md126', 'RAID-0',
-                                           1073741824, True)
-        component_devices = hardware._get_component_devices(raid_device.name)
+        component_devices = hardware._get_component_devices('/dev/md126')
         self.assertEqual(['/dev/sda2'], component_devices)
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks(self, mocked_execute):
         mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT, '')]
-        raid_device = hardware.BlockDevice('/dev/md0', 'RAID-1',
-                                           1073741824, True)
-        holder_disks = hardware.get_holder_disks(raid_device.name)
+        holder_disks = hardware.get_holder_disks('/dev/md0')
         self.assertEqual(['/dev/vde', '/dev/vdf'], holder_disks)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_holder_disks_with_nvme(self, mocked_execute):
+        mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT_NVME, '')]
+        holder_disks = hardware.get_holder_disks('/dev/md0')
+        self.assertEqual(['/dev/nvme0n1', '/dev/nvme1n1'], holder_disks)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_holder_disks_unexpected_devices(self, mocked_execute):
+        side_effect = MDADM_DETAIL_OUTPUT_NVME.replace('nvme1n1p1',
+                                                       'notmatching1a')
+        mocked_execute.side_effect = [(side_effect, '')]
+        self.assertRaisesRegex(
+            errors.SoftwareRAIDError,
+            r'^Software RAID caused unknown error: Could not get holder disks '
+            r'of /dev/md0: unexpected pattern for partition '
+            r'/dev/notmatching1a$',
+            hardware.get_holder_disks, '/dev/md0')
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks_broken_raid0(self, mocked_execute):
         mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT_BROKEN_RAID0, '')]
-        raid_device = hardware.BlockDevice('/dev/md126', 'RAID-0',
-                                           1073741824, True)
-        holder_disks = hardware.get_holder_disks(raid_device.name)
+        holder_disks = hardware.get_holder_disks('/dev/md126')
         self.assertEqual(['/dev/sda'], holder_disks)
 
     @mock.patch.object(hardware, 'get_holder_disks', autospec=True)

@@ -556,3 +556,39 @@ class TestUtils(testtools.TestCase):
                          keyfile='spam', certfile='ham')
         self.assertEqual((True, ('ham', 'spam')),
                          utils.get_ssl_client_options(conf))
+
+    def test_device_extractor(self):
+        self.assertEqual(
+            'md0',
+            utils.extract_device('md0p1')
+        )
+        self.assertEqual(
+            '/dev/md0',
+            utils.extract_device('/dev/md0p1')
+        )
+        self.assertEqual(
+            'sda',
+            utils.extract_device('sda12')
+        )
+        self.assertEqual(
+            '/dev/sda',
+            utils.extract_device('/dev/sda12')
+        )
+        self.assertEqual(
+            'nvme0n1',
+            utils.extract_device('nvme0n1p12')
+        )
+        self.assertEqual(
+            '/dev/nvme0n1',
+            utils.extract_device('/dev/nvme0n1p12')
+        )
+        self.assertEqual(
+            '/dev/hello',
+            utils.extract_device('/dev/hello42')
+        )
+        self.assertIsNone(
+            utils.extract_device('/dev/sda')
+        )
+        self.assertIsNone(
+            utils.extract_device('whatevernotmatchin12a')
+        )
