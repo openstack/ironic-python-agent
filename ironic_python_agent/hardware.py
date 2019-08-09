@@ -212,6 +212,17 @@ def md_restart(raid_device):
         raise errors.CommandExecutionError(error_msg)
 
 
+def _md_scan_and_assemble():
+    """Scan all md devices and assemble RAID arrays from them.
+
+    This call does not fail if no md devices are present.
+    """
+    try:
+        utils.execute('mdadm', '--assemble', '--scan', '--verbose')
+    except processutils.ProcessExecutionError:
+        LOG.info('No new RAID devices assembled during start-up')
+
+
 def list_all_block_devices(block_type='disk',
                            ignore_raid=False):
     """List all physical block devices
@@ -700,6 +711,7 @@ class GenericHardwareManager(HardwareManager):
     def evaluate_hardware_support(self):
         # Do some initialization before we declare ourself ready
         _check_for_iscsi()
+        _md_scan_and_assemble()
         self.wait_for_disks()
         return HardwareSupport.GENERIC
 

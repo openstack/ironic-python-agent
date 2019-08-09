@@ -128,6 +128,8 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
         self.assertEqual(2.7, self.heartbeater.error_delay)
 
 
+@mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
+@mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 class TestBaseAgent(ironic_agent_base.IronicAgentTest):
@@ -173,7 +175,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertEqual(pkg_resources.get_distribution('ironic-python-agent')
                          .version, status.version)
 
-    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -219,7 +220,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
 
     @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
-    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -276,7 +276,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
 
     @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
-    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -338,7 +337,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         # changed via mdns
         self.assertEqual(42, CONF.disk_wait_attempts)
 
-    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -382,7 +380,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
         self.assertTrue(wsgi_server.handle_request.called)
 
-    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
                 mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
@@ -436,7 +433,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
 
     @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
-    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -494,7 +490,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertFalse(mock_dispatch.called)
 
     @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
-    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -710,6 +705,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         mock_log.warning.assert_called_once()
 
 
+@mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
+@mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
@@ -730,7 +727,6 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
                                              'agent_ipmitool',
                                              True)
 
-    @mock.patch.object(hardware, '_check_for_iscsi', mock.Mock())
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -768,6 +764,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
         self.assertFalse(self.agent.api_client.lookup_node.called)
 
 
+@mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
