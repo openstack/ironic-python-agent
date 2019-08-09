@@ -108,6 +108,12 @@
     vars:
       image_name: 'tinyipa'
 
+- job:
+    name: ironic-python-agent-buildimage-dib
+    parent: ironic-python-agent-buildimage-base
+    vars:
+      image_name: 'dib'
+
 
 # Experimental jobs
 - job:
