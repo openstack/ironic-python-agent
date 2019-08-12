@@ -316,10 +316,11 @@ def list_all_block_devices(block_type='disk',
             raise errors.BlockDeviceError(
                 '%s must be returned by lsblk.' % ', '.join(sorted(missing)))
 
-        # NOTE(dtantsur): zRAM devices can appear in the output of lsblk, but
-        # we cannot do anything useful with them.
-        if device['KNAME'].startswith('zram'):
-            LOG.debug('Skipping zRAM device %s', device)
+        # NOTE(dtantsur): RAM disks and zRAM devices appear in the output of
+        # lsblk as disks, but we cannot do anything useful with them.
+        if (device['KNAME'].startswith('ram')
+                or device['KNAME'].startswith('zram')):
+            LOG.debug('Skipping RAM device %s', device)
             continue
 
         name = os.path.join('/dev', device['KNAME'])
