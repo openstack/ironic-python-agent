@@ -54,6 +54,7 @@
                   mv ipa-coreos*.tar.gz* UPLOAD_TAR
               ;;
               dib)
+                  sudo pip install diskimage-builder -c {{ ansible_user_dir }}/src/opendev.org/openstack/requirements/upper-constraints.txt
                   export IPA_SOURCE_DIR={{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent
                   pushd {{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent-builder/dib
                   ./build.sh
