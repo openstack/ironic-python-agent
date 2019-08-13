@@ -193,3 +193,26 @@
         # Don't waste time on cleaning, it's checked everywhere else
         IRONIC_AUTOMATED_CLEAN_ENABLED: False
         IRONIC_BUILD_DEPLOY_RAMDISK: True
+
+- job:
+    name: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
+    parent: ironic-ipa-base
+    timeout: 9600
+    vars:
+      tempest_test_timeout: 2400
+      devstack_services:
+        s-account: True
+        s-container: True
+        s-object: True
+        s-proxy: True
+      devstack_localrc:
+        IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
+        IRONIC_RAMDISK_TYPE: dib
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+        IRONIC_TEMPEST_BUILD_TIMEOUT: 900
+        IRONIC_VM_EPHEMERAL_DISK: 0
+        IRONIC_VM_INTERFACE_COUNT: 1
+        IRONIC_VM_SPECS_RAM: 2048
+        SWIFT_ENABLE_TEMPURLS: True
+        SWIFT_TEMPURL_KEY: secretkey
+        USE_PYTHON3: False

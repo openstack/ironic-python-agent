@@ -18,6 +18,8 @@
             voting: false
         - metalsmith-integration-ipa-src:
             voting: false
+        - ipa-tempest-wholedisk-bios-ipmi-direct-dib-src:
+            voting: false
         - openstack-tox-functional:
             voting: false
         - openstack-tox-lower-constraints
