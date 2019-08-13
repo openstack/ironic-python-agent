@@ -1417,6 +1417,9 @@ class GenericHardwareManager(HardwareManager):
         """
 
         raid_config = node.get('target_raid_config', {})
+        if not raid_config:
+            LOG.debug("No target_raid_config found")
+            return {}
 
         partition_table_type = 'msdos'
 

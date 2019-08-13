@@ -2868,11 +2868,33 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 }
             }
         }
+        # pass a sensible target_raid_config
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+        node['target_raid_config'] = raid_config
+
         error_regex = \
             "Invalid disk_label capability. Should either be 'msdos' or 'gpt'"
         self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
                                self.hardware.create_configuration,
                                node, [])
+
+    def test_create_configuration_empty_target_raid_config(self):
+        self.node['target_raid_config'] = {}
+        result = self.hardware.create_configuration(self.node, [])
+        self.assertEqual(result, {})
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_with_nvme(self, mocked_execute):
