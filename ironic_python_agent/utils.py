@@ -17,6 +17,7 @@ import errno
 import glob
 import io
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -58,6 +59,9 @@ COLLECT_LOGS_COMMANDS = {
     'ip_addr': ['ip', 'addr'],
     'lshw': ['lshw', '-quiet', '-json'],
 }
+
+
+DEVICE_EXTRACTOR = re.compile(r'^(?:(.*\d)p|(.*\D))(?:\d+)$')
 
 
 def execute(*cmd, **kwargs):
@@ -436,3 +440,16 @@ def get_ssl_client_options(conf):
     else:
         cert = None
     return verify, cert
+
+
+def extract_device(part):
+    """Extract the device from a partition name or path.
+
+    :param part: the partition
+    :return: a device if success, None otherwise
+    """
+
+    m = DEVICE_EXTRACTOR.match(part)
+    if not m:
+        return None
+    return (m.group(1) or m.group(2))

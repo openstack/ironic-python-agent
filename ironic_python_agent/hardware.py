@@ -168,9 +168,20 @@ def get_holder_disks(raid_device):
 
     lines = out.splitlines()
     # the first line contains the md device itself
+
+    holder_parts = []
     for line in lines[1:]:
-        device = re.findall(r'/dev/\D+', line)
-        holder_disks += device
+        device = re.findall(r'/dev/\w+', line)
+        holder_parts += device
+
+    for part in holder_parts:
+
+        device = utils.extract_device(part)
+        if not device:
+            msg = ('Could not get holder disks of %s: unexpected pattern '
+                   'for partition %s') % (raid_device, part)
+            raise errors.SoftwareRAIDError(msg)
+        holder_disks.append(device)
 
     return holder_disks
 
