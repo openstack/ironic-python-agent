@@ -236,7 +236,8 @@ def _md_scan_and_assemble():
 
 
 def list_all_block_devices(block_type='disk',
-                           ignore_raid=False):
+                           ignore_raid=False,
+                           ignore_floppy=True):
     """List all physical block devices
 
     The switches we use for lsblk: P for KEY="value" output, b for size output
@@ -250,6 +251,8 @@ def list_all_block_devices(block_type='disk',
     :param ignore_raid: Ignore auto-identified raid devices, example: md0
                         Defaults to false as these are generally disk
                         devices and should be treated as such if encountered.
+    :param ignore_floppy: Ignore floppy disk devices in the block device
+                          list. By default, these devices are filtered out.
     :return: A list of BlockDevices
     """
 
@@ -303,6 +306,13 @@ def list_all_block_devices(block_type='disk',
 
         # We already have devices, we should ensure we don't store duplicates.
         if _is_known_device(devices, device.get('KNAME')):
+            continue
+
+        # If we collected the RM column, we could consult it for removable
+        # media, however USB devices are also flagged as removable media.
+        # we have to explicitly do this as floppy disks are type disk.
+        if ignore_floppy and str(device.get('KNAME')).startswith('fd'):
+            LOG.debug('Ignoring floppy disk device %s', device)
             continue
 
         # Search for raid in the reply type, as RAID is a

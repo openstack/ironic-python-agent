@@ -142,7 +142,8 @@ BLK_DEVICE_TEMPLATE = (
     'KNAME="ram0" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
     'KNAME="ram1" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
     'KNAME="ram2" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
-    'KNAME="ram3" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"'
+    'KNAME="ram3" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
+    'KNAME="fd1" MODEL="magic" SIZE="4096" ROTA="1" TYPE="disk"'
 )
 
 # NOTE(pas-ha) largest device is 1 byte smaller than 4GiB

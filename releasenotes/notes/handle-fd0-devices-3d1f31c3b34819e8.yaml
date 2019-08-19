@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixes cleaning operations when floppy disk devices are present on the
+    baremetal node.
+other:
+  - |
+    The default ``list_all_block_devices`` hardware manager method has been
+    changed to ignore floppy disk devices. An argument ``ignore_floppy``
+    with a default value of ``True``. A value of ``False`` may be passed
+    to the ``list_all_block_devices`` method to include such devices.
