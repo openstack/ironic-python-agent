@@ -127,15 +127,16 @@ def _get_component_devices(raid_device):
     if not raid_device:
         return []
 
-    component_devices = []
     try:
         out, _ = utils.execute('mdadm', '--detail', raid_device,
                                use_standard_locale=True)
     except processutils.ProcessExecutionError as e:
         msg = ('Could not get component devices of %(dev)s: %(err)s' %
                {'dev': raid_device, 'err': e})
-        raise errors.SoftwareRAIDError(msg)
+        LOG.warning(msg)
+        return []
 
+    component_devices = []
     lines = out.splitlines()
     # the first line contains the md device itself
     for line in lines[1:]:
@@ -156,16 +157,16 @@ def get_holder_disks(raid_device):
     if not raid_device:
         return []
 
-    holder_disks = []
-
     try:
         out, _ = utils.execute('mdadm', '--detail', raid_device,
                                use_standard_locale=True)
     except processutils.ProcessExecutionError as e:
         msg = ('Could not get holder disks of %(dev)s: %(err)s' %
                {'dev': raid_device, 'err': e})
-        raise errors.SoftwareRAIDError(msg)
+        LOG.warning(msg)
+        return []
 
+    holder_disks = []
     lines = out.splitlines()
     # the first line contains the md device itself
 
@@ -1569,12 +1570,21 @@ class GenericHardwareManager(HardwareManager):
         raid_devices = list_all_block_devices(block_type='raid',
                                               ignore_raid=False)
         for raid_device in raid_devices:
+            component_devices = _get_component_devices(raid_device.name)
+            if not component_devices:
+                # A "Software RAID device" without components is usually
+                # a partition on an md device (as, for instance, created
+                # by the conductor for the config drive). This will be
+                # cleaned with the hosting md device.
+                msg = ("Software RAID cleaning is skipping "
+                       "partition %s" % raid_device.name)
+                LOG.info(msg)
+                continue
+            holder_disks = get_holder_disks(raid_device.name)
+
             LOG.info("Deleting Software RAID device {}".format(
                      raid_device.name))
-
-            component_devices = _get_component_devices(raid_device.name)
             LOG.debug('Found component devices %s', component_devices)
-            holder_disks = get_holder_disks(raid_device.name)
             LOG.debug('Found holder disks %s', holder_disks)
 
             # Remove md devices.
