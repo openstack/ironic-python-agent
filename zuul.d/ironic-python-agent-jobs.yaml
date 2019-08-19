@@ -93,6 +93,7 @@
     post-run: playbooks/ironic-python-agent-buildimage/post.yaml
     timeout: 1800
     required-projects:
+      - openstack/requirements
       - openstack/ironic-python-agent
       - openstack/ironic-python-agent-builder
 
