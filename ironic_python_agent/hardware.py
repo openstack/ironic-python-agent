@@ -1479,6 +1479,7 @@ class GenericHardwareManager(HardwareManager):
             raise errors.SoftwareRAIDError(msg)
 
         # Create an MBR or GPT partition table on each disk.
+        parted_start_dict = {}
         for block_device in block_devices:
             LOG.info("Creating partition table on {}".format(
                 block_device.name))
@@ -1490,21 +1491,71 @@ class GenericHardwareManager(HardwareManager):
                     block_device.name, e)
                 raise errors.SoftwareRAIDError(msg)
 
-        # Create the partitions which will become the component devices.
-        sector = '2048s'
+            out, _u = utils.execute('sgdisk', '-F', block_device.name)
+            # May differ from 2048s, according to device geometry (example:
+            # 4k disks).
+            parted_start_dict[block_device.name] = "%ss" % out.splitlines()[-1]
+
+        LOG.debug("First available sectors per devices %s", parted_start_dict)
+
+        # Reorder logical disks so that MAX comes last if any:
+        reordered_logical_disks = []
+        max_disk = None
         for logical_disk in logical_disks:
             psize = logical_disk['size_gb']
             if psize == 'MAX':
-                psize = '-1'
+                max_disk = logical_disk
             else:
-                psize = int(psize) * 1024
-            for device in block_devices:
+                reordered_logical_disks.append(logical_disk)
+        if max_disk:
+            reordered_logical_disks.append(max_disk)
+        logical_disks = reordered_logical_disks
+
+        # With the partitioning below, the first partition is not
+        # exactly the size_gb provided, but rather the size minus a small
+        # amount (often 2048*512B=1MiB, depending on the disk geometry).
+        # Easier to ignore. Another way could be to use sgdisk, which is really
+        # user-friendly to compute part boundaries automatically, instead of
+        # parted, then convert back to mbr table if needed and possible.
+
+        default_physical_disks = [device.name for device in block_devices]
+
+        for logical_disk in logical_disks:
+            # Note: from the doc,
+            # https://docs.openstack.org/ironic/latest/admin/raid.html#target-raid-configuration
+            # size_gb unit is GiB
+
+            psize = logical_disk['size_gb']
+            if psize == 'MAX':
+                psize = -1
+            else:
+                psize = int(psize)
+
+            for device in default_physical_disks:
+                start = parted_start_dict[device]
+
+                if isinstance(start, int):
+                    start_str = '%dGiB' % start
+                else:
+                    start_str = start
+
+                if psize == -1:
+                    end_str = '-1'
+                    end = '-1'
+                else:
+                    if isinstance(start, int):
+                        end = start + psize
+                    else:
+                        # First partition case, start is sth like 2048s
+                        end = psize
+                    end_str = '%dGiB' % end
+
                 try:
                     LOG.debug("Creating partition on {}: {} {}".format(
-                        device.name, sector, psize))
-                    utils.execute('parted', device.name, '-s', '-a',
+                        device, start_str, end_str))
+                    utils.execute('parted', device, '-s', '-a',
                                   'optimal', '--', 'mkpart', 'primary',
-                                  sector, psize)
+                                  start_str, end_str)
                     # Necessary, if we want to avoid hitting
                     # an error when creating the mdadm array below
                     # 'mdadm: cannot open /dev/nvme1n1p1: No such file
@@ -1512,26 +1563,27 @@ class GenericHardwareManager(HardwareManager):
                     # The real difference between partx and partprobe is
                     # unclear, but note that partprobe does not seem to
                     # work synchronously for nvme drives...
-                    utils.execute("partx", "-u", device.name,
+                    utils.execute("partx", "-u", device,
                                   check_exit_code=False)
                 except processutils.ProcessExecutionError as e:
                     msg = "Failed to create partitions on {}: {}".format(
-                        device.name, e)
+                        device, e)
                     raise errors.SoftwareRAIDError(msg)
-            sector = psize
+
+                parted_start_dict[device] = end
 
         # Create the RAID devices.
         raid_device_count = len(block_devices)
         for index, logical_disk in enumerate(logical_disks):
             md_device = '/dev/md%d' % index
             component_devices = []
-            for device in block_devices:
+            for device in default_physical_disks:
                 # The partition delimiter for all common harddrives (sd[a-z]+)
                 part_delimiter = ''
-                if 'nvme' in device.name:
+                if 'nvme' in device:
                     part_delimiter = 'p'
                 component_devices.append(
-                    device.name + part_delimiter + str(index + 1))
+                    device + part_delimiter + str(index + 1))
             raid_level = logical_disk['raid_level']
             # The schema check allows '1+0', but mdadm knows it as '10'.
             if raid_level == '1+0':
