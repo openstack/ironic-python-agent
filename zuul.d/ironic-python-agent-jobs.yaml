@@ -112,8 +112,13 @@
 - job:
     name: ironic-python-agent-buildimage-dib
     parent: ironic-python-agent-buildimage-base
+    pre-run: playbooks/ironic-python-agent-buildimage/pre-dib.yaml
+    required-projects:
+      # NOTE(dtantsur): used for bindep only
+      - openstack/diskimage-builder
     vars:
       image_name: 'dib'
+      image_distro: 'centos7'
 
 
 # Experimental jobs

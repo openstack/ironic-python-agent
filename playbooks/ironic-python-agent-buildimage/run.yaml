@@ -54,12 +54,10 @@
                   mv ipa-coreos*.tar.gz* UPLOAD_TAR
               ;;
               dib)
-                  sudo pip install diskimage-builder -c {{ ansible_user_dir }}/src/opendev.org/openstack/requirements/upper-constraints.txt
-                  export IPA_SOURCE_DIR={{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent
-                  pushd {{ ansible_user_dir }}/src/opendev.org/openstack/ironic-python-agent-builder/dib
-                  ./build.sh ubuntu
-                  mv ironic-python-agent* "$IPA_SOURCE_DIR/UPLOAD_TAR"
-                  popd
+                  NAME=ipa-{{ image_distro }}-$BRANCH_PATH
+                  ironic-python-agent-builder -e dhcp-all-interfaces -o $NAME {{ image_distro }}
+                  tar -czf UPLOAD_TAR/$NAME.tar.gz ${NAME}*
+                  mv ${NAME}* "$IPA_SOURCE_DIR/UPLOAD_RAW"
               ;;
           esac
           ERRORS=0
