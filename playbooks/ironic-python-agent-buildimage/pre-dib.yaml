@@ -16,5 +16,4 @@
     - name: Install ironic-python-agent-builder
       pip:
         name: "{{ ansible_user_dir }}/{{ zuul.projects['opendev.org/openstack/ironic-python-agent-builder'].src_dir }}"
-        editable: true
       become: true
