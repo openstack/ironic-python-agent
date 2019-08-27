@@ -2,7 +2,7 @@
 fixes:
   - |
     Fixes cleaning operations when floppy disk devices are present on the
-    baremetal node.
+    baremetal node. Floppy disk devices are now explicitly ignored.
 other:
   - |
     The default ``list_all_block_devices`` hardware manager method has been
