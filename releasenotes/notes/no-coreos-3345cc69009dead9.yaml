@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    Images based on CoreOS are no longer supported and built. They were
+    deprecated in the Stein cycle and an alternative based on diskimage-builder
+    is being developed.

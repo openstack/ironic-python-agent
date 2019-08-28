@@ -8,46 +8,19 @@ Unlike most other python software, you must build an IPA ramdisk image before
 use. This is because it's not installed in an operating system, but instead is
 run from within a ramdisk.
 
-CoreOS
-------
-One way to build a ramdisk image for IPA is with the CoreOS image [0]_.
-Prebuilt copies of the CoreOS image, suitable for pxe, are available on
-`tarballs.openstack.org <https://tarballs.openstack.org/ironic-python-agent/coreos/files/>`__.
-
-Build process
-~~~~~~~~~~~~~
-On a high level, the build steps are as follows:
-
-1) A docker build is performed using the ``Dockerfile`` in the root of the
-   ironic-python-agent project.
-2) The resulting docker image is exported to a filesystem image.
-3) The filesystem image, along with a cloud-config.yml [1]_, are embedded into
-   the CoreOS PXE image at /usr/share/oem/.
-4) On boot, the ironic-python-agent filesystem image is extracted and run
-   inside a systemd-nspawn container. /usr/share/oem is mounted into this
-   container as /mnt.
-
-Customizing the image
-~~~~~~~~~~~~~~~~~~~~~
-There are several methods you can use to customize the IPA ramdisk:
-
-* Embed SSH keys by putting an authorized_keys file in /usr/share/oem/
-* Add your own hardware managers by modifying the Dockerfile to install
-  additional python packages.
-* Modify the cloud-config.yml [1]_ to perform additional tasks at boot time.
-
 diskimage-builder
 -----------------
-Another way to build a ramdisk image for IPA is by using diskimage-builder
-[2]_. The ironic-agent diskimage-builder element builds the IPA ramdisk, which
-installs all the required packages and configures services as needed.
+
+A production ready way to build a ramdisk image for IPA is by using
+ironic-python-agent-builder_. The ``ironic-python-agent-ramdisk``
+diskimage-builder element builds the IPA ramdisk, which installs all the
+required packages and configures services as needed.
 
 tinyipa
 -------
 
-Now, this method is provided
-by `Ironic Python Agent Builder <https://opendev.org/openstack/ironic-python-agent-builder>`_
-repo. It provides a set of scripts to build a
+Now this method is provided by ironic-python-agent-builder_
+repository. It provides a set of scripts to build a
 Tiny Core Linux-based deployment kernel and ramdisk (code name ``tinyipa``)
 under ``tinyipa`` folder.
 
@@ -74,15 +47,12 @@ packaged with IPA, pass it an initrd and kernel. e.g.::
   ./iso-image-create -o /path/to/output.iso -i /path/to/ipa.initrd -k /path/to/ipa.kernel
 
 This is a generic tool that can be used to combine any initrd and kernel into
-a suitable ISO for booting, and so should work against any IPA ramdisk created
--- both DIB and CoreOS.
+a suitable ISO for booting, and so should work against any IPA ramdisk.
 
 IPA Flags
 =========
 
 You can pass a variety of flags to IPA on start up to change its behavior.
-If you're using the CoreOS image, you can modify the
-ironic-python-agent.service unit in cloud-config.yaml [3]_.
 
 * ``--standalone``: This disables the initial lookup and heartbeats to Ironic.
   Lookup sends some information to Ironic in order to determine Ironic's node
@@ -186,13 +156,7 @@ Operators wishing to build their own hardware managers should reference
 the documentation available at `Hardware Managers`_.
 
 .. _Hardware Managers: https://docs.openstack.org/ironic-python-agent/latest/contributor/hardware_managers.html
-
-References
-==========
-.. [0] CoreOS PXE Images - https://coreos.com/docs/running-coreos/bare-metal/booting-with-pxe/
-.. [1] CoreOS Cloud Init - https://coreos.com/docs/cluster-management/setup/cloudinit-cloud-config/
-.. [2] DIB Element for IPA - https://docs.openstack.org/diskimage-builder/latest/elements/ironic-agent/README.html
-.. [3] cloud-config.yaml - https://opendev.org/openstack/ironic-python-agent/src/branch/master/imagebuild/coreos/oem/cloud-config.yml
+.. _ironic-python-agent-builder: https://docs.openstack.org/ironic-python-agent-builder
 
 Indices and tables
 ==================

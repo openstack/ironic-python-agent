@@ -98,15 +98,6 @@
       - openstack/ironic-python-agent-builder
 
 - job:
-    name: ironic-python-agent-buildimage-coreos
-    parent: ironic-python-agent-buildimage-base
-    vars:
-      image_name: 'coreos'
-      # TODO(dtantsur): refactor run.yaml, so that this variable is only
-      # required for DIB jobs.
-      image_distro: ''
-
-- job:
     name: ironic-python-agent-buildimage-tinyipa
     parent: ironic-python-agent-buildimage-base
     vars:

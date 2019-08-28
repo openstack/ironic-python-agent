@@ -13,16 +13,6 @@ the image. Below we will cover several ways to do this.
 
 Access via ssh
 --------------
-CoreOS
-~~~~~~
-To enable the ``core`` user on pre-built or CoreOS images a ssh public key
-will need to added. To do this you will need to:
-
-- Add ``sshkey="ssh-rsa AAAA..."`` to pxe_append_params setting in ironic.conf
-  file
-- Restart the ironic-conductor with the command
-  ``service ironic-conductor restart``
-- ``ssh core@<ip-address-of-node>``
 
 diskimage-builder (DIB)
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -72,43 +62,6 @@ Access via console
 If you need to use console access, passwords must be enabled there are a
 couple ways to enable this depending on how the IPA image was created:
 
-CoreOS
-~~~~~~
-CoreOS has support for auto login on the console [4]_. This can be enabled by:
-
-- Adding ``coreos.autologin`` to pxe_append_params setting
-  in the ``ironic.conf`` file. See [4]_ for more information on using
-  autologin.
-
-If you do not wish to enable auto login users can be added to CoreOS by editing
-the cloud-config.yml file and adding the following [2]_::
-
-  users:
-    - name: username
-      passwd: $6$5s2u6/jR$un0AvWnqilcgaNB3Mkxd5... <example password hash>
-      groups:
-        - sudo
-
-If using a pre-built image the cloud-config.yml must first be extracted::
-
-  mkdir tmp_folder
-  cd tmp_folder
-  zcat ../coreos_production_pxe_image-oem-stable-mitaka.cpio | cpio --extract --make-directories
-
-To create a password hash the mkpasswd command can be used::
-
-  mkpasswd --method=SHA-512 --rounds=4096
-
-After adding the user block with your favorite editor recompress the image::
-
-  find . | cpio --create --format='newc' |gzip -c -9 > ../coreos_production_pxe_image-oem-stable-mitaka.cpio.NEW.gz
-
-An alternative to editing the embedded cloud-config.yml [4]_ file is to pass a
-new one on the kernel command line by:
-
-- adding ``cloud-config-url=http://example.com/cloud-config.yml``
-  to pxe_append_params setting in the ``ironic.conf`` file
-
 diskimage-builder (DIB)
 ~~~~~~~~~~~~~~~~~~~~~~~
 Users wishing to use password access can be add the dynamic-login [0]_ or the
@@ -131,7 +84,7 @@ Example::
   export DIB_DEV_USER_USERNAME=username
   export DIB_DEV_USER_PWDLESS_SUDO=yes
   export DIB_DEV_USER_PASSWORD=PASSWORD
-  disk-image-create -o /path/to/custom-ipa debian ironic-agent devuser
+  ironic-python-agent-builder -o /path/to/custom-ipa -e devuser debian
 
 tinyipa
 ~~~~~~~
@@ -152,20 +105,6 @@ add ``ipa-debug=1`` to the kernel command line. To do this:
 - Restart the ironic-conductor with the command
   ``service ironic-conductor restart``
 
-Another method is to edit the cloud-config.yml file.  IPA's instructions on
-building a custom image can be found at [3]_.
-
-This essentially boils down to the following steps:
-
-#. ``git clone https://opendev.org/openstack/ironic-python-agent``
-#. ``cd ironic-python-agent``
-#. ``pip install -r ./requirements.txt``
-#. If not installed, please install the docker container engine. [5]_
-#. ``cd imagebuild/coreos``
-#. Edit ``oem/cloud-config.yml`` and add ``--debug`` to the end of the
-   ExecStart setting for the ironic-python-agent.service unit.
-#. Execute ``make`` to complete the build process.
-
 If the system is running and uses systemd then editing the services file
 will be required.
 
@@ -183,13 +122,9 @@ Retrieving the IPA logs will differ depending on which base image was used.
 
   - logs will be found in the /var/log/ folder.
 
-* Operating system that do use ``systemd`` (ie Fedora 22, CoreOS)
+* Operating system that do use ``systemd`` (ie Fedora, CentOS, RHEL)
 
   - logs may be viewed with ``sudo journalctl -u ironic-python-agent``
-
-  .. note::
-      sudo is not required with the CoreOS images.
-
 
 Manually restart IPA
 ====================
@@ -208,7 +143,3 @@ References
 ==========
 .. [0] `Dynamic-login DIB element`: https://github.com/openstack/diskimage-builder/tree/master/diskimage_builder/elements/dynamic-login
 .. [1] `DevUser DIB element`: https://github.com/openstack/diskimage-builder/tree/master/diskimage_builder/elements/devuser
-.. [2] `Add User to CoreOS`: https://coreos.com/os/docs/latest/adding-users.html
-.. [3] `IPA image build reference`: https://github.com/openstack/ironic-python-agent/tree/master/imagebuild/coreos/README.rst
-.. [4] `Booting CoreOS via PXE`: https://coreos.com/os/docs/latest/booting-with-pxe.html
-.. [5] `Install docker engine`: https://docs.docker.com/engine/installation/
