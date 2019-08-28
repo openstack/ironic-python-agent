@@ -12,6 +12,7 @@
         - ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
         - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
         - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
+        - ironic-standalone-ipa-src
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
@@ -39,6 +40,7 @@
         - ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
         - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
         - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
+        - ironic-standalone-ipa-src
         - openstack-tox-lower-constraints
     experimental:
       jobs:
