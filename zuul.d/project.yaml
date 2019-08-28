@@ -13,6 +13,12 @@
         - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
         - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
         - ironic-standalone-ipa-src
+        # NOTE(dtantsur): non-voting because IPA source code is very unlikely
+        # to break them. They rather serve as a canary for broken POST jobs.
+        - ironic-python-agent-check-image-tinyipa:
+            voting: false
+        - ironic-python-agent-check-image-dib-centos7:
+            voting: false
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
@@ -38,5 +44,5 @@
         - ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa-python3
     post:
       jobs:
-        - ironic-python-agent-buildimage-tinyipa
-        - ironic-python-agent-buildimage-dib
+        - ironic-python-agent-build-image-tinyipa
+        - ironic-python-agent-build-image-dib-centos7
