@@ -134,6 +134,51 @@ def _has_dracut(root):
     return True
 
 
+def _is_bootloader_loaded(dev):
+    """Checks the device to see if a MBR bootloader is present.
+
+    :param str dev: Block device upon which to check if it appears
+                       to be bootable via MBR.
+    :returns: True if a device appears to be bootable with a boot
+              loader, otherwise False.
+    """
+
+    def _has_boot_sector(device):
+        """Check the device for a boot sector indiator."""
+        stdout, stderr = utils.execute('file', '-s', device)
+        if 'boot sector' in stdout:
+            # Now lets check the signature
+            ddout, dderr = utils.execute(
+                'dd', 'if=%s' % device, 'bs=218', 'count=1')
+            stdout, stderr = utils.execute('file', '-', process_input=ddout)
+            # The bytes recovered by dd show as a "dos executable" when
+            # examined with file. In other words, the bootloader is present.
+            if 'executable' in stdout:
+                return True
+        return False
+
+    try:
+        # Looking for things marked "bootable" in the partition table
+        stdout, stderr = utils.execute('parted', dev, '-s', '-m',
+                                       '--', 'print')
+    except processutils.ProcessExecutionError:
+        return False
+
+    lines = stdout.splitlines()
+    for line in lines:
+        partition = line.split(':')
+        try:
+            # Find the bootable device, and check the base
+            # device and partition for bootloader contents.
+            if 'boot' in partition[6]:
+                if (_has_boot_sector(dev)
+                    or _has_boot_sector(partition[0])):
+                    return True
+        except IndexError:
+            continue
+    return False
+
+
 def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                    prep_boot_part_uuid=None):
     """Install GRUB2 bootloader on a given device."""
@@ -143,6 +188,19 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
     efi_partition_mount_point = None
     efi_mounted = False
 
+    # If the root device is an md device (or partition), restart the device
+    # (to help grub finding it) and identify the underlying holder disks
+    # to install grub.
+    if hardware.is_md_device(device):
+        hardware.md_restart(device)
+    elif (_is_bootloader_loaded(device)
+          and not (efi_system_part_uuid
+                   or prep_boot_part_uuid)):
+        # We always need to put the bootloader in place with software raid
+        # so it is okay to elif into the skip doing a bootloader step.
+        LOG.info("Skipping installation of bootloader on device %s "
+                 "as it is already marked bootable.", device)
+        return
     try:
         # Mount the partition and binds
         path = tempfile.mkdtemp()
@@ -155,11 +213,9 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         if prep_boot_part_uuid:
             device = _get_partition(device, uuid=prep_boot_part_uuid)
 
-        # If the root device is an md device (or partition), restart the device
-        # (to help grub finding it) and identify the underlying holder disks
-        # to install grub.
+        # If the root device is an md device (or partition),
+        # identify the underlying holder disks to install grub.
         if hardware.is_md_device(device):
-            hardware.md_restart(device)
             disks = hardware.get_holder_disks(device)
         else:
             disks = [device]

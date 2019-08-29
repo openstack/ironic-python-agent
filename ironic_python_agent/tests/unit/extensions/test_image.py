@@ -91,6 +91,7 @@ class TestImageExtension(base.IronicAgentTest):
             prep_boot_part_uuid=self.fake_prep_boot_part_uuid)
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
+    @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
@@ -100,7 +101,7 @@ class TestImageExtension(base.IronicAgentTest):
                             mock_execute, mock_dispatch):
         mock_get_part_uuid.return_value = self.fake_root_part
         environ_mock.get.return_value = '/sbin'
-        mock_is_md_device.side_effect = [False, False]
+        mock_is_md_device.return_value = False
         mock_md_get_raid_devices.return_value = {}
         image._install_grub2(self.fake_dev, self.fake_root_uuid)
 
@@ -137,6 +138,7 @@ class TestImageExtension(base.IronicAgentTest):
                                                    uuid=self.fake_root_uuid)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
@@ -147,9 +149,8 @@ class TestImageExtension(base.IronicAgentTest):
         mock_get_part_uuid.side_effect = [self.fake_root_part,
                                           self.fake_prep_boot_part]
         environ_mock.get.return_value = '/sbin'
-        mock_is_md_device.side_effect = [False, False]
+        mock_is_md_device.return_value = False
         mock_md_get_raid_devices.return_value = {}
-
         image._install_grub2(self.fake_dev, self.fake_root_uuid,
                              prep_boot_part_uuid=self.fake_prep_boot_part_uuid)
 
@@ -189,6 +190,7 @@ class TestImageExtension(base.IronicAgentTest):
                                            uuid=self.fake_prep_boot_part_uuid)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: True)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
@@ -252,6 +254,7 @@ class TestImageExtension(base.IronicAgentTest):
                                            uuid=self.fake_efi_system_part_uuid)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
@@ -305,6 +308,7 @@ class TestImageExtension(base.IronicAgentTest):
                               attempts=3, delay_on_retry=True)]
         mock_execute.assert_has_calls(expected)
 
+    @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
@@ -342,6 +346,7 @@ class TestImageExtension(base.IronicAgentTest):
                               delay_on_retry=True)]
         mock_execute.assert_has_calls(expected)
 
+    @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
     @mock.patch.object(image, '_get_partition', autospec=True)
     def test__install_grub2_command_fail(self, mock_get_part_uuid,
                                          mock_execute,
@@ -356,9 +361,11 @@ class TestImageExtension(base.IronicAgentTest):
                                                    uuid=self.fake_root_uuid)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(image, '_is_bootloader_loaded', autospec=True)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
-    def test__get_partition(self, mock_is_md_device, mock_execute,
-                            mock_dispatch):
+    def test__get_partition(self, mock_is_md_device, mock_is_bootloader,
+                            mock_execute, mock_dispatch):
+        mock_is_md_device.side_effect = [False]
         mock_is_md_device.side_effect = [False, False]
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
@@ -374,6 +381,7 @@ class TestImageExtension(base.IronicAgentTest):
                               self.fake_dev)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
+        self.assertFalse(mock_is_bootloader.called)
 
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     def test__get_partition_no_device_found(self, mock_is_md_device,
@@ -459,3 +467,59 @@ class TestImageExtension(base.IronicAgentTest):
                               self.fake_dev)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
+
+    def test__is_bootloader_loaded(self, mock_execute,
+                                   mock_dispatch):
+        parted_output = ('BYT;\n'
+                         '/dev/loop1:46.1MB:loopback:512:512:gpt:Loopback '
+                         'device:;\n'
+                         '15:1049kB:9437kB:8389kB:::boot;\n'
+                         '1:9437kB:46.1MB:36.7MB:ext3::;\n')
+        disk_file_output = ('/dev/loop1: partition 1: ID=0xee, starthead 0, '
+                            'startsector 1, 90111 sectors, extended '
+                            'partition table (last)\011, code offset 0x48')
+
+        part_file_output = ('/dev/loop1p15: x86 boot sector, mkdosfs boot '
+                            'message display, code offset 0x3c, OEM-ID '
+                            '"mkfs.fat", sectors/cluster 8, root entries '
+                            '512, sectors 16384 (volumes <=32 MB) , Media '
+                            'descriptor 0xf8, sectors/FAT 8, heads 255, '
+                            'serial number 0x23a08feb, unlabeled, '
+                            'FAT (12 bit)')
+
+        # NOTE(TheJulia): File evaluates this data, so it is pointless to
+        # try and embed the raw bytes in the test.
+        dd_output = ('')
+
+        file_output = ('/dev/loop1: DOS executable (COM)\n')
+
+        mock_execute.side_effect = iter([(parted_output, ''),
+                                         (disk_file_output, ''),
+                                         (part_file_output, ''),
+                                         (dd_output, ''),
+                                         (file_output, '')])
+
+        result = image._is_bootloader_loaded(self.fake_dev)
+        self.assertTrue(result)
+
+    def test__is_bootloader_loaded_not_bootable(self,
+                                                mock_execute,
+                                                mock_dispatch):
+        parted_output = ('BYT;\n'
+                         '/dev/loop1:46.1MB:loopback:512:512:gpt:Loopback '
+                         'device:;\n'
+                         '15:1049kB:9437kB:8389kB:::;\n'
+                         '1:9437kB:46.1MB:36.7MB:ext3::;\n')
+        mock_execute.return_value = (parted_output, '')
+        result = image._is_bootloader_loaded(self.fake_dev)
+        self.assertFalse(result)
+
+    def test__is_bootloader_loaded_empty(self,
+                                         mock_execute,
+                                         mock_dispatch):
+        parted_output = ('BYT;\n'
+                         '/dev/loop1:46.1MB:loopback:512:512:gpt:Loopback '
+                         'device:;\n')
+        mock_execute.return_value = (parted_output, '')
+        result = image._is_bootloader_loaded(self.fake_dev)
+        self.assertFalse(result)
