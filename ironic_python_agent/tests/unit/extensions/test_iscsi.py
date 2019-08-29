@@ -281,6 +281,30 @@ class TestISCSIExtensionLIO(base.IronicAgentTest):
         mock_destroy.assert_called_once_with('/dev/fake', 'my_node_uuid')
 
 
+@mock.patch.object(utils, 'execute', autospec=True)
+class TestISCSIExtensionCleanUpFallback(base.IronicAgentTest):
+
+    def setUp(self):
+        super(TestISCSIExtensionCleanUpFallback, self).setUp()
+        self.agent_extension = iscsi.ISCSIExtension()
+        self.fake_dev = '/dev/fake'
+        self.fake_iqn = 'iqn-fake'
+        self.rtsmock = mock.patch.object(
+            iscsi.rtslib_fb, 'RTSRoot',
+            side_effect=EnvironmentError(), autospec=True)
+
+    def test_lio_not_available(self, mock_execute):
+        mock_execute.return_value = ('', '')
+        expected = [mock.call('tgtadm', '--lld', 'iscsi', '--mode',
+                              'target', '--op', 'unbind', '--tid', '1',
+                              '--initiator-address', 'ALL'),
+                    mock.call('sync'),
+                    mock.call('tgtadm', '--lld', 'iscsi', '--mode', 'target',
+                              '--op', 'delete', '--tid', '1')]
+        iscsi.clean_up(self.fake_dev)
+        mock_execute.assert_has_calls(expected)
+
+
 @mock.patch.object(iscsi.rtslib_fb, 'RTSRoot', autospec=True)
 class TestISCSIExtensionCleanUp(base.IronicAgentTest):
 
@@ -289,10 +313,6 @@ class TestISCSIExtensionCleanUp(base.IronicAgentTest):
         self.agent_extension = iscsi.ISCSIExtension()
         self.fake_dev = '/dev/fake'
         self.fake_iqn = 'iqn-fake'
-
-    def test_lio_not_available(self, mock_rtslib):
-        mock_rtslib.side_effect = IOError()
-        iscsi.clean_up(self.fake_dev)
 
     def test_device_not_found(self, mock_rtslib):
         mock_rtslib.return_value.storage_objects = []
