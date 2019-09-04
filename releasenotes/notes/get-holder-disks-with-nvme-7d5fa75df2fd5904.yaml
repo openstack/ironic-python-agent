@@ -1,5 +1,5 @@
 ---
 fixes:
-    - |
-        Fixes an issue where md devices disk holders could not be listed
-        correctly if they were nvme drives.
+  - |
+    Fixes an issue where md devices disk holders could not be listed
+    correctly if they were NVMe drives.

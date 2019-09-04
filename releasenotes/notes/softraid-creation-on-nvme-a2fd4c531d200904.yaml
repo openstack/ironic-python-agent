@@ -1,3 +1,3 @@
 ---
 features:
-  - Adds software raid creation support on nvme drives.
+  - Adds support for creating software RAID on NVMe drives.
