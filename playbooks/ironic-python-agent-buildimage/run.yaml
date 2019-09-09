@@ -48,11 +48,6 @@
                   make clean
                   popd
               ;;
-              coreos)
-                  imagebuild/coreos/full_trusty_build.sh
-                  mv imagebuild/coreos/UPLOAD/coreos_production_pxe* UPLOAD_RAW
-                  mv ipa-coreos*.tar.gz* UPLOAD_TAR
-              ;;
               dib)
                   NAME=ipa-{{ image_distro }}-$BRANCH_PATH
                   ironic-python-agent-builder -e dhcp-all-interfaces -o $NAME {{ image_distro }}

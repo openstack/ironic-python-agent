@@ -18,16 +18,6 @@
             voting: false
         - metalsmith-integration-ipa-src:
             voting: false
-        # NOTE(TheJulia): CoreOS jobs have a high failure rate.
-        # In order to reduce the odds of things like nested virt
-        # being detected but not available, we should treat them
-        # as non-voting. This is in order to reduce the need to
-        # recheck. If we non-voting tem on the gate, they are
-        # pointless, and the odds seem to enable them to pass
-        # more often than not.
-        # https://storyboard.openstack.org/#!/story/2003985
-        - ipa-tempest-dsvm-wholedisk-bios-ipmi-direct-coreos-src:
-            voting: false
         - openstack-tox-functional:
             voting: false
         - openstack-tox-lower-constraints
@@ -48,6 +38,5 @@
         - ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa-python3
     post:
       jobs:
-        - ironic-python-agent-buildimage-coreos
         - ironic-python-agent-buildimage-tinyipa
         - ironic-python-agent-buildimage-dib

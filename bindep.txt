@@ -14,11 +14,6 @@ gettext [test]
 
 # these are needed to build a deploy ramdisk
 
-# NOTE apparmor is an undeclared dependency for docker on ubuntu,
-# see https://github.com/docker/docker/issues/9745
-apparmor [platform:dpkg imagebuild]
-docker.io [platform:dpkg imagebuild]
-docker-io [platform:rpm imagebuild]
 gnupg [imagebuild]
 squashfs-tools [platform:dpkg platform:redhat imagebuild]
 squashfs [platform:suse imagebuild]
