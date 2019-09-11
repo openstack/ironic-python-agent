@@ -1,6 +1,5 @@
 ---
 fixes:
   - |
-    Fixes issue that 0 physical memory calculated for aarch64. Since output
-    for aarch64 `lshw -quiet -json` is a bit different from x86_64. This fix
-    is compatible with both x86_64 and arm64.
+    Fixes detection of physical memory amount on AArch64 that was caused by
+    different output of the ``lshw`` utility.

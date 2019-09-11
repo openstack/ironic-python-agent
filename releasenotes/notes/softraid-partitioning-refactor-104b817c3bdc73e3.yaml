@@ -1,11 +1,11 @@
 ---
 fixes:
-  - Fixes an issue with the psize conversion when creating software raid. From
-    the documentation,
-    https://docs.openstack.org/ironic/latest/admin/raid.html#target-raid-configuration,
-    size_gb unit is GiB but parted default unit is MB.
-  - Fixes a RAID creation issue when there are several logical drives, with
-    more than one having its size specified (i.e not 'MAX').
-    https://storyboard.openstack.org/#!/story/2006352
-  - Fixes a RAID creation issue when a logical drive with size 'MAX' is not
-    last in the list of logical drives.
+  - Fixes size conversion when creating software RAID with ``size_gb``
+    provided. From the `RAID documentation
+    <https://docs.openstack.org/ironic/latest/admin/raid.html#target-raid-configuration>`_
+    ``size_gb`` unit is GiB but parted defaults to MB.
+  - Fixes creating software RAID when several logical drives have a size
+    specified (i.e not 'MAX'). See `story 2006352
+    <https://storyboard.openstack.org/#!/story/2006352>`_.
+  - Fixes creating software RAID when a logical drive with size 'MAX' is not
+    the last in the list of logical drives.
