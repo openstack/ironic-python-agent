@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+      Zap superblocks from all block devices, as an attempt to erase any
+      softraid hint from devices when calling delete_configuration, including
+      from drives that are no more members of any raid.
