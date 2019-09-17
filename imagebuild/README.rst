@@ -1,6 +1,5 @@
 ironic-python-agent images
 ==========================
 
-coreos - Builds a CoreOS Ramdisk and Kernel suitable for running
-ironic-python-agent
-
+The content has been moved to `ironic-python-agent-builder
+<https://docs.openstack.org/ironic-python-agent-builder>`_.

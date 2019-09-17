@@ -86,37 +86,6 @@
       devstack_plugins:
         ironic-inspector: https://opendev.org/openstack/ironic-inspector
 
-- job:
-    name: ironic-python-agent-buildimage-base
-    parent: publish-openstack-artifacts
-    run: playbooks/ironic-python-agent-buildimage/run.yaml
-    post-run: playbooks/ironic-python-agent-buildimage/post.yaml
-    timeout: 1800
-    required-projects:
-      - openstack/requirements
-      - openstack/ironic-python-agent
-      - openstack/ironic-python-agent-builder
-
-- job:
-    name: ironic-python-agent-buildimage-tinyipa
-    parent: ironic-python-agent-buildimage-base
-    vars:
-      image_name: 'tinyipa'
-      # TODO(dtantsur): refactor run.yaml, so that this variable is only
-      # required for DIB jobs.
-      image_distro: ''
-
-- job:
-    name: ironic-python-agent-buildimage-dib
-    parent: ironic-python-agent-buildimage-base
-    pre-run: playbooks/ironic-python-agent-buildimage/pre-dib.yaml
-    required-projects:
-      # NOTE(dtantsur): used for bindep only
-      - openstack/diskimage-builder
-    vars:
-      image_name: 'dib'
-      image_distro: 'centos7'
-
 
 # Experimental jobs
 - job:
