@@ -1,4 +1,0 @@
----
-features:
-  - Adds the ability to specify the partition table type when creating RAID.
-    When not specified, the type is set to ``msdos`` (MBR).
