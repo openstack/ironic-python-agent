@@ -113,8 +113,19 @@ def clean_up(device):
     """Clean up iSCSI for a given device."""
     try:
         rts_root = rtslib_fb.RTSRoot()
-    except (EnvironmentError, rtslib_fb.RTSLibError) as exc:
-        LOG.info('Linux-IO is not available, not cleaning up. Error: %s.', exc)
+    except (OSError, EnvironmentError, rtslib_fb.RTSLibError) as exc:
+        LOG.info('Linux-IO is not available, attemting to stop tgtd mapping. '
+                 'Error: %s.', exc)
+        cmd = ['tgtadm', '--lld', 'iscsi', '--mode', 'target', '--op',
+               'unbind', '--tid', '1', '--initiator-address', 'ALL']
+        _execute(cmd, "Error when cleaning up iscsi binds.")
+
+        cmd = ['sync']
+        _execute(cmd, "Error flushing buffers to disk.")
+
+        cmd = ['tgtadm', '--lld', 'iscsi', '--mode', 'target', '--op',
+               'delete', '--tid', '1']
+        _execute(cmd, "Error deleting the iscsi target configuration.")
         return
 
     storage = None
