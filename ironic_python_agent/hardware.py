@@ -1617,8 +1617,28 @@ class GenericHardwareManager(HardwareManager):
                       of ports for the node
         """
 
-        raid_devices = list_all_block_devices(block_type='raid',
-                                              ignore_raid=False)
+        def _scan_raids():
+            utils.execute('mdadm', '--assemble', '--scan',
+                          check_exit_code=False)
+            raid_devices = list_all_block_devices(block_type='raid',
+                                                  ignore_raid=False)
+            return raid_devices
+
+        raid_devices = _scan_raids()
+        attempts = 0
+        while attempts < 2:
+            attempts += 1
+            self._delete_config_pass(raid_devices)
+            raid_devices = _scan_raids()
+            if not raid_devices:
+                break
+        else:
+            msg = "Unable to clean all softraid correctly. Remaining {}".\
+                format([dev.name for dev in raid_devices])
+            LOG.error(msg)
+            raise errors.SoftwareRAIDError(msg)
+
+    def _delete_config_pass(self, raid_devices):
         for raid_device in raid_devices:
             component_devices = _get_component_devices(raid_device.name)
             if not component_devices:
@@ -1681,6 +1701,48 @@ class GenericHardwareManager(HardwareManager):
                                 holder_disk)
 
             LOG.info('Deleted Software RAID device %s', raid_device.name)
+
+        # Remove all remaining raid traces from any drives, in case some
+        # drives or partitions have been member of some raid once
+
+        # TBD: should we consider all block devices by default, but still
+        # provide some 'control' through the node information
+        # (for example target_raid_config at the time of calling this). This
+        # may make sense if you do not want the delete_config to touch some
+        # drives, like cinder volumes locally attached, for example, or any
+        # kind of 'non-ephemeral' drive that you do not want to consider during
+        # deployment (= specify which drives to consider just like create
+        # configuration might consider the physical_disks parameter in a near
+        # future)
+
+        # Consider partitions first, before underlying disks, never hurts and
+        # can even avoid some failures. Example to reproduce:
+        # mdadm --stop /dev/md0
+        # mdadm --zero-superblock /dev/block
+        # mdadm: Unrecognised md component device - /dev/block
+        # (mdadm -E /dev/block still returns 0 so won't be skipped for zeroing)
+        # mdadm --zero-superblock /dev/block1
+        # mdadm: Couldn't open /dev/block for write - not zeroing
+        # mdadm -E /dev/block1: still shows superblocks
+        all_blks = reversed(self.list_block_devices(include_partitions=True))
+        for blk in all_blks:
+            try:
+                utils.execute('mdadm', '--examine', blk.name,
+                              use_standard_locale=True)
+            except processutils.ProcessExecutionError as e:
+                if "No md superblock detected" in str(e):
+                    # actually not a component device
+                    continue
+                else:
+                    msg = "Failed to examine device {}: {}".format(
+                        blk.name, e)
+                    LOG.warning(msg)
+                    continue
+            try:
+                utils.execute('mdadm', '--zero-superblock', blk.name)
+            except processutils.ProcessExecutionError as e:
+                LOG.warning('Failed to remove superblock from %s: %s',
+                            raid_device.name, e)
 
         LOG.debug("Finished deleting Software RAID(s)")
 

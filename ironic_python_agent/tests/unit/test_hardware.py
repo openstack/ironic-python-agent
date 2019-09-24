@@ -3194,62 +3194,141 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                             107374182400, True)
         raid_device2 = hardware.BlockDevice('/dev/md1', 'RAID-0',
                                             2147483648, True)
+        sda = hardware.BlockDevice('/dev/sda', 'model12', 21, True)
+        sdb = hardware.BlockDevice('/dev/sdb', 'model12', 21, True)
+        sdc = hardware.BlockDevice('/dev/sdc', 'model12', 21, True)
+
         hardware.list_all_block_devices.side_effect = [
-            [raid_device1, raid_device2]]
+            [raid_device1, raid_device2],  # list_all_block_devices raid
+            [sda, sdb, sdc],  # list_all_block_devices disks
+            [],  # list_all_block_devices parts
+            [],  # list_all_block_devices raid
+        ]
         mocked_get_component.side_effect = [
-            ["/dev/sda1", "/dev/sda2"],
-            ["/dev/sdb1", "/dev/sdb2"]]
+            ["/dev/sda1", "/dev/sdb1"],
+            ["/dev/sda2", "/dev/sdb2"]]
         mocked_get_holder.side_effect = [
             ["/dev/sda", "/dev/sdb"],
             ["/dev/sda", "/dev/sdb"]]
         mocked_execute.side_effect = [
-            None, None, None,
+            None,  # mdadm --assemble --scan
+            None,  # wipefs md0
+            None,  # mdadm --stop md0
             ['_', 'mdadm --examine output for sda1'],
-            None,
+            None,  # mdadm zero-superblock sda1
             ['_', 'mdadm --examine output for sdb1'],
-            None, None, None,
-            None, None, None,
+            None,  # mdadm zero-superblock sdb1
+            None,  # wipefs sda
+            None,  # wipefs sdb
+            None,  # wipfs md1
+            None,  # mdadm --stop md1
             ['_', 'mdadm --examine output for sda2'],
-            None,
+            None,  # mdadm zero-superblock sda2
             ['_', 'mdadm --examine output for sdb2'],
-            None, None, None]
+            None,  # mdadm zero-superblock sdb2
+            None,  # wipefs sda
+            None,  # wipefs sda
+            ['_', 'mdadm --examine output for sdc'],
+            None,   # mdadm zero-superblock sdc
+            # examine sdb
+            processutils.ProcessExecutionError('No md superblock detected'),
+            # examine sda
+            processutils.ProcessExecutionError('No md superblock detected'),
+            None,  # mdadm --assemble --scan
+        ]
 
         self.hardware.delete_configuration(self.node, [])
 
         mocked_execute.assert_has_calls([
+            mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
             mock.call('wipefs', '-af', '/dev/md0'),
             mock.call('mdadm', '--stop', '/dev/md0'),
             mock.call('mdadm', '--examine', '/dev/sda1',
                       use_standard_locale=True),
             mock.call('mdadm', '--zero-superblock', '/dev/sda1'),
-            mock.call('mdadm', '--examine', '/dev/sda2',
+            mock.call('mdadm', '--examine', '/dev/sdb1',
                       use_standard_locale=True),
-            mock.call('mdadm', '--zero-superblock', '/dev/sda2'),
+            mock.call('mdadm', '--zero-superblock', '/dev/sdb1'),
             mock.call('wipefs', '-af', '/dev/sda'),
             mock.call('wipefs', '-af', '/dev/sdb'),
             mock.call('wipefs', '-af', '/dev/md1'),
             mock.call('mdadm', '--stop', '/dev/md1'),
-            mock.call('mdadm', '--examine', '/dev/sdb1',
+            mock.call('mdadm', '--examine', '/dev/sda2',
                       use_standard_locale=True),
-            mock.call('mdadm', '--zero-superblock', '/dev/sdb1'),
+            mock.call('mdadm', '--zero-superblock', '/dev/sda2'),
             mock.call('mdadm', '--examine', '/dev/sdb2',
                       use_standard_locale=True),
             mock.call('mdadm', '--zero-superblock', '/dev/sdb2'),
             mock.call('wipefs', '-af', '/dev/sda'),
-            mock.call('wipefs', '-af', '/dev/sdb')])
+            mock.call('wipefs', '-af', '/dev/sdb'),
+            mock.call('mdadm', '--examine', '/dev/sdc',
+                      use_standard_locale=True),
+            mock.call('mdadm', '--zero-superblock', '/dev/sdc'),
+            mock.call('mdadm', '--examine', '/dev/sdb',
+                      use_standard_locale=True),
+            mock.call('mdadm', '--examine', '/dev/sda',
+                      use_standard_locale=True),
+            mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
+        ])
 
     @mock.patch.object(hardware, '_get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_delete_configuration_partition(self, mocked_execute, mocked_list,
                                             mocked_get_component):
+        # This test checks that if no components are returned for a given
+        # raid device, then it must be a nested partition and so it gets
+        # skipped
         raid_device1_part1 = hardware.BlockDevice('/dev/md0p1', 'RAID-1',
                                                   1073741824, True)
-        hardware.list_all_block_devices.return_value = [raid_device1_part1]
+        hardware.list_all_block_devices.side_effect = [
+            [raid_device1_part1],  # list_all_block_devices raid
+            [],  # list_all_block_devices disks
+            [],  # list_all_block_devices parts
+            [],  # list_all_block_devices raid
+        ]
         mocked_get_component.return_value = []
 
         self.assertIsNone(self.hardware.delete_configuration(self.node, []))
-        mocked_execute.assert_has_calls([])
+        mocked_execute.assert_has_calls([
+            mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
+            mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
+        ])
+
+    @mock.patch.object(hardware, '_get_component_devices', autospec=True)
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_delete_configuration_failure_blocks_remaining(
+            self, mocked_execute, mocked_list, mocked_get_component):
+
+        # This test checks that, if after two raid clean passes there still
+        # remain softraid hints on drives, then the delete_configuration call
+        # raises an error
+        raid_device1 = hardware.BlockDevice('/dev/md0', 'RAID-1',
+                                            107374182400, True)
+
+        hardware.list_all_block_devices.side_effect = [
+            [raid_device1],  # list_all_block_devices raid
+            [],  # list_all_block_devices disks
+            [],  # list_all_block_devices parts
+            [raid_device1],  # list_all_block_devices raid
+            [],  # list_all_block_devices disks
+            [],  # list_all_block_devices parts
+            [raid_device1],  # list_all_block_devices raid
+        ]
+        mocked_get_component.return_value = []
+
+        self.assertRaisesRegex(
+            errors.SoftwareRAIDError,
+            r"^Software RAID caused unknown error: Unable to clean all "
+            r"softraid correctly. Remaining \['/dev/md0'\]$",
+            self.hardware.delete_configuration, self.node, [])
+
+        mocked_execute.assert_has_calls([
+            mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
+            mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
+            mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
+        ])
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_valid_raid1(self, mocked_execute):
