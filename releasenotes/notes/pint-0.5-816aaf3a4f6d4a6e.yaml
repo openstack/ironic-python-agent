@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes the ``numa-topology`` inspection collector to be compatible with
+    Pint < 0.5.2.
