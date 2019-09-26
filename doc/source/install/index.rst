@@ -4,50 +4,21 @@ Installing Ironic Python Agent!
 
 Image Builders
 ==============
-Unlike most other python software, you must build an IPA ramdisk image before
-use. This is because it's not installed in an operating system, but instead is
-run from within a ramdisk.
 
-diskimage-builder
------------------
+Unlike most other python software, you must build or download an IPA ramdisk
+image before use. This is because it's not installed in an operating system,
+but instead is run from within a ramdisk.
 
-A production ready way to build a ramdisk image for IPA is by using
-ironic-python-agent-builder_. The ``ironic-python-agent-ramdisk``
-diskimage-builder element builds the IPA ramdisk, which installs all the
-required packages and configures services as needed.
+Two kinds of images are published on every commit from every branch of IPA:
 
-tinyipa
--------
+* DIB_ images are suitable for production usage and can be downloaded from
+  https://tarballs.openstack.org/ironic-python-agent/dib/files/.
+* TinyIPA_ images are suitable for CI and testing environments and can be
+  downloaded from
+  https://tarballs.openstack.org/ironic-python-agent/tinyipa/files/.
 
-Now this method is provided by ironic-python-agent-builder_
-repository. It provides a set of scripts to build a
-Tiny Core Linux-based deployment kernel and ramdisk (code name ``tinyipa``)
-under ``tinyipa`` folder.
-
-`Tiny Core Linux <http://tinycorelinux.net/>`_
-is a very minimalistic Linux distribution.
-Due to its small size and decreased RAM requirements
-it is mostly suitable for usage in CI with virtualized hardware,
-and is already used on a number of gate jobs in projects under
-OpenStack Baremetal program.
-On the other hand, due to its generally newer Linux kernel it also known to
-work on real hardware if the kernel supports all necessary components
-installed.
-
-Please refer to ``tinyipa/README.rst`` for more information and
-build instructions.
-
-ISO Images
-----------
-
-Additionally, the IPA ramdisk can be packaged inside of an ISO for use with
-supported virtual media drivers. Simply use the ``iso-image-create`` utility
-packaged with IPA, pass it an initrd and kernel. e.g.::
-
-  ./iso-image-create -o /path/to/output.iso -i /path/to/ipa.initrd -k /path/to/ipa.kernel
-
-This is a generic tool that can be used to combine any initrd and kernel into
-a suitable ISO for booting, and so should work against any IPA ramdisk.
+If you need to build your own image, use the tools from the
+ironic-python-agent-builder_ project.
 
 IPA Flags
 =========
@@ -157,6 +128,8 @@ the documentation available at `Hardware Managers`_.
 
 .. _Hardware Managers: https://docs.openstack.org/ironic-python-agent/latest/contributor/hardware_managers.html
 .. _ironic-python-agent-builder: https://docs.openstack.org/ironic-python-agent-builder
+.. _DIB: https://docs.openstack.org/ironic-python-agent-builder/latest/admin/dib.html
+.. _TinyIPA: https://docs.openstack.org/ironic-python-agent-builder/latest/admin/tinyipa.html
 
 Indices and tables
 ==================
