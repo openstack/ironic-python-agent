@@ -281,6 +281,7 @@ class TestISCSIExtensionLIO(base.IronicAgentTest):
         mock_destroy.assert_called_once_with('/dev/fake', 'my_node_uuid')
 
 
+@mock.patch.object(iscsi.rtslib_fb, 'RTSRoot', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestISCSIExtensionCleanUpFallback(base.IronicAgentTest):
 
@@ -289,12 +290,10 @@ class TestISCSIExtensionCleanUpFallback(base.IronicAgentTest):
         self.agent_extension = iscsi.ISCSIExtension()
         self.fake_dev = '/dev/fake'
         self.fake_iqn = 'iqn-fake'
-        self.rtsmock = mock.patch.object(
-            iscsi.rtslib_fb, 'RTSRoot',
-            side_effect=EnvironmentError(), autospec=True)
 
-    def test_lio_not_available(self, mock_execute):
+    def test_lio_not_available(self, mock_execute, mock_rtslib):
         mock_execute.return_value = ('', '')
+        mock_rtslib.side_effect = EnvironmentError()
         expected = [mock.call('tgtadm', '--lld', 'iscsi', '--mode',
                               'target', '--op', 'unbind', '--tid', '1',
                               '--initiator-address', 'ALL'),
@@ -304,10 +303,11 @@ class TestISCSIExtensionCleanUpFallback(base.IronicAgentTest):
         iscsi.clean_up(self.fake_dev)
         mock_execute.assert_has_calls(expected)
 
-    def test_commands_fail(self, mock_execute):
+    def test_commands_fail(self, mock_execute, mock_rtslib):
         mock_execute.side_effect = [processutils.ProcessExecutionError(),
                                     ('', ''),
                                     processutils.ProcessExecutionError()]
+        mock_rtslib.side_effect = EnvironmentError()
         expected = [mock.call('tgtadm', '--lld', 'iscsi', '--mode',
                               'target', '--op', 'unbind', '--tid', '1',
                               '--initiator-address', 'ALL'),
