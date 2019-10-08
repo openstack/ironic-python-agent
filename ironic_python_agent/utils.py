@@ -52,12 +52,17 @@ LOG = logging.getLogger(__name__)
 AGENT_PARAMS_CACHED = dict()
 
 
+LSBLK_COLUMNS = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE', 'UUID', 'PARTUUID']
+
+
 COLLECT_LOGS_COMMANDS = {
     'ps': ['ps', 'au'],
     'df': ['df', '-a'],
     'iptables': ['iptables', '-L'],
     'ip_addr': ['ip', 'addr'],
     'lshw': ['lshw', '-quiet', '-json'],
+    'lsblk': ['lsblk', '--all', '-o%s' % ','.join(LSBLK_COLUMNS)],
+    'mdstat': ['cat', '/proc/mdstat'],
 }
 
 
@@ -404,6 +409,7 @@ def collect_system_logs(journald_max_lines=None):
                                the journald. if None, return everything.
     :returns: A tar, gzip base64 encoded string with the logs.
     """
+    LOG.info('Collecting system logs and debugging information')
 
     def try_get_command_output(io_dict, file_name, command):
         try:

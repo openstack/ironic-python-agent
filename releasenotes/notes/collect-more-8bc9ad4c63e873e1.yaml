@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    The output of ``lsblk`` and the contents of ``/proc/mdstat`` are now
+    collected with the ramdisk logs for debugging.
