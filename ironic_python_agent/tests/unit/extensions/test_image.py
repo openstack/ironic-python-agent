@@ -368,7 +368,10 @@ class TestImageExtension(base.IronicAgentTest):
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" UUID="" TYPE="part"''')
-        mock_execute.side_effect = (None, None, [lsblk_output])
+        mock_execute.side_effect = (
+            None, None, [lsblk_output],
+            processutils.ProcessExecutionError('boom'),
+            processutils.ProcessExecutionError('kaboom'))
 
         self.assertRaises(errors.DeviceNotFound,
                           image._get_partition, self.fake_dev,
@@ -378,6 +381,31 @@ class TestImageExtension(base.IronicAgentTest):
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
                               self.fake_dev)]
+        mock_execute.assert_has_calls(expected)
+        self.assertFalse(mock_dispatch.called)
+
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    def test__get_partition_fallback_partuuid(self, mock_is_md_device,
+                                              mock_execute, mock_dispatch):
+        mock_is_md_device.side_effect = [False]
+        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
+        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
+        KNAME="test2" UUID="" TYPE="part"''')
+        findfs_output = ('/dev/loop0\n', None)
+        mock_execute.side_effect = (
+            None, None, [lsblk_output],
+            processutils.ProcessExecutionError('boom'),
+            findfs_output)
+
+        result = image._get_partition(self.fake_dev, self.fake_root_uuid)
+        self.assertEqual('/dev/loop0', result)
+        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
+                              self.fake_dev),
+                    mock.call('findfs', 'UUID=%s' % self.fake_root_uuid),
+                    mock.call('findfs', 'PARTUUID=%s' % self.fake_root_uuid)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
 

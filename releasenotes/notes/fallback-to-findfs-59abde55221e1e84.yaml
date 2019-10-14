@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixes an issue with the tinyIPA CI testing image by providing a fallback
+    root volume uuid detection method via the ``findfs`` utility, which is
+    also already packaged in most distributions with ``lsblk``.
+
+    This fallback was necesary as the ``lsblk`` command in ``TinyCore`` Linux,
+    upon which TinyIPA is built, does not return data as expected for
+    volume UUID values.
