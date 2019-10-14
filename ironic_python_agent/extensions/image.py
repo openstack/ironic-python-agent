@@ -75,6 +75,9 @@ def _get_partition(device, uuid):
                 part[key] = val.strip()
             # Ignore non partition
             if part.get('TYPE') != 'part':
+                # NOTE(TheJulia): This techincally creates an edge failure
+                # case where a filesystem on a whole block device sans
+                # partitioning would behave differently.
                 continue
 
             if part.get('UUID') == uuid:
@@ -86,6 +89,28 @@ def _get_partition(device, uuid):
                           "%(dev)s", {'uuid': uuid, 'dev': device})
                 return '/dev/' + part.get('KNAME')
         else:
+            # NOTE(TheJulia): We may want to consider moving towards using
+            # findfs in the future, if we're comfortable with the execution
+            # and interaction. There is value in either way though.
+            try:
+                findfs, stderr = utils.execute('findfs', 'UUID=%s' % uuid)
+                return findfs.strip()
+            except processutils.ProcessExecutionError as e:
+                LOG.debug('First fallback detection attempt for locating '
+                          'partition via UUID %(uuid)s failed. '
+                          'Error: %(err)s',
+                          {'uuid': uuid,
+                           'err': e})
+                try:
+                    findfs, stderr = utils.execute(
+                        'findfs', 'PARTUUID=%s' % uuid)
+                    return findfs.strip()
+                except processutils.ProcessExecutionError as e:
+                    LOG.debug('Secondary fallback detection attempt for '
+                              'locating partition via UUID %(uuid)s failed. '
+                              'Error: %(err)s',
+                              {'uuid': uuid,
+                               'err': e})
             error_msg = ("No partition with UUID %(uuid)s found on "
                          "device %(dev)s" % {'uuid': uuid, 'dev': device})
             LOG.error(error_msg)
