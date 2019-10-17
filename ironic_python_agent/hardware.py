@@ -224,6 +224,24 @@ def md_restart(raid_device):
         raise errors.CommandExecutionError(error_msg)
 
 
+def md_get_raid_devices():
+    """Get all discovered Software RAID (md) devices
+
+    :return: A python dict containing details about the discovered RAID
+      devices
+    """
+    report = utils.execute('mdadm', '--examine', '--scan')[0]
+    lines = report.splitlines()
+    result = {}
+    for line in lines:
+        vals = shlex.split(line)
+        device = vals[1]
+        result[device] = {}
+        for key, val in (v.split('=', 1) for v in vals[2:]):
+            result[device][key] = val.strip()
+    return result
+
+
 def _md_scan_and_assemble():
     """Scan all md devices and assemble RAID arrays from them.
 
