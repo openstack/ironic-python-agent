@@ -393,8 +393,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                     # an error would be logged.
                     uuid = inspector.inspect()
                 except errors.InspectionError as e:
-                    LOG.error('Failed to perform inspection: %(err)s',
-                              {'error': e})
+                    LOG.error('Failed to perform inspection: %s', e)
+
             if self.api_url:
                 self._wait_for_interface()
                 content = self.api_client.lookup_node(
