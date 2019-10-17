@@ -14,6 +14,7 @@
 #    under the License.
 
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -123,6 +124,16 @@ def _get_partition(device, uuid):
         raise errors.CommandExecutionError(error_msg)
 
 
+def _has_dracut(root):
+    try:
+        utils.execute('chroot %(path)s /bin/sh -c '
+                      '"which dracut"' %
+                      {'path': root}, shell=True)
+    except processutils.ProcessExecutionError:
+        return False
+    return True
+
+
 def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                    prep_boot_part_uuid=None):
     """Install GRUB2 bootloader on a given device."""
@@ -201,6 +212,22 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                           '"%(bin)s-install %(dev)s --removable"' %
                           {'path': path, 'bin': binary_name, 'dev': device},
                           shell=True, env_variables={'PATH': path_variable})
+
+        # If the image has dracut installed, set the rd.md.uuid kernel
+        # parameter for discovered md devices.
+        if hardware.is_md_device(device) and _has_dracut(path):
+            rd_md_uuids = ["rd.md.uuid=%s" % x['UUID']
+                           for x in hardware.md_get_raid_devices().values()]
+
+            LOG.debug("Setting rd.md.uuid kernel parameters: %s", rd_md_uuids)
+            with open('%s/etc/default/grub' % path, 'r') as g:
+                contents = g.read()
+            with open('%s/etc/default/grub' % path, 'w') as g:
+                g.write(
+                    re.sub(r'GRUB_CMDLINE_LINUX="(.*)"',
+                           r'GRUB_CMDLINE_LINUX="\1 %s"'
+                           % " ".join(rd_md_uuids),
+                           contents))
 
         # Generate the grub configuration file
         utils.execute('chroot %(path)s /bin/sh -c '
