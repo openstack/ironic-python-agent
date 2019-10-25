@@ -75,7 +75,7 @@ def _get_partition(device, uuid):
                 part[key] = val.strip()
             # Ignore non partition
             if part.get('TYPE') != 'part':
-                # NOTE(TheJulia): This techincally creates an edge failure
+                # NOTE(TheJulia): This technically creates an edge failure
                 # case where a filesystem on a whole block device sans
                 # partitioning would behave differently.
                 continue
