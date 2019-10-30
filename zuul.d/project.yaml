@@ -43,7 +43,7 @@
     experimental:
       jobs:
         - ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
-        - ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa-python3
+        - ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa
     post:
       jobs:
         - ironic-python-agent-build-image-tinyipa

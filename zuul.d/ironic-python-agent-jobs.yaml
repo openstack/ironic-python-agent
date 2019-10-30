@@ -15,7 +15,6 @@
     vars:
       devstack_localrc:
         IRONIC_BUILD_DEPLOY_RAMDISK: True
-        USE_PYTHON3: True
 
 - job:
     name: ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
@@ -30,7 +29,6 @@
       devstack_localrc:
         IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
         IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
-        USE_PYTHON3: False
         IRONIC_VM_EPHEMERAL_DISK: 0
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
@@ -47,7 +45,6 @@
         s-proxy: True
       devstack_localrc:
         IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
-        USE_PYTHON3: False
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
 
@@ -89,14 +86,13 @@
 
 # Experimental jobs
 - job:
-    name: ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa-python3
+    name: ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa
     parent: ironic-ipa-base
     timeout: 7200
     required-projects:
       - openstack/python-ironicclient
     vars:
       devstack_localrc:
-        USE_PYTHON3: True
         EBTABLES_RACE_FIX: True
         IRONIC_INSPECTOR_BUILD_RAMDISK: True
         USE_SUBNETPOOL: False
