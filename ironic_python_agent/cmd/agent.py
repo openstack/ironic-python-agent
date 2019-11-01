@@ -45,4 +45,5 @@ def run():
                             CONF.lookup_timeout,
                             CONF.lookup_interval,
                             CONF.standalone,
+                            CONF.agent_token,
                             CONF.hardware_initialization_delay).run()

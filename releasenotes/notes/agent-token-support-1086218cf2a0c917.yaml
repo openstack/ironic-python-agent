@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Adds support for the agent to receive, store, and return
+    an ``agent token`` from the Ironic deployment to help secure
+    use of the ironic API ``/v1/heartbeat`` endpoint, as well as
+    the API of the ironic-python-agent ramdisk.

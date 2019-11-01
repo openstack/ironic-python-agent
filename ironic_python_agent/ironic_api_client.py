@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from distutils.version import StrictVersion
+
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -29,8 +31,10 @@ from ironic_python_agent import version
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
+# TODO(TheJulia): This should be increased at some point.
 MIN_IRONIC_VERSION = (1, 22)
 AGENT_VERSION_IRONIC_VERSION = (1, 36)
+AGENT_TOKEN_IRONIC_VERSION = (1, 62)
 
 
 class APIClient(object):
@@ -38,6 +42,7 @@ class APIClient(object):
     lookup_api = '/%s/lookup' % api_version
     heartbeat_api = '/%s/heartbeat/{uuid}' % api_version
     _ironic_api_version = None
+    agent_token = None
 
     def __init__(self, api_url):
         self.api_url = api_url.rstrip('/')
@@ -74,8 +79,16 @@ class APIClient(object):
                                     **kwargs)
 
     def _get_ironic_api_version_header(self, version=MIN_IRONIC_VERSION):
-        version_str = "%d.%d" % version
-        return {'X-OpenStack-Ironic-API-Version': version_str}
+        # TODO(TheJulia): It would be great to improve version handling
+        # logic, but we need to ship a newer version if we can.
+        ironic_version = "%d.%d" % self._get_ironic_api_version()
+        agent_token_version = "%d.%d" % AGENT_TOKEN_IRONIC_VERSION
+        if (StrictVersion(ironic_version)
+                >= StrictVersion(agent_token_version)):
+            version = agent_token_version
+        else:
+            version = ironic_version
+        return {'X-OpenStack-Ironic-API-Version': version}
 
     def _get_ironic_api_version(self):
         if not self._ironic_api_version:
@@ -97,7 +110,12 @@ class APIClient(object):
 
         data = {'callback_url': self._get_agent_url(advertise_address)}
 
-        if self._get_ironic_api_version() >= AGENT_VERSION_IRONIC_VERSION:
+        api_ver = self._get_ironic_api_version()
+
+        if api_ver >= AGENT_TOKEN_IRONIC_VERSION:
+            data['agent_token'] = self.agent_token
+
+        if api_ver >= AGENT_VERSION_IRONIC_VERSION:
             data['agent_version'] = version.version_info.release_string()
             headers = self._get_ironic_api_version_header(
                 AGENT_VERSION_IRONIC_VERSION)

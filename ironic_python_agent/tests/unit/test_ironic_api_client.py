@@ -151,6 +151,31 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
             'agent_version': version.version_info.release_string()}
         self.assertEqual(jsonutils.dumps(expected_data), data)
 
+    def test_successful_heartbeat_with_token(self):
+        response = FakeResponse(status_code=202)
+
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+        self.api_client._ironic_api_version = (
+            ironic_api_client.AGENT_TOKEN_IRONIC_VERSION)
+        self.api_client.agent_token = 'magical'
+
+        self.api_client.heartbeat(
+            uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+            advertise_address=('192.0.2.1', '9999')
+        )
+
+        heartbeat_path = 'v1/heartbeat/deadbeef-dabb-ad00-b105-f00d00bab10c'
+        request_args = self.api_client.session.request.call_args[0]
+        data = self.api_client.session.request.call_args[1]['data']
+        self.assertEqual('POST', request_args[0])
+        self.assertEqual(API_URL + heartbeat_path, request_args[1])
+        expected_data = {
+            'callback_url': 'http://192.0.2.1:9999',
+            'agent_token': 'magical',
+            'agent_version': version.version_info.release_string()}
+        self.assertEqual(jsonutils.dumps(expected_data), data)
+
     def test_heartbeat_agent_version_unsupported(self):
         response = FakeResponse(status_code=202)
 

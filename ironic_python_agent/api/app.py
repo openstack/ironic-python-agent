@@ -214,11 +214,13 @@ class Application(object):
                 or not isinstance(body['params'], dict)):
             raise http_exc.BadRequest('Missing or invalid name or params')
 
+        token = request.args.get('agent_token', None)
+        if not self.agent.validate_agent_token(token):
+            raise http_exc.Unauthorized(
+                'Token invalid.')
         with metrics_utils.get_metrics_logger(__name__).timer('run_command'):
             result = self.agent.execute_command(body['name'], **body['params'])
             wait = request.args.get('wait')
-
             if wait and wait.lower() == 'true':
                 result.join()
-
             return jsonify(result)

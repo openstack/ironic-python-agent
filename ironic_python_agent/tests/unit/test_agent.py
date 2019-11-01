@@ -146,6 +146,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                              'eth0',
                                              300,
                                              1,
+                                             None,
                                              False)
         self.agent.ext_mgr = extension.ExtensionManager.\
             make_test_instance([extension.Extension('fake', None,
@@ -239,7 +240,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                              'eth0',
                                              300,
                                              1,
-                                             False)
+                                             False,
+                                             None)
 
         def set_serve_api():
             self.agent.serve_api = False
@@ -296,7 +298,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                              'eth0',
                                              300,
                                              1,
-                                             False)
+                                             False,
+                                             None)
 
         def set_serve_api():
             self.agent.serve_api = False
@@ -326,6 +329,51 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
         # changed via mdns
         self.assertEqual(42, CONF.disk_wait_attempts)
+
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
+    @mock.patch('oslo_service.wsgi.Server', autospec=True)
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_run_agent_token(self, mock_get_managers, mock_wsgi,
+                             mock_wait, mock_dispatch):
+        CONF.set_override('inspection_callback_url', '')
+
+        wsgi_server = mock_wsgi.return_value
+
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server.start.side_effect = set_serve_api
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'config': {
+                'heartbeat_timeout': 300,
+                'agent_token': '1' * 128,
+                'agent_token_required': True
+            }
+        }
+
+        self.agent.run()
+
+        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
+                                          app=self.agent.api,
+                                          host=mock.ANY, port=9999)
+        wsgi_server.start.assert_called_once_with()
+        mock_wait.assert_called_once_with(mock.ANY)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
+        self.agent.heartbeater.start.assert_called_once_with()
+        self.assertEqual('1' * 128, self.agent.agent_token)
+        self.assertEqual('1' * 128, self.agent.api_client.agent_token)
 
     @mock.patch('eventlet.sleep', autospec=True)
     @mock.patch(
@@ -449,7 +497,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                              'eth0',
                                              300,
                                              1,
-                                             False)
+                                             False,
+                                             None)
         self.assertFalse(hasattr(self.agent, 'api_client'))
         self.assertFalse(hasattr(self.agent, 'heartbeater'))
 
@@ -504,7 +553,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                              'eth0',
                                              300,
                                              1,
-                                             False)
+                                             False,
+                                             None)
         self.assertFalse(hasattr(self.agent, 'api_client'))
         self.assertFalse(hasattr(self.agent, 'heartbeater'))
 
@@ -704,6 +754,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
                                              300,
                                              1,
                                              'agent_ipmitool',
+                                             None,
                                              True)
 
     @mock.patch(
@@ -756,6 +807,7 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
             network_interface=None,
             lookup_timeout=300,
             lookup_interval=1,
+            agent_token=None,
             standalone=False)
 
     def test_advertise_address_provided(self, mock_exec, mock_gethostbyname):

@@ -228,6 +228,17 @@ cli_opts = [
                 default=False,
                 help='If operations should fail if the clock time sync '
                      'fails to complete successfully.'),
+    cfg.StrOpt('agent_token',
+               default=APARAMS.get('ipa-agent-token'),
+               help='Pre-shared token to use when working with the '
+                    'ironic API. This value is typically supplied by '
+                    'ironic automatically.'),
+    cfg.BoolOpt('agent_token_required',
+                default=APARAMS.get('ipa-agent-token-required', False),
+                help='Control to enforce if API command requests should '
+                     'enforce token validation. The configuration provided '
+                     'by the conductor MAY override this and force this '
+                     'setting to be changed to True in memory.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

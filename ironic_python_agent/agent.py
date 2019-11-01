@@ -165,7 +165,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
     def __init__(self, api_url, advertise_address, listen_address,
                  ip_lookup_attempts, ip_lookup_sleep, network_interface,
-                 lookup_timeout, lookup_interval, standalone,
+                 lookup_timeout, lookup_interval, standalone, agent_token,
                  hardware_initialization_delay=0):
         super(IronicPythonAgent, self).__init__()
         if bool(cfg.CONF.keyfile) != bool(cfg.CONF.certfile):
@@ -214,6 +214,11 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.hardware_initialization_delay = hardware_initialization_delay
         # IPA will stop serving requests and exit after this is set to False
         self.serve_api = True
+        self.agent_token = agent_token
+        # Allows this to be turned on by the conductor while running,
+        # in the event of long running ramdisks where the conductor
+        # got upgraded somewhere along the way.
+        self.agent_token_required = cfg.CONF.agent_token_required
 
     def get_status(self):
         """Retrieve a serializable status.
@@ -225,6 +230,26 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             started_at=self.started_at,
             version=self.version
         )
+
+    def validate_agent_token(self, token):
+        # We did not get a token, i.e. None and
+        # we've previously seen a token, which is
+        # a mid-cluster upgrade case with long-running ramdisks.
+        if (not token and self.agent_token
+            and not self.agent_token_required):
+                # TODO(TheJulia): Rip this out during or after the V
+                # cycle.
+                LOG.warning('Agent token for requests are not required '
+                            'by the conductor, yet we received a token. '
+                            'Cluster may be mid-upgrade. Support to '
+                            'not fail in this condition will be removed in '
+                            'the Victoria development cycle.')
+                # Tell the API everything is okay.
+                return True
+        if self.agent_token is not None:
+            return self.agent_token == token
+
+        return False
 
     def _get_route_source(self, dest):
         """Get the IP address to send packages to destination."""
@@ -419,6 +444,25 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                 if config.get('metrics_statsd'):
                     for opt, val in config.items():
                         setattr(cfg.CONF.metrics_statsd, opt, val)
+                token = config.get('agent_token')
+                if token:
+                    if len(token) >= 32:
+                        LOG.debug('Agent token recorded as designated by '
+                                  'the ironic installation.')
+                        self.agent_token = token
+                        # set with-in the API client.
+                        self.api_client.agent_token = token
+                    elif token == '******':
+                        LOG.warning('The agent token has already been '
+                                    'retrieved. IPA may not operate as '
+                                    'intended and the deployment may fail '
+                                    'depending on settings in the ironic '
+                                    'deployment.')
+                    else:
+                        LOG.info('An invalid token was received.')
+                if config.get('agent_token_required'):
+                    self.agent_token_required = True
+
             elif cfg.CONF.inspection_callback_url:
                 LOG.info('No ipa-api-url configured, Heartbeat and lookup '
                          'skipped for inspector.')

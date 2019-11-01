@@ -185,6 +185,7 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
 
         self.assertEqual(200, response.status_code)
         self.assertEqual(1, self.mock_agent.execute_command.call_count)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
         args, kwargs = self.mock_agent.execute_command.call_args
         self.assertEqual(('do_things',), args)
         self.assertEqual({'key': 'value'}, kwargs)
@@ -211,6 +212,7 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
 
         self.assertEqual(200, response.status_code)
         self.assertEqual(1, self.mock_agent.execute_command.call_count)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
         args, kwargs = self.mock_agent.execute_command.call_args
         self.assertEqual(('do_things',), args)
         self.assertEqual({'key': 'value'}, kwargs)
@@ -272,3 +274,56 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual(200, response.status_code)
         data = response.json
         self.assertEqual(serialized_cmd_result, data)
+
+    def test_execute_agent_command_with_token(self):
+        agent_token = str('0123456789' * 10)
+        command = {
+            'name': 'do_things',
+            'params': {'key': 'value',
+                       'wait': False,
+                       'agent_token': agent_token},
+        }
+
+        result = base.SyncCommandResult(command['name'],
+                                        command['params'],
+                                        True,
+                                        {'test': 'result'})
+
+        self.mock_agent.validate_agent_token.return_value = True
+        self.mock_agent.execute_command.return_value = result
+
+        with mock.patch.object(result, 'join', autospec=True) as join_mock:
+            response = self.post_json(
+                '/commands?wait=false?agent_token=%s' % agent_token,
+                command)
+            self.assertFalse(join_mock.called)
+
+        self.assertEqual(200, response.status_code)
+
+        self.assertEqual(1, self.mock_agent.execute_command.call_count)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        args, kwargs = self.mock_agent.execute_command.call_args
+        self.assertEqual(('do_things',), args)
+        expected_result = result.serialize()
+        data = response.json
+        self.assertEqual(expected_result, data)
+
+    def test_execute_agent_command_with_token_invalid(self):
+        agent_token = str('0123456789' * 10)
+        command = {
+            'name': 'do_things',
+            'params': {'key': 'value',
+                       'wait': False,
+                       'agent_token': agent_token},
+        }
+
+        self.mock_agent.validate_agent_token.return_value = False
+        response = self.post_json(
+            '/commands?wait=false?agent_token=%s' % agent_token,
+            command,
+            expect_errors=True)
+
+        self.assertEqual(401, response.status_code)
+
+        self.assertEqual(0, self.mock_agent.execute_command.call_count)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
