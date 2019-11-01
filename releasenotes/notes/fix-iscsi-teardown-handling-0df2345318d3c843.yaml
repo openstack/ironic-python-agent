@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixes an issue in fallback error handling where native iSCSI controls
+    are unavailable due to the composition of the IPA ramdisk and where direct
+    ``tgtadm`` commands also fails.
+
+    Before fallback error handling was added, the teardown was skipped
+    completely in the event of the native iSCSI controls being unavailable.
+    The end user behavior is now as it was previously prior to the fallback
+    error handling being added, but IPA will still continue to attempt to
+    clean up the iSCSI session.

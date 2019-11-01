@@ -304,6 +304,19 @@ class TestISCSIExtensionCleanUpFallback(base.IronicAgentTest):
         iscsi.clean_up(self.fake_dev)
         mock_execute.assert_has_calls(expected)
 
+    def test_commands_fail(self, mock_execute):
+        mock_execute.side_effect = [processutils.ProcessExecutionError(),
+                                    ('', ''),
+                                    processutils.ProcessExecutionError()]
+        expected = [mock.call('tgtadm', '--lld', 'iscsi', '--mode',
+                              'target', '--op', 'unbind', '--tid', '1',
+                              '--initiator-address', 'ALL'),
+                    mock.call('sync'),
+                    mock.call('tgtadm', '--lld', 'iscsi', '--mode', 'target',
+                              '--op', 'delete', '--tid', '1')]
+        iscsi.clean_up(self.fake_dev)
+        mock_execute.assert_has_calls(expected)
+
 
 @mock.patch.object(iscsi.rtslib_fb, 'RTSRoot', autospec=True)
 class TestISCSIExtensionCleanUp(base.IronicAgentTest):

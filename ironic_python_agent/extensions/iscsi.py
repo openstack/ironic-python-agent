@@ -114,18 +114,28 @@ def clean_up(device):
     try:
         rts_root = rtslib_fb.RTSRoot()
     except (OSError, EnvironmentError, rtslib_fb.RTSLibError) as exc:
-        LOG.info('Linux-IO is not available, attemting to stop tgtd mapping. '
-                 'Error: %s.', exc)
-        cmd = ['tgtadm', '--lld', 'iscsi', '--mode', 'target', '--op',
-               'unbind', '--tid', '1', '--initiator-address', 'ALL']
-        _execute(cmd, "Error when cleaning up iscsi binds.")
-
+        try:
+            LOG.info('Linux-IO is not available, attemting to stop tgtd '
+                     'mapping. Error: %s.', exc)
+            cmd = ['tgtadm', '--lld', 'iscsi', '--mode', 'target', '--op',
+                   'unbind', '--tid', '1', '--initiator-address', 'ALL']
+            _execute(cmd, "Error when cleaning up iscsi binds.")
+        except errors.ISCSICommandError:
+            # This command may fail if the target was already torn down
+            # and that is okay, we just want to ensure it has been torn
+            # down so there should be no disk locks persisting.
+            pass
         cmd = ['sync']
         _execute(cmd, "Error flushing buffers to disk.")
-
-        cmd = ['tgtadm', '--lld', 'iscsi', '--mode', 'target', '--op',
-               'delete', '--tid', '1']
-        _execute(cmd, "Error deleting the iscsi target configuration.")
+        try:
+            cmd = ['tgtadm', '--lld', 'iscsi', '--mode', 'target', '--op',
+                   'delete', '--tid', '1']
+            _execute(cmd, "Error deleting the iscsi target configuration.")
+        except errors.ISCSICommandError:
+            # This command should remove the target from being offered.
+            # It is just proper clean-up, and often previously the IPA
+            # side, or "target" was never really torn down in many cases.
+            pass
         return
 
     storage = None
