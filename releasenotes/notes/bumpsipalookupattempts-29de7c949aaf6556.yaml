@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    Bumps up ipa-ip-lookup-attempts to 6, adding extra time
+    for networking to be setup before giving up.
