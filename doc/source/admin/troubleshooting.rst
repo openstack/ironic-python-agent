@@ -40,10 +40,10 @@ tinyipa
 ~~~~~~~
 
 If you want to enable SSH access to the image,
-set ``ENABLE_SSH`` variable in your shell to ``true`` before building
+set ``AUTHORIZE_SSH`` variable in your shell to ``true`` before building
 the tinyipa image::
 
-  export ENABLE_SSH=true
+  export AUTHORIZE_SSH=true
 
 By default it will use default public RSA (or, if not available, DSA)
 key of the user running the build (``~/.ssh/id_{rsa,dsa}.pub``).
