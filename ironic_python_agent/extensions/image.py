@@ -149,7 +149,7 @@ def _is_bootloader_loaded(dev):
         if 'boot sector' in stdout:
             # Now lets check the signature
             ddout, dderr = utils.execute(
-                'dd', 'if=%s' % device, 'bs=218', 'count=1')
+                'dd', 'if=%s' % device, 'bs=218', 'count=1', binary=True)
             stdout, stderr = utils.execute('file', '-', process_input=ddout)
             # The bytes recovered by dd show as a "dos executable" when
             # examined with file. In other words, the bootloader is present.
