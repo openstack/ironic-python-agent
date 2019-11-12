@@ -29,7 +29,6 @@ INSPECTION_DEFAULT_DHCP_WAIT_TIMEOUT = 60
 cli_opts = [
     cfg.StrOpt('api_url',
                default=APARAMS.get('ipa-api-url'),
-               deprecated_name='api-url',
                regex='^(mdns|http(s?):\\/\\/.+)',
                help='URL of the Ironic API. '
                     'Can be supplied as "ipa-api-url" kernel parameter.'
@@ -41,19 +40,16 @@ cli_opts = [
                default=APARAMS.get('ipa-listen-host',
                                    netutils.get_wildcard_address()),
                sample_default='::',
-               deprecated_name='listen-host',
                help='The IP address to listen on. '
                     'Can be supplied as "ipa-listen-host" kernel parameter.'),
 
     cfg.PortOpt('listen_port',
                 default=int(APARAMS.get('ipa-listen-port', 9999)),
-                deprecated_name='listen-port',
                 help='The port to listen on. '
                      'Can be supplied as "ipa-listen-port" kernel parameter.'),
 
     cfg.StrOpt('advertise_host',
                default=APARAMS.get('ipa-advertise-host', None),
-               deprecated_name='advertise_host',
                help='The host to tell Ironic to reply and send '
                     'commands to. '
                     'Can be supplied as "ipa-advertise-host" '
@@ -61,7 +57,6 @@ cli_opts = [
 
     cfg.PortOpt('advertise_port',
                 default=int(APARAMS.get('ipa-advertise-port', 9999)),
-                deprecated_name='advertise-port',
                 help='The port to tell Ironic to reply and send '
                      'commands to. '
                      'Can be supplied as "ipa-advertise-port" '
@@ -70,7 +65,6 @@ cli_opts = [
     cfg.IntOpt('ip_lookup_attempts',
                min=1,
                default=int(APARAMS.get('ipa-ip-lookup-attempts', 6)),
-               deprecated_name='ip-lookup-attempts',
                help='The number of times to try and automatically '
                     'determine the agent IPv4 address. '
                     'Can be supplied as "ipa-ip-lookup-attempts" '
@@ -79,7 +73,6 @@ cli_opts = [
     cfg.IntOpt('ip_lookup_sleep',
                min=0,
                default=int(APARAMS.get('ipa-ip-lookup-timeout', 10)),
-               deprecated_name='ip-lookup-sleep',
                help='The amount of time to sleep between attempts '
                     'to determine IP address. '
                     'Can be supplied as "ipa-ip-lookup-timeout" '
@@ -87,7 +80,6 @@ cli_opts = [
 
     cfg.StrOpt('network_interface',
                default=APARAMS.get('ipa-network-interface', None),
-               deprecated_name='network-interface',
                help='The interface to use when looking for an IP address. '
                     'Can be supplied as "ipa-network-interface" '
                     'kernel parameter.'),
@@ -95,7 +87,6 @@ cli_opts = [
     cfg.IntOpt('lookup_timeout',
                min=0,
                default=int(APARAMS.get('ipa-lookup-timeout', 300)),
-               deprecated_name='lookup-timeout',
                help='The amount of time to retry the initial lookup '
                     'call to Ironic. After the timeout, the agent '
                     'will exit with a non-zero exit code. '
@@ -105,7 +96,6 @@ cli_opts = [
     cfg.IntOpt('lookup_interval',
                min=0,
                default=int(APARAMS.get('ipa-lookup-interval', 1)),
-               deprecated_name='lookup-interval',
                help='The initial interval for retries on the initial '
                     'lookup call to Ironic. The interval will be '
                     'doubled after each failure until timeout is '
