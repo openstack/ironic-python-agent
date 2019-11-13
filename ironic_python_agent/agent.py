@@ -172,7 +172,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                         "defined in config file. Its value will be ignored.")
         self.ext_mgr = base.init_ext_manager(self)
         self.api_url = api_url
-        if not self.api_url or self.api_url == 'mdns':
+        if (not self.api_url or self.api_url == 'mdns') and not standalone:
             try:
                 self.api_url, params = mdns.get_endpoint('baremetal')
             except lib_exc.ServiceLookupFailure:
@@ -380,6 +380,52 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             LOG.info('Caught keyboard interrupt, exiting')
         self.api.stop()
 
+    def process_lookup_data(self, content):
+        """Update agent configuration from lookup data."""
+
+        self.node = content['node']
+        LOG.info('Lookup succeeded, node UUID is %s',
+                 self.node['uuid'])
+        hardware.cache_node(self.node)
+        self.heartbeat_timeout = content['config']['heartbeat_timeout']
+
+        # Update config with values from Ironic
+        config = content.get('config', {})
+        if config.get('metrics'):
+            for opt, val in config.items():
+                setattr(cfg.CONF.metrics, opt, val)
+        if config.get('metrics_statsd'):
+            for opt, val in config.items():
+                setattr(cfg.CONF.metrics_statsd, opt, val)
+        if config.get('agent_token_required'):
+            self.agent_token_required = True
+        token = config.get('agent_token')
+        if token:
+            if len(token) >= 32:
+                LOG.debug('Agent token recorded as designated by '
+                          'the ironic installation.')
+                self.agent_token = token
+                # set with-in the API client.
+                if not self.standalone:
+                    self.api_client.agent_token = token
+            elif token == '******':
+                LOG.warning('The agent token has already been '
+                            'retrieved. IPA may not operate as '
+                            'intended and the deployment may fail '
+                            'depending on settings in the ironic '
+                            'deployment.')
+                if not self.agent_token and self.agent_token_required:
+                    LOG.error('Ironic is signaling that agent tokens '
+                              'are required, however we do not have '
+                              'a token on file. '
+                              'This is likely **FATAL**.')
+            else:
+                LOG.info('An invalid token was received.')
+        if self.agent_token and not self.standalone:
+            # Explicitly set the token in our API client before
+            # starting heartbeat operations.
+            self.api_client.agent_token = self.agent_token
+
     def run(self):
         """Run the Ironic Python Agent."""
         LOG.info('Starting ironic-python-agent version: %s',
@@ -419,49 +465,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                     timeout=self.lookup_timeout,
                     starting_interval=self.lookup_interval,
                     node_uuid=uuid)
-
                 LOG.debug('Received lookup results: %s', content)
-                self.node = content['node']
-                LOG.info('Lookup succeeded, node UUID is %s',
-                         self.node['uuid'])
-                hardware.cache_node(self.node)
-                self.heartbeat_timeout = content['config']['heartbeat_timeout']
-
-                # Update config with values from Ironic
-                config = content.get('config', {})
-                if config.get('metrics'):
-                    for opt, val in config.items():
-                        setattr(cfg.CONF.metrics, opt, val)
-                if config.get('metrics_statsd'):
-                    for opt, val in config.items():
-                        setattr(cfg.CONF.metrics_statsd, opt, val)
-                if config.get('agent_token_required'):
-                    self.agent_token_required = True
-                token = config.get('agent_token')
-                if token:
-                    if len(token) >= 32:
-                        LOG.debug('Agent token recorded as designated by '
-                                  'the ironic installation.')
-                        self.agent_token = token
-                        # set with-in the API client.
-                        self.api_client.agent_token = token
-                    elif token == '******':
-                        LOG.warning('The agent token has already been '
-                                    'retrieved. IPA may not operate as '
-                                    'intended and the deployment may fail '
-                                    'depending on settings in the ironic '
-                                    'deployment.')
-                        if not self.agent_token and self.agent_token_required:
-                            LOG.error('Ironic is signaling that agent tokens '
-                                      'are required, however we do not have '
-                                      'a token on file. '
-                                      'This is likely **FATAL**.')
-                    else:
-                        LOG.info('An invalid token was received.')
-                if self.agent_token:
-                    # Explicitly set the token in our API client before
-                    # starting heartbeat operations.
-                    self.api_client.agent_token = self.agent_token
+                self.process_lookup_data(content)
 
             elif cfg.CONF.inspection_callback_url:
                 LOG.info('No ipa-api-url configured, Heartbeat and lookup '

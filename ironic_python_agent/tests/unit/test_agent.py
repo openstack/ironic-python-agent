@@ -774,6 +774,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
         wsgi_server_request.start.side_effect = set_serve_api
 
         self.agent.heartbeater = mock.Mock()
+        self.agent.api_client = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
 
         self.agent.run()

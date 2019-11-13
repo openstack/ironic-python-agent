@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Adds a Poll extension which provides the ability to retrieve hardware
+    information as well as set node data from API. This feature is required
+    for poll mode deployment driven by ironic.
