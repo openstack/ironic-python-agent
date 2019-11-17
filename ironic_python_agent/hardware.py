@@ -52,7 +52,7 @@ UNIT_CONVERTER.define('MB = 1048576 bytes')
 _MEMORY_ID_RE = re.compile(r'^memory(:\d+)?$')
 NODE = None
 
-SUPPORTED_SOFTWARE_RAID_LEVELS = frozenset(['0', '1', '1+0'])
+SUPPORTED_SOFTWARE_RAID_LEVELS = frozenset(['0', '1', '1+0', '5', '6'])
 
 
 def _get_device_info(dev, devclass, field):
@@ -1822,7 +1822,17 @@ class GenericHardwareManager(HardwareManager):
                 msg = ("Software RAID configuration does not support "
                        "RAID level %s" % current_level)
                 raid_errors.append(msg)
-
+            physical_device_count = len(self.list_block_devices())
+            if current_level == '5' and physical_device_count < 3:
+                msg = ("Software RAID configuration is not possible for "
+                       "RAID level 5 with only %s block devices found."
+                       % physical_device_count)
+                raid_errors.append(msg)
+            if current_level == '6' and physical_device_count < 4:
+                msg = ("Software RAID configuration is not possible for "
+                       "RAID level 6 with only %s block devices found."
+                       % physical_device_count)
+                raid_errors.append(msg)
         if raid_errors:
             error = ('Could not validate Software RAID config for %(node)s: '
                      '%(errors)s') % {'node': node['uuid'],

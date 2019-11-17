@@ -2773,6 +2773,178 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(raid_config, result)
 
     @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_raid_5(self, mocked_execute):
+        node = self.node
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "10",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "5",
+                    "controller": "software",
+                },
+            ]
+        }
+        node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/sda', 'sda', 107374182400, True)
+        device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
+        device3 = hardware.BlockDevice('/dev/sdc', 'sdc', 107374182400, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.return_value = [device1, device2,
+                                                         device3]
+
+        mocked_execute.side_effect = [
+            None,  # mklabel sda
+            ('42', None),  # sgdisk -F sda
+            None,  # mklabel sdb
+            ('42', None),  # sgdisk -F sdb
+            None,  # mklabel sdc
+            ('42', None),  # sgdisk -F sdc
+            None, None,  # parted + partx sda
+            None, None,  # parted + partx sdb
+            None, None,  # parted + partx sdc
+            None, None,  # parted + partx sda
+            None, None,  # parted + partx sdb
+            None, None,  # parted + partx sdc
+            None, None  # mdadms
+        ]
+
+        result = self.hardware.create_configuration(node, [])
+
+        mocked_execute.assert_has_calls([
+            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel',
+                      'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel',
+                      'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel',
+                      'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sdc'),
+            mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '10GiB'),
+            mock.call('partx', '-u', '/dev/sda', check_exit_code=False),
+            mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '10GiB'),
+            mock.call('partx', '-u', '/dev/sdb', check_exit_code=False),
+            mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '10GiB'),
+            mock.call('partx', '-u', '/dev/sdc', check_exit_code=False),
+            mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '10GiB', '-1'),
+            mock.call('partx', '-u', '/dev/sda', check_exit_code=False),
+            mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '10GiB', '-1'),
+            mock.call('partx', '-u', '/dev/sdb', check_exit_code=False),
+            mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '10GiB', '-1'),
+            mock.call('partx', '-u', '/dev/sdc', check_exit_code=False),
+            mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
+                      '--metadata=1', '--level', '1', '--raid-devices', 3,
+                      '/dev/sda1', '/dev/sdb1', '/dev/sdc1'),
+            mock.call('mdadm', '--create', '/dev/md1', '--force', '--run',
+                      '--metadata=1', '--level', '5', '--raid-devices', 3,
+                      '/dev/sda2', '/dev/sdb2', '/dev/sdc2')])
+        self.assertEqual(raid_config, result)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_raid_6(self, mocked_execute):
+        node = self.node
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "10",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "6",
+                    "controller": "software",
+                },
+            ]
+        }
+        node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/sda', 'sda', 107374182400, True)
+        device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
+        device3 = hardware.BlockDevice('/dev/sdc', 'sdc', 107374182400, True)
+        device4 = hardware.BlockDevice('/dev/sdd', 'sdd', 107374182400, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.return_value = [device1, device2,
+                                                         device3, device4]
+
+        mocked_execute.side_effect = [
+            None,  # mklabel sda
+            ('42', None),  # sgdisk -F sda
+            None,  # mklabel sdb
+            ('42', None),  # sgdisk -F sdb
+            None,  # mklabel sdc
+            ('42', None),  # sgdisk -F sdc
+            None,  # mklabel sdd
+            ('42', None),  # sgdisk -F sdd
+            None, None,  # parted + partx sda
+            None, None,  # parted + partx sdb
+            None, None,  # parted + partx sdc
+            None, None,  # parted + partx sdd
+            None, None,  # parted + partx sda
+            None, None,  # parted + partx sdb
+            None, None,  # parted + partx sdc
+            None, None,  # parted + partx sdd
+            None, None  # mdadms
+        ]
+
+        result = self.hardware.create_configuration(node, [])
+
+        mocked_execute.assert_has_calls([
+            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel',
+                      'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel',
+                      'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel',
+                      'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sdc'),
+            mock.call('parted', '/dev/sdd', '-s', '--', 'mklabel',
+                      'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sdd'),
+            mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '10GiB'),
+            mock.call('partx', '-u', '/dev/sda', check_exit_code=False),
+            mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '10GiB'),
+            mock.call('partx', '-u', '/dev/sdb', check_exit_code=False),
+            mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '10GiB'),
+            mock.call('partx', '-u', '/dev/sdc', check_exit_code=False),
+            mock.call('parted', '/dev/sdd', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '10GiB'),
+            mock.call('partx', '-u', '/dev/sdd', check_exit_code=False),
+            mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '10GiB', '-1'),
+            mock.call('partx', '-u', '/dev/sda', check_exit_code=False),
+            mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '10GiB', '-1'),
+            mock.call('partx', '-u', '/dev/sdb', check_exit_code=False),
+            mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '10GiB', '-1'),
+            mock.call('partx', '-u', '/dev/sdc', check_exit_code=False),
+            mock.call('parted', '/dev/sdd', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '10GiB', '-1'),
+            mock.call('partx', '-u', '/dev/sdd', check_exit_code=False),
+            mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
+                      '--metadata=1', '--level', '1', '--raid-devices', 4,
+                      '/dev/sda1', '/dev/sdb1', '/dev/sdc1', '/dev/sdd1'),
+            mock.call('mdadm', '--create', '/dev/md1', '--force', '--run',
+                      '--metadata=1', '--level', '6', '--raid-devices', 4,
+                      '/dev/sda2', '/dev/sdb2', '/dev/sdc2', '/dev/sdd2')])
+        self.assertEqual(raid_config, result)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_no_max(self, mocked_execute):
         node = self.node
         raid_config = {
@@ -2941,8 +3113,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         partition1 = hardware.BlockDevice('/dev/sdb1', 'sdb1', 268435456, True)
         self.hardware.list_block_devices = mock.Mock()
         self.hardware.list_block_devices.side_effect = [
+            [device1, device2],  # pre-flight validation call
             [device1, device2],
             [device1, device2, partition1]]
+
         self.assertRaises(errors.SoftwareRAIDError,
                           self.hardware.create_configuration,
                           self.node, [])
@@ -2969,6 +3143,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
         self.hardware.list_block_devices = mock.Mock()
         self.hardware.list_block_devices.side_effect = [
+            [device1, device2],
+            [device1, device2],
+            [device1, device2],
             [device1, device2],
             [device1, device2],
             [device1, device2],
@@ -3005,6 +3182,74 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             None, None, None, None,  # RAID-1 partitions on sd{a,b} + partx
             None, None, None, None,  # RAID-N partitions on sd{a,b} + partx
             processutils.ProcessExecutionError]
+        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+                               self.hardware.create_configuration,
+                               self.node, [])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_device_handling_failures_raid5(
+            self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "5",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/sda', 'sda', 107374182400, True)
+        device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.side_effect = [
+            [device1, device2],
+            [device1, device2]]
+
+        # validation configuration explicitly fails before any action
+        error_regex = ("Software RAID configuration is not possible for "
+                       "RAID level 5 with only 2 block devices found.")
+        # Execute is actually called for listing_block_devices
+        self.assertFalse(mocked_execute.called)
+        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+                               self.hardware.create_configuration,
+                               self.node, [])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_device_handling_failures_raid6(
+            self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "6",
+                    "controller": "software",
+                },
+            ]
+        }
+        self.node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/sda', 'sda', 107374182400, True)
+        device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
+        device3 = hardware.BlockDevice('/dev/sdc', 'sdc', 107374182400, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.side_effect = [
+            [device1, device2, device3],
+            [device1, device2, device3]]
+        # pre-creation validation fails as insufficent number of devices found
+        error_regex = ("Software RAID configuration is not possible for "
+                       "RAID level 6 with only 3 block devices found.")
+        # Execute is actually called for listing_block_devices
+        self.assertFalse(mocked_execute.called)
         self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
                                self.hardware.create_configuration,
                                self.node, [])
@@ -3102,6 +3347,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                        107374182400, True)
         self.hardware.list_block_devices = mock.Mock()
         self.hardware.list_block_devices.side_effect = [
+            [device1, device2],
+            [device1, device2],
+            [device1, device2],
             [device1, device2],
             [device1, device2],
             [device1, device2],

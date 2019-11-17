@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Adds support to allow selection of RAID ``5`` and RAID ``6``
+    protection levels for software RAID support. This may only be
+    the secondary volume, as these volume types of software RAID
+    volumes cannot be used to directly boot an operating system.
