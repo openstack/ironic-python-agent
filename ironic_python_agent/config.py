@@ -69,7 +69,7 @@ cli_opts = [
 
     cfg.IntOpt('ip_lookup_attempts',
                min=1,
-               default=int(APARAMS.get('ipa-ip-lookup-attempts', 3)),
+               default=int(APARAMS.get('ipa-ip-lookup-attempts', 6)),
                deprecated_name='ip-lookup-attempts',
                help='The number of times to try and automatically '
                     'determine the agent IPv4 address. '
