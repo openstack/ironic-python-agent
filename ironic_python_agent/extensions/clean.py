@@ -85,7 +85,7 @@ class CleanExtension(base.BaseAgentExtension):
                  {'step': step, 'result': result})
 
         # Cast result tuples (like output of utils.execute) as lists, or
-        # WSME throws errors
+        # API throws errors
         if isinstance(result, tuple):
             result = list(result)
 

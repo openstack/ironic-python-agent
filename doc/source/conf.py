@@ -4,13 +4,8 @@
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.viewcode',
-              'sphinxcontrib.httpdomain',
-              'sphinxcontrib.pecanwsme.rest',
-              'wsmeext.sphinxext',
               'openstackdocstheme',
               ]
-
-wsme_protocols = ['restjson']
 
 # autodoc generation is a bit aggressive and a nuisance when doing heavy
 # text edit cycles.
@@ -40,11 +35,6 @@ add_module_names = True
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
-
-# Ignore the following warning: WARNING: while setting up extension
-# wsmeext.sphinxext: directive 'autoattribute' is already registered,
-# it will be overridden.
-suppress_warnings = ['app.add_directive']
 
 
 # -- Options for HTML output --------------------------------------------------
