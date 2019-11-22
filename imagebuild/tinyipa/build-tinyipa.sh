@@ -62,6 +62,7 @@ sudo sh -c "echo $TINYCORE_MIRROR_URL > $BUILDDIR/opt/tcemirror"
 clone_and_checkout "https://github.com/fujita/tgt.git" "${BUILDDIR}/tmp/tgt" "v1.0.62"
 clone_and_checkout "https://github.com/qemu/qemu.git" "${BUILDDIR}/tmp/qemu" "v2.5.0"
 clone_and_checkout "https://github.com/lyonel/lshw.git" "${BUILDDIR}/tmp/lshw" "B.02.18"
+clone_and_checkout "https://github.com/jirka-h/haveged.git" "${BUILDDIR}/tmp/haveged" "1.9.4"
 if $TINYIPA_REQUIRE_BIOSDEVNAME; then
     wget -N -O - https://linux.dell.com/biosdevname/biosdevname-0.7.2/biosdevname-0.7.2.tar.gz | tar -xz -C "${BUILDDIR}/tmp" -f -
 fi
@@ -179,6 +180,12 @@ rm -rf $WORKDIR/build_files/lshw.tcz
 $CHROOT_CMD /bin/sh -c "cd /tmp/lshw && touch src/lshw.1 && echo install: > src/po/Makefile && make && make install DESTDIR=/tmp/lshw-installed"
 find $BUILDDIR/tmp/lshw-installed/ -type f -executable | xargs file | awk -F ':' '/ELF/ {print $1}' | sudo xargs strip
 cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/lshw-installed lshw.tcz && md5sum lshw.tcz > lshw.tcz.md5.txt
+
+# Build haveged
+rm -rf $WORKDIR/build_files/haveged.tcz
+$CHROOT_CMD /bin/sh -c "cd /tmp/haveged && ./configure && make && make install DESTDIR=/tmp/haveged-installed"
+find $BUILDDIR/tmp/haveged-installed/ -type f -executable | xargs file | awk -F ':' '/ELF/ {print $1}' | sudo xargs strip
+cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/haveged-installed haveged.tcz && md5sum haveged.tcz > haveged.tcz.md5.txt
 
 # Build biosdevname
 if $TINYIPA_REQUIRE_BIOSDEVNAME; then

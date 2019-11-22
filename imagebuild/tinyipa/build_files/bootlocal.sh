@@ -10,9 +10,15 @@ date
 export HOME=/root
 
 # Start SSHd
-if [ -f /usr/local/etc/init.d/openssh ]; then
+if [ -x /usr/local/etc/init.d/openssh ]; then
     echo "Starting OpenSSH server:"
     /usr/local/etc/init.d/openssh start
+fi
+
+# Start haveged
+if [ -x /usr/local/sbin/haveged ]; then
+    echo "Starting haveged entropy daemon:"
+    /usr/local/sbin/haveged
 fi
 
 # Maybe save some RAM?
