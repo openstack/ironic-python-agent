@@ -15,6 +15,7 @@
 import abc
 import binascii
 import functools
+import ipaddress
 import json
 from multiprocessing.pool import ThreadPool
 import os
@@ -24,7 +25,6 @@ import time
 
 from ironic_lib import disk_utils
 from ironic_lib import utils as il_utils
-import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -1320,9 +1320,9 @@ class GenericHardwareManager(HardwareManager):
                 out = out.strip()
 
                 try:
-                    netaddr.IPAddress(out)
-                except netaddr.AddrFormatError:
-                    LOG.warning('Invalid IP address: %s', out)
+                    ipaddress.ip_address(out)
+                except ValueError as exc:
+                    LOG.warning('Invalid IP address %s: %s', out, exc)
                     continue
 
                 # In case we get 0.0.0.0 on a valid channel, we need to keep
@@ -1397,9 +1397,9 @@ class GenericHardwareManager(HardwareManager):
                     continue
 
                 try:
-                    return str(netaddr.IPNetwork(address).ip)
-                except netaddr.AddrFormatError:
-                    LOG.warning('Invalid IP address: %s', address)
+                    return str(ipaddress.ip_interface(address).ip)
+                except ValueError as exc:
+                    LOG.warning('Invalid IP address %s: %s', address, exc)
                     continue
         except (processutils.ProcessExecutionError, OSError) as e:
             # Not error, because it's normal in virtual environment

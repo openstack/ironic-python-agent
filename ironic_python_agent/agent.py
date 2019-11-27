@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import ipaddress
 import os
 import random
 import select
@@ -23,7 +24,6 @@ from wsgiref import simple_server
 
 from ironic_lib import exception as lib_exc
 from ironic_lib import mdns
-import netaddr
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -238,14 +238,22 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         try:
             source = out.strip().split('\n')[0].split('src')[1].split()[0]
-            if netaddr.IPAddress(source).is_link_local():
-                LOG.info('Ignoring link-local source to %(dest)s: %(rec)s',
-                         {'dest': dest, 'rec': out})
-                return
-            return source
         except IndexError:
             LOG.warning('No route to host %(dest)s, route record: %(rec)s',
                         {'dest': dest, 'rec': out})
+            return
+
+        try:
+            if ipaddress.ip_address(source).is_link_local:
+                LOG.info('Ignoring link-local source to %(dest)s: %(rec)s',
+                         {'dest': dest, 'rec': out})
+                return
+        except ValueError as exc:
+            LOG.warning('Invalid IP address %(addr)s returned as a route '
+                        'to host %(dest)s: %(err)s',
+                        {'dest': dest, 'addr': source, 'err': exc})
+
+        return source
 
     def set_agent_advertise_addr(self):
         """Set advertised IP address for the agent, if not already set.
