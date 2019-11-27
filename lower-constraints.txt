@@ -26,7 +26,6 @@ hacking==1.0.0
 idna==2.6
 imagesize==1.0.0
 ironic-lib==2.17.0
-iso8601==0.1.11
 Jinja2==2.10
 keystoneauth1==3.4.0
 linecache2==1.0.0
