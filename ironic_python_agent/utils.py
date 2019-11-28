@@ -29,7 +29,6 @@ from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_serialization import base64
 from oslo_utils import units
-from six.moves.urllib import parse
 
 from ironic_python_agent import errors
 
@@ -229,17 +228,6 @@ def get_agent_params():
                             "use %s instead.", old_param, new_param)
 
     return copy.deepcopy(params)
-
-
-def normalize(string):
-    """Return a normalized string.
-
-    Take a urlencoded value from Ironic and urldecode it.
-
-    :param string: a urlencoded string
-    :returns: a normalized version of passed in string
-    """
-    return parse.unquote(string).lower().strip()
 
 
 class AccumulatedFailures(object):

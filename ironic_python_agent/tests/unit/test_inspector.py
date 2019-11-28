@@ -341,7 +341,7 @@ class TestCollectPciDevicesInfo(base.IronicAgentTest):
                                 {'vendor_id': '9876', 'product_id': '5432'}]
 
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_read = mock_open.return_value.read
             mock_read.side_effect = reads
             inspector.collect_pci_devices_info(self.data, self.failures)
@@ -367,7 +367,7 @@ class TestCollectPciDevicesInfo(base.IronicAgentTest):
         expected_pci_devices = [{'vendor_id': '1234', 'product_id': '5678'}]
 
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_read = mock_open.return_value.read
             mock_read.side_effect = reads
             inspector.collect_pci_devices_info(self.data, self.failures)

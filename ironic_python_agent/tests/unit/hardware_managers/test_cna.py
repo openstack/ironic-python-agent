@@ -84,7 +84,7 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
         mock_exists.return_value = True
         mock_listdir.return_value = ['foo', 'bar']
         write_mock = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', write_mock, create=True):
+        with mock.patch('builtins.open', write_mock, create=True):
             cna._disable_embedded_lldp_agent_in_cna_card()
             write_mock().write.assert_called_with('lldp stop')
             self.assertFalse(mock_log.warning.called)
@@ -107,7 +107,7 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
         listdir_dict = ['foo', 'bar']
         mock_listdir.return_value = listdir_dict
         write_mock = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', write_mock, create=True):
+        with mock.patch('builtins.open', write_mock, create=True):
             write_mock.side_effect = IOError('fake error')
             cna._disable_embedded_lldp_agent_in_cna_card()
             expected_log_message = ('Failed to disable the embedded LLDP on '

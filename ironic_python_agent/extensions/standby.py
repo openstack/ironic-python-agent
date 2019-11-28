@@ -16,6 +16,7 @@ import hashlib
 import os
 import tempfile
 import time
+from urllib import parse as urlparse
 
 from ironic_lib import disk_utils
 from ironic_lib import exception
@@ -23,8 +24,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 import requests
-import six
-from six.moves.urllib import parse as urlparse
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
@@ -97,8 +96,8 @@ def _fetch_checksum(checksum, image_info):
             return lines[0]
 
     # FIXME(dtantsur): can we assume the same name for all images?
-    expected_fname = os.path.basename(
-        urlparse.urlparse(image_info['urls'][0]).path)
+    expected_fname = os.path.basename(urlparse.urlparse(
+        image_info['urls'][0]).path)
     for line in lines:
         checksum, fname = line.strip().split(None, 1)
         # The star symbol designates binary mode, which is the same as text
@@ -393,7 +392,7 @@ def _validate_image_info(ext, image_info=None, **kwargs):
             'Image \'urls\' must be a list with at least one element.')
 
     if 'checksum' in image_info:
-        if (not isinstance(image_info['checksum'], six.string_types)
+        if (not isinstance(image_info['checksum'], str)
                 or not image_info['checksum']):
             raise errors.InvalidCommandParamsError(
                 'Image \'checksum\' must be a non-empty string.')
@@ -402,11 +401,11 @@ def _validate_image_info(ext, image_info=None, **kwargs):
     os_hash_algo = image_info.get('os_hash_algo')
     os_hash_value = image_info.get('os_hash_value')
     if os_hash_algo or os_hash_value:
-        if (not isinstance(os_hash_algo, six.string_types) or
+        if (not isinstance(os_hash_algo, str) or
                 not os_hash_algo):
             raise errors.InvalidCommandParamsError(
                 'Image \'os_hash_algo\' must be a non-empty string.')
-        if (not isinstance(os_hash_value, six.string_types) or
+        if (not isinstance(os_hash_value, str) or
                 not os_hash_value):
             raise errors.InvalidCommandParamsError(
                 'Image \'os_hash_value\' must be a non-empty string.')

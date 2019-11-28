@@ -64,7 +64,7 @@ class TestCollectNumaTopologyInfo(base.IronicAgentTest):
                               "nics": [{'name': 'enp0s01', 'numa_node': 0},
                                        {'name': 'enp0s02', 'numa_node': 1}]}
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             numa_insp.collect_numa_topology_info(self.data, self.failures)
         self.assertEqual(expected_numa_info, self.data["numa_topology"])
 
@@ -93,7 +93,7 @@ class TestCollectNumaTopologyInfo(base.IronicAgentTest):
                                          'thread_siblings': [4, 5, 6]}]
         mock_nics_info.side_effect = errors.IncompatibleNumaFormatError("")
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             numa_insp.collect_numa_topology_info(self.data, self.failures)
         self.assertNotIn("numa_topology", self.data)
 
@@ -150,7 +150,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
         expected_meminfo = [{'numa_node': 0, 'size_kb': 1560000},
                             {'numa_node': 1, 'size_kb': 1200000}]
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_meminfo_file = mock.MagicMock()
             mock_meminfo_file.__enter__.side_effect = reads
             mock_open.return_value = mock_meminfo_file
@@ -164,7 +164,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
         mock_node_id.side_effect = [0, 1]
         reads = [['Node 0 MemTotal: 1560000 kB'], IOError]
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_meminfo_file = mock.MagicMock()
             mock_meminfo_file.__enter__.side_effect = reads
             mock_open.return_value = mock_meminfo_file
@@ -180,7 +180,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
         reads = [['Node 0: MemTotal: 1560000 kB'],
                  ['Node 1 MemTotal: 1200000 kB']]
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_meminfo_file = mock.MagicMock()
             mock_meminfo_file.__enter__.side_effect = reads
             mock_open.return_value = mock_meminfo_file
@@ -196,7 +196,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
         reads = [['Node 0 MemTotal: 1560000 TB'],
                  ['Node 1 MemTotal: 1200000 kB']]
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_meminfo_file = mock.MagicMock()
             mock_meminfo_file.__enter__.side_effect = reads
             mock_open.return_value = mock_meminfo_file
@@ -234,7 +234,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
                                {'cpu': 0, 'numa_node': 1,
                                 'thread_siblings': [5, 6, 7]}]
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_core_id_file = mock_open.return_value.read
             mock_core_id_file.side_effect = reads
             cpus = numa_insp.get_nodes_cores_info(numa_node_dirs)
@@ -254,7 +254,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
         mock_isdir.return_value = True
         reads = ['0', '0', '1', '1', '1', IOError]
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_core_id_file = mock_open.return_value.read
             mock_core_id_file.side_effect = reads
             self.assertRaises(errors.IncompatibleNumaFormatError,
@@ -283,7 +283,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
         mock_isdir.return_value = True
         reads = ['0', '0', '1', '1', '1', '2']
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_core_id_file = mock_open.return_value.read
             mock_core_id_file.side_effect = reads
             self.assertRaises(errors.IncompatibleNumaFormatError,
@@ -313,7 +313,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
         expected_nicsinfo = [{'name': 'enp0s01', 'numa_node': 0},
                              {'name': 'enp0s02', 'numa_node': 1}]
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_nicsinfo_file = mock_open.return_value.read
             mock_nicsinfo_file.side_effect = reads
             nics = numa_insp.get_nodes_nics_info('/sys/class/net/')
@@ -327,7 +327,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
         mock_isdir.return_value = True
         reads = ['0', IOError]
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_nicsinfo_file = mock_open.return_value.read
             mock_nicsinfo_file.side_effect = reads
             self.assertRaises(errors.IncompatibleNumaFormatError,
@@ -342,7 +342,7 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
         mock_listdir.return_value = nic_dirs
         reads = ['0', '1']
         mock_open = mock.mock_open()
-        with mock.patch('six.moves.builtins.open', mock_open):
+        with mock.patch('builtins.open', mock_open):
             mock_nicsinfo_file = mock_open.return_value.read
             mock_nicsinfo_file.side_effect = reads
             self.assertRaises(errors.IncompatibleNumaFormatError,

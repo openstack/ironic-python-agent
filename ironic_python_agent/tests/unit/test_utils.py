@@ -26,7 +26,6 @@ from ironic_lib import utils as ironic_utils
 import mock
 from oslo_concurrency import processutils
 from oslo_serialization import base64
-import six
 import testtools
 
 from ironic_python_agent import errors
@@ -52,13 +51,13 @@ class ExecuteTestCase(ironic_agent_base.IronicAgentTest):
 class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
 
     @mock.patch('oslo_log.log.getLogger', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     def test__read_params_from_file_fail(self, logger_mock, open_mock):
         open_mock.side_effect = Exception
         params = utils._read_params_from_file('file-path')
         self.assertEqual({}, params)
 
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     def test__read_params_from_file(self, open_mock):
         kernel_line = 'api-url=http://localhost:9999 baz foo=bar\n'
         open_mock.return_value.__enter__ = lambda s: s
@@ -118,7 +117,7 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
         self.assertEqual(expected_params, returned_params)
         self.assertEqual(0, set_cache_mock.call_count)
 
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch.object(glob, 'glob', autospec=True)
     def test__get_vmedia_device(self, glob_mock, open_mock):
 
@@ -392,7 +391,7 @@ class TestUtils(testtools.TestCase):
         contents = b'Squidward Tentacles'
         io_dict = {'fake-name': io.BytesIO(bytes(contents))}
         data = utils.gzip_and_b64encode(io_dict=io_dict)
-        self.assertIsInstance(data, six.text_type)
+        self.assertIsInstance(data, str)
 
         res = io.BytesIO(base64.decode_as_bytes(data))
         with tarfile.open(fileobj=res) as tar:
