@@ -1,6 +1,8 @@
 bash.tcz
 coreutils.tcz
 dmidecode.tcz
+efibootmgr.tcz
+efivar.tcz
 gdisk.tcz
 hdparm.tcz
 iproute2.tcz
