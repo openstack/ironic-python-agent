@@ -45,6 +45,18 @@ Number  Start   End     Size    File system  Name  Flags
  1      116MB   2361MB  2245MB  ext4
 '''
 
+PARTED_OUTPUT_UNFORMATTED_NOFS = '''Model: whatever
+Disk /dev/sda: 480GB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+Disk Flags:
+
+Number  Start   End     Size    File system  Name  Flags
+1      1049kB  9437kB  8389kB                ESP   boot, esp
+2      9437kB  17.8MB  8389kB                BSP   bios_grub
+3      17.8MB  40.0GB  40.0GB
+4      479GB   480GB   68.1MB
+'''
 
 PARTED_OUTPUT_NO_EFI = '''Model: whatever
 Disk /dev/sda: 450GB
@@ -629,6 +641,18 @@ class TestUtils(testtools.TestCase):
             [mock.call('parted', '-s', '/dev/sda', '--', 'print')]
         )
         self.assertEqual('15', ret)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_efi_part_on_device_without_fs(self, mocked_execute):
+        parted_ret = PARTED_OUTPUT_UNFORMATTED_NOFS.format('gpt')
+        mocked_execute.side_effect = [
+            (parted_ret, None)
+        ]
+        ret = utils.get_efi_part_on_device('/dev/sda')
+        mocked_execute.assert_has_calls(
+            [mock.call('parted', '-s', '/dev/sda', '--', 'print')]
+        )
+        self.assertEqual('1', ret)
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_efi_part_on_device_not_found(self, mocked_execute):

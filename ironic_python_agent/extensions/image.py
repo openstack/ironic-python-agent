@@ -34,6 +34,8 @@ LOG = log.getLogger(__name__)
 
 BIND_MOUNTS = ('/dev', '/proc', '/run')
 
+BOOTLOADERS_EFI = ['bootx64.efi', 'grubaa64.efi', 'winload.efi']
+
 
 def _get_partition(device, uuid):
     """Find the partition of a given device."""
@@ -181,6 +183,151 @@ def _is_bootloader_loaded(dev):
     return False
 
 
+def _get_efi_bootloaders(location):
+    """Get all valid efi bootloaders in a given location
+
+    :param location: the location where it should  start looking for the
+                     efi files.
+    :return: a list of valid efi bootloaders
+    """
+
+    # Let's find all files with .efi or .EFI extension
+    LOG.debug('Looking for all efi files on %s', location)
+    valid_bootloaders = []
+    for root, dirs, files in os.walk(location):
+        efi_files = [f for f in files if f.lower() in BOOTLOADERS_EFI]
+        LOG.debug('efi files found in %(location)s : %(efi_files)s',
+                  {'location': location, 'efi_files': str(efi_files)})
+        for name in efi_files:
+            efi_f = os.path.join(root, name)
+            LOG.debug('Checking if %s is executable', efi_f)
+            if os.access(efi_f, os.X_OK):
+                v_bl = efi_f.split('/boot/efi')[-1].replace('/', '\\')
+                LOG.debug('%s is a valid bootloader', v_bl)
+                valid_bootloaders.append(v_bl)
+    return valid_bootloaders
+
+
+def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition):
+    """Executes efibootmgr and removes duplicate entries.
+
+    :param valid_efi_bootloaders: the list of valid efi bootloaders
+    :param device: the device to be used
+    :param efi_partition: the efi partition on the device
+    """
+
+    # Before updating let's get information about the bootorder
+    LOG.debug("Getting information about boot order")
+    utils.execute('efibootmgr')
+    # NOTE(iurygregory): regex used to identify the Warning in the stderr after
+    # we add the new entry. Example:
+    # "efibootmgr: ** Warning ** : Boot0004 has same label ironic"
+    duplicated_label = re.compile(r'^.*:\s\*\*.*\*\*\s:\s.*'
+                                  r'Boot([0-9a-f-A-F]+)\s.*$')
+    label_id = 1
+    for v_efi_bl_path in valid_efi_bootloaders:
+        # Update the nvram using efibootmgr
+        # https://linux.die.net/man/8/efibootmgr
+        label = 'ironic' + str(label_id)
+        LOG.debug("Adding loader %(path)s on partition %(part)s of device "
+                  " %(dev)s", {'path': v_efi_bl_path, 'part': efi_partition,
+                               'dev': device})
+        cmd = utils.execute('efibootmgr', '-c', '-d', device,
+                            '-p', efi_partition, '-w', '-L', label,
+                            '-l', v_efi_bl_path)
+        for line in cmd[1].split('\n'):
+            match = duplicated_label.match(line)
+            if match:
+                boot_num = match.group(1)
+                LOG.debug("Found bootnum %s matching label", boot_num)
+                utils.execute('efibootmgr', '-b', boot_num, '-B')
+        label_id += 1
+
+
+def _manage_uefi(device, efi_system_part_uuid=None):
+    """Manage the device looking for valid efi bootloaders to update the nvram.
+
+    This method checks for valid efi bootloaders in the device, if they exists
+    it updates the nvram using the efibootmgr.
+
+    :param device: the device to be checked.
+    :param efi_system_part_uuid: efi partition uuid.
+    :return: True - if it founds any efi bootloader and the nvram was updated
+             using the efibootmgr.
+             False - if no efi bootloader is found.
+    """
+    efi_partition = None
+    efi_partition_mount_point = None
+    efi_mounted = False
+
+    try:
+        local_path = tempfile.mkdtemp()
+        # Trust the contents on the disk in the event of a whole disk image.
+        efi_partition = utils.get_efi_part_on_device(device)
+        if not efi_partition:
+            # _get_partition returns <device>+<partition> and we only need the
+            # partition number
+            partition = _get_partition(device, uuid=efi_system_part_uuid)
+            efi_partition = int(partition.replace(device, ""))
+
+        if efi_partition:
+            efi_partition_mount_point = os.path.join(local_path, "boot/efi")
+            if not os.path.exists(efi_partition_mount_point):
+                os.makedirs(efi_partition_mount_point)
+
+            # The mount needs the device with the partition, in case the
+            # device ends with a digit we add a `p` and the partition number we
+            # found, otherwise we just join the device and the partition number
+            if device[-1].isdigit():
+                efi_device_part = '{}p{}'.format(device, efi_partition)
+                utils.execute('mount', efi_device_part,
+                              efi_partition_mount_point)
+            else:
+                efi_device_part = '{}{}'.format(device, efi_partition)
+                utils.execute('mount', efi_device_part,
+                              efi_partition_mount_point)
+            efi_mounted = True
+        else:
+            # If we can't find the partition we need to decide what should
+            # happen
+            return False
+        valid_efi_bootloaders = _get_efi_bootloaders(efi_partition_mount_point)
+        if valid_efi_bootloaders:
+            _run_efibootmgr(valid_efi_bootloaders, device, efi_partition)
+            return True
+        else:
+            return False
+
+    except processutils.ProcessExecutionError as e:
+        error_msg = ('Could not verify uefi on device %(dev)s'
+                     'failed with %(err)s.' % {'dev': device, 'err': e})
+        LOG.error(error_msg)
+        raise errors.CommandExecutionError(error_msg)
+    finally:
+        umount_warn_msg = "Unable to umount %(local_path)s. Error: %(error)s"
+
+        try:
+            if efi_mounted:
+                utils.execute('umount', efi_partition_mount_point,
+                              attempts=3, delay_on_retry=True)
+        except processutils.ProcessExecutionError as e:
+            error_msg = ('Umounting efi system partition failed. '
+                         'Attempted 3 times. Error: %s' % e)
+            LOG.error(error_msg)
+            raise errors.CommandExecutionError(error_msg)
+
+        else:
+            # If umounting the binds succeed then we can try to delete it
+            try:
+                utils.execute('sync')
+            except processutils.ProcessExecutionError as e:
+                LOG.warning(umount_warn_msg, {'path': local_path, 'error': e})
+            else:
+                # After everything is umounted we can then remove the
+                # temporary directory
+                shutil.rmtree(local_path)
+
+
 def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                    prep_boot_part_uuid=None):
     """Install GRUB2 bootloader on a given device."""
@@ -265,6 +412,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         # --removable flag, per the grub-install source code changes
         # the default file to be copied, destination file name, and
         # prevents NVRAM from being updated.
+        # We only run grub2_install for uefi if we can't verify the uefi bits
         if efi_partition:
             utils.execute('chroot %(path)s /bin/sh -c '
                           '"%(bin)s-install %(dev)s --removable"' %
@@ -367,6 +515,22 @@ class ImageExtension(base.BaseAgentExtension):
         """
         device = hardware.dispatch_to_managers('get_os_install_device')
         iscsi.clean_up(device)
+        boot = hardware.dispatch_to_managers('get_boot_info')
+        if boot.current_boot_mode == 'uefi':
+            has_efibootmgr = True
+            try:
+                utils.execute('efibootmgr', '--version')
+            except errors.CommandExecutionError:
+                LOG.warning("efibootmgr is not available in the ramdisk")
+                has_efibootmgr = False
+
+            if has_efibootmgr:
+                if _manage_uefi(device,
+                                efi_system_part_uuid=efi_system_part_uuid):
+                    return
+
+        # In case we can't use efibootmgr for uefi we will continue using grub2
+        LOG.debug('Using grub2-install to set up boot files')
         _install_grub2(device,
                        root_uuid=root_uuid,
                        efi_system_part_uuid=efi_system_part_uuid,
