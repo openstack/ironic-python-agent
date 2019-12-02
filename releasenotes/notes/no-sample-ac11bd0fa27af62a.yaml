@@ -1,0 +1,7 @@
+other:
+  - |
+    The sample configuration file
+    ``etc/ironic_python_agent/ironic_python_agent.conf.sample`` is no longer
+    shipped with the source code. It can be generated locally with::
+
+        tox -egenconfig

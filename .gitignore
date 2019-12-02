@@ -28,3 +28,6 @@ releasenotes/build
 
 # upper-constraints handling for image builds
 upper-constraints.txt
+
+# auto-generated example file
+etc/ironic_python_agent/ironic_python_agent.conf.sample
