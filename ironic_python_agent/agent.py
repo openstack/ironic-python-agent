@@ -20,6 +20,7 @@ import select
 import socket
 import threading
 import time
+from urllib import parse as urlparse
 from wsgiref import simple_server
 
 from ironic_lib import exception as lib_exc
@@ -29,7 +30,6 @@ from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import netutils
 import pkg_resources
-from six.moves.urllib import parse as urlparse
 from stevedore import extension
 
 from ironic_python_agent.api import app

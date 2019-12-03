@@ -19,7 +19,6 @@ import threading
 
 from oslo_log import log
 from oslo_utils import uuidutils
-import six
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
@@ -90,8 +89,7 @@ class SyncCommandResult(BaseCommandResult):
 
         super(SyncCommandResult, self).__init__(command_name,
                                                 command_params)
-
-        if isinstance(result_or_error, (bytes, six.text_type)):
+        if isinstance(result_or_error, (bytes, str)):
             result_key = 'result' if success else 'error'
             result_or_error = {result_key: result_or_error}
 
@@ -159,7 +157,7 @@ class AsyncCommandResult(BaseCommandResult):
         try:
             result = self.execute_method(**self.command_params)
 
-            if isinstance(result, (bytes, six.text_type)):
+            if isinstance(result, (bytes, str)):
                 result = {'result': '{}: {}'.format(self.command_name, result)}
             LOG.info('Command: %(name)s, result: %(result)s',
                      {'name': self.command_name, 'result': result})
@@ -282,7 +280,7 @@ def async_command(command_name, validator=None):
     def async_decorator(func):
         func.command_name = command_name
 
-        @six.wraps(func)
+        @functools.wraps(func)
         def wrapper(self, **command_params):
             # Run a validator before passing everything off to async.
             # validators should raise exceptions or return silently.
@@ -311,7 +309,7 @@ def sync_command(command_name, validator=None):
     def sync_decorator(func):
         func.command_name = command_name
 
-        @six.wraps(func)
+        @functools.wraps(func)
         def wrapper(self, **command_params):
             # Run a validator before invoking the function.
             # validators should raise exceptions or return silently.

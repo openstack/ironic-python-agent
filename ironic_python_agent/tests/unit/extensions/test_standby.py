@@ -150,7 +150,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         expected_loc = os.path.join(tempfile.gettempdir(), 'fake_id')
         self.assertEqual(expected_loc, location)
 
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_write_image(self, execute_mock, open_mock):
         image_info = _build_fake_image_info()
@@ -175,7 +175,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         execute_mock.assert_called_once_with(*command, check_exit_code=[0])
 
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
     @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
@@ -221,7 +221,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   cpu_arch=cpu_arch)
 
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
     @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
@@ -271,7 +271,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertIsNone(node_uuid)
 
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
     @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
@@ -296,7 +296,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertFalse(work_on_disk_mock.called)
 
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
@@ -340,7 +340,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_download_image(self, requests_mock, open_mock, md5_mock):
         image_info = _build_fake_image_info()
@@ -363,7 +363,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertEqual(2, write.call_count)
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     @mock.patch.dict(os.environ, {})
     def test_download_image_proxy(
@@ -403,7 +403,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                           image_info)
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_download_image_verify_fails(self, requests_mock, open_mock,
                                          md5_mock):
@@ -417,7 +417,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                           image_info)
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_verify_image_success(self, requests_mock, open_mock, md5_mock):
         image_info = _build_fake_image_info()
@@ -430,7 +430,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_download.verify_image(image_location)
 
     @mock.patch('hashlib.new', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_verify_image_success_with_new_hash_fields(self, requests_mock,
                                                        open_mock,
@@ -448,7 +448,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         hashlib_mock.assert_called_with('sha512')
 
     @mock.patch('hashlib.new', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_verify_image_success_without_md5(self, requests_mock,
                                               open_mock, hashlib_mock):
@@ -466,7 +466,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         hashlib_mock.assert_called_with('sha512')
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_verify_image_success_with_md5_fallback(self, requests_mock,
                                                     open_mock, md5_mock):
@@ -482,7 +482,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_download.verify_image(image_location)
 
     @mock.patch('hashlib.new', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_verify_image_failure_with_new_hash_fields(self, requests_mock,
                                                        open_mock,
@@ -502,7 +502,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         hashlib_mock.assert_called_with('sha512')
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_verify_image_failure(self, requests_mock, open_mock, md5_mock):
         image_info = _build_fake_image_info()
@@ -517,7 +517,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                           image_location)
 
     @mock.patch('hashlib.new', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_verify_image_failure_without_fallback(self, requests_mock,
                                                    open_mock, hashlib_mock):
@@ -1047,7 +1047,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         write_mock.assert_called_once_with(image_info, device)
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device(self, requests_mock, open_mock,
                                           md5_mock):
@@ -1070,7 +1070,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         file_mock.write.assert_has_calls(expected_calls)
 
     @mock.patch('hashlib.md5', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device_write_error(self, requests_mock,
                                                       open_mock, md5_mock):

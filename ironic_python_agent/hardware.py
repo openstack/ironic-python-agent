@@ -31,7 +31,6 @@ from oslo_log import log
 import pint
 import psutil
 import pyudev
-import six
 import stevedore
 import yaml
 
@@ -510,8 +509,7 @@ class BootInfo(encoding.SerializableComparable):
         self.pxe_interface = pxe_interface
 
 
-@six.add_metaclass(abc.ABCMeta)
-class HardwareManager(object):
+class HardwareManager(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def evaluate_hardware_support(self):
         pass
@@ -1865,11 +1863,8 @@ def _get_managers():
 
         # There will always be at least one extension available (the
         # GenericHardwareManager).
-        if six.PY2:
-            extensions = sorted(extension_manager, _compare_extensions)
-        else:
-            extensions = sorted(extension_manager,
-                                key=functools.cmp_to_key(_compare_extensions))
+        extensions = sorted(extension_manager,
+                            key=functools.cmp_to_key(_compare_extensions))
 
         preferred_managers = []
 

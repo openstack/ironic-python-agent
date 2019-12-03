@@ -12,7 +12,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import six
 from wsme import types as wtypes
 
 
@@ -67,7 +66,7 @@ class MultiType(wtypes.UserType):
                     type=self.types, value=type(value)))
 
 
-json_type = MultiType(list, dict, six.integer_types, wtypes.text)
+json_type = MultiType(list, dict, int, wtypes.text)
 
 
 class APIBase(wtypes.Base):

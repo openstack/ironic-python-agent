@@ -24,7 +24,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import units
 import pyudev
-import six
 from stevedore import extension
 
 from ironic_python_agent import errors
@@ -933,7 +932,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('netifaces.ifaddresses', autospec=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
     @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
@@ -974,7 +973,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('netifaces.ifaddresses', autospec=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
     @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
@@ -1067,7 +1066,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('netifaces.ifaddresses', autospec=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
     @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
@@ -1125,7 +1124,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('netifaces.ifaddresses', autospec=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_network_interfaces_with_lldp_error(
             self, mocked_execute, mocked_open, mocked_exists, mocked_listdir,
@@ -1161,7 +1160,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('netifaces.ifaddresses', autospec=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
     @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
@@ -1203,7 +1202,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch('netifaces.ifaddresses', autospec=True)
     @mock.patch('os.listdir', autospec=True)
     @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
     @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
@@ -1414,7 +1413,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     def test__get_device_info(self):
         fileobj = mock.mock_open(read_data='fake-vendor')
         with mock.patch(
-                'six.moves.builtins.open', fileobj, create=True) as mock_open:
+                'builtins.open', fileobj, create=True) as mock_open:
             vendor = hardware._get_device_info(
                 '/dev/sdfake', 'block', 'vendor')
             mock_open.assert_called_once_with(
@@ -1793,10 +1792,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         internal_info['disk_erasure_concurrency'] = 10
         mocked_dispatch.return_value = 'erased device'
 
-        if six.PY3:
-            apply_result = multiprocessing.pool.ApplyResult({}, None, None)
-        else:
-            apply_result = multiprocessing.pool.ApplyResult({}, None)
+        apply_result = multiprocessing.pool.ApplyResult({}, None, None)
         apply_result._success = True
         apply_result._ready = True
         apply_result.get = lambda: 'erased device'
