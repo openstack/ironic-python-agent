@@ -34,6 +34,30 @@ from ironic_python_agent import hardware
 from ironic_python_agent.tests.unit import base as ironic_agent_base
 from ironic_python_agent import utils
 
+PARTED_OUTPUT_UNFORMATTED = '''Model: whatever
+Disk /dev/sda: 450GB
+Sector size (logical/physical): 512B/512B
+Partition Table: {}
+Disk Flags:
+
+Number  Start   End     Size    File system  Name  Flags
+14      1049kB  5243kB  4194kB                     bios_grub
+15      5243kB  116MB   111MB   fat32              boot, esp
+ 1      116MB   2361MB  2245MB  ext4
+'''
+
+
+PARTED_OUTPUT_NO_EFI = '''Model: whatever
+Disk /dev/sda: 450GB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+Disk Flags:
+
+Number  Start   End     Size    File system  Name  Flags
+14      1049kB  5243kB  4194kB                     bios_grub
+ 1      116MB   2361MB  2245MB  ext4
+'''
+
 
 class ExecuteTestCase(ironic_agent_base.IronicAgentTest):
     # This test case does call utils.execute(), so don't block access to the
@@ -556,3 +580,25 @@ class TestUtils(testtools.TestCase):
                          keyfile='spam', certfile='ham')
         self.assertEqual((True, ('ham', 'spam')),
                          utils.get_ssl_client_options(conf))
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_efi_part_on_device(self, mocked_execute):
+        parted_ret = PARTED_OUTPUT_UNFORMATTED.format('gpt')
+        mocked_execute.side_effect = [
+            (parted_ret, None)
+        ]
+        ret = utils.get_efi_part_on_device('/dev/sda')
+        mocked_execute.assert_has_calls(
+            [mock.call('parted', '-s', '/dev/sda', '--', 'print')]
+        )
+        self.assertEqual('15', ret)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_efi_part_on_device_not_found(self, mocked_execute):
+        mocked_execute.side_effect = [
+            (PARTED_OUTPUT_NO_EFI, None)
+        ]
+        self.assertIsNone(utils.get_efi_part_on_device('/dev/sda'))
+        mocked_execute.assert_has_calls(
+            [mock.call('parted', '-s', '/dev/sda', '--', 'print')]
+        )

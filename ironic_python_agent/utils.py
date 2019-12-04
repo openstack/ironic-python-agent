@@ -17,6 +17,7 @@ import errno
 import glob
 import io
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -58,6 +59,9 @@ COLLECT_LOGS_COMMANDS = {
     'ip_addr': ['ip', 'addr'],
     'lshw': ['lshw', '-quiet', '-json'],
 }
+
+
+PARTED_ESP_PATTERN = re.compile(r'^\s*(\d+)\s.*\sfat\d*\s.*esp(,|\s|$).*$')
 
 
 def execute(*cmd, **kwargs):
@@ -437,3 +441,23 @@ def get_ssl_client_options(conf):
     else:
         cert = None
     return verify, cert
+
+
+def get_efi_part_on_device(device):
+    """Looks for the efi partition on a given device
+
+    :param device: lock device upon which to check for the efi partition
+    :return: the efi partition or None
+    """
+    efi_part = None
+    out, _u = execute('parted', '-s', device, '--', 'print')
+    for line in out.splitlines():
+        m = PARTED_ESP_PATTERN.match(line)
+        if m:
+            efi_part = m.group(1)
+
+            LOG.debug("Found efi partition %s on device %s.", efi_part, device)
+            break
+    else:
+        LOG.debug("No efi partition found on device %s", device)
+    return efi_part
