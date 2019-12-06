@@ -21,14 +21,13 @@ import socket
 import threading
 import time
 from urllib import parse as urlparse
-from wsgiref import simple_server
 
+import eventlet
 from ironic_lib import exception as lib_exc
 from ironic_lib import mdns
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils import netutils
 import pkg_resources
 from stevedore import extension
 
@@ -201,7 +200,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.advertise_address = advertise_address
         self.version = pkg_resources.get_distribution('ironic-python-agent')\
             .version
-        self.api = app.VersionSelectorApplication(self)
+        self.api = app.Application(self, cfg.CONF)
         self.heartbeat_timeout = None
         self.started_at = None
         self.node = None
@@ -354,27 +353,16 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
     def serve_ipa_api(self):
         """Serve the API until an extension terminates it."""
-        if netutils.is_ipv6_enabled():
-            # Listens to both IP versions, assuming IPV6_V6ONLY isn't enabled,
-            # (the default behaviour in linux)
-            simple_server.WSGIServer.address_family = socket.AF_INET6
-        server = simple_server.WSGIServer((self.listen_address.hostname,
-                                           self.listen_address.port),
-                                          simple_server.WSGIRequestHandler)
-        server.set_app(self.api)
-
+        self.api.start()
         if not self.standalone and self.api_url:
             # Don't start heartbeating until the server is listening
             self.heartbeater.start()
-
-        while self.serve_api:
-            try:
-                server.handle_request()
-            except BaseException as e:
-                msg = "Failed due to an unknown exception. Error %s" % e
-                LOG.exception(msg)
-                raise errors.IronicAPIError(msg)
-        LOG.info('shutting down')
+        try:
+            while self.serve_api:
+                eventlet.sleep(0)
+        except KeyboardInterrupt:
+            LOG.info('Caught keyboard interrupt, exiting')
+        self.api.stop()
 
     def run(self):
         """Run the Ironic Python Agent."""

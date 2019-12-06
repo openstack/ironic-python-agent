@@ -12,64 +12,212 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pecan
-from pecan import hooks
+import json
 
-from ironic_python_agent.api import config
+from ironic_lib import metrics_utils
+from oslo_log import log
+from oslo_service import wsgi
+import werkzeug
+from werkzeug import exceptions as http_exc
+from werkzeug import routing
+from werkzeug.wrappers import json as http_json
+
+from ironic_python_agent import encoding
+from ironic_python_agent import netutils
 
 
-class AgentHook(hooks.PecanHook):
-    """Hook to attach agent instance to API requests."""
-    def __init__(self, agent, *args, **kwargs):
-        super(AgentHook, self).__init__(*args, **kwargs)
+LOG = log.getLogger(__name__)
+_CUSTOM_MEDIA_TYPE = 'application/vnd.openstack.ironic-python-agent.v1+json'
+_DOCS_URL = 'https://docs.openstack.org/ironic-python-agent'
+
+
+class Request(werkzeug.Request, http_json.JSONMixin):
+    """Custom request class with JSON support."""
+
+
+def jsonify(value, status=200):
+    """Convert value to a JSON response using the custom encoder."""
+    encoder = encoding.RESTJSONEncoder()
+    data = encoder.encode(value)
+    return werkzeug.Response(data, status=status, mimetype='application/json')
+
+
+def make_link(url, rel_name, resource='', resource_args='',
+              bookmark=False, type_=None):
+    if rel_name == 'describedby':
+        url = _DOCS_URL
+        type_ = 'text/html'
+    elif rel_name == 'bookmark':
+        bookmark = True
+
+    template = ('%(root)s/%(resource)s' if bookmark
+                else '%(root)s/v1/%(resource)s')
+    template += ('%(args)s'
+                 if resource_args.startswith('?') or not resource_args
+                 else '/%(args)s')
+
+    result = {'href': template % {'root': url,
+                                  'resource': resource,
+                                  'args': resource_args},
+              'rel': rel_name}
+    if type_:
+        result['type'] = type_
+    return result
+
+
+def version(url):
+    return {
+        'id': 'v1',
+        'links': [
+            make_link(url, 'self', 'v1', bookmark=True),
+            make_link(url, 'describedby', bookmark=True),
+        ],
+    }
+
+
+# Emulate WSME format
+def format_exception(value):
+    code = getattr(value, 'status_code', None) or getattr(value, 'code', 500)
+    return {
+        'faultcode': 'Server' if code >= 500 else 'Client',
+        'faultstring': str(value),
+    }
+
+
+class Application(object):
+
+    PORT = 9999
+
+    def __init__(self, agent, conf):
+        """Set up the API app.
+
+        :param agent: an :class:`ironic_python_agent.agent.IronicPythonAgent`
+                      instance.
+        :param conf: configuration object.
+        """
         self.agent = agent
-
-    def before(self, state):
-        state.request.agent = self.agent
-
-
-def get_pecan_config():
-    """Set up the pecan configuration.
-
-    :returns: pecan configuration object.
-    """
-    filename = config.__file__.replace('.pyc', '.py')
-    filename = filename.replace('.pyo', '.py')
-    return pecan.configuration.conf_from_file(filename)
-
-
-def setup_app(pecan_config=None, agent=None):
-    """Set up the API app.
-
-    :param pecan_config: a pecan configuration object.
-    :param agent: an :class:`ironic_python_agent.agent.IronicPythonAgent`
-                  instance.
-    :returns: wsgi app object.
-    """
-    app_hooks = [AgentHook(agent)]
-
-    if not pecan_config:
-        pecan_config = get_pecan_config()
-
-    pecan.configuration.set_config(dict(pecan_config), overwrite=True)
-
-    app = pecan.make_app(
-        pecan_config.app.root,
-        static_root=pecan_config.app.static_root,
-        debug=pecan_config.app.debug,
-        force_canonical=getattr(pecan_config.app, 'force_canonical', True),
-        hooks=app_hooks,
-    )
-
-    return app
-
-
-class VersionSelectorApplication(object):
-    """WSGI application that handles multiple API versions."""
-
-    def __init__(self, agent):
-        pc = get_pecan_config()
-        self.v1 = setup_app(pecan_config=pc, agent=agent)
+        self.service = None
+        self._conf = conf
+        self.url_map = routing.Map([
+            routing.Rule('/', endpoint='root', methods=['GET']),
+            routing.Rule('/v1/', endpoint='v1', methods=['GET']),
+            routing.Rule('/v1/status', endpoint='status', methods=['GET']),
+            routing.Rule('/v1/commands/', endpoint='list_commands',
+                         methods=['GET']),
+            routing.Rule('/v1/commands/<cmd>', endpoint='get_command',
+                         methods=['GET']),
+            routing.Rule('/v1/commands/', endpoint='run_command',
+                         methods=['POST']),
+            # Use the default version (i.e. v1) when the version is missing
+            routing.Rule('/status', endpoint='status', methods=['GET']),
+            routing.Rule('/commands/', endpoint='list_commands',
+                         methods=['GET']),
+            routing.Rule('/commands/<cmd>', endpoint='get_command',
+                         methods=['GET']),
+            routing.Rule('/commands/', endpoint='run_command',
+                         methods=['POST']),
+        ])
 
     def __call__(self, environ, start_response):
-        return self.v1(environ, start_response)
+        """WSGI entry point."""
+        try:
+            request = Request(environ)
+            adapter = self.url_map.bind_to_environ(request.environ)
+            endpoint, values = adapter.match()
+            response = getattr(self, "api_" + endpoint)(request, **values)
+        except Exception as exc:
+            response = self.handle_exception(environ, exc)
+        return response(environ, start_response)
+
+    def start(self):
+        """Start the API service in the background."""
+        self.service = wsgi.Server(self._conf, 'ironic-python-agent', app=self,
+                                   host=netutils.get_wildcard_address(),
+                                   port=self.PORT)
+        self.service.start()
+        LOG.info('Started API service on port %s', self.PORT)
+
+    def stop(self):
+        """Stop the API service."""
+        if self.service is None:
+            return
+        self.service.wait()
+        self.service = None
+        LOG.info('Stopped API service on port %s', self.PORT)
+
+    def handle_exception(self, environ, exc):
+        """Handle an exception during request processing."""
+        if isinstance(exc, http_exc.HTTPException):
+            if exc.code and exc.code < 400:
+                return exc  # redirect
+            resp = exc.get_response(environ)
+            resp.data = json.dumps(format_exception(exc))
+            resp.content_type = 'application/json'
+            return resp
+        else:
+            formatted = format_exception(exc)
+            if formatted['faultcode'] == 'Server':
+                LOG.exception('Internal server error: %s', exc)
+            return jsonify(formatted, status=getattr(exc, 'status_code', 500))
+
+    def api_root(self, request):
+        url = request.url_root.rstrip('/')
+        return jsonify({
+            'name': 'OpenStack Ironic Python Agent API',
+            'description': ('Ironic Python Agent is a provisioning agent for '
+                            'OpenStack Ironic'),
+            'versions': [version(url)],
+            'default_version': version(url),
+        })
+
+    def api_v1(self, request):
+        url = request.url_root.rstrip('/')
+        return jsonify(dict({
+            'commands': [
+                make_link(url, 'self', 'commands'),
+                make_link(url, 'bookmark', 'commands'),
+            ],
+            'status': [
+                make_link(url, 'self', 'status'),
+                make_link(url, 'bookmark', 'status'),
+            ],
+            'media_types': [
+                {'base': 'application/json',
+                 'type': _CUSTOM_MEDIA_TYPE},
+            ],
+        }, **version(url)))
+
+    def api_status(self, request):
+        with metrics_utils.get_metrics_logger(__name__).timer('get_status'):
+            status = self.agent.get_status()
+            return jsonify(status)
+
+    def api_list_commands(self, request):
+        with metrics_utils.get_metrics_logger(__name__).timer('list_commands'):
+            results = self.agent.list_command_results()
+            return jsonify({'commands': results})
+
+    def api_get_command(self, request, cmd):
+        with metrics_utils.get_metrics_logger(__name__).timer('get_command'):
+            result = self.agent.get_command_result(cmd)
+            wait = request.args.get('wait')
+
+            if wait and wait.lower() == 'true':
+                result.join()
+
+            return jsonify(result)
+
+    def api_run_command(self, request):
+        body = request.get_json(force=True)
+        if ('name' not in body or 'params' not in body
+                or not isinstance(body['params'], dict)):
+            raise http_exc.BadRequest('Missing or invalid name or params')
+
+        with metrics_utils.get_metrics_logger(__name__).timer('run_command'):
+            result = self.agent.execute_command(body['name'], **body['params'])
+            wait = request.args.get('wait')
+
+            if wait and wait.lower() == 'true':
+                result.join()
+
+            return jsonify(result)

@@ -15,10 +15,13 @@
 import time
 
 import mock
-import pecan
-import pecan.testing
+from oslo_config import cfg
+from werkzeug import test as http_test
+from werkzeug import wrappers
+from werkzeug.wrappers import json as http_json
 
 from ironic_python_agent import agent
+from ironic_python_agent.api import app
 from ironic_python_agent.extensions import base
 from ironic_python_agent.tests.unit import base as ironic_agent_base
 
@@ -26,35 +29,21 @@ from ironic_python_agent.tests.unit import base as ironic_agent_base
 PATH_PREFIX = '/v1'
 
 
+class Response(wrappers.Response, http_json.JSONMixin):
+    pass
+
+
 class TestIronicAPI(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
         super(TestIronicAPI, self).setUp()
         self.mock_agent = mock.MagicMock()
-        self.app = self._make_app()
+        self.app = app.Application(self.mock_agent, cfg.CONF)
+        self.client = http_test.Client(self.app, Response)
 
-    def tearDown(self):
-        super(TestIronicAPI, self).tearDown()
-        pecan.set_config({}, overwrite=True)
-
-    def _make_app(self):
-        self.config = {
-            'app': {
-                'root': 'ironic_python_agent.api.controllers.root.'
-                        'RootController',
-                'modules': ['ironic_python_agent.api'],
-                'static_root': '',
-                'debug': True,
-            },
-        }
-
-        return pecan.testing.load_test_app(config=self.config,
-                                           agent=self.mock_agent)
-
-    def _request_json(self, path, params, expect_errors=False, headers=None,
-                      method="post", extra_environ=None, status=None,
-                      path_prefix=PATH_PREFIX):
-        """Sends simulated HTTP request to Pecan test app.
+    def _request_json(self, path, params=None, expect_errors=False,
+                      headers=None, method="post", path_prefix=PATH_PREFIX):
+        """Sends simulated HTTP request to the test app.
 
         :param path: url path of target service
         :param params: content for wsgi.input of request
@@ -63,97 +52,61 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         :param headers: a dictionary of headers to send along with the request
         :param method: Request method type. Appropriate method function call
                        should be used rather than passing attribute in.
-        :param extra_environ: a dictionary of environ variables to send along
-                              with the request
-        :param status: expected status code of response
         :param path_prefix: prefix of the url path
         """
         full_path = path_prefix + path
         print('%s: %s %s' % (method.upper(), full_path, params))
-        response = getattr(self.app, "%s_json" % method)(
+        response = self.client.open(
             str(full_path),
-            params=params,
+            method=method.upper(),
+            json=params,
             headers=headers,
-            status=status,
-            extra_environ=extra_environ,
-            expect_errors=expect_errors
+            follow_redirects=True,
         )
         print('GOT:%s' % response)
+        if not expect_errors:
+            self.assertLess(response.status_code, 400)
         return response
 
-    def put_json(self, path, params, expect_errors=False, headers=None,
-                 extra_environ=None, status=None):
-        """Sends simulated HTTP PUT request to Pecan test app.
+    def put_json(self, path, params, expect_errors=False, headers=None):
+        """Sends simulated HTTP PUT request to the test app.
 
         :param path: url path of target service
         :param params: content for wsgi.input of request
         :param expect_errors: Boolean value; whether an error is expected based
                               on request
         :param headers: a dictionary of headers to send along with the request
-        :param extra_environ: a dictionary of environ variables to send along
-                              with the request
-        :param status: expected status code of response
         """
         return self._request_json(path=path, params=params,
                                   expect_errors=expect_errors,
-                                  headers=headers, extra_environ=extra_environ,
-                                  status=status, method="put")
+                                  headers=headers, method="put")
 
-    def post_json(self, path, params, expect_errors=False, headers=None,
-                  extra_environ=None, status=None):
-        """Sends simulated HTTP POST request to Pecan test app.
+    def post_json(self, path, params, expect_errors=False, headers=None):
+        """Sends simulated HTTP POST request to the test app.
 
         :param path: url path of target service
         :param params: content for wsgi.input of request
         :param expect_errors: Boolean value; whether an error is expected based
                               on request
         :param headers: a dictionary of headers to send along with the request
-        :param extra_environ: a dictionary of environ variables to send along
-                              with the request
-        :param status: expected status code of response
         """
         return self._request_json(path=path, params=params,
                                   expect_errors=expect_errors,
-                                  headers=headers, extra_environ=extra_environ,
-                                  status=status, method="post")
+                                  headers=headers, method="post")
 
     def get_json(self, path, expect_errors=False, headers=None,
-                 extra_environ=None, q=None, path_prefix=PATH_PREFIX,
-                 **params):
-        """Sends simulated HTTP GET request to Pecan test app.
+                 path_prefix=PATH_PREFIX):
+        """Sends simulated HTTP GET request to the test app.
 
         :param path: url path of target service
         :param expect_errors: Boolean value;whether an error is expected based
                               on request
         :param headers: a dictionary of headers to send along with the request
-        :param extra_environ: a dictionary of environ variables to send along
-                              with the request
-        :param q: list of queries consisting of: field, value, op, and type
-                  keys
         :param path_prefix: prefix of the url path
-        :param params: content for wsgi.input of request
         """
-        full_path = path_prefix + path
-        query_params = {'q.field': [],
-                        'q.value': [],
-                        'q.op': [],
-                        }
-        q = [] if q is None else q
-        for query in q:
-            for name in ['field', 'op', 'value']:
-                query_params['q.%s' % name].append(query.get(name, ''))
-        all_params = {}
-        all_params.update(params)
-        if q:
-            all_params.update(query_params)
-        print('GET: %s %r' % (full_path, all_params))
-        response = self.app.get(full_path,
-                                params=all_params,
-                                headers=headers,
-                                extra_environ=extra_environ,
-                                expect_errors=expect_errors)
-        print('GOT:%s' % response)
-        return response
+        return self._request_json(path=path, expect_errors=expect_errors,
+                                  headers=headers, method="get",
+                                  path_prefix=path_prefix)
 
     def test_root(self):
         response = self.get_json('/', path_prefix='')
@@ -165,6 +118,13 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         data = response.json
         self.assertIn('status', data)
         self.assertIn('commands', data)
+
+    def test_not_found(self):
+        response = self.get_json('/v1/foo', path_prefix='',
+                                 expect_errors=True)
+        self.assertEqual(404, response.status_code)
+        data = response.json
+        self.assertEqual('Client', data['faultcode'])
 
     def test_get_agent_status(self):
         status = agent.IronicPythonAgentStatus(time.time(),
@@ -265,9 +225,8 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
                                   expect_errors=True)
         self.assertEqual(400, response.status_code)
         data = response.json
-        msg = 'Invalid input for field/attribute name.'
-        self.assertIn(msg, data['faultstring'])
-        msg = 'Mandatory field missing'
+        self.assertEqual('Client', data['faultcode'])
+        msg = 'Missing or invalid name or params'
         self.assertIn(msg, data['faultstring'])
 
     def test_execute_agent_command_params_validation(self):
@@ -277,8 +236,9 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
                                   expect_errors=True)
         self.assertEqual(400, response.status_code)
         data = response.json
+        self.assertEqual('Client', data['faultcode'])
         # this message is actually much longer, but I'm ok with this
-        msg = 'Invalid input for field/attribute params.'
+        msg = 'Missing or invalid name or params'
         self.assertIn(msg, data['faultstring'])
 
     def test_list_command_results(self):
