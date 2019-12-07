@@ -139,9 +139,10 @@ class Application(object):
 
     def stop(self):
         """Stop the API service."""
+        LOG.debug("Stopping the API service.")
         if self.service is None:
             return
-        self.service.wait()
+        self.service.stop()
         self.service = None
         LOG.info('Stopped API service on port %s', self.PORT)
 
