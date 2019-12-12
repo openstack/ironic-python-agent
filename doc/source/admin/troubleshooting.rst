@@ -14,8 +14,8 @@ the image. Below we will cover several ways to do this.
 Access via ssh
 --------------
 
-diskimage-builder (DIB)
-~~~~~~~~~~~~~~~~~~~~~~~
+ironic-python-agent-builder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 SSH access can be added to DIB built IPA images with the dynamic-login [0]_
 or the devuser element [1]_
 
@@ -29,12 +29,14 @@ dynamic-login element example:
 - Restart the ironic-conductor with the command
   ``service ironic-conductor restart``
 
+Install ``ironic-python-agent-builder`` following the guide [2]_
+
 devuser element example::
 
   export DIB_DEV_USER_USERNAME=username
   export DIB_DEV_USER_PWDLESS_SUDO=yes
   export DIB_DEV_USER_AUTHORIZED_KEYS=$HOME/.ssh/id_rsa.pub
-  disk-image-create -o /path/to/custom-ipa debian ironic-agent devuser
+  ironic-python-agent-builder -o /path/to/custom-ipa -e devuser debian
 
 tinyipa
 ~~~~~~~
@@ -62,8 +64,8 @@ Access via console
 If you need to use console access, passwords must be enabled there are a
 couple ways to enable this depending on how the IPA image was created:
 
-diskimage-builder (DIB)
-~~~~~~~~~~~~~~~~~~~~~~~
+ironic-python-agent-builder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Users wishing to use password access can be add the dynamic-login [0]_ or the
 devuser element [1]_
 
@@ -78,6 +80,8 @@ dynamic-login element example::
   Restart the ironic-conductor with the command service ironic-conductor restart
 
 Users can also be added to DIB built IPA images with the devuser element [1]_
+
+Install ``ironic-python-agent-builder`` following the guide [2]_
 
 Example::
 
@@ -143,3 +147,4 @@ References
 ==========
 .. [0] `Dynamic-login DIB element`: https://github.com/openstack/diskimage-builder/tree/master/diskimage_builder/elements/dynamic-login
 .. [1] `DevUser DIB element`: https://github.com/openstack/diskimage-builder/tree/master/diskimage_builder/elements/devuser
+.. [2] `ironic-python-agent-builder`: https://docs.openstack.org/ironic-python-agent-builder/latest/install/index.html
