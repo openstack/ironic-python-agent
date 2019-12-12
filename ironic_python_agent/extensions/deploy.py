@@ -1,5 +1,3 @@
-# Copyright 2015 Rackspace, Inc.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -21,65 +19,67 @@ from ironic_python_agent import hardware
 LOG = log.getLogger()
 
 
-class CleanExtension(base.BaseAgentExtension):
-    @base.sync_command('get_clean_steps')
-    def get_clean_steps(self, node, ports):
-        """Get the list of clean steps supported for the node and ports
+class DeployExtension(base.BaseAgentExtension):
+    @base.sync_command('get_deploy_steps')
+    def get_deploy_steps(self, node, ports):
+        """Get the list of deploy steps supported for the node and ports
 
         :param node: A dict representation of a node
         :param ports: A dict representation of ports attached to node
 
-        :returns: A list of clean steps with keys step, priority, and
+        :returns: A list of deploy steps with keys step, priority, and
             reboot_requested
         """
-        LOG.debug('Getting clean steps, called with node: %(node)s, '
+        LOG.debug('Getting deploy steps, called with node: %(node)s, '
                   'ports: %(ports)s', {'node': node, 'ports': ports})
         hardware.cache_node(node)
         # Results should be a dict, not a list
-        candidate_steps = hardware.dispatch_to_all_managers('get_clean_steps',
+        candidate_steps = hardware.dispatch_to_all_managers('get_deploy_steps',
                                                             node, ports)
 
-        LOG.debug('Clean steps before deduplication: %s', candidate_steps)
-        clean_steps = hardware.deduplicate_steps(candidate_steps)
-        LOG.debug('Returning clean steps: %s', clean_steps)
+        LOG.debug('Deploy steps before deduplication: %s', candidate_steps)
+        deploy_steps = hardware.deduplicate_steps(candidate_steps)
+        LOG.debug('Returning deploy steps: %s', deploy_steps)
 
         return {
-            'clean_steps': clean_steps,
+            'deploy_steps': deploy_steps,
             'hardware_manager_version': hardware.get_current_versions(),
         }
 
-    @base.async_command('execute_clean_step')
-    def execute_clean_step(self, step, node, ports, clean_version=None,
-                           **kwargs):
-        """Execute a clean step.
+    @base.async_command('execute_deploy_step')
+    def execute_deploy_step(self, step, node, ports, deploy_version=None,
+                            **kwargs):
+        """Execute a deploy step.
 
-        :param step: A clean step with 'step', 'priority' and 'interface' keys
+        :param step: A deploy step with 'step', 'priority' and 'interface' keys
         :param node: A dict representation of a node
         :param ports: A dict representation of ports attached to node
-        :param clean_version: The clean version as returned by
-                              hardware.get_current_versions() at the beginning
-                              of cleaning/zapping
+        :param deploy_version: The deploy version as returned by
+                               hardware.get_current_versions() at the beginning
+                               of deploying.
+        :param kwargs: The remaining arguments are passed to the step.
         :returns: a CommandResult object with command_result set to whatever
             the step returns.
         """
         # Ensure the agent is still the same version, or raise an exception
-        LOG.debug('Executing clean step %s', step)
+        LOG.debug('Executing deploy step %s', step)
         hardware.cache_node(node)
-        hardware.check_versions(clean_version)
+        hardware.check_versions(deploy_version)
 
         if 'step' not in step:
-            msg = 'Malformed clean_step, no "step" key: %s' % step
+            msg = 'Malformed deploy_step, no "step" key: %s' % step
             LOG.error(msg)
             raise ValueError(msg)
         try:
-            result = hardware.dispatch_to_managers(step['step'], node, ports)
+            result = hardware.dispatch_to_managers(step['step'], node, ports,
+                                                   **kwargs)
         except Exception as e:
-            msg = ('Error performing clean_step %(step)s: %(err)s' %
+            msg = ('Error performing deploy_step %(step)s: %(err)s' %
                    {'step': step['step'], 'err': e})
             LOG.exception(msg)
-            raise errors.CleaningError(msg)
+            raise errors.DeploymentError(msg)
 
-        LOG.info('Clean step completed: %(step)s, result: %(result)s',
+        LOG.info('Deploy step completed: %(step)s, result: %(result)s',
                  {'step': step, 'result': result})
 
         # Cast result tuples (like output of utils.execute) as lists, or
@@ -90,6 +90,6 @@ class CleanExtension(base.BaseAgentExtension):
         # Return the step that was executed so we can dispatch
         # to the appropriate Ironic interface
         return {
-            'clean_result': result,
-            'clean_step': step
+            'deploy_result': result,
+            'deploy_step': step
         }

@@ -4190,3 +4190,24 @@ def create_hdparm_info(supported=False, enabled=False, locked=False,
     update_values(values, enhanced_erase, 'enhanced_erase')
 
     return HDPARM_INFO_TEMPLATE % values
+
+
+@mock.patch('ironic_python_agent.hardware.dispatch_to_all_managers',
+            autospec=True)
+class TestVersions(base.IronicAgentTest):
+    version = {'generic': '1', 'specific': '1'}
+
+    def test_get_current_versions(self, mock_dispatch):
+        mock_dispatch.return_value = {'SpecificHardwareManager':
+                                      {'name': 'specific', 'version': '1'},
+                                      'GenericHardwareManager':
+                                      {'name': 'generic', 'version': '1'}}
+        self.assertEqual(self.version, hardware.get_current_versions())
+
+    def test_check_versions(self, mock_dispatch):
+        mock_dispatch.return_value = {'SpecificHardwareManager':
+                                      {'name': 'specific', 'version': '1'}}
+
+        self.assertRaises(errors.VersionMismatch,
+                          hardware.check_versions,
+                          {'not_specific': '1'})

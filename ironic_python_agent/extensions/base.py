@@ -33,7 +33,9 @@ class AgentCommandStatus(object):
     RUNNING = u'RUNNING'
     SUCCEEDED = u'SUCCEEDED'
     FAILED = u'FAILED'
-    CLEAN_VERSION_MISMATCH = u'CLEAN_VERSION_MISMATCH'
+    # TODO(dtantsur): keeping the same text for backward compatibility, change
+    # to just VERSION_MISMATCH one release after ironic is updated.
+    VERSION_MISMATCH = u'CLEAN_VERSION_MISMATCH'
 
 
 class BaseCommandResult(encoding.SerializableComparable):
@@ -167,10 +169,10 @@ class AsyncCommandResult(BaseCommandResult):
             with self.command_state_lock:
                 self.command_result = result
                 self.command_status = AgentCommandStatus.SUCCEEDED
-        except errors.CleanVersionMismatch as e:
+        except errors.VersionMismatch as e:
             with self.command_state_lock:
                 self.command_error = e
-                self.command_status = AgentCommandStatus.CLEAN_VERSION_MISMATCH
+                self.command_status = AgentCommandStatus.VERSION_MISMATCH
                 self.command_result = None
             LOG.error('Clean version mismatch for command %s',
                       self.command_name)

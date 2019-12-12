@@ -14,6 +14,7 @@
 
 import abc
 import binascii
+import collections
 import functools
 import ipaddress
 import json
@@ -715,6 +716,53 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         :param node: Ironic node object
         :param ports: list of Ironic port objects
         :return: a list of cleaning steps, where each step is described as a
+                 dict as defined above
+
+        """
+        return []
+
+    def get_deploy_steps(self, node, ports):
+        """Get a list of deploy steps with priority.
+
+        Returns a list of steps. Each step is represented by a dict::
+
+          {
+           'interface': the name of the driver interface that should execute
+                        the step.
+           'step': the HardwareManager function to call.
+           'priority': the order steps will be run in. Ironic will sort all
+                       the deploy steps from all the drivers, with the largest
+                       priority step being run first. If priority is set to 0,
+                       the step will not be run during deployment, but may be
+                       run during zapping.
+           'reboot_requested': Whether the agent should request Ironic reboots
+                               the node via the power driver after the
+                               operation completes.
+          }
+
+
+        If multiple hardware managers return the same step name, the following
+        logic will be used to determine which manager's step "wins":
+
+            * Keep the step that belongs to HardwareManager with highest
+              HardwareSupport (larger int) value.
+            * If equal support level, keep the step with the higher defined
+              priority (larger int).
+            * If equal support level and priority, keep the step associated
+              with the HardwareManager whose name comes earlier in the
+              alphabet.
+
+        The steps will be called using `hardware.dispatch_to_managers` and
+        handled by the best suited hardware manager. If you need a step to be
+        executed by only your hardware manager, ensure it has a unique step
+        name.
+
+        `node` and `ports` can be used by other hardware managers to further
+        determine if a deploy step is supported for the node.
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        :return: a list of deploying steps, where each step is described as a
                  dict as defined above
 
         """
@@ -1486,6 +1534,22 @@ class GenericHardwareManager(HardwareManager):
             }
         ]
 
+    def get_deploy_steps(self, node, ports):
+        return [
+            {
+                'step': 'delete_configuration',
+                'priority': 0,
+                'interface': 'raid',
+                'reboot_requested': False,
+            },
+            {
+                'step': 'create_configuration',
+                'priority': 0,
+                'interface': 'raid',
+                'reboot_requested': False,
+            },
+        ]
+
     def create_configuration(self, node, ports):
         """Create a RAID configuration.
 
@@ -2054,3 +2118,102 @@ def cache_node(node):
 def get_cached_node():
     """Guard function around the module variable NODE."""
     return NODE
+
+
+def get_current_versions():
+    """Fetches versions from all hardware managers.
+
+    :returns: Dict in the format {name: version} containing one entry for
+              every hardware manager.
+    """
+    return {version.get('name'): version.get('version')
+            for version in dispatch_to_all_managers('get_version').values()}
+
+
+def check_versions(provided_version=None):
+    """Ensure the version of hardware managers hasn't changed.
+
+    :param provided_version: Hardware manager versions used by ironic.
+    :raises: errors.VersionMismatch if any hardware manager version on
+             the currently running agent doesn't match the one stored in
+             provided_version.
+    :returns: None
+    """
+    # If the version is None, assume this is the first run
+    if provided_version is None:
+        return
+    agent_version = get_current_versions()
+    if provided_version != agent_version:
+        LOG.warning('Mismatched hardware managers versions. Agent version: '
+                    '%(agent)s, node version: %(node)s',
+                    {'agent': agent_version, 'node': provided_version})
+        raise errors.VersionMismatch(agent_version=agent_version,
+                                     node_version=provided_version)
+
+
+def deduplicate_steps(candidate_steps):
+    """Remove duplicated clean or deploy steps
+
+    Deduplicates steps returned from HardwareManagers to prevent running
+    a given step more than once. Other than individual step priority,
+    it doesn't actually impact the deployment which specific steps are kept
+    and what HardwareManager they are associated with.
+    However, in order to make testing easier, this method returns
+    deterministic results.
+
+    Uses the following filtering logic to decide which step "wins":
+
+    - Keep the step that belongs to HardwareManager with highest
+      HardwareSupport (larger int) value.
+    - If equal support level, keep the step with the higher defined priority
+      (larger int).
+    - If equal support level and priority, keep the step associated with the
+      HardwareManager whose name comes earlier in the alphabet.
+
+    :param candidate_steps: A dict containing all possible steps from
+        all managers, key=manager, value=list of steps
+    :returns: A deduplicated dictionary of {hardware_manager: [steps]}
+    """
+    support = dispatch_to_all_managers(
+        'evaluate_hardware_support')
+
+    steps = collections.defaultdict(list)
+    deduped_steps = collections.defaultdict(list)
+
+    for manager, manager_steps in candidate_steps.items():
+        # We cannot deduplicate steps with unknown hardware support
+        if manager not in support:
+            LOG.warning('Unknown hardware support for %(manager)s, '
+                        'dropping steps: %(steps)s',
+                        {'manager': manager, 'steps': manager_steps})
+            continue
+
+        for step in manager_steps:
+            # build a new dict of steps that's easier to filter
+            step['hwm'] = {'name': manager,
+                           'support': support[manager]}
+            steps[step['step']].append(step)
+
+    for step_name, step_list in steps.items():
+        # determine the max support level among candidate steps
+        max_support = max([x['hwm']['support'] for x in step_list])
+        # filter out any steps that are not at the max support for this step
+        max_support_steps = [x for x in step_list
+                             if x['hwm']['support'] == max_support]
+
+        # determine the max priority among remaining steps
+        max_priority = max([x['priority'] for x in max_support_steps])
+        # filter out any steps that are not at the max priority for this step
+        max_priority_steps = [x for x in max_support_steps
+                              if x['priority'] == max_priority]
+
+        # if there are still multiple steps, sort by hwm name and take
+        # the first result
+        winning_step = sorted(max_priority_steps,
+                              key=lambda x: x['hwm']['name'])[0]
+        # Remove extra metadata we added to the step for filtering
+        manager = winning_step.pop('hwm')['name']
+        # Add winning step to deduped_steps
+        deduped_steps[manager].append(winning_step)
+
+    return deduped_steps
