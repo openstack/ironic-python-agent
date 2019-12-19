@@ -50,22 +50,6 @@ def _get_partition(device, uuid):
             LOG.warning("Couldn't re-read the partition table "
                         "on device %s", device)
 
-        # If the deploy device is an md device, we want to install on
-        # the first partition. We clearly take a shortcut here for now.
-        # TODO(arne_wiebalck): Would it possible to use the partition
-        #                      UUID and use the "normal" discovery instead?
-        if hardware.is_md_device(device):
-            md_partition = device + 'p1'
-            if (not os.path.exists(md_partition) or
-                not stat.S_ISBLK(os.stat(md_partition).st_mode)):
-                error_msg = ("Could not find partition %(part)s on md "
-                             "device %(dev)s" % {'part': md_partition,
-                                                 'dev': device})
-                LOG.error(error_msg)
-                raise errors.DeviceNotFound(error_msg)
-            LOG.debug("Found md device with partition %s", md_partition)
-            return md_partition
-
         lsblk = utils.execute('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE', device)
         report = lsblk[0]
         for line in report.split('\n'):
@@ -75,7 +59,7 @@ def _get_partition(device, uuid):
             for key, val in (v.split('=', 1) for v in vals):
                 part[key] = val.strip()
             # Ignore non partition
-            if part.get('TYPE') != 'part':
+            if part.get('TYPE') not in ['md', 'part']:
                 # NOTE(TheJulia): This technically creates an edge failure
                 # case where a filesystem on a whole block device sans
                 # partitioning would behave differently.
@@ -112,6 +96,24 @@ def _get_partition(device, uuid):
                               'Error: %(err)s',
                               {'uuid': uuid,
                                'err': e})
+
+            # Last fallback: In case we cannot find the partition by UUID
+            # and the deploy device is an md device, we check if the md
+            # device has a partition (which we assume to contain the root fs).
+            if hardware.is_md_device(device):
+                md_partition = device + 'p1'
+                if (os.path.exists(md_partition) and
+                    stat.S_ISBLK(os.stat(md_partition).st_mode)):
+                    LOG.debug("Found md device with partition %s",
+                              md_partition)
+                    return md_partition
+                else:
+                    LOG.debug('Could not find partition %(part)s on md '
+                              'device %(dev)s',
+                              {'part': md_partition,
+                               'dev': device})
+
+            # Partition not found, time to escalate.
             error_msg = ("No partition with UUID %(uuid)s found on "
                          "device %(dev)s" % {'uuid': uuid, 'dev': device})
             LOG.error(error_msg)
