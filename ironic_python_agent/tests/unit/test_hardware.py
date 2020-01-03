@@ -1304,7 +1304,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     def _get_os_install_device_root_device_hints(self, hints, expected_device,
                                                  mock_cached_node, mock_dev):
         mock_cached_node.return_value = {'properties': {'root_device': hints},
-                                         'uuid': 'node1'}
+                                         'uuid': 'node1',
+                                         'instance_info': {}}
         model = 'fastable sd131 7'
         mock_dev.return_value = [
             hardware.BlockDevice(name='/dev/sda',
@@ -1381,6 +1382,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             self, mock_cached_node, mock_dev):
         model = 'fastable sd131 7'
         mock_cached_node.return_value = {
+            'instance_info': {},
             'properties': {
                 'root_device': {
                     'model': model,
@@ -1407,6 +1409,42 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ]
         self.assertRaises(errors.DeviceNotFound,
                           self.hardware.get_os_install_device)
+        mock_cached_node.assert_called_once_with()
+        mock_dev.assert_called_once_with()
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_get_os_install_device_root_device_hints_iinfo(self,
+                                                           mock_cached_node,
+                                                           mock_dev):
+        model = 'fastable sd131 7'
+        mock_cached_node.return_value = {
+            'instance_info': {'root_device': {'model': model}},
+            'uuid': 'node1'
+        }
+        mock_dev.return_value = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 wwn='wwn0',
+                                 wwn_with_extension='wwn0ven0',
+                                 wwn_vendor_extension='ven0',
+                                 serial='serial0'),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model=model,
+                                 size=10737418240,
+                                 rotational=True,
+                                 vendor='fake-vendor',
+                                 wwn='fake-wwn',
+                                 wwn_with_extension='fake-wwnven0',
+                                 wwn_vendor_extension='ven0',
+                                 serial='fake-serial',
+                                 by_path='/dev/disk/by-path/1:0:0:0'),
+        ]
+
+        self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
         mock_cached_node.assert_called_once_with()
         mock_dev.assert_called_once_with()
 
