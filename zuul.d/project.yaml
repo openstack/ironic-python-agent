@@ -16,7 +16,7 @@
         # to break them. They rather serve as a canary for broken POST jobs.
         - ironic-python-agent-check-image-tinyipa:
             voting: false
-        - ironic-python-agent-check-image-dib-centos7:
+        - ironic-python-agent-check-image-dib-centos8:
             voting: false
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
@@ -46,4 +46,4 @@
     post:
       jobs:
         - ironic-python-agent-build-image-tinyipa
-        - ironic-python-agent-build-image-dib-centos7
+        - ironic-python-agent-build-image-dib-centos8
