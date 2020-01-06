@@ -139,8 +139,7 @@ cli_opts = [
                     'kernel parameter.'),
 
     cfg.FloatOpt('lldp_timeout',
-                 default=APARAMS.get('ipa-lldp-timeout',
-                                     APARAMS.get('lldp-timeout', 30.0)),
+                 default=APARAMS.get('ipa-lldp-timeout', 30.0),
                  help='The amount of seconds to wait for LLDP packets. '
                       'Can be supplied as "ipa-lldp-timeout" '
                       'kernel parameter.'),

@@ -302,13 +302,6 @@ def get_agent_params():
         # Cache the parameters so that it can be used later on.
         _set_cached_params(params)
 
-        # Check to see if any deprecated parameters have been used
-        deprecated_params = {'lldp-timeout': 'ipa-lldp-timeout'}
-        for old_param, new_param in deprecated_params.items():
-            if params.get(old_param) is not None:
-                LOG.warning("The parameter '%s' has been deprecated. Please "
-                            "use %s instead.", old_param, new_param)
-
     return copy.deepcopy(params)
 
 
