@@ -1,6 +1,7 @@
 - project:
     templates:
       - openstack-python3-ussuri-jobs
+      - openstack-lower-constraints-jobs
       - openstack-cover-jobs
       - publish-openstack-docs-pti
       - check-requirements
@@ -12,6 +13,7 @@
         - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
         - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
         - ironic-standalone-ipa-src
+        - metalsmith-integration-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
         - ironic-python-agent-check-image-tinyipa:
@@ -21,13 +23,10 @@
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
-        - metalsmith-integration-ipa-src:
-            voting: false
         - ipa-tempest-wholedisk-bios-ipmi-direct-dib-src:
             voting: false
         - openstack-tox-functional-py36:
             voting: false
-        - openstack-tox-lower-constraints
         - ipa-tox-bandit:
             voting: false
     gate:
@@ -38,7 +37,7 @@
         - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
         - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
         - ironic-standalone-ipa-src
-        - openstack-tox-lower-constraints
+        - metalsmith-integration-ipa-src
     experimental:
       jobs:
         - ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
