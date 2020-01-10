@@ -305,6 +305,7 @@ def list_all_block_devices(block_type='disk',
                     "version of block device name is unavailable "
                     "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
 
+    # NOTE(dtantsur): keep in sync with utils.LSBLK_COLUMNS
     columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
     report = utils.execute('lsblk', '-Pbia', '-o{}'.format(','.join(columns)),
                            check_exit_code=[0])[0]
