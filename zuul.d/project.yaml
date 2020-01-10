@@ -25,6 +25,8 @@
             voting: false
         - ipa-tempest-wholedisk-bios-ipmi-direct-dib-src:
             voting: false
+        - ipa-tempest-partition-bios-ipmi-iscsi-dib-src:
+            voting: false
         - openstack-tox-functional-py36:
             voting: false
         - ipa-tox-bandit:
