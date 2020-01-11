@@ -677,3 +677,14 @@ class TestGetEfiPart(testtools.TestCase):
             {'number': '14', 'flags': 'bios_grub'},
         ]
         self.assertIsNone(utils.get_efi_part_on_device('/dev/sda'))
+
+
+class TestRemoveKeys(testtools.TestCase):
+    def test_remove_keys(self):
+        value = {'system_logs': 'abcd',
+                 'key': 'value',
+                 'other': [{'configdrive': 'foo'}, 'string', 0]}
+        expected = {'system_logs': '<...>',
+                    'key': 'value',
+                    'other': [{'configdrive': '<...>'}, 'string', 0]}
+        self.assertEqual(expected, utils.remove_large_keys(value))

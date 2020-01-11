@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+try:
+    from collections import abc
+except ImportError:
+    # Python 2
+    import collections as abc
 import copy
 import errno
 import glob
@@ -30,6 +35,7 @@ from oslo_concurrency import processutils
 from oslo_log import log as logging
 from oslo_serialization import base64
 from oslo_utils import units
+import six
 from six.moves.urllib import parse
 
 from ironic_python_agent import errors
@@ -495,3 +501,20 @@ def get_efi_part_on_device(device):
             return part['number']
     else:
         LOG.debug("No efi partition found on device %s", device)
+
+
+_LARGE_KEYS = frozenset(['configdrive', 'system_logs'])
+
+
+def remove_large_keys(var):
+    """Remove specific keys from the var, recursing into dicts and lists."""
+    if isinstance(var, abc.Mapping):
+        return var.__class__(
+            (key, remove_large_keys(value)
+             if key not in _LARGE_KEYS else '<...>')
+            for key, value in var.items())
+    elif isinstance(var, abc.Sequence) and not isinstance(var,
+                                                          six.string_types):
+        return var.__class__(map(remove_large_keys, var))
+    else:
+        return var
