@@ -22,6 +22,7 @@ from oslo_utils import uuidutils
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
+from ironic_python_agent import utils
 
 
 LOG = log.getLogger()
@@ -59,9 +60,10 @@ class BaseCommandResult(encoding.SerializableComparable):
         return ("Command name: %(name)s, "
                 "params: %(params)s, status: %(status)s, result: "
                 "%(result)s." %
-                {"name": self.command_name, "params": self.command_params,
+                {"name": self.command_name,
+                 "params": utils.remove_large_keys(self.command_params),
                  "status": self.command_status,
-                 "result": self.command_result})
+                 "result": utils.remove_large_keys(self.command_result)})
 
     def is_done(self):
         """Checks to see if command is still RUNNING.
@@ -160,7 +162,8 @@ class AsyncCommandResult(BaseCommandResult):
             if isinstance(result, (bytes, str)):
                 result = {'result': '{}: {}'.format(self.command_name, result)}
             LOG.info('Command: %(name)s, result: %(result)s',
-                     {'name': self.command_name, 'result': result})
+                     {'name': self.command_name,
+                      'result': utils.remove_large_keys(result)})
             with self.command_state_lock:
                 self.command_result = result
                 self.command_status = AgentCommandStatus.SUCCEEDED
@@ -234,7 +237,8 @@ class ExecuteCommandMixin(object):
         """Execute an agent command."""
         with self.command_lock:
             LOG.debug('Executing command: %(name)s with args: %(args)s',
-                      {'name': command_name, 'args': kwargs})
+                      {'name': command_name,
+                       'args': utils.remove_large_keys(kwargs)})
             extension_part, command_part = self.split_command(command_name)
 
             if len(self.command_results) > 0:
@@ -264,7 +268,8 @@ class ExecuteCommandMixin(object):
                 LOG.exception('Command execution error: %s', e)
                 result = SyncCommandResult(command_name, kwargs, False, e)
             LOG.info('Command %(name)s completed: %(result)s',
-                     {'name': command_name, 'result': result})
+                     {'name': command_name,
+                      'result': utils.remove_large_keys(result)})
             self.command_results[result.id] = result
             return result
 
