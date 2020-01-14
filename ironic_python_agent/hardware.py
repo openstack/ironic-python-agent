@@ -953,7 +953,9 @@ class GenericHardwareManager(HardwareManager):
         cached_node = get_cached_node()
         root_device_hints = None
         if cached_node is not None:
-            root_device_hints = cached_node['properties'].get('root_device')
+            root_device_hints = (
+                cached_node['instance_info'].get('root_device')
+                or cached_node['properties'].get('root_device'))
             LOG.debug('Looking for a device matching root hints %s',
                       root_device_hints)
 

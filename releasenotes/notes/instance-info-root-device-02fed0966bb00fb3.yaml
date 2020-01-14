@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Allows reading the ``root_device`` from ``instance_info``, overriding
+    the value in ``properties``.
