@@ -639,3 +639,14 @@ class TestUtils(testtools.TestCase):
         mocked_execute.assert_has_calls(
             [mock.call('parted', '-s', '/dev/sda', '--', 'print')]
         )
+
+
+class TestRemoveKeys(testtools.TestCase):
+    def test_remove_keys(self):
+        value = {'system_logs': 'abcd',
+                 'key': 'value',
+                 'other': [{'configdrive': 'foo'}, 'string', 0]}
+        expected = {'system_logs': '<...>',
+                    'key': 'value',
+                    'other': [{'configdrive': '<...>'}, 'string', 0]}
+        self.assertEqual(expected, utils.remove_large_keys(value))

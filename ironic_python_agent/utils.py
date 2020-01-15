@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import abc
 import copy
 import errno
 import glob
@@ -469,3 +470,19 @@ def get_efi_part_on_device(device):
     else:
         LOG.debug("No efi partition found on device %s", device)
     return efi_part
+
+
+_LARGE_KEYS = frozenset(['configdrive', 'system_logs'])
+
+
+def remove_large_keys(var):
+    """Remove specific keys from the var, recursing into dicts and lists."""
+    if isinstance(var, abc.Mapping):
+        return var.__class__(
+            (key, remove_large_keys(value)
+             if key not in _LARGE_KEYS else '<...>')
+            for key, value in var.items())
+    elif isinstance(var, abc.Sequence) and not isinstance(var, str):
+        return var.__class__(map(remove_large_keys, var))
+    else:
+        return var
