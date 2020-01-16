@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Skips NIC numa_node discovery if it's not assigned to a numa_node as
+    in some rare case, such as a VM with virtual NUMA node, NICs might
+    not be in a NUMA node and this breaks numa-topology discovery.
