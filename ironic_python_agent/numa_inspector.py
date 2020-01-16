@@ -193,7 +193,8 @@ def get_nodes_nics_info(nic_device_path):
                {'nic_device_path': nic_device_path})
         raise errors.IncompatibleNumaFormatError(msg)
     for nic_dir in os.listdir(nic_device_path):
-        if not os.path.isdir(os.path.join(nic_device_path, nic_dir, 'device')):
+        if not os.path.isfile(os.path.join(nic_device_path,
+                                           nic_dir, 'device', 'numa_node')):
             continue
         try:
             with open(os.path.join(nic_device_path, nic_dir, 'device',
