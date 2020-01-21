@@ -162,6 +162,8 @@
 - job:
     name: ironic-ipa-dib-base
     parent: ironic-ipa-base
+    required-projects:
+      - openstack/diskimage-builder
     timeout: 9600
     vars:
       tempest_test_timeout: 2400
