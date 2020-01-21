@@ -50,6 +50,11 @@ def extension_manager(names):
         on_missing_entrypoints_callback=_extension_manager_err_callback)
 
 
+def _get_collector_names():
+    return [x.strip() for x in CONF.inspection_collectors.split(',')
+            if x.strip()]
+
+
 def inspect():
     """Optionally run inspection on the current node.
 
@@ -72,8 +77,7 @@ def inspect():
                           url.rstrip('/') + '/v1/continue')
         config.override(params)
 
-    collector_names = [x.strip() for x in CONF.inspection_collectors.split(',')
-                       if x.strip()]
+    collector_names = _get_collector_names()
     LOG.info('inspection is enabled with collectors %s', collector_names)
 
     # NOTE(dtantsur): inspection process tries to delay raising any exceptions
@@ -219,6 +223,10 @@ def collect_default(data, failures):
     data['boot_interface'] = inventory['boot'].pxe_interface
     LOG.debug('boot devices was %s', data['boot_interface'])
     LOG.debug('BMC IP address: %s', inventory.get('bmc_address'))
+    data['configuration'] = {
+        'collectors': _get_collector_names(),
+        'managers': [mgr.get_version() for mgr in hardware.get_managers()],
+    }
 
 
 def collect_logs(data, failures):

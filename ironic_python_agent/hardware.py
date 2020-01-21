@@ -1847,7 +1847,7 @@ def _compare_extensions(ext1, ext2):
     return mgr2.evaluate_hardware_support() - mgr1.evaluate_hardware_support()
 
 
-def _get_managers():
+def get_managers():
     """Get a list of hardware managers in priority order.
 
     Use stevedore to find all eligible hardware managers, sort them based on
@@ -1889,7 +1889,7 @@ def dispatch_to_all_managers(method, *args, **kwargs):
     """Dispatch a method to all hardware managers.
 
     Dispatches the given method in priority order as sorted by
-    `_get_managers`. If the method doesn't exist or raises
+    `get_managers`. If the method doesn't exist or raises
     IncompatibleHardwareMethodError, it continues to the next hardware manager.
     All managers that have hardware support for this node will be called,
     and their responses will be added to a dictionary of the form
@@ -1905,7 +1905,7 @@ def dispatch_to_all_managers(method, *args, **kwargs):
         manager.
     """
     responses = {}
-    managers = _get_managers()
+    managers = get_managers()
     for manager in managers:
         if getattr(manager, method, None):
             try:
@@ -1934,7 +1934,7 @@ def dispatch_to_managers(method, *args, **kwargs):
     """Dispatch a method to best suited hardware manager.
 
     Dispatches the given method in priority order as sorted by
-    `_get_managers`. If the method doesn't exist or raises
+    `get_managers`. If the method doesn't exist or raises
     IncompatibleHardwareMethodError, it is attempted again with a more generic
     hardware manager. This continues until a method executes that returns
     any result without raising an IncompatibleHardwareMethodError.
@@ -1947,7 +1947,7 @@ def dispatch_to_managers(method, *args, **kwargs):
     :raises HardwareManagerMethodNotFound: if all managers failed the method
     :raises HardwareManagerNotFound: if no valid hardware managers found
     """
-    managers = _get_managers()
+    managers = get_managers()
     for manager in managers:
         if getattr(manager, method, None):
             try:
@@ -1965,18 +1965,6 @@ def dispatch_to_managers(method, *args, **kwargs):
                       .format(manager, method))
 
     raise errors.HardwareManagerMethodNotFound(method)
-
-
-def load_managers():
-    """Preload hardware managers into the cache.
-
-    This method is to help warm up the cache for hardware managers when
-    called. Used to resolve bug 1490008, where agents can crash the first
-    time a hardware manager is needed.
-
-    :raises HardwareManagerNotFound: if no valid hardware managers found
-    """
-    _get_managers()
 
 
 def cache_node(node):

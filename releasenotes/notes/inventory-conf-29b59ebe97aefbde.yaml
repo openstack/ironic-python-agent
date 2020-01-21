@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Adds a new field ``configuration`` to the introspection data collected by
+    the ``default`` collector. It contains two fields:
+
+    * ``collectors`` - list of the enabled inspection collectors.
+    * ``managers`` - list of the enabled hardware managers in their priority
+      order.

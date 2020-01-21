@@ -371,7 +371,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.started_at = _time()
 
         # Cached hw managers at runtime, not load time. See bug 1490008.
-        hardware.load_managers()
+        hardware.get_managers()
         # Operator-settable delay before hardware actually comes up.
         # Helps with slow RAID drivers - see bug 1582797.
         if self.hardware_initialization_delay > 0:

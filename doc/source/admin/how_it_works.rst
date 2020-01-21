@@ -106,6 +106,12 @@ collectors are:
     * ``inventory`` - `Hardware Inventory`_.
     * ``root_disk`` - The default root device for this machine, which will be
       used for deployment if root device hints are not provided.
+    * ``configuration`` - Inspection configuration, an object with two keys:
+
+      * ``collectors`` - List of enabled collectors.
+      * ``managers`` - List of enabled :ref:`Hardware Managers`: items with
+        keys ``name`` and ``version``.
+
     * ``boot_interface`` - Deprecated, use the
       ``inventory.boot.pxe_interface`` field.
 

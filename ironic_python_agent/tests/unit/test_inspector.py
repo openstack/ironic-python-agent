@@ -226,11 +226,17 @@ class BaseDiscoverTest(base.IronicAgentTest):
         self.data = {}
 
 
+@mock.patch.object(hardware, 'get_managers', autospec=True)
 @mock.patch.object(inspector, 'wait_for_dhcp', autospec=True)
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
 class TestCollectDefault(BaseDiscoverTest):
-    def test_ok(self, mock_dispatch, mock_wait_for_dhcp):
+    def test_ok(self, mock_dispatch, mock_wait_for_dhcp, mock_get_mgrs):
+        mgrs = [{'name': 'extra', 'version': '1.42'},
+                {'name': 'generic', 'version': '1.1'}]
         mock_dispatch.return_value = self.inventory
+        mock_get_mgrs.return_value = [
+            mock.Mock(**{'get_version.return_value': item}) for item in mgrs
+        ]
 
         inspector.collect_default(self.data, self.failures)
 
@@ -240,13 +246,21 @@ class TestCollectDefault(BaseDiscoverTest):
         self.assertEqual('boot:if', self.data['boot_interface'])
         self.assertEqual(self.inventory['disks'][2].name,
                          self.data['root_disk'].name)
+        self.assertEqual({'collectors': ['default'], 'managers': mgrs},
+                         self.data['configuration'])
 
         mock_dispatch.assert_called_once_with('list_hardware_info')
         mock_wait_for_dhcp.assert_called_once_with()
 
-    def test_no_root_disk(self, mock_dispatch, mock_wait_for_dhcp):
+    def test_no_root_disk(self, mock_dispatch, mock_wait_for_dhcp,
+                          mock_get_mgrs):
+        mgrs = [{'name': 'extra', 'version': '1.42'},
+                {'name': 'generic', 'version': '1.1'}]
         mock_dispatch.return_value = self.inventory
         self.inventory['disks'] = []
+        mock_get_mgrs.return_value = [
+            mock.Mock(**{'get_version.return_value': item}) for item in mgrs
+        ]
 
         inspector.collect_default(self.data, self.failures)
 
@@ -255,6 +269,8 @@ class TestCollectDefault(BaseDiscoverTest):
 
         self.assertEqual('boot:if', self.data['boot_interface'])
         self.assertNotIn('root_disk', self.data)
+        self.assertEqual({'collectors': ['default'], 'managers': mgrs},
+                         self.data['configuration'])
 
         mock_dispatch.assert_called_once_with('list_hardware_info')
         mock_wait_for_dhcp.assert_called_once_with()

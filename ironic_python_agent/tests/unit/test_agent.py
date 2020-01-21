@@ -181,8 +181,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
-    @mock.patch.object(hardware, 'load_managers', autospec=True)
-    def test_run(self, mock_load_managers, mock_wsgi,
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_run(self, mock_get_managers, mock_wsgi,
                  mock_wait, mock_dispatch):
         CONF.set_override('inspection_callback_url', '')
 
@@ -223,8 +223,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
-    @mock.patch.object(hardware, 'load_managers', autospec=True)
-    def test_url_from_mdns_by_default(self, mock_load_managers, mock_wsgi,
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_url_from_mdns_by_default(self, mock_get_managers, mock_wsgi,
                                       mock_wait, mock_dispatch, mock_mdns):
         CONF.set_override('inspection_callback_url', '')
         mock_mdns.return_value = 'https://example.com', {}
@@ -276,8 +276,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
-    @mock.patch.object(hardware, 'load_managers', autospec=True)
-    def test_url_from_mdns_explicitly(self, mock_load_managers, mock_wsgi,
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_url_from_mdns_explicitly(self, mock_get_managers, mock_wsgi,
                                       mock_wait, mock_dispatch, mock_mdns):
         CONF.set_override('inspection_callback_url', '')
         CONF.set_override('disk_wait_attempts', 0)
@@ -335,8 +335,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                        '_wait_for_interface', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
-    @mock.patch.object(hardware, 'load_managers', autospec=True)
-    def test_run_raise_keyboard_interrupt(self, mock_load_managers, mock_wsgi,
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_run_raise_keyboard_interrupt(self, mock_get_managers, mock_wsgi,
                                           mock_dispatch, mock_wait,
                                           mock_sleep):
         CONF.set_override('inspection_callback_url', '')
@@ -548,14 +548,14 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         mock_dispatch.assert_has_calls(expected_dispatch_calls)
         mock_sleep.assert_has_calls(expected_sleep_calls)
 
-    @mock.patch.object(hardware, 'load_managers', autospec=True)
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
     @mock.patch.object(agent.IronicPythonAgent, '_wait_for_interface',
                        autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
     def test_run_with_sleep(self, mock_wsgi, mock_dispatch,
-                            mock_wait, mock_sleep, mock_load_managers):
+                            mock_wait, mock_sleep, mock_get_managers):
         CONF.set_override('inspection_callback_url', '')
 
         def set_serve_api():
@@ -584,7 +584,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         self.agent.heartbeater.start.assert_called_once_with()
         mock_sleep.assert_called_once_with(10)
-        self.assertTrue(mock_load_managers.called)
+        self.assertTrue(mock_get_managers.called)
         self.assertTrue(mock_wait.called)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
@@ -712,8 +712,8 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
-    @mock.patch.object(hardware, 'load_managers', autospec=True)
-    def test_run(self, mock_load_managers, mock_list_hardware,
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_run(self, mock_get_managers, mock_list_hardware,
                  mock_wsgi):
         wsgi_server_request = mock_wsgi.return_value
 
@@ -727,7 +727,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 
         self.agent.run()
 
-        self.assertTrue(mock_load_managers.called)
+        self.assertTrue(mock_get_managers.called)
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
                                           host=mock.ANY, port=9999)
