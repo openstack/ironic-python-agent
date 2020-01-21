@@ -89,6 +89,73 @@ a loop to publish every 300 seconds. This can be tuned with the
 
 .. _Ironic Inspector: https://docs.openstack.org/ironic-inspector/
 
+Inspection Data
+<<<<<<<<<<<<<<<
+As part of the inspection process, data is collected on the machine and sent
+back to `Ironic Inspector`_ for storage. It can be accessed via the
+`introspection data API`_.
+
+The exact format of the data depends on the enabled *collectors*, which can be
+configured using the ``ipa-inspection-collectors`` kernel parameter. Each
+collector appends information to the resulting JSON object. The in-tree
+collectors are:
+
+``default``
+    The default enabled collectors. Collects the following keys:
+
+    * ``inventory`` - `Hardware Inventory`_.
+    * ``root_disk`` - The default root device for this machine, which will be
+      used for deployment if root device hints are not provided.
+    * ``boot_interface`` - Deprecated, use the
+      ``inventory.boot.pxe_interface`` field.
+
+``logs``
+    Collect system logs. To yield useful results it must always go last in the
+    list of collectors. Provides one key:
+
+    * ``logs`` - base64 encoded tarball with various logs.
+
+``pci-devices``
+    Collects the list of PCI devices. Provides one key:
+
+    * ``pci_devices`` - list of objects with keys ``vendor_id`` and
+      ``product_id``.
+
+``extra-hardware``
+    Collects a vast list of facts about the systems, using the hardware_
+    library, which is a required dependency for this collector. Adds one key:
+
+    * ``data`` - raw data from the ``hardware-collect`` utility. Is a list of
+      lists with 4 items each. It is recommended to use this collector together
+      with the ``extra_hardware`` processing hook on the `Ironic Inspector`_
+      side to convert it to a nested dictionary in the ``extra`` key.
+
+      If ``ipa-inspection-benchmarks`` is set, the corresponding benchmarks are
+      executed and their result is also provided.
+
+``dmi-decode``
+    Collects information from ``dmidecode``. Provides one key:
+
+    * ``dmi`` DMI information in three keys: ``bios``, ``cpu`` and ``memory``.
+
+      .. TODO(dtantsur): figure out details
+
+``numa-topology``
+    Collects NUMA_ topology information. Provides one key:
+
+    * ``numa_topology`` with three nested keys:
+
+      * ``ram`` - list of objects with keys ``numa_node`` (node ID) and
+        ``size_kb``.
+      * ``cpus`` - list of objects with keys ``cpu`` (CPU ID), ``numa_node``
+        (node ID) and ``thread_siblings`` (list of sibling threads).
+      * ``nics`` - list of objects with keys ``name`` (NIC name) and
+        ``numa_node`` (node ID).
+
+.. _introspection data API: https://docs.openstack.org/ironic-inspector/latest/user/http-api.html#get-introspection-data
+.. _hardware: https://pypi.org/project/hardware/
+.. _NUMA: https://en.wikipedia.org/wiki/Non-uniform_memory_access
+
 Hardware Inventory
 ------------------
 IPA collects various hardware information using its
