@@ -303,12 +303,12 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
                           numa_insp.get_nodes_cores_info,
                           numa_node_dirs)
 
-    @mock.patch.object(os.path, 'isdir', autospec=True)
+    @mock.patch.object(os.path, 'isfile', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
-    def test_get_nodes_nics_info(self, mock_listdir, mock_isdir):
+    def test_get_nodes_nics_info(self, mock_listdir, mock_isfile):
         nic_dirs = ['enp0s01', 'enp0s02']
         mock_listdir.return_value = nic_dirs
-        mock_isdir.return_value = True
+        mock_isfile.return_value = True
         reads = ['0', '1']
         expected_nicsinfo = [{'name': 'enp0s01', 'numa_node': 0},
                              {'name': 'enp0s02', 'numa_node': 1}]
@@ -319,12 +319,12 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
             nics = numa_insp.get_nodes_nics_info('/sys/class/net/')
         self.assertListEqual(expected_nicsinfo, nics)
 
-    @mock.patch.object(os.path, 'isdir', autospec=True)
+    @mock.patch.object(os.path, 'isfile', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
-    def test_bad_nodes_nics_info(self, mock_listdir, mock_isdir):
+    def test_bad_nodes_nics_info(self, mock_listdir, mock_isfile):
         nic_dirs = ['enp0s01', 'enp0s02']
         mock_listdir.return_value = nic_dirs
-        mock_isdir.return_value = True
+        mock_isfile.return_value = True
         reads = ['0', IOError]
         mock_open = mock.mock_open()
         with mock.patch('six.moves.builtins.open', mock_open):
