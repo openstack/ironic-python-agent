@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes the workflow for wholedisk images when using uefi boot mode, when
+    possible it will use efibootmgr instead of grub2 to update the nvram.

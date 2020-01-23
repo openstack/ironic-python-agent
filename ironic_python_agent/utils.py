@@ -63,7 +63,7 @@ COLLECT_LOGS_COMMANDS = {
 
 DEVICE_EXTRACTOR = re.compile(r'^(?:(.*\d)p|(.*\D))(?:\d+)$')
 
-PARTED_ESP_PATTERN = re.compile(r'^\s*(\d+)\s.*\sfat\d*\s.*esp(,|\s|$).*$')
+PARTED_ESP_PATTERN = re.compile(r'^\s*(\d+)\s.*\s\s.*\s.*esp(,|\s|$).*$')
 
 
 def execute(*cmd, **kwargs):
