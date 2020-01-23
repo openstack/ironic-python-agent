@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes an issue where wholedisk images are requested for deployment and
+    the bootloader is overridden. IPA now explicitly looks for the boot
+    partition, and examines the contents if the disk appears to be MBR
+    bootable. If override/skip bootloader installation does not apply if
+    UEFI or PREP boot partitions are present on the disk.
