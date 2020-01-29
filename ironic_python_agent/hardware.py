@@ -843,6 +843,18 @@ class GenericHardwareManager(HardwareManager):
                      block_device.name)
             return
         info = node.get('driver_internal_info', {})
+        if self._is_read_only_device(block_device):
+            if info.get('agent_erase_skip_read_only', False):
+                LOG.info("Skipping erase of read-only device %s",
+                         block_device.name)
+                return
+            else:
+                msg = ('Failed to invoke erase of device %(device)s '
+                       'as the device is flagged read-only, and the '
+                       'conductor has not signaled this is a permitted '
+                       'case.' % {'device': block_device.name})
+                LOG.error(msg)
+                raise errors.BlockDeviceEraseError(msg)
         # Note(TheJulia) Use try/except to capture and log the failure
         # and then revert to attempting to shred the volume if enabled.
         try:
@@ -889,6 +901,10 @@ class GenericHardwareManager(HardwareManager):
         for dev in block_devices:
             if self._is_virtual_media_device(dev):
                 LOG.info("Skipping the erase of virtual media device %s",
+                         dev.name)
+                continue
+            if self._is_read_only_device(dev):
+                LOG.info("Skipping metadata erase of read-only device %s",
                          dev.name)
                 continue
 
@@ -943,6 +959,28 @@ class GenericHardwareManager(HardwareManager):
                                                    vm_device_label), link))
             if block_device.name == device:
                 return True
+        return False
+
+    def _is_read_only_device(self, block_device):
+        """Check if a block device is read-only.
+
+        Checks the device read-only flag in order to identify virtual
+        and firmware driven devices that block write device access.
+
+        :param block_device: a BlockDevice object
+        :returns: True if the device is read-only.
+        """
+        try:
+            dev_name = str(block_device.name)[5:]
+
+            with open('/sys/block/%s/ro' % dev_name, 'r') as f:
+                flag = f.read().strip()
+                if flag == '1':
+                    return True
+        except IOError as e:
+            LOG.warning("Could not determine if %s is a read-only device. "
+                        "Error: %s",
+                        block_device.name, e)
         return False
 
     def _get_ata_security_lines(self, block_device):

@@ -2247,6 +2247,33 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           mock.call(self.hardware, block_devices[0])],
                          mock__is_vmedia.call_args_list)
 
+    def test__is_read_only_device(self):
+        fileobj = mock.mock_open(read_data='1\n')
+        device = hardware.BlockDevice('/dev/sdfake', 'fake', 1024, False)
+        with mock.patch(
+                'six.moves.builtins.open', fileobj, create=True) as mock_open:
+            self.assertTrue(self.hardware._is_read_only_device(device))
+            mock_open.assert_called_once_with(
+                '/sys/block/sdfake/ro', 'r')
+
+    def test__is_read_only_device_false(self):
+        fileobj = mock.mock_open(read_data='0\n')
+        device = hardware.BlockDevice('/dev/sdfake', 'fake', 1024, False)
+        with mock.patch(
+                'six.moves.builtins.open', fileobj, create=True) as mock_open:
+            self.assertFalse(self.hardware._is_read_only_device(device))
+            mock_open.assert_called_once_with(
+                '/sys/block/sdfake/ro', 'r')
+
+    def test__is_read_only_device_error(self):
+        device = hardware.BlockDevice('/dev/sdfake', 'fake', 1024, False)
+        with mock.patch(
+                'six.moves.builtins.open', side_effect=IOError,
+                autospec=True) as mock_open:
+            self.assertFalse(self.hardware._is_read_only_device(device))
+            mock_open.assert_called_once_with(
+                '/sys/block/sdfake/ro', 'r')
+
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address(self, mocked_execute):
         mocked_execute.return_value = '192.1.2.3\n', ''
