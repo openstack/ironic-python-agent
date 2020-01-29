@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixes an issue where metadata erasure cleaning would fail on devices
+    that are read-only at the hardware level. Typically these are virtual
+    devices being offered to the operating system for purposes like OS
+    self-installation.
+
+    In the case of full device erasure, this is explicitly raised as
+    a hard failure requiring operator intervention.
