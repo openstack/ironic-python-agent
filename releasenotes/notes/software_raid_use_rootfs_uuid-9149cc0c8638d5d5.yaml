@@ -5,4 +5,4 @@ upgrade:
     is in the first partition of the deployed image. Instead, the IPA will use
     the UUID passed from the conductor to identify the root partition. Before
     upgrades, the root file system UUID needs hence to be set as part of the
-    node's 'driver_internal_info' or as 'rootfs_uuid' image metadata.
+    node's ``driver_internal_info`` or as ``rootfs_uuid`` image metadata.

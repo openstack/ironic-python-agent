@@ -1,5 +1,6 @@
 ---
 other:
   - |
-    Bumps up ipa-ip-lookup-attempts to 6, adding extra time
-    for networking to be setup before giving up.
+    Increases the default value for the ``ipa-ip-lookup-attempts`` kernel
+    argument to 6, adding extra time for networking to be set up before giving
+    up.
