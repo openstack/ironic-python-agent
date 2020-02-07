@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Rescans partitions on a software RAID device that gets restarted when
+    installing boot loader.
