@@ -36,20 +36,28 @@ BIND_MOUNTS = ('/dev', '/proc', '/run')
 BOOTLOADERS_EFI = ['bootx64.efi', 'grubaa64.efi', 'winload.efi']
 
 
+def _rescan_device(device):
+    """Force the device to be rescanned
+
+    :param device: device upon which to rescan and update
+                   kernel partition records.
+    """
+    try:
+        utils.execute('partx', '-u', device, attempts=3,
+                      delay_on_retry=True)
+        utils.execute('udevadm', 'settle')
+    except processutils.ProcessExecutionError:
+        LOG.warning("Couldn't re-read the partition table "
+                    "on device %s", device)
+
+
 def _get_partition(device, uuid):
     """Find the partition of a given device."""
     LOG.debug("Find the partition %(uuid)s on device %(dev)s",
               {'dev': device, 'uuid': uuid})
 
     try:
-        # Try to tell the kernel to re-read the partition table
-        try:
-            utils.execute('partx', '-u', device, attempts=3,
-                          delay_on_retry=True)
-            utils.execute('udevadm', 'settle')
-        except processutils.ProcessExecutionError:
-            LOG.warning("Couldn't re-read the partition table "
-                        "on device %s", device)
+        _rescan_device(device)
 
         lsblk = utils.execute('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE', device)
         report = lsblk[0]
@@ -162,6 +170,10 @@ def _manage_uefi(device, efi_system_part_uuid=None):
     efi_mounted = False
 
     try:
+        # Force UEFI to rescan the device. Required if the deployment
+        # was over iscsi.
+        _rescan_device(device)
+
         local_path = tempfile.mkdtemp()
         # Trust the contents on the disk in the event of a whole disk image.
         efi_partition = utils.get_efi_part_on_device(device)
