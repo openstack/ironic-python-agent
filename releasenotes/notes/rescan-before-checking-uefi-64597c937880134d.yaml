@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes an issue where the agent was failing to rescan the device deployed
+    upon before checking uefi contents. This would occur with an iSCSI
+    based deployment, as partition management operations are performed by
+    the conductor, and not locally.
