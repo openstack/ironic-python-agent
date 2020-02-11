@@ -1830,7 +1830,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         internal_info['disk_erasure_concurrency'] = 10
         mocked_dispatch.return_value = 'erased device'
 
-        apply_result = multiprocessing.pool.ApplyResult({}, None, None)
+        apply_result = multiprocessing.pool.ApplyResult
         apply_result._success = True
         apply_result._ready = True
         apply_result.get = lambda: 'erased device'
