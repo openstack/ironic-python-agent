@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import binascii
-import multiprocessing
 import os
 import time
 
@@ -1830,10 +1829,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         internal_info['disk_erasure_concurrency'] = 10
         mocked_dispatch.return_value = 'erased device'
 
-        apply_result = multiprocessing.pool.ApplyResult
+        apply_result = mock.Mock()
         apply_result._success = True
         apply_result._ready = True
-        apply_result.get = lambda: 'erased device'
+        apply_result.get.return_value = 'erased device'
         mocked_async.return_value = apply_result
 
         blkdev1 = hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True)
