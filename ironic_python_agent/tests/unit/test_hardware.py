@@ -1807,21 +1807,28 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           for dev in ('sda', 'sdb', 'sdc', 'sdd')]
         mocked_listdir.assert_has_calls(expected_calls)
 
+    @mock.patch.object(hardware, 'ThreadPool', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    def test_erase_devices_no_parallel_by_default(self, mocked_dispatch):
-        mocked_dispatch.return_value = 'erased device'
+    def test_erase_devices_no_parallel_by_default(self, mocked_dispatch,
+                                                  mock_threadpool):
 
+        # NOTE(TheJulia): This test was previously more elaborate and
+        # had a high failure rate on py37 and py38. So instead, lets just
+        # test that the threadpool is defaulted to 1 value to ensure
+        # that parallel erasures are not initiated. If the code is ever
+        # modified, differently, hopefully the person editing sees this
+        # message and understands the purpose is single process execution
+        # by default.
         self.hardware.list_block_devices = mock.Mock()
+
         self.hardware.list_block_devices.return_value = [
             hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
             hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
         ]
 
-        expected = {'/dev/hdaa': 'erased device', '/dev/sdj': 'erased device'}
-
-        result = self.hardware.erase_devices({}, [])
-
-        self.assertEqual(expected, result)
+        calls = [mock.call(1)]
+        self.hardware.erase_devices({}, [])
+        mock_threadpool.assert_has_calls(calls)
 
     @mock.patch('multiprocessing.pool.ThreadPool.apply_async', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
