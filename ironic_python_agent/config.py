@@ -219,6 +219,15 @@ cli_opts = [
                     'the bare metal introspection service when the '
                     '``ironic-collect-introspection-data`` program is '
                     'executing in daemon mode.'),
+    cfg.StrOpt('ntp_server',
+               default=APARAMS.get('ipa-ntp-server', None),
+               help='Address of a single NTP server against which the '
+                    'agent should sync the hardware clock prior to '
+                    'rebooting to an instance.'),
+    cfg.BoolOpt('fail_if_clock_not_set',
+                default=False,
+                help='If operations should fail if the clock time sync '
+                     'fails to complete successfully.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

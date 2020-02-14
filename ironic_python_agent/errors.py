@@ -331,3 +331,9 @@ class DeviceNotFound(NotFound):
 # RESTError.
 class InspectionError(Exception):
     """Failure during inspection."""
+
+
+class ClockSyncError(RESTError):
+    """Error raised when attempting to sync the system clock."""
+
+    message = 'Error syncing system clock'

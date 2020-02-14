@@ -674,3 +674,108 @@ class TestRemoveKeys(testtools.TestCase):
                     'key': 'value',
                     'other': [{'configdrive': '<...>'}, 'string', 0]}
         self.assertEqual(expected, utils.remove_large_keys(value))
+
+
+@mock.patch.object(utils, 'execute', autospec=True)
+class TestClockSyncUtils(ironic_agent_base.IronicAgentTest):
+
+    def test_determine_time_method_none(self, mock_execute):
+        mock_execute.side_effect = OSError
+        self.assertIsNone(utils.determine_time_method())
+
+    def test_determine_time_method_ntpdate(self, mock_execute):
+        mock_execute.side_effect = [
+            OSError,  # No chronyd found
+            ('', ''),  # Returns nothing on ntpdate call
+        ]
+        calls = [mock.call('chronyd', '-h'),
+                 mock.call('ntpdate', '-v', check_exit_code=[0, 1])]
+        return_value = utils.determine_time_method()
+        self.assertEqual('ntpdate', return_value)
+        mock_execute.assert_has_calls(calls)
+
+    def test_determine_time_method_chronyd(self, mock_execute):
+        mock_execute.side_effect = [
+            ('', ''),  # Returns nothing on ntpdate call
+        ]
+        calls = [mock.call('chronyd', '-h')]
+        return_value = utils.determine_time_method()
+        self.assertEqual('chronyd', return_value)
+        mock_execute.assert_has_calls(calls)
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_ntp(self, mock_time_method, mock_execute):
+        self.config(ntp_server='192.168.1.1')
+        mock_time_method.return_value = 'ntpdate'
+        utils.sync_clock()
+        mock_execute.assert_has_calls([mock.call('ntpdate', '192.168.1.1')])
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_ntp_raises_exception(self, mock_time_method,
+                                             mock_execute):
+        self.config(ntp_server='192.168.1.1')
+        self.config(fail_if_clock_not_set=True)
+        mock_time_method.return_value = 'ntpdate'
+        mock_execute.side_effect = processutils.ProcessExecutionError()
+        self.assertRaises(errors.CommandExecutionError, utils.sync_clock)
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_chrony(self, mock_time_method, mock_execute):
+        self.config(ntp_server='192.168.1.1')
+        mock_time_method.return_value = 'chronyd'
+        utils.sync_clock()
+        mock_execute.assert_has_calls([
+            mock.call('chronyd', check_exit_code=[0, 1]),
+            mock.call('chronyc', 'add', 'server', '192.168.1.1'),
+            mock.call('chronyc', 'makestep'),
+        ])
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_chrony_already_present(self, mock_time_method,
+                                               mock_execute):
+        self.config(ntp_server='192.168.1.1')
+        mock_time_method.return_value = 'chronyd'
+        mock_execute.side_effect = [
+            ('', ''),
+            processutils.ProcessExecutionError(
+                stderr='Source already present'),
+            ('', ''),
+        ]
+        utils.sync_clock()
+        mock_execute.assert_has_calls([
+            mock.call('chronyd', check_exit_code=[0, 1]),
+            mock.call('chronyc', 'add', 'server', '192.168.1.1'),
+            mock.call('chronyc', 'makestep'),
+        ])
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_chrony_failure(self, mock_time_method, mock_execute):
+        self.config(ntp_server='192.168.1.1')
+        self.config(fail_if_clock_not_set=True)
+        mock_time_method.return_value = 'chronyd'
+        mock_execute.side_effect = [
+            ('', ''),
+            processutils.ProcessExecutionError(stderr='time verboten'),
+        ]
+        self.assertRaisesRegex(errors.CommandExecutionError,
+                               'Error occured adding ntp',
+                               utils.sync_clock)
+        mock_execute.assert_has_calls([
+            mock.call('chronyd', check_exit_code=[0, 1]),
+            mock.call('chronyc', 'add', 'server', '192.168.1.1'),
+        ])
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_none(self, mock_time_method, mock_execute):
+        self.config(ntp_server='192.168.1.1')
+        mock_time_method.return_value = None
+        utils.sync_clock(ignore_errors=True)
+        self.assertEqual(0, mock_execute.call_count)
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_ntp_server_is_none(self, mock_time_method,
+                                           mock_execute):
+        self.config(ntp_server=None)
+        mock_time_method.return_value = None
+        utils.sync_clock()
+        self.assertEqual(0, mock_execute.call_count)

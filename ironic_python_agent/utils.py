@@ -27,6 +27,7 @@ import time
 
 from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import base64
 from oslo_utils import units
@@ -35,6 +36,7 @@ from ironic_python_agent import errors
 
 LOG = logging.getLogger(__name__)
 
+CONF = cfg.CONF
 
 # Agent parameters can be passed by kernel command-line arguments and/or
 # by virtual media. Virtual media parameters passed would be available
@@ -486,3 +488,91 @@ def remove_large_keys(var):
         return var.__class__(map(remove_large_keys, var))
     else:
         return var
+
+
+def determine_time_method():
+    """Helper method to determine what time utility is present.
+
+    :returns: "ntpdate" if ntpdate has been found, "chrony" if chrony
+              was located, and None if neither are located. If both tools
+              are present, "chrony" will supercede "ntpdate".
+    """
+    try:
+        execute('chronyd', '-h')
+        return 'chronyd'
+    except OSError:
+        LOG.debug('Command \'chronyd\' not found for time sync.')
+    try:
+        execute('ntpdate', '-v', check_exit_code=[0, 1])
+        return 'ntpdate'
+    except OSError:
+        LOG.debug('Command \'ntpdate\' not found for time sync.')
+    return None
+
+
+def sync_clock(ignore_errors=False):
+    """Syncs the software clock of the system.
+
+    This method syncs the system software clock if a NTP server
+    was defined in the "[DEFAULT]ntp_server" configuration
+    parameter. This method does NOT attempt to sync the hardware
+    clock.
+
+    It will try to use either ntpdate or chrony to sync the software
+    clock of the system. If neither is found, an exception is raised.
+
+    :param ignore_errors: Boolean value default False that allows for
+                          the method to be called and ultimately not
+                          raise an exception. This may be useful for
+                          opportunistically attempting to sync the
+                          system software clock.
+    :raises: CommandExecutionError if an error is encountered while
+             attempting to sync the software clock.
+    """
+
+    if not CONF.ntp_server:
+        return
+
+    method = determine_time_method()
+
+    if method == 'ntpdate':
+        try:
+            execute('ntpdate', CONF.ntp_server)
+            LOG.debug('Set software clock using ntpdate')
+        except processutils.ProcessExecutionError as e:
+            msg = ('Failed to sync with ntp server: '
+                   '%s: %s' % (CONF.ntp_server, e))
+            LOG.error(msg)
+            if CONF.fail_if_clock_not_set or not ignore_errors:
+                raise errors.CommandExecutionError(msg)
+    elif method == 'chronyd':
+        try:
+            # 0 should be if chronyd started
+            # 1 if already running
+            execute('chronyd', check_exit_code=[0, 1])
+            # NOTE(TheJulia): Once started, chronyd forks and stays in the
+            # background as a server service, it will continue to keep the
+            # clock in sync.
+            try:
+                execute('chronyc', 'add', 'server', CONF.ntp_server)
+            except processutils.ProcessExecutionError as e:
+                if 'Source already present' not in str(e):
+                    msg = 'Error occured adding ntp server: %s' % e
+                    LOG.error(msg)
+                    raise errors.CommandExecutionError(msg)
+            # Force the clock to sync now.
+            execute('chronyc', 'makestep')
+            LOG.debug('Set software clock using chrony')
+        except (processutils.ProcessExecutionError,
+                errors.CommandExecutionError) as e:
+            msg = ('Failed to sync time using chrony to ntp server: '
+                   '%s: %s' % (CONF.ntp_server, e))
+            LOG.error(msg)
+            if CONF.fail_if_clock_not_set or not ignore_errors:
+                raise errors.CommandExecutionError(msg)
+    else:
+        msg = ('Unable to sync clock, available methods of '
+               '\'ntpdate\' or \'chrony\' not found.')
+        LOG.error(msg)
+        if CONF.fail_if_clock_not_set or not ignore_errors:
+            raise errors.CommandExecutionError(msg)

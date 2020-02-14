@@ -617,6 +617,11 @@ class StandbyExtension(base.BaseAgentExtension):
         :raises: SystemRebootError if the command errors out with an
             unsuccessful exit code.
         """
+        # TODO(TheJulia): When we have deploy/clean steps, we should remove
+        # this upon shutdown. The clock sync deploy step can run before
+        # completing other operations.
+        self._sync_clock(ignore_errors=True)
+
         if command not in ('reboot', 'poweroff'):
             msg = (('Expected the command "poweroff" or "reboot" '
                     'but received "%s".') % command)
@@ -663,3 +668,28 @@ class StandbyExtension(base.BaseAgentExtension):
             error_msg = 'Flushing file system buffers failed. Error: %s' % e
             LOG.error(error_msg)
             raise errors.CommandExecutionError(error_msg)
+
+    # TODO(TheJulia): Once we have deploy/clean steps, this should
+    # become a step, which we ideally have enabled by default.
+    def _sync_clock(self, ignore_errors=False):
+        """Sync the clock to a configured NTP server.
+
+        :param ignore_errors: Boolean option to indicate if the
+                              errors should be fatal. This option
+                              does not override the fail_if_clock_not_set
+                              configuration option.
+        :raises: ClockSyncError if a failure is encountered and
+                 errors are not ignored.
+        """
+        try:
+            utils.sync_clock(ignore_errors=ignore_errors)
+            # Sync the system hardware clock from the software clock,
+            # as they are independent and the HW clock can still drift
+            # with long running ramdisks.
+            utils.execute('hwclock', '-v', '--systohc')
+        except (processutils.ProcessExecutionError,
+                errors.CommandExecutionError) as e:
+            msg = 'Failed to sync hardware clock: %s' % e
+            LOG.error(msg)
+            if CONF.fail_if_clock_not_set or not ignore_errors:
+                raise errors.ClockSyncError(msg)

@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Adds a feature where IPA will utilize a ``[DEFAULT]ntp_server`` or
+    ``ipa-ntp-server`` kernel command line argument to cause the agent
+    to attempt to sync the clock to the NTP source. The agent also attempts
+    to sync the software clock to the NTP time source, and assert an update
+    to the hardware clock prior to powering the machine off.

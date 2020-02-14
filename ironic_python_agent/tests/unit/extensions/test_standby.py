@@ -953,12 +953,13 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_run_shutdown_command_valid_poweroff_sysrq(self, execute_mock):
-        execute_mock.side_effect = [('', ''), ('',
+        execute_mock.side_effect = [('', ''), ('', ''), ('',
                                     'Running in chroot, ignoring request.'),
                                     ('', '')]
 
         self.agent_extension._run_shutdown_command('poweroff')
-        calls = [mock.call('sync'),
+        calls = [mock.call('hwclock', '-v', '--systohc'),
+                 mock.call('sync'),
                  mock.call('poweroff', use_standard_locale=True,
                            check_exit_code=[0]),
                  mock.call("echo o > /proc/sysrq-trigger", shell=True)]
@@ -966,7 +967,7 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_run_shutdown_command_valid_reboot_sysrq(self, execute_mock):
-        execute_mock.side_effect = [('', ''), ('',
+        execute_mock.side_effect = [('', ''), ('', ''), ('',
                                     'Running in chroot, ignoring request.'),
                                     ('', '')]
 
@@ -1020,6 +1021,37 @@ class TestStandbyExtension(base.IronicAgentTest):
         failed_result.join()
 
         execute_mock.assert_any_call('sync')
+        self.assertEqual('FAILED', failed_result.command_status)
+
+    @mock.patch('ironic_python_agent.utils.determine_time_method',
+                autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_power_off_with_ntp_server(self, execute_mock, mock_timemethod):
+        self.config(fail_if_clock_not_set=False)
+        self.config(ntp_server='192.168.1.1')
+        execute_mock.return_value = ('', '')
+        mock_timemethod.return_value = 'ntpdate'
+
+        success_result = self.agent_extension.power_off()
+        success_result.join()
+
+        calls = [mock.call('ntpdate', '192.168.1.1'),
+                 mock.call('hwclock', '-v', '--systohc'),
+                 mock.call('sync'),
+                 mock.call('poweroff', use_standard_locale=True,
+                           check_exit_code=[0])]
+        execute_mock.assert_has_calls(calls)
+        self.assertEqual('SUCCEEDED', success_result.command_status)
+
+        self.config(fail_if_clock_not_set=True)
+        execute_mock.reset_mock()
+        execute_mock.return_value = ('', '')
+        execute_mock.side_effect = processutils.ProcessExecutionError
+
+        failed_result = self.agent_extension.power_off()
+        failed_result.join()
+
+        execute_mock.assert_any_call('ntpdate', '192.168.1.1')
         self.assertEqual('FAILED', failed_result.command_status)
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
@@ -1161,6 +1193,33 @@ class TestStandbyExtension(base.IronicAgentTest):
         expected_msg = ('image (fake_id) already present on device '
                         '/dev/fake')
         self.assertEqual(expected_msg, result_msg)
+
+    @mock.patch('ironic_python_agent.utils.determine_time_method',
+                autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test__sync_clock(self, execute_mock, mock_timemethod):
+        self.config(ntp_server='192.168.1.1')
+        self.config(fail_if_clock_not_set=True)
+        execute_mock.return_value = ('', '')
+        mock_timemethod.return_value = 'chronyd'
+
+        self.agent_extension._sync_clock()
+
+        calls = [mock.call('chronyd', check_exit_code=[0, 1]),
+                 mock.call('chronyc', 'add', 'server', '192.168.1.1'),
+                 mock.call('chronyc', 'makestep'),
+                 mock.call('hwclock', '-v', '--systohc')]
+        execute_mock.assert_has_calls(calls)
+
+        execute_mock.reset_mock()
+        execute_mock.side_effect = [
+            ('', ''), ('', ''), ('', ''),
+            processutils.ProcessExecutionError('boop')
+        ]
+
+        self.assertRaises(errors.ClockSyncError,
+                          self.agent_extension._sync_clock)
+        execute_mock.assert_any_call('hwclock', '-v', '--systohc')
 
 
 @mock.patch('hashlib.md5', autospec=True)
