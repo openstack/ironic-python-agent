@@ -1666,7 +1666,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mock_listdir.return_value = [os.path.basename(x)
                                      for x in sorted(by_path_map)]
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
-        mocked_udev.side_effect = pyudev.DeviceNotFoundByFileError()
+        mocked_udev.side_effect = [pyudev.DeviceNotFoundByFileError(),
+                                   pyudev.DeviceNotFoundByNumberError('block',
+                                                                      1234),
+                                   pyudev.DeviceNotFoundByFileError(),
+                                   pyudev.DeviceNotFoundByFileError()]
         mocked_dev_vendor.return_value = 'Super Vendor'
         devices = hardware.list_all_block_devices()
         expected_devices = [
