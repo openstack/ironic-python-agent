@@ -269,7 +269,16 @@ class ImageDownload(object):
             self._hash_algo = hashlib.new(algo)
             self._expected_hash_value = image_info.get('os_hash_value')
         elif image_info.get('checksum'):
-            self._hash_algo = hashlib.md5()
+            try:
+                self._hash_algo = hashlib.md5()
+            except ValueError as e:
+                message = ('Unable to proceed with image {} as the legacy '
+                           'checksum indicator has been used, which makes use '
+                           'the MD5 algorithm. This algorithm failed to load '
+                           'due to the underlying operating system. Error: '
+                           '{}').format(image_info['id'], str(e))
+                LOG.error(message)
+                raise errors.RESTError(details=message)
             self._expected_hash_value = image_info['checksum']
         else:
             message = ('Unable to verify image {} with available checksums. '
