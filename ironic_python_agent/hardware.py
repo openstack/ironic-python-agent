@@ -371,6 +371,11 @@ def list_all_block_devices(block_type='disk',
             LOG.warning("Device %(dev)s is inaccessible, skipping... "
                         "Error: %(error)s", {'dev': name, 'error': e})
             extra = {}
+        except pyudev.DeviceNotFoundByNumberError as e:
+            LOG.warning("Device %(dev)s is not supported by pyudev, "
+                        "skipping... Error: %(error)s",
+                        {'dev': name, 'error': e})
+            extra = {}
         else:
             # TODO(lucasagomes): Since lsblk only supports
             # returning the short serial we are using
