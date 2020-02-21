@@ -293,6 +293,28 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             prep_boot_part_uuid=self.fake_prep_boot_part_uuid)
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
+    @mock.patch.object(os.path, 'exists', lambda *_: False)
+    @mock.patch.object(iscsi, 'clean_up', autospec=True)
+    def test_install_bootloader_failure(self, mock_iscsi_clean, mock_execute,
+                                        mock_dispatch):
+        # NOTE(iurygregory): adaptation for py27 since we don't have
+        # FileNotFoundError defined.
+        try:
+            FileNotFoundError
+        except NameError:
+            FileNotFoundError = OSError
+
+        mock_dispatch.side_effect = [
+            self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
+        ]
+        mock_execute.side_effect = FileNotFoundError
+        self.assertRaises(FileNotFoundError,
+                          self.agent_extension.install_bootloader,
+                          root_uuid=self.fake_root_uuid,
+                          efi_system_part_uuid=None)
+        expected = [mock.call('efibootmgr', '--version')]
+        mock_execute.assert_has_calls(expected)
+
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)

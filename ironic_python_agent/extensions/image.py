@@ -516,9 +516,15 @@ class ImageExtension(base.BaseAgentExtension):
         boot = hardware.dispatch_to_managers('get_boot_info')
         if boot.current_boot_mode == 'uefi':
             has_efibootmgr = True
+            # NOTE(iurygregory): adaptation for py27 since we don't have
+            # FileNotFoundError defined.
+            try:
+                FileNotFoundError
+            except NameError:
+                FileNotFoundError = OSError
             try:
                 utils.execute('efibootmgr', '--version')
-            except errors.CommandExecutionError:
+            except FileNotFoundError:
                 LOG.warning("efibootmgr is not available in the ramdisk")
                 has_efibootmgr = False
 
