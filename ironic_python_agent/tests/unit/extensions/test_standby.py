@@ -80,6 +80,13 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_info['os_hash_value'] = 'fake-checksum'
         standby._validate_image_info(None, image_info)
 
+    def test_validate_image_info_success_ignore_none_md5(self):
+        image_info = _build_fake_image_info()
+        image_info['checksum'] = None
+        image_info['os_hash_algo'] = 'sha512'
+        image_info['os_hash_value'] = 'fake-checksum'
+        standby._validate_image_info(None, image_info)
+
     def test_validate_image_info_missing_field(self):
         for field in ['id', 'urls', 'checksum']:
             invalid_info = _build_fake_image_info()

@@ -400,7 +400,8 @@ def _validate_image_info(ext, image_info=None, **kwargs):
         raise errors.InvalidCommandParamsError(
             'Image \'urls\' must be a list with at least one element.')
 
-    if 'checksum' in image_info:
+    checksum = image_info.get('checksum')
+    if checksum is not None:
         if (not isinstance(image_info['checksum'], str)
                 or not image_info['checksum']):
             raise errors.InvalidCommandParamsError(
