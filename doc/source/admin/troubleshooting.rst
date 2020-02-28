@@ -99,6 +99,20 @@ repository by default auto-logins the default
 Tiny Core Linux user ``tc`` to the console.
 This user has no password and has password-less ``sudo`` permissions.
 
+How to pause the IPA for debugging
+----------------------------------
+When debugging issues with the IPA, in particular with cleaning, it may be
+necessary to log in to the RAM disk before the IPA actually starts (and delay
+the launch of the IPA). One easy way to do this is to set ``maintenance``
+on the node and then trigger cleaning. Ironic will boot the node into the
+RAM disk, but the IPA will stall until the maintenance state is removed. This
+opens a time window to log into the node.
+
+Another way to do this is to add simple cleaning steps in a custom hardware
+manager which sleep until a certain condition is met, e.g. until a given
+file exists. Having multiple of these "barrier steps" allows to go through the
+cleaning steps and have a break point in between them.
+
 Set IPA to debug logging
 ========================
 Debug logging can be enabled a several different ways. The easiest way is to
