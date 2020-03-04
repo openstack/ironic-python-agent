@@ -520,7 +520,7 @@ class ImageExtension(base.BaseAgentExtension):
             has_efibootmgr = True
             try:
                 utils.execute('efibootmgr', '--version')
-            except errors.CommandExecutionError:
+            except FileNotFoundError:
                 LOG.warning("efibootmgr is not available in the ramdisk")
                 has_efibootmgr = False
 

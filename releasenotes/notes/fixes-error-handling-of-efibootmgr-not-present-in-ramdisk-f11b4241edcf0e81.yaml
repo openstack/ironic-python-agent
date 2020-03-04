@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes error handling if efibootmgr is not present in ramdisk.
+    See `story <https://storyboard.openstack.org/#!/story/2007324>`_
+    for more details.
