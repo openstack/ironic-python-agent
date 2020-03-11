@@ -5,4 +5,6 @@ features:
     ``ipa-ntp-server`` kernel command line argument to cause the agent
     to attempt to sync the clock to the NTP source. The agent also attempts
     to sync the software clock to the NTP time source, and assert an update
-    to the hardware clock prior to powering the machine off.
+    to the hardware clock prior to powering the machine off. Please note,
+    if your system clock is set to local time as opposed to UTC,
+    this may result in undesirable behavior.
