@@ -10,8 +10,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import string
-
 import mock
 from oslotest import base as test_base
 
@@ -26,25 +24,16 @@ class TestRescueExtension(test_base.BaseTestCase):
         self.agent_extension = rescue.RescueExtension()
         self.agent_extension.agent = FakeAgent()
 
-    def test_make_salt(self):
-        salt = self.agent_extension.make_salt()
-        self.assertEqual(2, len(salt))
-        for char in salt:
-            self.assertIn(char, string.ascii_letters + string.digits)
-
     @mock.patch('ironic_python_agent.extensions.rescue.crypt.crypt',
                 autospec=True)
-    @mock.patch('ironic_python_agent.extensions.rescue.RescueExtension.'
-                'make_salt', autospec=True)
-    def test_write_rescue_password(self, mock_salt, mock_crypt):
-        mock_salt.return_value = '12'
+    def test_write_rescue_password(self, mock_crypt):
         mock_crypt.return_value = '12deadbeef'
         mock_open = mock.mock_open()
         with mock.patch('ironic_python_agent.extensions.rescue.open',
                         mock_open):
             self.agent_extension.write_rescue_password('password')
 
-        mock_crypt.assert_called_once_with('password', '12')
+        mock_crypt.assert_called_once_with('password')
         mock_open.assert_called_once_with(
             '/etc/ipa-rescue-config/ipa-rescue-password', 'w')
         file_handle = mock_open()
@@ -52,10 +41,7 @@ class TestRescueExtension(test_base.BaseTestCase):
 
     @mock.patch('ironic_python_agent.extensions.rescue.crypt.crypt',
                 autospec=True)
-    @mock.patch('ironic_python_agent.extensions.rescue.RescueExtension.'
-                'make_salt', autospec=True)
-    def test_write_rescue_password_ioerror(self, mock_salt, mock_crypt):
-        mock_salt.return_value = '12'
+    def test_write_rescue_password_ioerror(self, mock_crypt):
         mock_crypt.return_value = '12deadbeef'
         mock_open = mock.mock_open()
         with mock.patch('ironic_python_agent.extensions.rescue.open',
@@ -68,16 +54,12 @@ class TestRescueExtension(test_base.BaseTestCase):
 
     @mock.patch('ironic_python_agent.extensions.rescue.crypt.crypt',
                 autospec=True)
-    @mock.patch('ironic_python_agent.extensions.rescue.RescueExtension.'
-                'make_salt', autospec=True)
-    def _write_password_hashed_test(self, password, mock_salt,
-                                    mock_crypt):
+    def _write_password_hashed_test(self, password, mock_crypt):
         mock_open = mock.mock_open()
         with mock.patch('ironic_python_agent.extensions.rescue.open',
                         mock_open):
             self.agent_extension.write_rescue_password(password,
                                                        hashed=True)
-            self.assertFalse(mock_salt.called)
             self.assertFalse(mock_crypt.called)
             mock_open.assert_called_once_with(
                 '/etc/ipa-rescue-config/ipa-rescue-password', 'w')
