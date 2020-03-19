@@ -146,8 +146,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                              'eth0',
                                              300,
                                              1,
-                                             None,
-                                             False)
+                                             False,
+                                             None)
         self.agent.ext_mgr = extension.ExtensionManager.\
             make_test_instance([extension.Extension('fake', None,
                                                     FakeExtension,
@@ -939,3 +939,78 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         mock_gethostbyname.assert_called_once_with('fake_api.example.org')
         self.assertEqual(5, mock_exec.call_count)
         self.assertEqual(5, mock_sleep.call_count)
+
+
+@mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
+@mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
+@mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
+                   lambda self: None)
+class TestBaseAgentVMediaToken(ironic_agent_base.IronicAgentTest):
+
+    def setUp(self):
+        super(TestBaseAgentVMediaToken, self).setUp()
+        self.encoder = encoding.RESTJSONEncoder(indent=4)
+
+        self.agent = agent.IronicPythonAgent('https://fake_api.example.'
+                                             'org:8081/',
+                                             agent.Host('203.0.113.1', 9990),
+                                             agent.Host('192.0.2.1', 9999),
+                                             3,
+                                             10,
+                                             'eth0',
+                                             300,
+                                             1,
+                                             False,
+                                             '1' * 128)
+        self.agent.ext_mgr = extension.ExtensionManager.\
+            make_test_instance([extension.Extension('fake', None,
+                                                    FakeExtension,
+                                                    FakeExtension())])
+        self.sample_nw_iface = hardware.NetworkInterface(
+            "eth9", "AA:BB:CC:DD:EE:FF", "1.2.3.4", True)
+        hardware.NODE = None
+
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
+    @mock.patch('oslo_service.wsgi.Server', autospec=True)
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_run_agent_token_vmedia(self, mock_get_managers, mock_wsgi,
+                                    mock_wait, mock_dispatch):
+        CONF.set_override('inspection_callback_url', '')
+
+        wsgi_server = mock_wsgi.return_value
+
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server.start.side_effect = set_serve_api
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'config': {
+                'heartbeat_timeout': 300,
+                'agent_token': '********',
+                'agent_token_required': True
+            }
+        }
+
+        self.agent.run()
+
+        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
+                                          app=self.agent.api,
+                                          host=mock.ANY, port=9999)
+        wsgi_server.start.assert_called_once_with()
+        mock_wait.assert_called_once_with(mock.ANY)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
+        self.agent.heartbeater.start.assert_called_once_with()
+        self.assertEqual('1' * 128, self.agent.agent_token)
+        self.assertEqual('1' * 128, self.agent.api_client.agent_token)
