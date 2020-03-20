@@ -444,6 +444,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                 if config.get('metrics_statsd'):
                     for opt, val in config.items():
                         setattr(cfg.CONF.metrics_statsd, opt, val)
+                if config.get('agent_token_required'):
+                    self.agent_token_required = True
                 token = config.get('agent_token')
                 if token:
                     if len(token) >= 32:
@@ -458,10 +460,17 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                                     'intended and the deployment may fail '
                                     'depending on settings in the ironic '
                                     'deployment.')
+                        if not self.agent_token and self.agent_token_required:
+                            LOG.error('Ironic is signaling that agent tokens '
+                                      'are required, however we do not have '
+                                      'a token on file. '
+                                      'This is likely **FATAL**.')
                     else:
                         LOG.info('An invalid token was received.')
-                if config.get('agent_token_required'):
-                    self.agent_token_required = True
+                if self.agent_token:
+                    # Explicitly set the token in our API client before
+                    # starting heartbeat operations.
+                    self.api_client.agent_token = self.agent_token
 
             elif cfg.CONF.inspection_callback_url:
                 LOG.info('No ipa-api-url configured, Heartbeat and lookup '
