@@ -14,6 +14,7 @@
       - openstack/ironic-lib
     vars:
       devstack_localrc:
+        IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_BUILD_DEPLOY_RAMDISK: True
 
 - job:
