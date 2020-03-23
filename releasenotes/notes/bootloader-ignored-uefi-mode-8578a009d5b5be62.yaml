@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes an issue with deployment ramdisks running in UEFI boot mode where
+    dual-boot images may cause the logic to prematurely exit before UEFI
+    parameters can be updated. Internal checks for a BIOS bootloader will
+    always return ``False`` now when the machine is in UEFI mode.
