@@ -711,6 +711,8 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
     def test__is_bootloader_loaded(self, mock_execute,
                                    mock_dispatch):
+        mock_dispatch.return_value = hardware.BootInfo(
+            current_boot_mode='bios')
         parted_output = ('BYT;\n'
                          '/dev/loop1:46.1MB:loopback:512:512:gpt:Loopback '
                          'device:;\n'
@@ -764,6 +766,16 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_execute.return_value = (parted_output, '')
         result = image._is_bootloader_loaded(self.fake_dev)
         self.assertFalse(result)
+
+    def test__is_bootloader_loaded_uefi_mode(self, mock_execute,
+                                             mock_dispatch):
+
+        mock_dispatch.return_value = hardware.BootInfo(
+            current_boot_mode='uefi')
+        result = image._is_bootloader_loaded(self.fake_dev)
+        self.assertFalse(result)
+        mock_dispatch.assert_any_call('get_boot_info')
+        self.assertEqual(0, mock_execute.call_count)
 
     @mock.patch.object(image, '_get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
