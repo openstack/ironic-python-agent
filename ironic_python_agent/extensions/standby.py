@@ -196,6 +196,11 @@ def _write_image(image_info, device):
     totaltime = time.time() - starttime
     LOG.info('Image {} written to device {} in {} seconds'.format(
              image, device, totaltime))
+    try:
+        disk_utils.fix_gpt_partition(device, node_uuid=None)
+    except exception.InstanceDeployFailure:
+        # Note: the catch internal to the helper method logs any errors.
+        pass
     return uuids
 
 
@@ -518,6 +523,12 @@ class StandbyExtension(base.BaseAgentExtension):
                  "seconds".format(device, totaltime))
         # Verify if the checksum of the streamed image is correct
         image_download.verify_image(device)
+        # Fix any gpt partition
+        try:
+            disk_utils.fix_gpt_partition(device, node_uuid=None)
+        except exception.InstanceDeployFailure:
+            # Note: the catch internal to the helper method logs any errors.
+            pass
 
     @base.async_command('cache_image', _validate_image_info)
     def cache_image(self, image_info=None, force=False):

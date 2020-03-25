@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes an issue where secondary GPT partition tables were not being updated
+    after the ``ironic-python-agent`` wrote the disk image to the target disk.
+    The agent now unconditionally attempts to repair the secondary partition
+    table. Previously, software RAID volumes would report errors upon restart.

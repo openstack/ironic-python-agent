@@ -15,6 +15,7 @@
 import os
 import tempfile
 
+from ironic_lib import exception
 import mock
 from oslo_concurrency import processutils
 
@@ -157,9 +158,10 @@ class TestStandbyExtension(base.IronicAgentTest):
         expected_loc = os.path.join(tempfile.gettempdir(), 'fake_id')
         self.assertEqual(expected_loc, location)
 
+    @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_write_image(self, execute_mock, open_mock):
+    def test_write_image(self, execute_mock, open_mock, fix_gpt_mock):
         image_info = _build_fake_image_info()
         device = '/dev/sda'
         location = standby._image_location(image_info)
@@ -169,6 +171,10 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         standby._write_image(image_info, device)
         execute_mock.assert_called_once_with(*command, check_exit_code=[0])
+        fix_gpt_mock.assert_called_once_with(device, node_uuid=None)
+
+        fix_gpt_mock.side_effect = exception.InstanceDeployFailure
+        standby._write_image(image_info, device)
 
         execute_mock.reset_mock()
         execute_mock.return_value = ('', '')
@@ -1085,11 +1091,12 @@ class TestStandbyExtension(base.IronicAgentTest):
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, device)
 
+    @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
     @mock.patch('hashlib.md5', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device(self, requests_mock, open_mock,
-                                          md5_mock):
+                                          md5_mock, fix_gpt_mock):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
@@ -1107,6 +1114,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                                               stream=True, proxies={})
         expected_calls = [mock.call('some'), mock.call('content')]
         file_mock.write.assert_has_calls(expected_calls)
+        fix_gpt_mock.assert_called_once_with('/dev/foo', node_uuid=None)
 
     @mock.patch('hashlib.md5', autospec=True)
     @mock.patch('builtins.open', autospec=True)
