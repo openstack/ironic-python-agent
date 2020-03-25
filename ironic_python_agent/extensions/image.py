@@ -356,10 +356,9 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
     efi_partition_mount_point = None
     efi_mounted = False
 
-    # If the root device is an md device (or partition), restart the device
-    # (to help grub finding it) and identify the underlying holder disks
-    # to install grub.
     if hardware.is_md_device(device):
+        # If the root device is an md device (or partition),
+        # restart the device to help grub find it later on.
         hardware.md_restart(device)
     elif (_is_bootloader_loaded(device)
           and not (efi_system_part_uuid
