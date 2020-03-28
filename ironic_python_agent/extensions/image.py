@@ -175,7 +175,7 @@ def _is_bootloader_loaded(dev):
         LOG.debug('Skipping boot sector check as the system is in UEFI '
                   'boot mode.')
         return False
-
+    LOG.debug('Starting check for pre-intalled BIOS boot-loader.')
     try:
         # Looking for things marked "bootable" in the partition table
         stdout, stderr = utils.execute('parted', dev, '-s', '-m',

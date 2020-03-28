@@ -212,6 +212,7 @@ def md_restart(raid_device):
     :raises: CommandExecutionError in case the restart fails.
     """
     try:
+        LOG.debug('Restarting software RAID device %s', raid_device)
         component_devices = _get_component_devices(raid_device)
         utils.execute('mdadm', '--stop', raid_device)
         utils.execute('mdadm', '--assemble', raid_device,
