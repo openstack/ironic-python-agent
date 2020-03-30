@@ -236,16 +236,15 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         # we've previously seen a token, which is
         # a mid-cluster upgrade case with long-running ramdisks.
         if (not token and self.agent_token
-            and not self.agent_token_required):
-                # TODO(TheJulia): Rip this out during or after the V
-                # cycle.
-                LOG.warning('Agent token for requests are not required '
-                            'by the conductor, yet we received a token. '
-                            'Cluster may be mid-upgrade. Support to '
-                            'not fail in this condition will be removed in '
-                            'the Victoria development cycle.')
-                # Tell the API everything is okay.
-                return True
+                and not self.agent_token_required):
+            # TODO(TheJulia): Rip this out during or after the V cycle.
+            LOG.warning('Agent token for requests are not required '
+                        'by the conductor, yet we received a token. '
+                        'Cluster may be mid-upgrade. Support to '
+                        'not fail in this condition will be removed in '
+                        'the Victoria development cycle.')
+            # Tell the API everything is okay.
+            return True
         if self.agent_token is not None:
             return self.agent_token == token
 

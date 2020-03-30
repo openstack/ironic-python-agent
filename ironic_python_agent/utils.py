@@ -181,12 +181,12 @@ def _get_vmedia_params():
 
         try:
             stdout, stderr = execute("umount", vmedia_mount_point)
-        except processutils.ProcessExecutionError as e:
+        except processutils.ProcessExecutionError:
             pass
     finally:
         try:
             shutil.rmtree(vmedia_mount_point)
-        except Exception as e:
+        except Exception:
             pass
 
     return params
