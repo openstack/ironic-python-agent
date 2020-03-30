@@ -37,6 +37,7 @@ import yaml
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
+from ironic_python_agent.extensions import base as ext_base
 from ironic_python_agent import netutils
 from ironic_python_agent import raid_utils
 from ironic_python_agent import utils
@@ -1566,6 +1567,15 @@ class GenericHardwareManager(HardwareManager):
                 'reboot_requested': False,
                 'argsinfo': RAID_APPLY_CONFIGURATION_ARGSINFO,
             },
+            {
+                'step': 'write_image',
+                # NOTE(dtantsur): this step has to be proxied via an
+                # out-of-band step with the same name, hence the priority here
+                # doesn't really matter.
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+            },
         ]
 
     def apply_configuration(self, node, ports, raid_config,
@@ -1992,6 +2002,25 @@ class GenericHardwareManager(HardwareManager):
                      '%(errors)s') % {'node': node['uuid'],
                                       'errors': '; '.join(raid_errors)}
             raise errors.SoftwareRAIDError(error)
+
+    def write_image(self, node, ports, image_info, configdrive=None):
+        """A deploy step to write an image.
+
+        Downloads and writes an image to disk if necessary. Also writes a
+        configdrive to disk if the configdrive parameter is specified.
+
+        :param node: A dictionary of the node object
+        :param ports: A list of dictionaries containing information
+                      of ports for the node
+        :param image_info: Image information dictionary.
+        :param configdrive: A string containing the location of the config
+                            drive as a URL OR the contents (as gzip/base64)
+                            of the configdrive. Optional, defaults to None.
+        """
+        ext = ext_base.get_extension('standby')
+        cmd = ext.prepare_image(image_info=image_info, configdrive=configdrive)
+        # The result is asynchronous, wait here.
+        cmd.join()
 
 
 def _compare_extensions(ext1, ext2):

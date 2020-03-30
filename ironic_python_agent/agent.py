@@ -29,7 +29,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 import pkg_resources
-from stevedore import extension
 
 from ironic_python_agent.api import app
 from ironic_python_agent import config
@@ -171,12 +170,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         if bool(cfg.CONF.keyfile) != bool(cfg.CONF.certfile):
             LOG.warning("Only one of 'keyfile' and 'certfile' options is "
                         "defined in config file. Its value will be ignored.")
-        self.ext_mgr = extension.ExtensionManager(
-            namespace='ironic_python_agent.extensions',
-            invoke_on_load=True,
-            propagate_map_exceptions=True,
-            invoke_kwds={'agent': self},
-        )
+        self.ext_mgr = base.init_ext_manager(self)
         self.api_url = api_url
         if not self.api_url or self.api_url == 'mdns':
             try:

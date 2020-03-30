@@ -19,6 +19,7 @@ import threading
 
 from oslo_log import log
 from oslo_utils import uuidutils
+from stevedore import extension
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
@@ -331,3 +332,25 @@ def sync_command(command_name, validator=None):
 
         return wrapper
     return sync_decorator
+
+
+_EXT_MANAGER = None
+
+
+def init_ext_manager(agent):
+    global _EXT_MANAGER
+    _EXT_MANAGER = extension.ExtensionManager(
+        namespace='ironic_python_agent.extensions',
+        invoke_on_load=True,
+        propagate_map_exceptions=True,
+        invoke_kwds={'agent': agent},
+    )
+    return _EXT_MANAGER
+
+
+def get_extension(name):
+    if _EXT_MANAGER is None:
+        raise errors.ExtensionError('Extension manager is not initialized')
+    ext = _EXT_MANAGER[name].obj
+    ext.ext_mgr = _EXT_MANAGER
+    return ext
