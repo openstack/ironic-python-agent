@@ -111,8 +111,8 @@ def _get_partition(device, uuid):
             # device has a partition (which we assume to contain the root fs).
             if hardware.is_md_device(device):
                 md_partition = device + 'p1'
-                if (os.path.exists(md_partition) and
-                    stat.S_ISBLK(os.stat(md_partition).st_mode)):
+                if (os.path.exists(md_partition)
+                        and stat.S_ISBLK(os.stat(md_partition).st_mode)):
                     LOG.debug("Found md device with partition %s",
                               md_partition)
                     return md_partition

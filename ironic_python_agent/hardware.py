@@ -339,9 +339,9 @@ def list_all_block_devices(block_type='disk',
         # Other possible type values, which we skip recording:
         #   lvm, part, rom, loop
         if devtype != block_type:
-            if (devtype is not None and
-                any(x in devtype for x in ['raid', 'md']) and
-                not ignore_raid):
+            if (devtype is not None
+                    and any(x in devtype for x in ['raid', 'md'])
+                    and not ignore_raid):
                 LOG.debug(
                     "TYPE detected to contain 'raid' or 'md', signifying a "
                     "RAID volume. Found: {!r}".format(line))
@@ -930,8 +930,8 @@ class GenericHardwareManager(HardwareManager):
                 if sys_child['id'] == 'core':
                     for core_child in sys_child['children']:
                         if _MEMORY_ID_RE.match(core_child['id']):
-                            if (not core_child.get("children") and
-                                    core_child.get('size')):
+                            if (not core_child.get("children")
+                                    and core_child.get('size')):
                                 value = ("%(size)s %(units)s" % core_child)
                                 physical += int(UNIT_CONVERTER(value).to
                                                 ('MB').magnitude)
@@ -1400,7 +1400,7 @@ class GenericHardwareManager(HardwareManager):
             cmd = "ipmitool lan6 print {} {}_addr".format(
                 channel, 'dynamic' if dynamic else 'static')
             try:
-                out, e = utils.execute(cmd, shell=True)
+                out, exc = utils.execute(cmd, shell=True)
             except processutils.ProcessExecutionError:
                 return
 
@@ -1409,9 +1409,9 @@ class GenericHardwareManager(HardwareManager):
             #       dynamic_addr and static_addr commands is a valid yaml.
             try:
                 out = yaml.safe_load(out.strip())
-            except yaml.YAMLError as e:
+            except yaml.YAMLError as excpt:
                 LOG.warning('Cannot process output of "%(cmd)s" '
-                            'command: %(e)s', {'cmd': cmd, 'e': e})
+                            'command: %(e)s', {'cmd': cmd, 'e': excpt})
                 return
 
             for addr_dict in out.values():
@@ -1446,9 +1446,9 @@ class GenericHardwareManager(HardwareManager):
                 except ValueError as exc:
                     LOG.warning('Invalid IP address %s: %s', address, exc)
                     continue
-        except (processutils.ProcessExecutionError, OSError) as e:
+        except (processutils.ProcessExecutionError, OSError) as exc:
             # Not error, because it's normal in virtual environment
-            LOG.warning("Cannot get BMC v6 address: %s", e)
+            LOG.warning("Cannot get BMC v6 address: %s", exc)
             return
 
         return '::/0'
@@ -1759,7 +1759,7 @@ class GenericHardwareManager(HardwareManager):
                 LOG.debug('Removing partitions on %s', holder_disk)
                 try:
                     utils.execute('wipefs', '-af', holder_disk)
-                except processutils.ProcessExecutionError as e:
+                except processutils.ProcessExecutionError:
                     LOG.warning('Failed to remove partitions on %s',
                                 holder_disk)
 

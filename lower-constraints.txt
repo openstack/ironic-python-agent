@@ -22,7 +22,7 @@ flake8-import-order==0.13
 flake8==2.5.5
 future==0.16.0
 greenlet==0.4.13
-hacking==1.0.0
+hacking==3.0.0
 idna==2.6
 imagesize==1.0.0
 ironic-lib==2.17.0

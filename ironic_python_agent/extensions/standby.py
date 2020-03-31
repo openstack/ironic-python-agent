@@ -416,12 +416,12 @@ def _validate_image_info(ext, image_info=None, **kwargs):
     os_hash_algo = image_info.get('os_hash_algo')
     os_hash_value = image_info.get('os_hash_value')
     if os_hash_algo or os_hash_value:
-        if (not isinstance(os_hash_algo, str) or
-                not os_hash_algo):
+        if (not isinstance(os_hash_algo, str)
+                or not os_hash_algo):
             raise errors.InvalidCommandParamsError(
                 'Image \'os_hash_algo\' must be a non-empty string.')
-        if (not isinstance(os_hash_value, str) or
-                not os_hash_value):
+        if (not isinstance(os_hash_value, str)
+                or not os_hash_value):
             raise errors.InvalidCommandParamsError(
                 'Image \'os_hash_value\' must be a non-empty string.')
         os_hash_checksum_avail = True
