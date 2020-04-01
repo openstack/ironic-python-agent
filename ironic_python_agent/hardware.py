@@ -37,6 +37,7 @@ import yaml
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent import netutils
+from ironic_python_agent import raid_utils
 from ironic_python_agent import utils
 
 _global_managers = None
@@ -1531,6 +1532,8 @@ class GenericHardwareManager(HardwareManager):
         block_devices = self.list_block_devices()
         block_devices_partitions = self.list_block_devices(
             include_partitions=True)
+        # TODO(dtantsur): limit this validation to only the discs involved the
+        # software RAID.
         if len(block_devices) != len(block_devices_partitions):
             partitions = ' '.join(
                 partition.name for partition in block_devices_partitions)
@@ -1538,24 +1541,26 @@ class GenericHardwareManager(HardwareManager):
                   partitions)
             raise errors.SoftwareRAIDError(msg)
 
+        block_devices, logical_disks = raid_utils.get_block_devices_for_raid(
+            block_devices, logical_disks)
+
         parted_start_dict = {}
         # Create an MBR partition table on each disk.
         # TODO(arne_wiebalck): Check if GPT would work as well.
-        for block_device in block_devices:
-            LOG.info("Creating partition table on {}".format(
-                block_device.name))
+        for dev_name in block_devices:
+            LOG.info("Creating partition table on {}".format(dev_name))
             try:
-                utils.execute('parted', block_device.name, '-s', '--',
+                utils.execute('parted', dev_name, '-s', '--',
                               'mklabel', 'msdos')
             except processutils.ProcessExecutionError as e:
                 msg = "Failed to create partition table on {}: {}".format(
-                    block_device.name, e)
+                    dev_name, e)
                 raise errors.SoftwareRAIDError(msg)
 
-            out, _u = utils.execute('sgdisk', '-F', block_device.name)
+            out, _u = utils.execute('sgdisk', '-F', dev_name)
             # May differ from 2048s, according to device geometry (example:
             # 4k disks).
-            parted_start_dict[block_device.name] = "%ss" % out.splitlines()[-1]
+            parted_start_dict[dev_name] = "%ss" % out.splitlines()[-1]
 
         LOG.debug("First available sectors per devices %s", parted_start_dict)
 
@@ -1579,8 +1584,6 @@ class GenericHardwareManager(HardwareManager):
         # user-friendly to compute part boundaries automatically, instead of
         # parted, then convert back to mbr table if needed and possible.
 
-        default_physical_disks = [device.name for device in block_devices]
-
         for logical_disk in logical_disks:
             # Note: from the doc,
             # https://docs.openstack.org/ironic/latest/admin/raid.html#target-raid-configuration
@@ -1592,7 +1595,9 @@ class GenericHardwareManager(HardwareManager):
             else:
                 psize = int(psize)
 
-            for device in default_physical_disks:
+            # NOTE(dtantsur): populated in get_block_devices_for_raid
+            disk_names = logical_disk['block_devices']
+            for device in disk_names:
                 start = parted_start_dict[device]
 
                 if isinstance(start, int):
@@ -1634,11 +1639,10 @@ class GenericHardwareManager(HardwareManager):
                 parted_start_dict[device] = end
 
         # Create the RAID devices.
-        raid_device_count = len(block_devices)
         for index, logical_disk in enumerate(logical_disks):
             md_device = '/dev/md%d' % index
             component_devices = []
-            for device in default_physical_disks:
+            for device in logical_disk['block_devices']:
                 # The partition delimiter for all common harddrives (sd[a-z]+)
                 part_delimiter = ''
                 if 'nvme' in device:
@@ -1654,7 +1658,7 @@ class GenericHardwareManager(HardwareManager):
                           md_device, component_devices))
                 utils.execute('mdadm', '--create', md_device, '--force',
                               '--run', '--metadata=1', '--level', raid_level,
-                              '--raid-devices', raid_device_count,
+                              '--raid-devices', len(component_devices),
                               *component_devices)
             except processutils.ProcessExecutionError as e:
                 msg = "Failed to create md device {} on {}: {}".format(
@@ -1843,6 +1847,19 @@ class GenericHardwareManager(HardwareManager):
                 msg = ("Software RAID configuration requires all logical "
                        "disks to have 'controller'='software'")
                 raid_errors.append(msg)
+
+            physical_disks = logical_disk.get('physical_disks')
+            if physical_disks is not None:
+                if (not isinstance(physical_disks, list)
+                        or len(physical_disks) < 2):
+                    msg = ("The physical_disks parameter for software RAID "
+                           "must be a list with at least 2 items, each "
+                           "specifying a disk in the device hints format")
+                    raid_errors.append(msg)
+                if any(not isinstance(item, dict) for item in physical_disks):
+                    msg = ("The physical_disks parameter for software RAID "
+                           "must be a list of device hints (dictionaries)")
+                    raid_errors.append(msg)
 
         # The first RAID device needs to be RAID-1.
         if logical_disks[0]['raid_level'] != '1':
