@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Fixes risk of potential active node thundering heard by introducing
+    jitter handling into the ``ironic-collect-introspection-data``.
+    By default, the jitter will cause the
+    ``introspection_daemon_post_interval`` configuration parameter based
+    time value to be honored between in a range of 70% to 120% of the
+    desired time window.
+
+    Should failures occur after the initial connection and start of the
+    daemon mode for introspection data collection, the fallback is a maximum
+    of 400% of the introspection daemon post interval.
