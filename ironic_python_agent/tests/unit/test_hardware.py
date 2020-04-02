@@ -2779,8 +2779,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware.validate_configuration,
                           self.node, [])
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_create_configuration(self, mocked_execute):
+    def test_create_configuration(self, mocked_execute, mock_list_parts):
         node = self.node
         raid_config = {
             "logical_disks": [
@@ -2801,6 +2802,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
         self.hardware.list_block_devices = mock.Mock()
         self.hardware.list_block_devices.return_value = [device1, device2]
+        mock_list_parts.side_effect = [
+            [],
+            processutils.ProcessExecutionError
+        ]
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
@@ -2843,8 +2848,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
 
+        self.assertEqual(2, mock_list_parts.call_count)
+        mock_list_parts.assert_has_calls([
+            mock.call(x) for x in ['/dev/sda', '/dev/sdb']
+        ])
+
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_create_configuration_raid_5(self, mocked_execute):
+    def test_create_configuration_raid_5(self, mocked_execute,
+                                         mock_list_parts):
         node = self.node
         raid_config = {
             "logical_disks": [
@@ -2922,8 +2935,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2', '/dev/sdc2')])
         self.assertEqual(raid_config, result)
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_create_configuration_raid_6(self, mocked_execute):
+    def test_create_configuration_raid_6(self, mocked_execute,
+                                         mock_list_parts):
         node = self.node
         raid_config = {
             "logical_disks": [
@@ -3015,8 +3031,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2', '/dev/sdc2', '/dev/sdd2')])
         self.assertEqual(raid_config, result)
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_create_configuration_no_max(self, mocked_execute):
+    def test_create_configuration_no_max(self, mocked_execute,
+                                         mock_list_parts):
         node = self.node
         raid_config = {
             "logical_disks": [
@@ -3078,8 +3097,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_create_configuration_max_is_first_logical(self, mocked_execute):
+    def test_create_configuration_max_is_first_logical(self, mocked_execute,
+                                                       mock_list_parts):
         node = self.node
         raid_config = {
             "logical_disks": [
@@ -3141,8 +3163,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_create_configuration_with_hints(self, mocked_execute):
+    def test_create_configuration_with_hints(self, mocked_execute,
+                                             mock_list_parts):
         node = self.node
         raid_config = {
             "logical_disks": [
@@ -3215,6 +3240,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '--metadata=1', '--level', '0', '--raid-devices', 2,
                       '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
+
+        self.assertEqual(2, mock_list_parts.call_count)
+        mock_list_parts.assert_has_calls([
+            mock.call(x) for x in ['/dev/sda', '/dev/sdb']
+        ])
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_invalid_raid_config(self, mocked_execute):
@@ -3291,8 +3321,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                    self.hardware.create_configuration,
                                    self.node, [])
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_create_configuration_partitions_detected(self, mocked_execute):
+    def test_create_configuration_partitions_detected(self, mocked_execute,
+                                                      mock_list_parts):
         raid_config = {
             "logical_disks": [
                 {
@@ -3307,23 +3339,28 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 },
             ]
         }
+        mock_list_parts.side_effect = [
+            [],
+            [{'partition_name': '/dev/sdb1'}],
+        ]
         self.node['target_raid_config'] = raid_config
         device1 = hardware.BlockDevice('/dev/sda', 'sda', 107374182400, True)
         device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
-        partition1 = hardware.BlockDevice('/dev/sdb1', 'sdb1', 268435456, True)
         self.hardware.list_block_devices = mock.Mock()
-        self.hardware.list_block_devices.side_effect = [
-            [device1, device2],  # pre-flight validation call
-            [device1, device2],
-            [device1, device2, partition1]]
+        self.hardware.list_block_devices.return_value = [
+            device1, device2
+        ]
 
         self.assertRaises(errors.SoftwareRAIDError,
                           self.hardware.create_configuration,
                           self.node, [])
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_device_handling_failures(self,
-                                                           mocked_execute):
+                                                           mocked_execute,
+                                                           mock_list_parts):
         raid_config = {
             "logical_disks": [
                 {
@@ -3386,9 +3423,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                self.hardware.create_configuration,
                                self.node, [])
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_device_handling_failures_raid5(
-            self, mocked_execute):
+            self, mocked_execute, mock_list_parts):
         raid_config = {
             "logical_disks": [
                 {
@@ -3459,8 +3498,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         result = self.hardware.create_configuration(self.node, [])
         self.assertEqual(result, {})
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_create_configuration_with_nvme(self, mocked_execute):
+    def test_create_configuration_with_nvme(self, mocked_execute,
+                                            mock_list_parts):
         raid_config = {
             "logical_disks": [
                 {
@@ -3524,8 +3566,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/nvme0n1p2', '/dev/nvme1n1p2')])
         self.assertEqual(raid_config, result)
 
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_create_configuration_failure_with_nvme(self, mocked_execute):
+    def test_create_configuration_failure_with_nvme(self, mocked_execute,
+                                                    mock_list_parts):
         raid_config = {
             "logical_disks": [
                 {

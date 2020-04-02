@@ -1528,21 +1528,21 @@ class GenericHardwareManager(HardwareManager):
         # Log the validated target_raid_configuration.
         LOG.debug("Target Software RAID configuration: %s", raid_config)
 
-        # Make sure there are no partitions yet (or left behind).
-        block_devices = self.list_block_devices()
-        block_devices_partitions = self.list_block_devices(
-            include_partitions=True)
-        # TODO(dtantsur): limit this validation to only the discs involved the
-        # software RAID.
-        if len(block_devices) != len(block_devices_partitions):
-            partitions = ' '.join(
-                partition.name for partition in block_devices_partitions)
-            msg = "Partitions detected during RAID config: {}". format(
-                  partitions)
-            raise errors.SoftwareRAIDError(msg)
-
         block_devices, logical_disks = raid_utils.get_block_devices_for_raid(
-            block_devices, logical_disks)
+            self.list_block_devices(), logical_disks)
+        # Make sure there are no partitions yet (or left behind).
+        with_parts = []
+        for dev_name in block_devices:
+            try:
+                if disk_utils.list_partitions(dev_name):
+                    with_parts.append(dev_name)
+            except processutils.ProcessExecutionError:
+                # Presumably no partitions (or no partition table)
+                continue
+        if with_parts:
+            msg = ("Partitions detected on devices %s during RAID config"
+                   % ', '.join(with_parts))
+            raise errors.SoftwareRAIDError(msg)
 
         parted_start_dict = {}
         # Create an MBR partition table on each disk.
