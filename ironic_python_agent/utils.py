@@ -30,6 +30,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import base64
+from oslo_serialization import jsonutils
 from oslo_utils import units
 
 from ironic_python_agent import errors
@@ -70,6 +71,8 @@ COLLECT_LOGS_COMMANDS = {
 
 DEVICE_EXTRACTOR = re.compile(r'^(?:(.*\d)p|(.*\D))(?:\d+)$')
 
+PARTED_TABLE_TYPE_REGEX = re.compile(r'^.*partition\s+table\s*:\s*(gpt|msdos)',
+                                     re.IGNORECASE)
 PARTED_ESP_PATTERN = re.compile(r'^\s*(\d+)\s.*\s\s.*\s.*esp(,|\s|$).*$')
 
 
@@ -452,6 +455,159 @@ def extract_device(part):
     if not m:
         return None
     return (m.group(1) or m.group(2))
+
+
+# See ironic.drivers.utils.get_node_capability
+def _parse_capabilities_str(cap_str):
+    """Extract capabilities from string.
+
+    :param cap_str: string meant to meet key1:value1,key2:value2 format
+    :return: a dictionnary
+    """
+    LOG.debug("Parsing capability string %s", cap_str)
+    capabilities = {}
+
+    for node_capability in cap_str.split(','):
+        parts = node_capability.split(':')
+        if len(parts) == 2 and parts[0] and parts[1]:
+            capabilities[parts[0]] = parts[1]
+        else:
+            LOG.warning("Ignoring malformed capability '%s'. "
+                        "Format should be 'key:val'.", node_capability)
+
+    LOG.debug("Parsed capabilities %s", capabilities)
+
+    return capabilities
+
+
+# See ironic.common.utils.parse_instance_info_capabilities. Same except that
+# we do not handle node.properties.capabilities and
+# node.instance_info.capabilities differently
+def parse_capabilities(root):
+    """Extract capabilities from provided root dictionary-behaving object.
+
+    root.get('capabilities', {}) value can either be a dict, or a json str, or
+    a key1:value1,key2:value2 formatted string.
+
+    :param root: Anything behaving like a dict and containing capabilities
+                 formatted as expected. Can be node.get('properties', {}),
+                 node.get('instance_info', {}).
+    :returns: A dictionary with the capabilities if found and well formatted,
+              otherwise an empty dictionary.
+    """
+
+    capabilities = root.get('capabilities', {})
+    if isinstance(capabilities, str):
+        try:
+            capabilities = jsonutils.loads(capabilities)
+        except (ValueError, TypeError):
+            capabilities = _parse_capabilities_str(capabilities)
+
+    if not isinstance(capabilities, dict):
+        LOG.warning("Invalid capabilities %s", capabilities)
+        return {}
+
+    return capabilities
+
+
+def _is_secure_boot(instance_info_caps, node_caps):
+    """Extract node secure boot property"""
+    return 'true' == str(instance_info_caps.get(
+        'secure_boot', node_caps.get('secure_boot', 'false'))).lower()
+
+
+# TODO(rg): This method should be mutualized with the one found in
+# ironic.drivers.modules.boot_mode_utils.
+# The only difference here:
+# 1. node is a dict, not an ironic.objects.node
+# 2. implicit bios boot mode when using trusted boot capability is removed:
+# there is no reason why trusted_boot should imply bios boot mode.
+def get_node_boot_mode(node):
+    """Returns the node boot mode.
+
+    It returns 'uefi' if 'secure_boot' is set to 'true' in
+    'instance_info/capabilities' of node. Otherwise it directly look for boot
+    mode hints into
+
+    :param node: dictionnary.
+    :returns: 'bios' or 'uefi'
+    """
+    instance_info = node.get('instance_info', {})
+    instance_info_caps = parse_capabilities(instance_info)
+    node_caps = parse_capabilities(node.get('properties', {}))
+
+    if _is_secure_boot(instance_info_caps, node_caps):
+        LOG.debug('Deploy boot mode is implicitely uefi for because secure '
+                  'boot is activated.')
+        return 'uefi'
+
+    ramdisk_boot_mode = 'uefi' if os.path.isdir('/sys/firmware/efi') \
+        else 'bios'
+
+    # Priority order implemented in ironic
+    boot_mode = instance_info.get(
+        'deploy_boot_mode',
+        node_caps.get(
+            'boot_mode',
+            node.get('driver_internal_info', {}).get('deploy_boot_mode',
+                                                     ramdisk_boot_mode))
+    )
+
+    boot_mode = str(boot_mode).lower()
+    if boot_mode not in ['uefi', 'bios']:
+        boot_mode = ramdisk_boot_mode
+
+    LOG.debug('Deploy boot mode: %s', boot_mode)
+
+    return boot_mode
+
+
+def get_partition_table_type_from_specs(node):
+    """Returns the node partition label, gpt or msdos.
+
+    If boot mode is uefi, return gpt. Else, choice is open, look for
+    disk_label capabilities (instance_info has priority over properties).
+
+    :param node:
+    :return: gpt or msdos
+    """
+    instance_info_caps = parse_capabilities(node.get('instance_info', {}))
+    node_caps = parse_capabilities(node.get('properties', {}))
+
+    # Let's not make things more complicated than they already are.
+    # We currently just ignore the specified disk label in case of uefi,
+    # and force gpt, even if msdos is possible. Small amends needed if ever
+    # needed (doubt that)
+
+    boot_mode = get_node_boot_mode(node)
+    if boot_mode == 'uefi':
+        return 'gpt'
+
+    disk_label = instance_info_caps.get(
+        'disk_label',
+        node_caps.get('disk_label', 'msdos')
+    )
+    return 'gpt' if disk_label == 'gpt' else 'msdos'
+
+
+def scan_partition_table_type(device):
+    """Get partition table type, msdos or gpt.
+
+    :param device_name: the name of the device
+    :return: msdos, gpt or unknown
+    """
+    out, _u = execute('parted', '-s', device, '--', 'print')
+    out = out.splitlines()
+
+    for line in out:
+        m = PARTED_TABLE_TYPE_REGEX.match(line)
+        if m:
+            return m.group(1)
+
+    LOG.warning("Unable to get partition table type for device %s.",
+                device)
+
+    return 'unknown'
 
 
 def get_efi_part_on_device(device):

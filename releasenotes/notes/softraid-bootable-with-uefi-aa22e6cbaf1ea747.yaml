@@ -1,0 +1,12 @@
+---
+features:
+  |
+  - Adds UEFI boot support for Software RAID, and for partition table
+    creation based upon boot mode in use.
+upgrade:
+  |
+  - The type of the partition table created for Software RAID is now based
+    upon the boot mode in use (GPT for UEFI or if explicitly passed via the
+    instance's capabilities or the node's properties, otherwise MSDOS).
+  - The amount of reserved space on the drives now also depends on the boot
+    mode (128MiB for UEFI/GPT, 8MiB for BIOS/GPT, and one sector otherwise).

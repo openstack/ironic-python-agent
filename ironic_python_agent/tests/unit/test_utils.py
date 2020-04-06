@@ -644,7 +644,7 @@ class TestUtils(testtools.TestCase):
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_efi_part_on_device_without_fs(self, mocked_execute):
-        parted_ret = PARTED_OUTPUT_UNFORMATTED_NOFS.format('gpt')
+        parted_ret = PARTED_OUTPUT_UNFORMATTED_NOFS
         mocked_execute.side_effect = [
             (parted_ret, None)
         ]
@@ -663,6 +663,267 @@ class TestUtils(testtools.TestCase):
         mocked_execute.assert_has_calls(
             [mock.call('parted', '-s', '/dev/sda', '--', 'print')]
         )
+
+    def test_extract_capability_from_dict(self):
+        expected_dict = {"hello": "world"}
+        root = {"capabilities": expected_dict}
+
+        self.assertDictEqual(
+            expected_dict,
+            utils.parse_capabilities(root))
+
+    def test_extract_capability_from_json_string(self):
+        root = {'capabilities': '{"test": "world"}'}
+        self.assertDictEqual(
+            {"test": "world"},
+            utils.parse_capabilities(root))
+
+    def test_extract_capability_from_old_format_caps(self):
+        root = {'capabilities': 'test:world:2,hello:test1,badformat'}
+        self.assertDictEqual(
+            {'hello': 'test1'},
+            utils.parse_capabilities(root))
+
+    @mock.patch.object(os.path, 'isdir', return_value=True, autospec=True)
+    def test_boot_mode_fallback_uefi(self, mock_os):
+        node = {}
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('uefi', boot_mode)
+        mock_os.assert_called_once_with('/sys/firmware/efi')
+
+    @mock.patch.object(os.path, 'isdir', return_value=False, autospec=True)
+    def test_boot_mode_fallback_bios(self, mock_os):
+        node = {}
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('bios', boot_mode)
+        mock_os.assert_called_once_with('/sys/firmware/efi')
+
+    @mock.patch.object(os.path, 'isdir', return_value=False, autospec=True)
+    def test_boot_mode_from_driver_internal_info(self, mock_os):
+        node = {
+            'driver_internal_info': {
+                'deploy_boot_mode': 'uefi'
+            },
+        }
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('uefi', boot_mode)
+        mock_os.assert_called_once_with('/sys/firmware/efi')
+
+    @mock.patch.object(os.path, 'isdir', return_value=False, autospec=True)
+    def test_boot_mode_from_properties_str(self, mock_os):
+        node = {
+            'driver_internal_info': {
+                'deploy_boot_mode': 'bios'
+            },
+            'properties': {
+                'capabilities': 'boot_mode:uefi'
+            }
+        }
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('uefi', boot_mode)
+        mock_os.assert_called_once_with('/sys/firmware/efi')
+
+    @mock.patch.object(os.path, 'isdir', return_value=False, autospec=True)
+    def test_boot_mode_from_properties_dict(self, mock_os):
+        node = {
+            'driver_internal_info': {
+                'deploy_boot_mode': 'bios'
+            },
+            'properties': {
+                'capabilities': {
+                    'boot_mode': 'uefi'
+                }
+            }
+        }
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('uefi', boot_mode)
+        mock_os.assert_called_once_with('/sys/firmware/efi')
+
+    @mock.patch.object(os.path, 'isdir', return_value=False, autospec=True)
+    def test_boot_mode_from_properties_json_str(self, mock_os):
+        node = {
+            'driver_internal_info': {
+                'deploy_boot_mode': 'bios'
+            },
+            'properties': {
+                'capabilities': '{"boot_mode": "uefi"}'
+            }
+        }
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('uefi', boot_mode)
+        mock_os.assert_called_once_with('/sys/firmware/efi')
+
+    @mock.patch.object(os.path, 'isdir', return_value=False, autospec=True)
+    def test_boot_mode_override_with_instance_info(self, mock_os):
+        node = {
+            'driver_internal_info': {
+                'deploy_boot_mode': 'bios'
+            },
+            'properties': {
+                'capabilities': {
+                    'boot_mode': 'bios'
+                }
+            },
+            'instance_info': {
+                'deploy_boot_mode': 'uefi'
+            }
+        }
+
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('uefi', boot_mode)
+        mock_os.assert_called_once_with('/sys/firmware/efi')
+
+    @mock.patch.object(os.path, 'isdir', return_value=False, autospec=True)
+    def test_boot_mode_implicit_with_secure_boot(self, mock_os):
+        node = {
+            'driver_internal_info': {
+                'deploy_boot_mode': 'bios'
+            },
+            'properties': {
+                'capabilities': {
+                    'boot_mode': 'bios',
+                    'secure_boot': 'TrUe'
+                }
+            },
+            'instance_info': {
+                'deploy_boot_mode': 'bios'
+            }
+        }
+
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('uefi', boot_mode)
+        mock_os.assert_has_calls([])
+
+    @mock.patch.object(os.path, 'isdir', return_value=False, autospec=True)
+    def test_secure_boot_overriden_with_instance_info_caps(self, mock_os):
+        node = {
+            'driver_internal_info': {
+                'deploy_boot_mode': 'bios'
+            },
+            'properties': {
+                'capabilities': {
+                    'boot_mode': 'bios',
+                    'secure_boot': 'false'
+                }
+            },
+            'instance_info': {
+                'deploy_boot_mode': 'bios',
+                'capabilities': {
+                    'secure_boot': 'true'
+                }
+            }
+        }
+
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('uefi', boot_mode)
+        mock_os.assert_has_calls([])
+
+    @mock.patch.object(os.path, 'isdir', return_value=True, autospec=True)
+    def test_boot_mode_invalid_cap(self, mock_os):
+        # In case of invalid boot mode specified we fallback to ramdisk boot
+        # mode
+        node = {
+            'driver_internal_info': {
+                'deploy_boot_mode': 'bios'
+            },
+            'properties': {
+                'capabilities': {
+                    'boot_mode': 'sfkshfks'
+                }
+            }
+        }
+        boot_mode = utils.get_node_boot_mode(node)
+        self.assertEqual('uefi', boot_mode)
+        mock_os.assert_called_once_with('/sys/firmware/efi')
+
+    @mock.patch.object(utils, 'get_node_boot_mode', return_value='bios',
+                       autospec=True)
+    def test_specified_partition_table_type(self, mock_boot_mode):
+        node = {}
+        label = utils.get_partition_table_type_from_specs(node)
+        self.assertEqual('msdos', label)
+        mock_boot_mode.assert_called_once_with(node)
+
+    @mock.patch.object(utils, 'get_node_boot_mode', return_value='uefi',
+                       autospec=True)
+    def test_specified_partition_table_type_gpt(self, mock_boot_mode):
+        node = {}
+        label = utils.get_partition_table_type_from_specs(node)
+        self.assertEqual('gpt', label)
+        mock_boot_mode.assert_called_once_with(node)
+
+    @mock.patch.object(utils, 'get_node_boot_mode', return_value='bios',
+                       autospec=True)
+    def test_specified_partition_table_type_with_disk_label(self,
+                                                            mock_boot_mode):
+        node = {
+            'properties': {
+                'capabilities': 'disk_label:gpt'
+            }
+        }
+        label = utils.get_partition_table_type_from_specs(node)
+        self.assertEqual('gpt', label)
+        mock_boot_mode.assert_has_calls([])
+
+    @mock.patch.object(utils, 'get_node_boot_mode', return_value='bios',
+                       autospec=True)
+    def test_specified_partition_table_type_with_instance_disk_label(
+            self, mock_boot_mode):
+        # In case of invalid boot mode specified we fallback to ramdisk boot
+        # mode
+        node = {
+            'instance_info': {
+                'capabilities': 'disk_label:gpt'
+            }
+        }
+        label = utils.get_partition_table_type_from_specs(node)
+        self.assertEqual('gpt', label)
+        mock_boot_mode.assert_has_calls([])
+
+    @mock.patch.object(utils, 'get_node_boot_mode', return_value='uefi',
+                       autospec=True)
+    def test_specified_partition_table_type_disk_label_ignored_with_uefi(
+            self, mock_boot_mode):
+        # In case of invalid boot mode specified we fallback to ramdisk boot
+        # mode
+        node = {
+            'instance_info': {
+                'capabilities': 'disk_label:msdos'
+            }
+        }
+        label = utils.get_partition_table_type_from_specs(node)
+        self.assertEqual('gpt', label)
+        mock_boot_mode.assert_has_calls([])
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_scan_partition_table_type_gpt(self, mocked_execute):
+        self._test_scan_partition_table_by_type(mocked_execute, 'gpt', 'gpt')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_scan_partition_table_type_msdos(self, mocked_execute):
+        self._test_scan_partition_table_by_type(mocked_execute, 'msdos',
+                                                'msdos')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_scan_partition_table_type_unknown(self, mocked_execute):
+        self._test_scan_partition_table_by_type(mocked_execute, 'whatever',
+                                                'unknown')
+
+    def _test_scan_partition_table_by_type(self, mocked_execute,
+                                           table_type_output,
+                                           expected_table_type):
+
+        parted_ret = PARTED_OUTPUT_UNFORMATTED.format(table_type_output)
+
+        mocked_execute.side_effect = [
+            (parted_ret, None),
+        ]
+
+        ret = utils.scan_partition_table_type('hello')
+        mocked_execute.assert_has_calls(
+            [mock.call('parted', '-s', 'hello', '--', 'print')]
+        )
+        self.assertEqual(expected_table_type, ret)
 
 
 class TestRemoveKeys(testtools.TestCase):

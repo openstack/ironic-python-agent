@@ -17,6 +17,7 @@ import os
 import shutil
 import tempfile
 
+from ironic_lib import utils as ilib_utils
 import mock
 from oslo_concurrency import processutils
 
@@ -59,7 +60,9 @@ class TestImageExtension(base.IronicAgentTest):
         self.assertEqual(2, mock_dispatch.call_count)
         mock_grub2.assert_called_once_with(
             self.fake_dev, root_uuid=self.fake_root_uuid,
-            efi_system_part_uuid=None, prep_boot_part_uuid=None)
+            efi_system_part_uuid=None, prep_boot_part_uuid=None,
+            target_boot_mode='bios'
+        )
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
     @mock.patch.object(iscsi, 'clean_up', autospec=True)
@@ -74,7 +77,9 @@ class TestImageExtension(base.IronicAgentTest):
         mock_uefi.return_value = False
         self.agent_extension.install_bootloader(
             root_uuid=self.fake_root_uuid,
-            efi_system_part_uuid=self.fake_efi_system_part_uuid)
+            efi_system_part_uuid=self.fake_efi_system_part_uuid,
+            target_boot_mode='uefi'
+        )
         mock_dispatch.assert_any_call('get_os_install_device')
         mock_dispatch.assert_any_call('get_boot_info')
         self.assertEqual(2, mock_dispatch.call_count)
@@ -82,9 +87,12 @@ class TestImageExtension(base.IronicAgentTest):
             self.fake_dev,
             root_uuid=self.fake_root_uuid,
             efi_system_part_uuid=self.fake_efi_system_part_uuid,
-            prep_boot_part_uuid=None)
+            prep_boot_part_uuid=None,
+            target_boot_mode='uefi'
+        )
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
+    @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
@@ -133,6 +141,7 @@ class TestImageExtension(base.IronicAgentTest):
         mock_utils_efi_part.assert_called_once_with(self.fake_dev)
         self.assertEqual(8, mock_execute.call_count)
 
+    @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
@@ -180,6 +189,7 @@ class TestImageExtension(base.IronicAgentTest):
         mock_utils_efi_part.assert_called_once_with(self.fake_dev)
         self.assertEqual(8, mock_execute.call_count)
 
+    @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
@@ -234,6 +244,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_utils_efi_part.assert_called_once_with(self.fake_dev)
         self.assertEqual(10, mock_execute.call_count)
 
+    @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
@@ -306,9 +317,12 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             self.fake_dev,
             root_uuid=self.fake_root_uuid,
             efi_system_part_uuid=None,
-            prep_boot_part_uuid=self.fake_prep_boot_part_uuid)
+            prep_boot_part_uuid=self.fake_prep_boot_part_uuid,
+            target_boot_mode='bios'
+        )
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
+    @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(iscsi, 'clean_up', autospec=True)
     def test_install_bootloader_failure(self, mock_iscsi_clean, mock_execute,
@@ -350,12 +364,14 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                     mock.call(('chroot %s /bin/sh -c '
                               '"grub-install %s"' %
                                (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
                                '"grub-mkconfig -o '
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/dev',
                               attempts=3, delay_on_retry=True),
                     mock.call('umount', self.fake_dir + '/proc',
@@ -400,12 +416,14 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               '"grub-install %s"' %
                                (self.fake_dir, self.fake_prep_boot_part)),
                               shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
                                '"grub-mkconfig -o '
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/dev',
                               attempts=3, delay_on_retry=True),
                     mock.call('umount', self.fake_dir + '/proc',
@@ -442,7 +460,8 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
         image._install_grub2(
             self.fake_dev, root_uuid=self.fake_root_uuid,
-            efi_system_part_uuid=self.fake_efi_system_part_uuid)
+            efi_system_part_uuid=self.fake_efi_system_part_uuid,
+            target_boot_mode='uefi')
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
                     mock.call('mount', '-o', 'bind', '/dev',
@@ -455,19 +474,26 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               self.fake_dir + '/sys'),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
+                    mock.call(('chroot %s /bin/sh -c "grub-install"' %
+                               self.fake_dir), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
-                              '"grub-install %s"' %
-                               (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
-                    mock.call(('chroot %s /bin/sh -c '
-                              '"grub-install %s --removable"' %
-                               (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
+                              '"grub-install --removable"' %
+                               self.fake_dir), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                    mock.call(
+                        'umount', self.fake_dir + '/boot/efi',
+                        attempts=3, delay_on_retry=True),
+                    mock.call('mount', self.fake_efi_system_part,
+                              '/tmp/fake-dir/boot/efi'),
                     mock.call(('chroot %s /bin/sh -c '
                                '"grub-mkconfig -o '
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('umount', self.fake_dir + '/dev',
@@ -525,21 +551,22 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               self.fake_dir + '/sys'),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
+                    mock.call(('chroot %s /bin/sh -c "grub-install"' %
+                               self.fake_dir), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
-                              '"grub-install %s"' %
-                               (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
-                    mock.call(('chroot %s /bin/sh -c '
-                              '"grub-install %s --removable"' %
-                               (self.fake_dir, self.fake_dev)), shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
-                    mock.call(('chroot %s /bin/sh -c '
-                               '"grub-mkconfig -o '
-                               '/boot/grub/grub.cfg"' % self.fake_dir),
+                              '"grub-install --removable"' % self.fake_dir),
                               shell=True,
-                              env_variables={'PATH': '/sbin:/bin:/usr/sbin'}),
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                    # Call from for loop
                     mock.call('umount', self.fake_dir + '/boot/efi',
-                              attempts=3, delay_on_retry=True)]
+                              attempts=3, delay_on_retry=True),
+                    # Call from finally
+                    mock.call('umount', self.fake_dir + '/boot/efi',
+                              attempts=3, delay_on_retry=True)
+                    ]
         mock_execute.assert_has_calls(expected)
 
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
@@ -594,6 +621,374 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_get_part_uuid.assert_called_once_with(self.fake_dev,
                                                    uuid=self.fake_root_uuid)
         self.assertFalse(mock_dispatch.called)
+
+    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    def test__prepare_boot_partitions_for_softraid_uefi_gpt(
+            self, mock_efi_part, mock_execute, mock_dispatch):
+        mock_efi_part.return_value = '12'
+        mock_execute.side_effect = [
+            ('451', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sda12: dsfkgsdjfg', None),  # blkid
+            (None, None),  # cp
+            ('452', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sdb14: whatever', None),  # blkid
+            (None, None),  # cp
+        ]
+
+        efi_parts = image._prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
+            target_boot_mode='uefi')
+
+        mock_efi_part.assert_called_once_with('/dev/md0')
+        expected = [
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:451s:+128MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-0', '/dev/sda'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
+                      '/dev/sda'),
+            mock.call('cp', '/dev/md0p12', '/dev/sda12'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:452s:+128MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-1', '/dev/sdb'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
+                      '/dev/sdb'),
+            mock.call('cp', '/dev/md0p12', '/dev/sdb14')
+        ]
+        mock_execute.assert_has_calls(expected, any_order=False)
+        self.assertEqual(efi_parts, ['/dev/sda12', '/dev/sdb14'])
+
+    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(ilib_utils, 'mkfs', autospec=True)
+    def test__prepare_boot_partitions_for_softraid_uefi_gpt_esp_not_found(
+            self, mock_mkfs, mock_efi_part, mock_execute, mock_dispatch):
+        mock_efi_part.return_value = None
+        mock_execute.side_effect = [
+            ('451', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sda12: dsfkgsdjfg', None),  # blkid
+            ('452', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sdb14: whatever', None),  # blkid
+        ]
+
+        efi_parts = image._prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
+            target_boot_mode='uefi')
+
+        mock_efi_part.assert_called_once_with('/dev/md0')
+        expected = [
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:451s:+128MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-0', '/dev/sda'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
+                      '/dev/sda'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:452s:+128MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-1', '/dev/sdb'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
+                      '/dev/sdb'),
+        ]
+        mock_execute.assert_has_calls(expected, any_order=False)
+        mock_mkfs.assert_has_calls([
+            mock.call(path='/dev/sda12', label='efi-part', fs='vfat'),
+            mock.call(path='/dev/sdb14', label='efi-part-b', fs='vfat'),
+        ], any_order=False)
+        self.assertEqual(efi_parts, ['/dev/sda12', '/dev/sdb14'])
+
+    def test__prepare_boot_partitions_for_softraid_uefi_gpt_efi_provided(
+            self, mock_execute, mock_dispatch):
+        mock_execute.side_effect = [
+            ('451', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sda12: dsfkgsdjfg', None),  # blkid
+            (None, None),  # cp
+            ('452', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sdb14: whatever', None),  # blkid
+            (None, None),  # cp
+        ]
+
+        efi_parts = image._prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], '/dev/md0p15',
+            target_boot_mode='uefi')
+
+        expected = [
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:451s:+128MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-0', '/dev/sda'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
+                      '/dev/sda'),
+            mock.call('cp', '/dev/md0p15', '/dev/sda12'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:452s:+128MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-1', '/dev/sdb'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
+                      '/dev/sdb'),
+            mock.call('cp', '/dev/md0p15', '/dev/sdb14')
+        ]
+        mock_execute.assert_has_calls(expected, any_order=False)
+        self.assertEqual(efi_parts, ['/dev/sda12', '/dev/sdb14'])
+
+    @mock.patch.object(utils, 'scan_partition_table_type', autospec=True,
+                       return_value='msdos')
+    def test__prepare_boot_partitions_for_softraid_bios_msdos(
+            self, mock_label_scan, mock_execute, mock_dispatch):
+
+        efi_parts = image._prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], 'notusedanyway',
+            target_boot_mode='bios')
+
+        expected = [
+            mock.call('/dev/sda'),
+            mock.call('/dev/sdb'),
+        ]
+        mock_label_scan.assert_has_calls(expected, any_order=False)
+        self.assertEqual(efi_parts, [])
+
+    @mock.patch.object(utils, 'scan_partition_table_type', autospec=True,
+                       return_value='gpt')
+    def test__prepare_boot_partitions_for_softraid_bios_gpt(
+            self, mock_label_scan, mock_execute, mock_dispatch):
+
+        mock_execute.side_effect = [
+            ('whatever\n314', None),  # sgdisk -F
+            (None, None),  # bios boot grub
+            ('warning message\n914', None),  # sgdisk -F
+            (None, None),  # bios boot grub
+        ]
+
+        efi_parts = image._prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], 'notusedanyway',
+            target_boot_mode='bios')
+
+        expected_scan = [
+            mock.call('/dev/sda'),
+            mock.call('/dev/sdb'),
+        ]
+
+        mock_label_scan.assert_has_calls(expected_scan, any_order=False)
+
+        expected_exec = [
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:314s:+2MiB', '-t', '0:ef02', '-c',
+                      '0:bios-boot-part-0', '/dev/sda'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:914s:+2MiB', '-t', '0:ef02', '-c',
+                      '0:bios-boot-part-1', '/dev/sdb'),
+        ]
+
+        mock_execute.assert_has_calls(expected_exec, any_order=False)
+        self.assertEqual(efi_parts, [])
+
+    @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: True)
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    @mock.patch.object(hardware, 'md_restart', autospec=True)
+    @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_holder_disks', autospec=True,
+                       return_value=['/dev/sda', '/dev/sdb'])
+    @mock.patch.object(os, 'environ', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, '_prepare_boot_partitions_for_softraid',
+                       autospec=True,
+                       return_value=['/dev/sda1', '/dev/sdb2'])
+    @mock.patch.object(image, '_has_dracut',
+                       autospec=True,
+                       return_value=False)
+    def test__install_grub2_softraid_uefi_gpt(
+            self, mock_dracut,
+            mock_prepare, mock_get_part_uuid, mkdir_mock, environ_mock,
+            mock_holder, mock_md_get_raid_devices, mock_restart,
+            mock_is_md_device,
+            mock_execute, mock_dispatch):
+
+        mock_get_part_uuid.side_effect = [self.fake_root_part,
+                                          self.fake_efi_system_part]
+        environ_mock.get.return_value = '/sbin'
+        mock_is_md_device.return_value = True
+        mock_md_get_raid_devices.return_value = {}
+
+        image._install_grub2(
+            self.fake_dev, root_uuid=self.fake_root_uuid,
+            efi_system_part_uuid=self.fake_efi_system_part_uuid,
+            target_boot_mode='uefi')
+
+        expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mount', '-o', 'bind', '/dev',
+                              self.fake_dir + '/dev'),
+                    mock.call('mount', '-o', 'bind', '/proc',
+                              self.fake_dir + '/proc'),
+                    mock.call('mount', '-o', 'bind', '/run',
+                              self.fake_dir + '/run'),
+                    mock.call('mount', '-t', 'sysfs', 'none',
+                              self.fake_dir + '/sys'),
+                    mock.call('mount', '/dev/sda1',
+                              self.fake_dir + '/boot/efi'),
+                    mock.call(('chroot %s /bin/sh -c "grub-install"' %
+                               self.fake_dir), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                    mock.call(('chroot %s /bin/sh -c '
+                               '"grub-install --removable"' %
+                               self.fake_dir), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                    mock.call(
+                        'umount', self.fake_dir + '/boot/efi',
+                        attempts=3, delay_on_retry=True),
+                    mock.call('mount', '/dev/sdb2',
+                              self.fake_dir + '/boot/efi'),
+                    mock.call(('chroot %s /bin/sh -c "grub-install"' %
+                               self.fake_dir), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                    mock.call(('chroot %s /bin/sh -c '
+                               '"grub-install --removable"' %
+                               self.fake_dir), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                    mock.call(
+                        'umount', self.fake_dir + '/boot/efi',
+                        attempts=3, delay_on_retry=True),
+                    mock.call('mount', '/dev/sda1',
+                              '/tmp/fake-dir/boot/efi'),
+                    mock.call(('chroot %s /bin/sh -c '
+                               '"grub-mkconfig -o '
+                               '/boot/grub/grub.cfg"' % self.fake_dir),
+                              shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                    mock.call('umount', self.fake_dir + '/boot/efi',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('umount', self.fake_dir + '/dev',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('umount', self.fake_dir + '/proc',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('umount', self.fake_dir + '/run',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('umount', self.fake_dir + '/sys',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('umount', self.fake_dir, attempts=3,
+                              delay_on_retry=True)]
+        mock_execute.assert_has_calls(expected)
+        mock_get_part_uuid.assert_any_call(self.fake_dev,
+                                           uuid=self.fake_root_uuid)
+        mock_get_part_uuid.assert_any_call(self.fake_dev,
+                                           uuid=self.fake_efi_system_part_uuid)
+        self.assertFalse(mock_dispatch.called)
+        mock_prepare.assert_called_once_with(self.fake_dev,
+                                             ['/dev/sda', '/dev/sdb'],
+                                             self.fake_efi_system_part, 'uefi')
+        mock_restart.assert_called_once_with(self.fake_dev)
+        mock_holder.assert_called_once_with(self.fake_dev)
+        mock_dracut.assert_called_once_with(self.fake_dir)
+
+    @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: True)
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    @mock.patch.object(hardware, 'md_restart', autospec=True)
+    @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_holder_disks', autospec=True,
+                       return_value=['/dev/sda', '/dev/sdb'])
+    @mock.patch.object(os, 'environ', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, '_prepare_boot_partitions_for_softraid',
+                       autospec=True,
+                       return_value=[])
+    @mock.patch.object(image, '_has_dracut',
+                       autospec=True,
+                       return_value=False)
+    def test__install_grub2_softraid_bios(
+            self, mock_dracut,
+            mock_prepare, mock_get_part_uuid, mkdir_mock, environ_mock,
+            mock_holder, mock_md_get_raid_devices, mock_restart,
+            mock_is_md_device,
+            mock_execute, mock_dispatch):
+
+        mock_get_part_uuid.side_effect = [self.fake_root_part,
+                                          self.fake_efi_system_part]
+        environ_mock.get.return_value = '/sbin'
+        mock_is_md_device.return_value = True
+        mock_md_get_raid_devices.return_value = {}
+
+        image._install_grub2(
+            self.fake_dev, root_uuid=self.fake_root_uuid,
+            efi_system_part_uuid=None,
+            target_boot_mode='bios')
+
+        expected = [
+            mock.call('mount', '/dev/fake2', self.fake_dir),
+            mock.call('mount', '-o', 'bind', '/dev',
+                      self.fake_dir + '/dev'),
+            mock.call('mount', '-o', 'bind', '/proc',
+                      self.fake_dir + '/proc'),
+            mock.call('mount', '-o', 'bind', '/run',
+                      self.fake_dir + '/run'),
+            mock.call('mount', '-t', 'sysfs', 'none',
+                      self.fake_dir + '/sys'),
+            mock.call(('chroot %s /bin/sh -c '
+                       '"grub-install %s"' %
+                       (self.fake_dir, '/dev/sda')), shell=True,
+                      env_variables={
+                          'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+            mock.call(('chroot %s /bin/sh -c '
+                       '"grub-install %s"' %
+                       (self.fake_dir, '/dev/sdb')), shell=True,
+                      env_variables={
+                          'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+            mock.call(('chroot %s /bin/sh -c '
+                       '"grub-mkconfig -o '
+                       '/boot/grub/grub.cfg"' % self.fake_dir),
+                      shell=True,
+                      env_variables={
+                          'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+            mock.call('umount', self.fake_dir + '/dev',
+                      attempts=3, delay_on_retry=True),
+            mock.call('umount', self.fake_dir + '/proc',
+                      attempts=3, delay_on_retry=True),
+            mock.call('umount', self.fake_dir + '/run',
+                      attempts=3, delay_on_retry=True),
+            mock.call('umount', self.fake_dir + '/sys',
+                      attempts=3, delay_on_retry=True),
+            mock.call('umount', self.fake_dir, attempts=3,
+                      delay_on_retry=True)]
+        self.assertFalse(mkdir_mock.called)
+        mock_execute.assert_has_calls(expected)
+        mock_get_part_uuid.assert_any_call(self.fake_dev,
+                                           uuid=self.fake_root_uuid)
+        self.assertFalse(mock_dispatch.called)
+        mock_prepare.assert_called_once_with(self.fake_dev,
+                                             ['/dev/sda', '/dev/sdb'],
+                                             None, 'bios')
+        mock_restart.assert_called_once_with(self.fake_dev)
+        mock_holder.assert_called_once_with(self.fake_dev)
+        mock_dracut.assert_called_once_with(self.fake_dir)
 
     @mock.patch.object(image, '_is_bootloader_loaded', autospec=True)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)

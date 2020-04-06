@@ -20,6 +20,7 @@ import shutil
 import stat
 import tempfile
 
+from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 from oslo_log import log
 
@@ -86,6 +87,7 @@ def _get_partition(device, uuid):
             # NOTE(TheJulia): We may want to consider moving towards using
             # findfs in the future, if we're comfortable with the execution
             # and interaction. There is value in either way though.
+            # NOTE(rg): alternative: blkid -l -t UUID=/PARTUUID=
             try:
                 findfs, stderr = utils.execute('findfs', 'UUID=%s' % uuid)
                 return findfs.strip()
@@ -347,14 +349,127 @@ def _manage_uefi(device, efi_system_part_uuid=None):
                 shutil.rmtree(local_path)
 
 
+# TODO(rg): handle PreP boot parts relocation as well
+def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
+                                          target_boot_mode):
+    """Prepare boot partitions when relevant.
+
+    Create either efi partitions or bios boot partitions for softraid,
+    according to both target boot mode and disk holders partition table types.
+
+    :param device: the softraid device path
+    :param holders: the softraid drive members
+    :param efi_part: when relevant the efi partition coming from the image
+    deployed on softraid device, can be/is often None
+    :param target_boot_mode: target boot mode can be bios/uefi/None
+    or anything else for unspecified
+
+    :returns: the efi partition paths on softraid disk holders when target
+    boot mode is uefi, empty list otherwise.
+    """
+    efi_partitions = []
+
+    # Actually any fat partition could be a candidate. Let's assume the
+    # partition also has the esp flag
+    if target_boot_mode == 'uefi':
+        if not efi_part:
+
+            LOG.debug("No explicit EFI partition provided. Scanning for any "
+                      "EFI partition located on software RAID device %s to "
+                      "be relocated",
+                      device)
+
+            # NOTE: for whole disk images, no efi part uuid will be provided.
+            # Let's try to scan for esp on the root softraid device. If not
+            # found, it's fine in most cases to just create an empty esp and
+            # let grub handle the magic.
+            efi_part = utils.get_efi_part_on_device(device)
+            if efi_part:
+                efi_part = '{}p{}'.format(device, efi_part)
+
+        # We know that we kept this space when configuring raid,see
+        # hardware.GenericHardwareManager.create_configuration.
+        # We could also directly get the EFI partition size.
+        partsize_mib = 128
+        partlabel_prefix = 'uefi-holder-'
+        for number, holder in enumerate(holders):
+            # NOTE: see utils.get_partition_table_type_from_specs
+            # for uefi we know that we have setup a gpt partition table,
+            # sgdisk can be used to edit table, more user friendly
+            # for alignment and relative offsets
+            partlabel = '{}{}'.format(partlabel_prefix, number)
+            out, _u = utils.execute('sgdisk', '-F', holder)
+            start_sector = '{}s'.format(out.splitlines()[-1].strip())
+            out, _u = utils.execute(
+                'sgdisk', '-n', '0:{}:+{}MiB'.format(start_sector,
+                                                     partsize_mib),
+                '-t', '0:ef00', '-c', '0:{}'.format(partlabel), holder)
+
+            # Refresh part table
+            utils.execute("partprobe")
+            utils.execute("blkid")
+
+            target_part, _u = utils.execute(
+                "blkid", "-l", "-t", "PARTLABEL={}".format(partlabel), holder)
+
+            target_part = target_part.splitlines()[-1].split(':', 1)[0]
+
+            LOG.debug("Efi partition %s created on disk holder %s",
+                      target_part, holder)
+
+            if efi_part:
+                LOG.debug("Relocating efi %s to holder part %s", efi_part,
+                          target_part)
+                # Blockdev copy
+                utils.execute("cp", efi_part, target_part)
+            else:
+                # Creating a label is just to make life easier
+                if number == 0:
+                    fslabel = 'efi-part'
+                else:
+                    # bak, label is limited to 11 chars
+                    fslabel = 'efi-part-b'
+                ilib_utils.mkfs(fs='vfat', path=target_part, label=fslabel)
+            efi_partitions.append(target_part)
+            # TBD: Would not hurt to destroy source efi part when defined,
+            # for clarity.
+
+    elif target_boot_mode == 'bios':
+        partlabel_prefix = 'bios-boot-part-'
+        for number, holder in enumerate(holders):
+            label = utils.scan_partition_table_type(holder)
+            if label == 'gpt':
+                LOG.debug("Creating bios boot partition on disk holder %s",
+                          holder)
+                out, _u = utils.execute('sgdisk', '-F', holder)
+                start_sector = '{}s'.format(out.splitlines()[-1].strip())
+                partlabel = '{}{}'.format(partlabel_prefix, number)
+                out, _u = utils.execute(
+                    'sgdisk', '-n', '0:{}:+2MiB'.format(start_sector),
+                    '-t', '0:ef02', '-c', '0:{}'.format(partlabel), holder)
+
+            # Q: MBR case, could we dd the boot code from the softraid
+            # (446 first bytes) if we detect a bootloader with
+            # _is_bootloader_loaded?
+            # A: This won't work. Because it includes the address on the
+            # disk, as in virtual disk, where to load the data from.
+            # Since there is a structural difference, this means it will
+            # fail.
+
+    # Just an empty list if not uefi boot mode, nvm, not used anyway
+    return efi_partitions
+
+
 def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
-                   prep_boot_part_uuid=None):
+                   prep_boot_part_uuid=None, target_boot_mode='bios'):
     """Install GRUB2 bootloader on a given device."""
     LOG.debug("Installing GRUB2 bootloader on device %s", device)
 
-    efi_partition = None
+    efi_partitions = None
+    efi_part = None
     efi_partition_mount_point = None
     efi_mounted = False
+    holders = None
 
     # NOTE(TheJulia): Seems we need to get this before ever possibly
     # restart the device in the case of multi-device RAID as pyudev
@@ -379,12 +494,21 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         LOG.info("Skipping installation of bootloader on device %s "
                  "as it is already marked bootable.", device)
         return
+
     try:
         # Mount the partition and binds
         path = tempfile.mkdtemp()
-
         if efi_system_part_uuid:
-            efi_partition = _get_partition(device, uuid=efi_system_part_uuid)
+            efi_part = _get_partition(device, uuid=efi_system_part_uuid)
+            efi_partitions = [efi_part]
+
+        if hardware.is_md_device(device):
+            holders = hardware.get_holder_disks(device)
+            efi_partitions = _prepare_boot_partitions_for_softraid(
+                device, holders, efi_part, target_boot_mode
+            )
+
+        if efi_partitions:
             efi_partition_mount_point = os.path.join(path, "boot/efi")
 
         # For power we want to install grub directly onto the PreP partition
@@ -394,7 +518,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         # If the root device is an md device (or partition),
         # identify the underlying holder disks to install grub.
         if hardware.is_md_device(device):
-            disks = hardware.get_holder_disks(device)
+            disks = holders
         else:
             disks = [device]
 
@@ -403,12 +527,6 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
             utils.execute('mount', '-o', 'bind', fs, path + fs)
 
         utils.execute('mount', '-t', 'sysfs', 'none', path + '/sys')
-
-        if efi_partition:
-            if not os.path.exists(efi_partition_mount_point):
-                os.makedirs(efi_partition_mount_point)
-            utils.execute('mount', efi_partition, efi_partition_mount_point)
-            efi_mounted = True
 
         binary_name = "grub"
         if os.path.exists(os.path.join(path, 'usr/sbin/grub2-install')):
@@ -419,34 +537,77 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         # Add /usr/sbin to PATH variable to ensure it is there as we do
         # not use full path to grub binary anymore.
         path_variable = os.environ.get('PATH', '')
-        path_variable = '%s:/bin:/usr/sbin' % path_variable
+        path_variable = '%s:/bin:/usr/sbin:/sbin' % path_variable
 
-        # Install grub. Normally, grub goes to one disk only. In case of
-        # md devices, grub goes to all underlying holder (RAID-1) disks.
-        LOG.info("GRUB2 will be installed on disks %s", disks)
-        for grub_disk in disks:
-            LOG.debug("Installing GRUB2 on disk %s", grub_disk)
-            utils.execute('chroot %(path)s /bin/sh -c '
-                          '"%(bin)s-install %(dev)s"' %
-                          {'path': path, 'bin': binary_name,
-                           'dev': grub_disk},
-                          shell=True, env_variables={'PATH': path_variable})
-            LOG.debug("GRUB2 successfully installed on device %s", grub_disk)
+        if efi_partitions:
+            if not os.path.exists(efi_partition_mount_point):
+                os.makedirs(efi_partition_mount_point)
+            LOG.info("GRUB2 will be installed for UEFI on efi partitions %s",
+                     efi_partitions)
+            for efi_partition in efi_partitions:
+                utils.execute(
+                    'mount', efi_partition, efi_partition_mount_point)
+                efi_mounted = True
+                # FIXME(rg): does not work in cross boot mode case (target
+                # boot mode differs from ramdisk one)
+                # Probe for the correct target (depends on the arch, example
+                # --target=x86_64-efi)
+                utils.execute('chroot %(path)s /bin/sh -c '
+                              '"%(bin)s-install"' %
+                              {'path': path, 'bin': binary_name},
+                              shell=True,
+                              env_variables={
+                                  'PATH': path_variable
+                              })
+                # Also run grub-install with --removable, this installs grub to
+                # the EFI fallback path. Useful if the NVRAM wasn't written
+                # correctly, was reset or if testing with virt as libvirt
+                # resets the NVRAM on instance start.
+                # This operation is essentially a copy operation. Use of the
+                # --removable flag, per the grub-install source code changes
+                # the default file to be copied, destination file name, and
+                # prevents NVRAM from being updated.
+                # We only run grub2_install for uefi if we can't verify the
+                # uefi bits
+                utils.execute('chroot %(path)s /bin/sh -c '
+                              '"%(bin)s-install --removable"' %
+                              {'path': path, 'bin': binary_name},
+                              shell=True,
+                              env_variables={
+                                  'PATH': path_variable
+                              })
+                utils.execute('umount', efi_partition_mount_point, attempts=3,
+                              delay_on_retry=True)
+                efi_mounted = False
+            # NOTE: probably never needed for grub-mkconfig, does not hurt in
+            # case of doubt, cleaned in the finally clause anyway
+            utils.execute('mount', efi_partitions[0],
+                          efi_partition_mount_point)
+            efi_mounted = True
+        else:
+            # FIXME(rg): does not work if ramdisk boot mode is not the same
+            # as the target (--target=i386-pc, arch dependent).
+            # See previous FIXME
 
-        # Also run grub-install with --removable, this installs grub to the
-        # EFI fallback path. Useful if the NVRAM wasn't written correctly,
-        # was reset or if testing with virt as libvirt resets the NVRAM
-        # on instance start.
-        # This operation is essentially a copy operation. Use of the
-        # --removable flag, per the grub-install source code changes
-        # the default file to be copied, destination file name, and
-        # prevents NVRAM from being updated.
-        # We only run grub2_install for uefi if we can't verify the uefi bits
-        if efi_partition:
-            utils.execute('chroot %(path)s /bin/sh -c '
-                          '"%(bin)s-install %(dev)s --removable"' %
-                          {'path': path, 'bin': binary_name, 'dev': device},
-                          shell=True, env_variables={'PATH': path_variable})
+            # Install grub. Normally, grub goes to one disk only. In case of
+            # md devices, grub goes to all underlying holder (RAID-1) disks.
+            LOG.info("GRUB2 will be installed on disks %s", disks)
+            for grub_disk in disks:
+                LOG.debug("Installing GRUB2 on disk %s", grub_disk)
+                utils.execute(
+                    'chroot %(path)s /bin/sh -c "%(bin)s-install %(dev)s"' %
+                    {
+                        'path': path,
+                        'bin': binary_name,
+                        'dev': grub_disk
+                    },
+                    shell=True,
+                    env_variables={
+                        'PATH': path_variable
+                    }
+                )
+                LOG.debug("GRUB2 successfully installed on device %s",
+                          grub_disk)
 
         # If the image has dracut installed, set the rd.md.uuid kernel
         # parameter for discovered md devices.
@@ -527,7 +688,8 @@ class ImageExtension(base.BaseAgentExtension):
 
     @base.sync_command('install_bootloader')
     def install_bootloader(self, root_uuid, efi_system_part_uuid=None,
-                           prep_boot_part_uuid=None):
+                           prep_boot_part_uuid=None,
+                           target_boot_mode='bios'):
         """Install the GRUB2 bootloader on the image.
 
         :param root_uuid: The UUID of the root partition.
@@ -537,6 +699,9 @@ class ImageExtension(base.BaseAgentExtension):
         :param prep_boot_part_uuid: The UUID of the PReP Boot partition.
             Used only for booting ppc64* partition images locally. In this
             scenario the bootloader will be installed here.
+        :param target_boot_mode: bios, uefi. Only taken into account
+            for softraid, when no efi partition is explicitely provided
+            (happens for whole disk images)
         :raises: CommandExecutionError if the installation of the
                  bootloader fails.
         :raises: DeviceNotFound if the root partition is not found.
@@ -545,7 +710,8 @@ class ImageExtension(base.BaseAgentExtension):
         device = hardware.dispatch_to_managers('get_os_install_device')
         iscsi.clean_up(device)
         boot = hardware.dispatch_to_managers('get_boot_info')
-        if boot.current_boot_mode == 'uefi':
+        if (boot.current_boot_mode == 'uefi'
+                and not hardware.is_md_device(device)):
             has_efibootmgr = True
             try:
                 utils.execute('efibootmgr', '--version')
@@ -563,4 +729,5 @@ class ImageExtension(base.BaseAgentExtension):
         _install_grub2(device,
                        root_uuid=root_uuid,
                        efi_system_part_uuid=efi_system_part_uuid,
-                       prep_boot_part_uuid=prep_boot_part_uuid)
+                       prep_boot_part_uuid=prep_boot_part_uuid,
+                       target_boot_mode=target_boot_mode)
