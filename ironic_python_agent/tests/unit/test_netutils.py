@@ -14,8 +14,8 @@
 
 import binascii
 import socket
+from unittest import mock
 
-import mock
 from oslo_config import cfg
 
 from ironic_python_agent import netutils

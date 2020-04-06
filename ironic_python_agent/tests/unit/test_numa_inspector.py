@@ -14,8 +14,7 @@
 # limitations under the License.
 
 import os
-
-import mock
+from unittest import mock
 
 from ironic_python_agent import errors
 from ironic_python_agent import numa_inspector as numa_insp

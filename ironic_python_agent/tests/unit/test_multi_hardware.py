@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import collections
+from unittest import mock
 
-import mock
 from stevedore import extension
 
 from ironic_python_agent import errors

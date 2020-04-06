@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import time
+from unittest import mock
 
-import mock
 from stevedore import enabled
 from stevedore import extension
 

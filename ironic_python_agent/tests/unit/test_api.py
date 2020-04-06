@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import time
+from unittest import mock
 
-import mock
 from oslo_config import cfg
 from werkzeug import test as http_test
 from werkzeug import wrappers

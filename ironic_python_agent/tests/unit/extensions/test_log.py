@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
+from unittest import mock
 
 from ironic_python_agent.extensions import log
 from ironic_python_agent.tests.unit import base

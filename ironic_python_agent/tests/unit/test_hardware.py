@@ -15,9 +15,9 @@
 import binascii
 import os
 import time
+from unittest import mock
 
 from ironic_lib import disk_utils
-import mock
 import netifaces
 from oslo_concurrency import processutils
 from oslo_config import cfg

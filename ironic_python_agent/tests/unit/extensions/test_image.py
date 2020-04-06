@@ -16,9 +16,9 @@
 import os
 import shutil
 import tempfile
+from unittest import mock
 
 from ironic_lib import utils as ilib_utils
-import mock
 from oslo_concurrency import processutils
 
 from ironic_python_agent import errors

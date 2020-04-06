@@ -10,7 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mock
+from unittest import mock
+
 from oslotest import base as test_base
 
 from ironic_python_agent.extensions import rescue

@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from unittest import mock
+
 from ironic_lib import disk_utils
-import mock
 from oslo_concurrency import processutils
 
 from ironic_python_agent import errors

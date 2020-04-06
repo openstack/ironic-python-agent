@@ -21,9 +21,9 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+from unittest import mock
 
 from ironic_lib import utils as ironic_utils
-import mock
 from oslo_concurrency import processutils
 from oslo_serialization import base64
 import testtools

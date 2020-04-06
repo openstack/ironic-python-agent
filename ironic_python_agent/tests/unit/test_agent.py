@@ -14,9 +14,9 @@
 
 import socket
 import time
+from unittest import mock
 
 from ironic_lib import exception as lib_exc
-import mock
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_serialization import jsonutils
