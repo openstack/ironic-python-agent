@@ -2151,6 +2151,10 @@ def check_versions(provided_version=None):
                                      node_version=provided_version)
 
 
+def _step_sort_key(step):
+    return (-step['hwm']['support'], -step['priority'], step['hwm']['name'])
+
+
 def deduplicate_steps(candidate_steps):
     """Remove duplicated clean or deploy steps
 
@@ -2195,22 +2199,7 @@ def deduplicate_steps(candidate_steps):
             steps[step['step']].append(step)
 
     for step_name, step_list in steps.items():
-        # determine the max support level among candidate steps
-        max_support = max([x['hwm']['support'] for x in step_list])
-        # filter out any steps that are not at the max support for this step
-        max_support_steps = [x for x in step_list
-                             if x['hwm']['support'] == max_support]
-
-        # determine the max priority among remaining steps
-        max_priority = max([x['priority'] for x in max_support_steps])
-        # filter out any steps that are not at the max priority for this step
-        max_priority_steps = [x for x in max_support_steps
-                              if x['priority'] == max_priority]
-
-        # if there are still multiple steps, sort by hwm name and take
-        # the first result
-        winning_step = sorted(max_priority_steps,
-                              key=lambda x: x['hwm']['name'])[0]
+        winning_step = sorted(step_list, key=_step_sort_key)[0]
         # Remove extra metadata we added to the step for filtering
         manager = winning_step.pop('hwm')['name']
         # Add winning step to deduped_steps
