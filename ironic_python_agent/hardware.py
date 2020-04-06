@@ -1570,10 +1570,11 @@ class GenericHardwareManager(HardwareManager):
             # 1. Create boot partitions in prevision
             # 2. Just leave space
             # 3. Do nothing: rely on the caller to specify target_raid_config
-            # correctly according to what they intend to do (eg not set MAX if
-            # they know they will need some space for bios boot or efi parts.
-            # (Best option imo, if we accept that the target volume granularity
-            # is GiB, so you lose up to 1GiB just for a bios boot partition...)
+            # correctly according to what they intend to do (e.g. not set MAX
+            # if they know they will need some space for bios boot or efi
+            # parts). Best option imo, if we accept that the target volume
+            # granularity is GiB, so you lose up to 1GiB just for a bios boot
+            # partition...
             if target_boot_mode == 'uefi':
                 # Leave 129MiB - start_sector s for the esp (approx 128MiB)
                 # NOTE: any image efi partition is expected to be less

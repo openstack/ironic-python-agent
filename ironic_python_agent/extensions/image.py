@@ -360,12 +360,12 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
     :param device: the softraid device path
     :param holders: the softraid drive members
     :param efi_part: when relevant the efi partition coming from the image
-    deployed on softraid device, can be/is often None
+     deployed on softraid device, can be/is often None
     :param target_boot_mode: target boot mode can be bios/uefi/None
-    or anything else for unspecified
+     or anything else for unspecified
 
     :returns: the efi partition paths on softraid disk holders when target
-    boot mode is uefi, empty list otherwise.
+     boot mode is uefi, empty list otherwise.
     """
     efi_partitions = []
 
@@ -387,6 +387,7 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
             if efi_part:
                 efi_part = '{}p{}'.format(device, efi_part)
 
+        LOG.info("Creating EFI partitions on software RAID holder disks")
         # We know that we kept this space when configuring raid,see
         # hardware.GenericHardwareManager.create_configuration.
         # We could also directly get the EFI partition size.
@@ -414,11 +415,11 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
 
             target_part = target_part.splitlines()[-1].split(':', 1)[0]
 
-            LOG.debug("Efi partition %s created on disk holder %s",
+            LOG.debug("EFI partition %s created on holder disk %s",
                       target_part, holder)
 
             if efi_part:
-                LOG.debug("Relocating efi %s to holder part %s", efi_part,
+                LOG.debug("Relocating EFI %s to holder part %s", efi_part,
                           target_part)
                 # Blockdev copy
                 utils.execute("cp", efi_part, target_part)
@@ -710,6 +711,7 @@ class ImageExtension(base.BaseAgentExtension):
         device = hardware.dispatch_to_managers('get_os_install_device')
         iscsi.clean_up(device)
         boot = hardware.dispatch_to_managers('get_boot_info')
+        # FIXME(arne_wiebalck): make software RAID work with efibootmgr
         if (boot.current_boot_mode == 'uefi'
                 and not hardware.is_md_device(device)):
             has_efibootmgr = True
