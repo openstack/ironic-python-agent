@@ -78,7 +78,7 @@ class APIClient(object):
                                     cert=cert,
                                     **kwargs)
 
-    def _get_ironic_api_version_header(self, version=MIN_IRONIC_VERSION):
+    def _get_ironic_api_version_header(self):
         # TODO(TheJulia): It would be great to improve version handling
         # logic, but we need to ship a newer version if we can.
         ironic_version = "%d.%d" % self._get_ironic_api_version()
@@ -117,10 +117,8 @@ class APIClient(object):
 
         if api_ver >= AGENT_VERSION_IRONIC_VERSION:
             data['agent_version'] = version.version_info.release_string()
-            headers = self._get_ironic_api_version_header(
-                AGENT_VERSION_IRONIC_VERSION)
-        else:
-            headers = self._get_ironic_api_version_header()
+
+        headers = self._get_ironic_api_version_header()
 
         try:
             response = self._request('POST', path, data=data, headers=headers)
