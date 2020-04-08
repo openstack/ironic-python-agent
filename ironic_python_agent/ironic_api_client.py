@@ -32,7 +32,7 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 # TODO(TheJulia): This should be increased at some point.
-MIN_IRONIC_VERSION = (1, 22)
+MIN_IRONIC_VERSION = (1, 31)
 AGENT_VERSION_IRONIC_VERSION = (1, 36)
 AGENT_TOKEN_IRONIC_VERSION = (1, 62)
 
