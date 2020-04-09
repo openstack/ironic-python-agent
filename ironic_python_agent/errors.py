@@ -263,24 +263,26 @@ class IncompatibleHardwareMethodError(RESTError):
         super(IncompatibleHardwareMethodError, self).__init__(details)
 
 
-class CleanVersionMismatch(RESTError):
+class VersionMismatch(RESTError):
     """Error raised when Ironic and the Agent have different versions.
 
-    If the agent version has changed since get_clean_steps was called by
-    the Ironic conductor, it indicates the agent has been updated (either
-    on purpose, or a new agent was deployed and the node was rebooted).
-    Since we cannot know if the upgraded IPA will work with cleaning as it
-    stands (steps could have different priorities, either in IPA or in
-    other Ironic interfaces), we should restart cleaning from the start.
+    If the agent version has changed since get_clean_steps or get_deploy_steps
+    was called by the Ironic conductor, it indicates the agent has been updated
+    (either on purpose, or a new agent was deployed and the node was rebooted).
+    Since we cannot know if the upgraded IPA will work with cleaning/deploy as
+    it stands (steps could have different priorities, either in IPA or in
+    other Ironic interfaces), we should restart the process from the start.
 
     """
-    message = 'Clean version mismatch, reload agent with correct version'
+    message = (
+        'Hardware managers version mismatch, reload agent with correct version'
+    )
 
     def __init__(self, agent_version, node_version):
         self.status_code = 409
-        details = ('Agent clean version: {}, node clean version: {}'
+        details = ('Current versions: {}, versions used by ironic: {}'
                    .format(agent_version, node_version))
-        super(CleanVersionMismatch, self).__init__(details)
+        super(VersionMismatch, self).__init__(details)
 
 
 class CleaningError(RESTError):
@@ -290,6 +292,15 @@ class CleaningError(RESTError):
 
     def __init__(self, details=None):
         super(CleaningError, self).__init__(details)
+
+
+class DeploymentError(RESTError):
+    """Error raised when a deploy step fails."""
+
+    message = 'Deploy step failed'
+
+    def __init__(self, details=None):
+        super(DeploymentError, self).__init__(details)
 
 
 class ISCSIError(RESTError):
