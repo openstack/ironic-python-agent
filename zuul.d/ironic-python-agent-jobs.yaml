@@ -15,6 +15,7 @@
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
+        IRONIC_VM_SPECS_RAM: 384
         IRONIC_BUILD_DEPLOY_RAMDISK: True
 
 - job:
