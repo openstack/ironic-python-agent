@@ -8,10 +8,10 @@
       - release-notes-jobs-python3
     check:
       jobs:
-        - ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
-        - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
+        - ipa-tempest-partition-bios-ipmi-direct-src
+        - ipa-tempest-partition-bios-ipmi-iscsi-dib-src
+        - ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
+        - ipa-tempest-wholedisk-bios-ipmi-iscsi-src
         - ironic-standalone-ipa-src
         - metalsmith-integration-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
@@ -23,10 +23,6 @@
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
-        - ipa-tempest-wholedisk-bios-ipmi-direct-dib-src:
-            voting: false
-        - ipa-tempest-partition-bios-ipmi-iscsi-dib-src:
-            voting: false
         - openstack-tox-functional-py36:
             voting: false
         - ipa-tox-bandit:
@@ -34,10 +30,10 @@
     gate:
       queue: ironic
       jobs:
-        - ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
-        - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
+        - ipa-tempest-partition-bios-ipmi-direct-src
+        - ipa-tempest-partition-bios-ipmi-iscsi-dib-src
+        - ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
+        - ipa-tempest-wholedisk-bios-ipmi-iscsi-src
         - ironic-standalone-ipa-src
         - metalsmith-integration-ipa-src
     experimental:
