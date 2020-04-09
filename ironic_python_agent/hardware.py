@@ -1670,23 +1670,9 @@ class GenericHardwareManager(HardwareManager):
             disk_names = logical_disk['block_devices']
             for device in disk_names:
                 start = parted_start_dict[device]
-
-                if isinstance(start, int):
-                    start_str = '%dGiB' % start
-                else:
-                    start_str = start
-
-                if psize == -1:
-                    end_str = '-1'
-                    end = '-1'
-                else:
-                    if isinstance(start, int):
-                        end = start + psize
-                    else:
-                        # First partition case, start is sth like 2048s
-                        end = psize
-                    end_str = '%dGiB' % end
-
+                start_str, end_str, end = (
+                    raid_utils.calc_raid_partition_sectors(psize, start)
+                )
                 try:
                     LOG.debug("Creating partition on {}: {} {}".format(
                         device, start_str, end_str))

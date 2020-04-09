@@ -103,3 +103,32 @@ def calculate_raid_start(target_boot_mode, partition_table_type, dev_name):
             raid_start = "{}s".format(out.splitlines()[-1])
 
     return raid_start
+
+
+def calc_raid_partition_sectors(psize, start):
+    """Calculates end sector and converts start and end sectors including
+
+    the unit of measure, compatible with parted.
+    :param psize: size of the raid partition
+    :param start: start sector of the raid partion in integer format
+    :return: start and end sector in parted compatible format, end sector
+        as integer
+    """
+
+    if isinstance(start, int):
+        start_str = '%dGiB' % start
+    else:
+        start_str = start
+
+    if psize == -1:
+        end_str = '-1'
+        end = '-1'
+    else:
+        if isinstance(start, int):
+            end = start + psize
+        else:
+            # First partition case, start is sth like 2048s
+            end = psize
+        end_str = '%dGiB' % end
+
+    return start_str, end_str, end
