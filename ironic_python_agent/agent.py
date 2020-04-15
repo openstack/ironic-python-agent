@@ -245,10 +245,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                         'the Victoria development cycle.')
             # Tell the API everything is okay.
             return True
-        if self.agent_token is not None:
-            return self.agent_token == token
 
-        return False
+        return self.agent_token == token
 
     def _get_route_source(self, dest):
         """Get the IP address to send packages to destination."""
