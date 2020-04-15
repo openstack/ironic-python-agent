@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    No longer tries to use GRUB2 for configuring boot for whole disk images
+    with an EFI partition present but only marked as ``boot`` (not ``esp``).
