@@ -24,6 +24,7 @@ import tarfile
 import tempfile
 import time
 
+from ironic_lib import disk_utils
 from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 from oslo_log import log as logging
@@ -63,7 +64,8 @@ COLLECT_LOGS_COMMANDS = {
 
 DEVICE_EXTRACTOR = re.compile(r'^(?:(.*\d)p|(.*\D))(?:\d+)$')
 
-PARTED_ESP_PATTERN = re.compile(r'^\s*(\d+)\s.*\s\s.*\s.*esp(,|\s|$).*$')
+PARTED_TABLE_TYPE_REGEX = re.compile(r'^.*partition\s+table\s*:\s*(gpt|msdos)',
+                                     re.IGNORECASE)
 
 
 def execute(*cmd, **kwargs):
@@ -457,21 +459,39 @@ def extract_device(part):
     return (m.group(1) or m.group(2))
 
 
+def scan_partition_table_type(device):
+    """Get partition table type, msdos or gpt.
+
+    :param device_name: the name of the device
+    :return: msdos, gpt or unknown
+    """
+    out, _u = execute('parted', '-s', device, '--', 'print')
+    out = out.splitlines()
+
+    for line in out:
+        m = PARTED_TABLE_TYPE_REGEX.match(line)
+        if m:
+            return m.group(1)
+
+    LOG.warning("Unable to get partition table type for device %s.",
+                device)
+
+    return 'unknown'
+
+
 def get_efi_part_on_device(device):
-    """Looks for the efi partition on a given device
+    """Looks for the efi partition on a given device.
+
+    A boot partition on a GPT disk is assumed to be an EFI partition as well.
 
     :param device: lock device upon which to check for the efi partition
     :return: the efi partition or None
     """
-    efi_part = None
-    out, _u = execute('parted', '-s', device, '--', 'print')
-    for line in out.splitlines():
-        m = PARTED_ESP_PATTERN.match(line)
-        if m:
-            efi_part = m.group(1)
-
-            LOG.debug("Found efi partition %s on device %s.", efi_part, device)
-            break
+    is_gpt = scan_partition_table_type(device) == 'gpt'
+    for part in disk_utils.list_partitions(device):
+        flags = {x.strip() for x in part['flags'].split(',')}
+        if 'esp' in flags or ('boot' in flags and is_gpt):
+            LOG.debug("Found EFI partition %s on device %s.", part, device)
+            return part['number']
     else:
         LOG.debug("No efi partition found on device %s", device)
-    return efi_part
