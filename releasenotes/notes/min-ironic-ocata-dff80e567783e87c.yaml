@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The minimum supported versions of the ironic API is now 1.31,
+    corresponding to the latest available in the Ocata release.
+    All versions before that one are not supported anymore.
