@@ -23,6 +23,7 @@ import tarfile
 import tempfile
 from unittest import mock
 
+from ironic_lib import disk_utils
 from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 from oslo_serialization import base64
@@ -42,30 +43,6 @@ Disk Flags:
 Number  Start   End     Size    File system  Name  Flags
 14      1049kB  5243kB  4194kB                     bios_grub
 15      5243kB  116MB   111MB   fat32              boot, esp
- 1      116MB   2361MB  2245MB  ext4
-'''
-
-PARTED_OUTPUT_UNFORMATTED_NOFS = '''Model: whatever
-Disk /dev/sda: 480GB
-Sector size (logical/physical): 512B/512B
-Partition Table: gpt
-Disk Flags:
-
-Number  Start   End     Size    File system  Name  Flags
-1      1049kB  9437kB  8389kB                ESP   boot, esp
-2      9437kB  17.8MB  8389kB                BSP   bios_grub
-3      17.8MB  40.0GB  40.0GB
-4      479GB   480GB   68.1MB
-'''
-
-PARTED_OUTPUT_NO_EFI = '''Model: whatever
-Disk /dev/sda: 450GB
-Sector size (logical/physical): 512B/512B
-Partition Table: gpt
-Disk Flags:
-
-Number  Start   End     Size    File system  Name  Flags
-14      1049kB  5243kB  4194kB                     bios_grub
  1      116MB   2361MB  2245MB  ext4
 '''
 
@@ -630,40 +607,6 @@ class TestUtils(testtools.TestCase):
             utils.extract_device('whatevernotmatchin12a')
         )
 
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_efi_part_on_device(self, mocked_execute):
-        parted_ret = PARTED_OUTPUT_UNFORMATTED.format('gpt')
-        mocked_execute.side_effect = [
-            (parted_ret, None)
-        ]
-        ret = utils.get_efi_part_on_device('/dev/sda')
-        mocked_execute.assert_has_calls(
-            [mock.call('parted', '-s', '/dev/sda', '--', 'print')]
-        )
-        self.assertEqual('15', ret)
-
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_efi_part_on_device_without_fs(self, mocked_execute):
-        parted_ret = PARTED_OUTPUT_UNFORMATTED_NOFS
-        mocked_execute.side_effect = [
-            (parted_ret, None)
-        ]
-        ret = utils.get_efi_part_on_device('/dev/sda')
-        mocked_execute.assert_has_calls(
-            [mock.call('parted', '-s', '/dev/sda', '--', 'print')]
-        )
-        self.assertEqual('1', ret)
-
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_efi_part_on_device_not_found(self, mocked_execute):
-        mocked_execute.side_effect = [
-            (PARTED_OUTPUT_NO_EFI, None)
-        ]
-        self.assertIsNone(utils.get_efi_part_on_device('/dev/sda'))
-        mocked_execute.assert_has_calls(
-            [mock.call('parted', '-s', '/dev/sda', '--', 'print')]
-        )
-
     def test_extract_capability_from_dict(self):
         expected_dict = {"hello": "world"}
         root = {"capabilities": expected_dict}
@@ -1040,3 +983,45 @@ class TestClockSyncUtils(ironic_agent_base.IronicAgentTest):
         mock_time_method.return_value = None
         utils.sync_clock()
         self.assertEqual(0, mock_execute.call_count)
+
+
+@mock.patch.object(disk_utils, 'list_partitions', autospec=True)
+@mock.patch.object(utils, 'scan_partition_table_type', autospec=True)
+class TestGetEfiPart(testtools.TestCase):
+
+    def test_get_efi_part_on_device(self, mocked_type, mocked_parts):
+        mocked_parts.return_value = [
+            {'number': '1', 'flags': ''},
+            {'number': '14', 'flags': 'bios_grub'},
+            {'number': '15', 'flags': 'esp, boot'},
+        ]
+        ret = utils.get_efi_part_on_device('/dev/sda')
+        self.assertEqual('15', ret)
+
+    def test_get_efi_part_on_device_only_boot_flag_gpt(self, mocked_type,
+                                                       mocked_parts):
+        mocked_type.return_value = 'gpt'
+        mocked_parts.return_value = [
+            {'number': '1', 'flags': ''},
+            {'number': '14', 'flags': 'bios_grub'},
+            {'number': '15', 'flags': 'boot'},
+        ]
+        ret = utils.get_efi_part_on_device('/dev/sda')
+        self.assertEqual('15', ret)
+
+    def test_get_efi_part_on_device_only_boot_flag_mbr(self, mocked_type,
+                                                       mocked_parts):
+        mocked_type.return_value = 'msdos'
+        mocked_parts.return_value = [
+            {'number': '1', 'flags': ''},
+            {'number': '14', 'flags': 'bios_grub'},
+            {'number': '15', 'flags': 'boot'},
+        ]
+        self.assertIsNone(utils.get_efi_part_on_device('/dev/sda'))
+
+    def test_get_efi_part_on_device_not_found(self, mocked_type, mocked_parts):
+        mocked_parts.return_value = [
+            {'number': '1', 'flags': ''},
+            {'number': '14', 'flags': 'bios_grub'},
+        ]
+        self.assertIsNone(utils.get_efi_part_on_device('/dev/sda'))
