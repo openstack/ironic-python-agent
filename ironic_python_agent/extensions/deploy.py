@@ -70,6 +70,8 @@ class DeployExtension(base.BaseAgentExtension):
             msg = 'Malformed deploy_step, no "step" key: %s' % step
             LOG.error(msg)
             raise ValueError(msg)
+
+        kwargs.update(step.get('args') or {})
         try:
             result = hardware.dispatch_to_managers(step['step'], node, ports,
                                                    **kwargs)

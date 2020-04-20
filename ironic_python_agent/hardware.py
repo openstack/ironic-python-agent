@@ -55,6 +55,21 @@ NODE = None
 
 SUPPORTED_SOFTWARE_RAID_LEVELS = frozenset(['0', '1', '1+0', '5', '6'])
 
+RAID_APPLY_CONFIGURATION_ARGSINFO = {
+    "raid_config": {
+        "description": "The RAID configuration to apply.",
+        "required": True,
+    },
+    "delete_existing": {
+        "description": (
+            "Setting this to 'True' indicates to delete existing RAID "
+            "configuration prior to creating the new configuration. "
+            "Default value is 'True'."
+        ),
+        "required": False,
+    }
+}
+
 
 def _get_device_info(dev, devclass, field):
     """Get the device info according to device class and field."""
@@ -738,6 +753,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
            'reboot_requested': Whether the agent should request Ironic reboots
                                the node via the power driver after the
                                operation completes.
+           'argsinfo': arguments specification.
           }
 
 
@@ -1537,18 +1553,28 @@ class GenericHardwareManager(HardwareManager):
     def get_deploy_steps(self, node, ports):
         return [
             {
-                'step': 'delete_configuration',
+                'step': 'apply_configuration',
                 'priority': 0,
                 'interface': 'raid',
                 'reboot_requested': False,
-            },
-            {
-                'step': 'create_configuration',
-                'priority': 0,
-                'interface': 'raid',
-                'reboot_requested': False,
+                'argsinfo': RAID_APPLY_CONFIGURATION_ARGSINFO,
             },
         ]
+
+    def apply_configuration(self, node, ports, raid_config,
+                            delete_existing=True):
+        """Apply RAID configuration.
+
+        :param node: A dictionary of the node object.
+        :param ports: A list of dictionaries containing information
+                      of ports for the node.
+        :param raid_config: The configuration to apply.
+        :param delete_existing: Whether to delete the existing configuration.
+        """
+        self.validate_configuration(raid_config, node)
+        if delete_existing:
+            self.delete_configuration(node, ports)
+        self._do_create_configuration(node, ports, raid_config)
 
     def create_configuration(self, node, ports):
         """Create a RAID configuration.
@@ -1565,17 +1591,19 @@ class GenericHardwareManager(HardwareManager):
                  valid or if there was an error when creating the RAID
                  devices.
         """
+        raid_config = node.get('target_raid_config', {})
+        if not raid_config:
+            LOG.debug("No target_raid_config found")
+            return {}
 
+        return self._do_create_configuration(node, ports, raid_config)
+
+    def _do_create_configuration(self, node, ports, raid_config):
         # incr starts to 1
         # It means md0 is on the partition 1, md1 on 2...
         # incr could be incremented if we ever decide, for example to create
         # some additional partitions here (boot partitions)
         incr = 1
-
-        raid_config = node.get('target_raid_config', {})
-        if not raid_config:
-            LOG.debug("No target_raid_config found")
-            return {}
 
         # No 'software' controller: do nothing. If 'controller' is
         # set to 'software' on only one of the drives, the validation

@@ -167,6 +167,34 @@ class TestDeployExtension(base.IronicAgentTest):
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.check_versions',
                 autospec=True)
+    def test_execute_deploy_step_with_args(self, mock_version, mock_dispatch,
+                                           mock_cache_node):
+        result = 'deployed'
+        mock_dispatch.return_value = result
+
+        step = self.step['GenericHardwareManager'][0]
+        step['args'] = {'foo': 'bar'}
+        expected_result = {
+            'deploy_step': step,
+            'deploy_result': result
+        }
+        async_result = self.agent_extension.execute_deploy_step(
+            step=self.step['GenericHardwareManager'][0],
+            node=self.node, ports=self.ports,
+            deploy_version=self.version)
+        async_result.join()
+
+        mock_version.assert_called_once_with(self.version)
+        mock_dispatch.assert_called_once_with(
+            self.step['GenericHardwareManager'][0]['step'],
+            self.node, self.ports, foo='bar')
+        self.assertEqual(expected_result, async_result.command_result)
+        mock_cache_node.assert_called_once_with(self.node)
+
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    @mock.patch('ironic_python_agent.hardware.check_versions',
+                autospec=True)
     def test_execute_deploy_step_tuple_result(self, mock_version,
                                               mock_dispatch, mock_cache_node):
         result = ('stdout', 'stderr')
