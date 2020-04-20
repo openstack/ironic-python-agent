@@ -2856,6 +2856,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call(x) for x in ['/dev/sda', '/dev/sdb']
         ])
 
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
@@ -2938,6 +2939,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2', '/dev/sdc2')])
         self.assertEqual(raid_config, result)
 
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
@@ -3305,6 +3307,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
 
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
     @mock.patch.object(utils, 'execute', autospec=True)
