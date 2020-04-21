@@ -18,7 +18,7 @@ eventlet==0.18.2
 extras==1.0.0
 fasteners==0.14.1
 fixtures==3.0.0
-flake8-import-order==0.13
+flake8-import-order==0.17.1
 flake8==2.5.5
 future==0.16.0
 greenlet==0.4.13
