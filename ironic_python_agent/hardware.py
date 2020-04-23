@@ -1003,13 +1003,14 @@ class GenericHardwareManager(HardwareManager):
             total = None
             LOG.exception(("Cannot fetch total memory size using psutil "
                            "version %s"), psutil.version_info[0])
-        sys_dict = None
         try:
             sys_dict = _get_system_lshw_dict()
         except (processutils.ProcessExecutionError, OSError, ValueError) as e:
             LOG.warning('Could not get real physical RAM from lshw: %s', e)
             physical = None
         else:
+            if isinstance(sys_dict, str):
+                sys_dict = json.loads(sys_dict)
             physical = _calc_memory(sys_dict)
 
             if not physical:
