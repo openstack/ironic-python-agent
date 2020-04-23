@@ -70,12 +70,28 @@ def _download_with_proxy(image_info, url, image_id):
         os.environ['no_proxy'] = no_proxy
     proxies = image_info.get('proxies', {})
     verify, cert = utils.get_ssl_client_options(CONF)
-    resp = requests.get(url, stream=True, proxies=proxies,
-                        verify=verify, cert=cert)
-    if resp.status_code != 200:
-        msg = ('Received status code {} from {}, expected 200. Response '
-               'body: {}').format(resp.status_code, url, resp.text)
-        raise errors.ImageDownloadError(image_id, msg)
+    resp = None
+    for attempt in range(CONF.image_download_connection_retries + 1):
+        try:
+            resp = requests.get(url, stream=True, proxies=proxies,
+                                verify=verify, cert=cert,
+                                timeout=CONF.image_download_connection_timeout)
+            if resp.status_code != 200:
+                msg = ('Received status code {} from {}, expected 200. '
+                       'Response body: {}').format(resp.status_code, url,
+                                                   resp.text)
+                raise errors.ImageDownloadError(image_id, msg)
+        except (errors.ImageDownloadError, requests.RequestException) as e:
+            if (attempt == CONF.image_download_connection_retries
+                    # NOTE(dtantsur): do not retry 4xx status codes
+                    or (resp and resp.status_code < 500)):
+                raise
+            else:
+                LOG.warning('Unable to connect to %s, retrying. Error: %s',
+                            url, e)
+                time.sleep(CONF.image_download_connection_retry_interval)
+        else:
+            break
     return resp
 
 

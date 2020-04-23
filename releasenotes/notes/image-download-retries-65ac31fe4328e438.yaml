@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Provides timeout and retries when establishing a connection to download
+    an image in the ``standby`` extension. Reduces probability of an image
+    download getting stuck in the event of network problems.
+
+    The default timeout is 60 seconds and can be set via the
+    ``ipa-image-download-connection-timeout`` kernel parameter. The default
+    number of retries is 2 and can be set via the
+    ``ipa-image-download-connection-retries`` parameter.

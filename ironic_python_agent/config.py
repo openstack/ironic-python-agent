@@ -239,6 +239,21 @@ cli_opts = [
                      'enforce token validation. The configuration provided '
                      'by the conductor MAY override this and force this '
                      'setting to be changed to True in memory.'),
+    cfg.IntOpt('image_download_connection_timeout', min=1,
+               default=APARAMS.get(
+                   'ipa-image-download-connection-timeout', 60),
+               help='The connection timeout (in seconds) when downloading '
+                    'an image. Does not affect the whole download.'),
+    cfg.IntOpt('image_download_connection_retries', min=0,
+               default=APARAMS.get('ipa-image-download-connection-retries', 2),
+               help='How many times to retry the connection when downloading '
+                    'an image. Also retries on failure HTTP statuses.'),
+    cfg.IntOpt('image_download_connection_retry_interval', min=0,
+               default=APARAMS.get(
+                   'ipa-image-download-connection-retry-interval', 5),
+               help='Interval (in seconds) between two attempts to establish '
+                    'connection when downloading an image.'),
+
 ]
 
 CONF.register_cli_opts(cli_opts)
