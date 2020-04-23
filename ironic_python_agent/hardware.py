@@ -199,6 +199,27 @@ def _get_component_devices(raid_device):
     return component_devices
 
 
+def _calc_memory(sys_dict):
+    physical = 0
+    for sys_child in sys_dict['children']:
+        if sys_child['id'] != 'core':
+            continue
+        for core_child in sys_child['children']:
+            if not _MEMORY_ID_RE.match(core_child['id']):
+                continue
+            if (not core_child.get("children")
+                    and core_child.get('size')):
+                value = ("%(size)s %(units)s" % core_child)
+                physical += int(UNIT_CONVERTER(value).to
+                                ('MB').magnitude)
+            for bank in core_child.get('children', ()):
+                if bank.get('size'):
+                    value = ("%(size)s %(units)s" % bank)
+                    physical += int(UNIT_CONVERTER(value).to
+                                    ('MB').magnitude)
+    return physical
+
+
 def get_holder_disks(raid_device):
     """Get the holder disks of a Software RAID device.
 
@@ -1049,22 +1070,7 @@ class GenericHardwareManager(HardwareManager):
             LOG.warning('Could not get real physical RAM from lshw: %s', e)
             physical = None
         else:
-            physical = 0
-            # locate memory information in system_dict
-            for sys_child in sys_dict['children']:
-                if sys_child['id'] == 'core':
-                    for core_child in sys_child['children']:
-                        if _MEMORY_ID_RE.match(core_child['id']):
-                            if (not core_child.get("children")
-                                    and core_child.get('size')):
-                                value = ("%(size)s %(units)s" % core_child)
-                                physical += int(UNIT_CONVERTER(value).to
-                                                ('MB').magnitude)
-                            for bank in core_child.get('children', ()):
-                                if bank.get('size'):
-                                    value = ("%(size)s %(units)s" % bank)
-                                    physical += int(UNIT_CONVERTER(value).to
-                                                    ('MB').magnitude)
+            physical = _calc_memory(sys_dict)
 
             if not physical:
                 LOG.warning('Did not find any physical RAM')
