@@ -13,9 +13,13 @@
 import copy
 
 from ironic_lib import utils as il_utils
+from oslo_log import log as logging
 
 from ironic_python_agent import errors
 from ironic_python_agent import utils
+
+
+LOG = logging.getLogger(__name__)
 
 
 def get_block_devices_for_raid(block_devices, logical_disks):
@@ -132,3 +136,24 @@ def calc_raid_partition_sectors(psize, start):
         end_str = '%dGiB' % end
 
     return start_str, end_str, end
+
+
+def create_raid_partition_tables(block_devices, partition_table_type,
+                                 target_boot_mode):
+    """Creates partition tables in all disks in a RAID configuration and
+
+    reports the starting sector for each partition on each disk.
+    :param block_devices: disks where we want to create the partition tables.
+    :param partition_table_type: type of partition table to create, for example
+        gpt or msdos.
+    :param target_boot_mode: the node selected boot mode, for example uefi
+        or bios.
+    :return: a dictionary of devices and the start of the corresponding
+        partition.
+    """
+    parted_start_dict = {}
+    for dev_name in block_devices:
+        utils.create_partition_table(dev_name, partition_table_type)
+        parted_start_dict[dev_name] = calculate_raid_start(
+            target_boot_mode, partition_table_type, dev_name)
+    return parted_start_dict

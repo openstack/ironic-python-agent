@@ -1652,21 +1652,8 @@ class GenericHardwareManager(HardwareManager):
         partition_table_type = utils.get_partition_table_type_from_specs(node)
         target_boot_mode = utils.get_node_boot_mode(node)
 
-        parted_start_dict = {}
-        # Create a partition table on each disk.
-        for dev_name in block_devices:
-            LOG.info("Creating partition table on {}".format(
-                dev_name))
-            try:
-                utils.execute('parted', dev_name, '-s', '--',
-                              'mklabel', partition_table_type)
-            except processutils.ProcessExecutionError as e:
-                msg = "Failed to create partition table on {}: {}".format(
-                    dev_name, e)
-                raise errors.SoftwareRAIDError(msg)
-
-            parted_start_dict[dev_name] = raid_utils.calculate_raid_start(
-                target_boot_mode, partition_table_type, dev_name)
+        parted_start_dict = raid_utils.create_raid_partition_tables(
+            block_devices, partition_table_type, target_boot_mode)
 
         LOG.debug("First available sectors per devices %s", parted_start_dict)
 

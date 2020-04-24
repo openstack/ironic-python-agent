@@ -730,3 +730,23 @@ def sync_clock(ignore_errors=False):
         LOG.error(msg)
         if CONF.fail_if_clock_not_set or not ignore_errors:
             raise errors.CommandExecutionError(msg)
+
+
+def create_partition_table(dev_name, partition_table_type):
+    """Create a partition table on a disk using parted.
+
+    :param dev_name: the disk where we want to create the partition table.
+    :param partition_table_type: the type of partition table we want to
+        create, for example gpt or msdos.
+    :raises: CommandExecutionError if an error is encountered while
+             attempting to create the partition table.
+    """
+    LOG.info("Creating partition table on {}".format(
+        dev_name))
+    try:
+        execute('parted', dev_name, '-s', '--',
+                'mklabel', partition_table_type)
+    except processutils.ProcessExecutionError as e:
+        msg = "Failed to create partition table on {}: {}".format(
+            dev_name, e)
+        raise errors.CommandExecutionError(msg)

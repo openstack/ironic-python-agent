@@ -3543,7 +3543,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         error_regex = "Failed to create partition table on /dev/sda"
         mocked_execute.side_effect = [
             processutils.ProcessExecutionError]
-        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+        self.assertRaisesRegex(errors.CommandExecutionError, error_regex,
                                self.hardware.create_configuration,
                                self.node, [])
         # partition creation
@@ -3755,7 +3755,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         error_regex = "Failed to create partition table on /dev/nvme0n1"
         mocked_execute.side_effect = [
             processutils.ProcessExecutionError]
-        self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
+        self.assertRaisesRegex(errors.CommandExecutionError, error_regex,
                                self.hardware.create_configuration,
                                self.node, [])
         # partition creation
