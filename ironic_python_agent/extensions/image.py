@@ -350,16 +350,24 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                    prep_boot_part_uuid=None):
     """Install GRUB2 bootloader on a given device."""
     LOG.debug("Installing GRUB2 bootloader on device %s", device)
-    root_partition = _get_partition(device, uuid=root_uuid)
+
     efi_partition = None
     efi_partition_mount_point = None
     efi_mounted = False
+
+    # NOTE(TheJulia): Seems we need to get this before ever possibly
+    # restart the device in the case of multi-device RAID as pyudev
+    # doesn't exactly like the partition disappearing.
+    root_partition = _get_partition(device, uuid=root_uuid)
 
     # If the root device is an md device (or partition), restart the device
     # (to help grub finding it) and identify the underlying holder disks
     # to install grub.
     if hardware.is_md_device(device):
         hardware.md_restart(device)
+        # If an md device, we need to rescan the devices anyway to pickup
+        # the md device partition.
+        _rescan_device(device)
     elif (_is_bootloader_loaded(device)
           and not (efi_system_part_uuid
                    or prep_boot_part_uuid)):
