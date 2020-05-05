@@ -503,6 +503,13 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         return
 
     try:
+        # Add /bin to PATH variable as grub requires it to find efibootmgr
+        # when running in uefi boot mode.
+        # Add /usr/sbin to PATH variable to ensure it is there as we do
+        # not use full path to grub binary anymore.
+        path_variable = os.environ.get('PATH', '')
+        path_variable = '%s:/bin:/usr/sbin:/sbin' % path_variable
+
         # Mount the partition and binds
         path = tempfile.mkdtemp()
         if efi_system_part_uuid:
@@ -539,12 +546,13 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         if os.path.exists(os.path.join(path, 'usr/sbin/grub2-install')):
             binary_name = "grub2"
 
-        # Add /bin to PATH variable as grub requires it to find efibootmgr
-        # when running in uefi boot mode.
-        # Add /usr/sbin to PATH variable to ensure it is there as we do
-        # not use full path to grub binary anymore.
-        path_variable = os.environ.get('PATH', '')
-        path_variable = '%s:/bin:/usr/sbin:/sbin' % path_variable
+        # Mount all vfat partitions listed in the fstab of the root partition.
+        # This is to make sure grub2 finds all files it needs, as some of them
+        # may not be inside the root partition but in the ESP (like grub2env).
+        LOG.debug("Mounting all partitions inside the image ...")
+        utils.execute('chroot %(path)s /bin/sh -c "mount -a -t vfat"' %
+                      {'path': path}, shell=True,
+                      env_variables={'PATH': path_variable})
 
         if efi_partitions:
             if not os.path.exists(efi_partition_mount_point):
@@ -663,6 +671,16 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                          'Attempted 3 times. Error: %s' % e)
             LOG.error(error_msg)
             raise errors.CommandExecutionError(error_msg)
+
+        # Umount the vfat partitions we may have mounted
+        LOG.debug("Unmounting all partitions inside the image ...")
+        try:
+            utils.execute('chroot %(path)s /bin/sh -c "umount -a -t vfat"' %
+                          {'path': path}, shell=True,
+                          env_variables={'PATH': path_variable})
+        except processutils.ProcessExecutionError as e:
+            LOG.warning("Unable to umount vfat partitions. Error: %(error)s",
+                        {'error': e})
 
         for fs in BIND_MOUNTS:
             try:
