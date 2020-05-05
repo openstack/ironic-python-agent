@@ -361,6 +361,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
                               self.fake_dir + '/sys'),
+                    mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
                               '"grub-install %s"' %
                                (self.fake_dir, self.fake_dev)), shell=True,
@@ -370,6 +374,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                '"grub-mkconfig -o '
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                    mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
                               env_variables={
                                   'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/dev',
@@ -412,6 +420,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
                               self.fake_dir + '/sys'),
+                    mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
                               '"grub-install %s"' %
                                (self.fake_dir, self.fake_prep_boot_part)),
@@ -422,6 +434,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                '"grub-mkconfig -o '
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                    mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
                               env_variables={
                                   'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/dev',
@@ -472,6 +488,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
                               self.fake_dir + '/sys'),
+                    mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
                     mock.call(('chroot %s /bin/sh -c "grub-install"' %
@@ -496,6 +516,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                   'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
+                    mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/dev',
                               attempts=3, delay_on_retry=True),
                     mock.call('umount', self.fake_dir + '/proc',
@@ -549,6 +573,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
                               self.fake_dir + '/sys'),
+                    mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
                     mock.call(('chroot %s /bin/sh -c "grub-install"' %
@@ -582,6 +610,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_get_part_uuid.side_effect = [self.fake_root_part,
                                           self.fake_efi_system_part]
         mock_is_md_device.side_effect = [False, False]
+        environ_mock.get.return_value = '/sbin'
         mock_md_get_raid_devices.return_value = {}
 
         def mount_raise_func(*args, **kwargs):
@@ -595,6 +624,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                           efi_system_part_uuid=self.fake_efi_system_part_uuid)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/dev',
                               attempts=3, delay_on_retry=True),
                     mock.call('umount', self.fake_dir + '/proc',
@@ -848,6 +881,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
                               self.fake_dir + '/sys'),
+                    mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('mount', '/dev/sda1',
                               self.fake_dir + '/boot/efi'),
                     mock.call(('chroot %s /bin/sh -c "grub-install"' %
@@ -886,6 +923,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                   'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
+                    mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
+                              (self.fake_dir)), shell=True,
+                              env_variables={
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call('umount', self.fake_dir + '/dev',
                               attempts=3, delay_on_retry=True),
                     mock.call('umount', self.fake_dir + '/proc',
@@ -952,6 +993,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                       self.fake_dir + '/run'),
             mock.call('mount', '-t', 'sysfs', 'none',
                       self.fake_dir + '/sys'),
+            mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
+                       (self.fake_dir)), shell=True,
+                      env_variables={
+                          'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
             mock.call(('chroot %s /bin/sh -c '
                        '"grub-install %s"' %
                        (self.fake_dir, '/dev/sda')), shell=True,
@@ -966,6 +1011,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                        '"grub-mkconfig -o '
                        '/boot/grub/grub.cfg"' % self.fake_dir),
                       shell=True,
+                      env_variables={
+                          'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+            mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
+                      (self.fake_dir)), shell=True,
                       env_variables={
                           'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
             mock.call('umount', self.fake_dir + '/dev',
