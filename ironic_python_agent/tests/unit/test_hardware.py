@@ -44,7 +44,7 @@ HDPARM_INFO_TEMPLATE = (
     '\tSerial Number:      20131210000000000023\n'
     '\tFirmware Revision:  SVN406\n'
     '\tTransport:          Serial, ATA8-AST, SATA 1.0a, SATA II Extensions, '
-        'SATA Rev 2.5, SATA Rev 2.6, SATA Rev 3.0\n'
+    'SATA Rev 2.5, SATA Rev 2.6, SATA Rev 3.0\n'
     'Standards: \n'
     '\tSupported: 9 8 7 6 5\n'
     '\tLikely used: 9\n'
@@ -69,13 +69,13 @@ HDPARM_INFO_TEMPLATE = (
     '\tLBA, IORDY(can be disabled)\n'
     '\tQueue depth: 32\n'
     '\tStandby timer values: spec\'d by Standard, no device specific '
-        'minimum\n'
+    'minimum\n'
     '\tR/W multiple sector transfer: Max = 1\tCurrent = 1\n'
     '\tDMA: mdma0 mdma1 mdma2 udma0 udma1 udma2 udma3 udma4 *udma5\n'
     '\t     Cycle time: min=120ns recommended=120ns\n'
     '\tPIO: pio0 pio1 pio2 pio3 pio4\n'
     '\t     Cycle time: no flow control=120ns  IORDY flow '
-        'control=120ns\n'
+    'control=120ns\n'
     'Commands/features: \n'
     '\tEnabled\tSupported:\n'
     '\t   *\tSMART feature set\n'
@@ -118,13 +118,9 @@ HDPARM_INFO_TEMPLATE = (
     '\tnot\texpired: security count\n'
     '\t%(enhanced_erase)s\n'
     '\t24min for SECURITY ERASE UNIT. 24min for ENHANCED SECURITY '
-        'ERASE UNIT.\n'
+    'ERASE UNIT.\n'
     'Checksum: correct\n'
-)  # noqa
-# NOTE(jroll) noqa here is to dodge E131 (indent rules). Since this is a
-# massive multi-line string (with specific whitespace formatting), it's easier
-# for a human to parse it with indentations on line continuations. The other
-# option would be to ignore the 79-character limit here. Ew.
+)
 
 BLK_DEVICE_TEMPLATE = (
     'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '
