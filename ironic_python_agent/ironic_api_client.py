@@ -68,6 +68,8 @@ class APIClient(object):
             'Content-Type': 'application/json',
             'Accept': 'application/json',
         })
+        if CONF.global_request_id:
+            headers["X-OpenStack-Request-ID"] = CONF.global_request_id
 
         verify, cert = utils.get_ssl_client_options(CONF)
         return self.session.request(method,

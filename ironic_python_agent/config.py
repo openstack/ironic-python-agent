@@ -36,6 +36,12 @@ cli_opts = [
                     'A special value "mdns" can be specified to fetch the '
                     'URL using multicast DNS service discovery.'),
 
+    cfg.StrOpt('global_request_id',
+               default=APARAMS.get('ipa-global-request-id'),
+               help='Global request ID header to provide to Ironic API. '
+                    'Can be supplied as "ipa-global-request-id" kernel '
+                    'parameter. The value must be in form "req-<UUID>".'),
+
     cfg.StrOpt('listen_host',
                default=APARAMS.get('ipa-listen-host',
                                    netutils.get_wildcard_address()),

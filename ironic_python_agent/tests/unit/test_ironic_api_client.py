@@ -109,6 +109,8 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
 
     def test_successful_heartbeat(self):
         response = FakeResponse(status_code=202)
+        req_id = "req-14c99bd0-1bb5-4d74-972b-e282a50ce441"
+        self.config(global_request_id=req_id)
 
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
@@ -122,8 +124,12 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
 
         heartbeat_path = 'v1/heartbeat/deadbeef-dabb-ad00-b105-f00d00bab10c'
         request_args = self.api_client.session.request.call_args[0]
-        data = self.api_client.session.request.call_args[1]['data']
+        request_kwargs = self.api_client.session.request.call_args[1]
+        data = request_kwargs["data"]
         self.assertEqual('POST', request_args[0])
+        request_headers = request_kwargs["headers"]
+        self.assertEqual(
+            req_id, request_headers["X-OpenStack-Request-ID"])
         self.assertEqual(API_URL + heartbeat_path, request_args[1])
         expected_data = {
             'callback_url': 'http://192.0.2.1:9999',
