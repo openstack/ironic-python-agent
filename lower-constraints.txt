@@ -36,7 +36,7 @@ mox3==0.25.0
 msgpack-python==0.5.6
 netaddr==0.7.19
 netifaces==0.10.4
-openstackdocstheme==1.20.0
+openstackdocstheme==2.2.1
 os-client-config==1.29.0
 oslo.concurrency==3.26.0
 oslo.config==5.2.0
@@ -64,7 +64,7 @@ python-subunit==1.2.0
 pytz==2018.3
 pyudev==0.18
 PyYAML==3.12
-reno==2.5.0
+reno==3.1.0
 repoze.lru==0.7
 requests==2.14.2
 requestsexceptions==1.4.0
@@ -75,7 +75,7 @@ rtslib-fb==2.1.65
 six==1.14.0
 smmap==3.0.2
 snowballstemmer==1.2.1
-Sphinx==1.6.2
+Sphinx==2.0.0
 sphinxcontrib-websupport==1.0.1
 stestr==1.0.0
 stevedore==1.20.0

@@ -34,7 +34,7 @@ add_function_parentheses = True
 add_module_names = True
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = 'native'
 
 
 # -- Options for HTML output --------------------------------------------------
@@ -44,12 +44,12 @@ pygments_style = 'sphinx'
 html_theme = 'openstackdocs'
 
 # openstackdocstheme options
-repository_name = 'openstack/ironic-python-agent'
-bug_project = 'ironic-python-agent'
-bug_tag = ''
+openstackdocs_repo_name = 'openstack/ironic-python-agent'
+openstackdocs_pdf_link = True
+openstackdocs_use_storyboard = True
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Ironic Python Agentdoc' 
+htmlhelp_basename = 'Ironic Python Agentdoc'
 
 latex_use_xindy = False
 
