@@ -381,7 +381,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             self.heartbeater.start()
         try:
             while self.serve_api:
-                eventlet.sleep(0)
+                eventlet.sleep(0.1)
         except KeyboardInterrupt:
             LOG.info('Caught keyboard interrupt, exiting')
         self.api.stop()
