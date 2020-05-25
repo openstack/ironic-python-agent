@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes an issue with high cpu usage caused by ironic-python-agent greenthread
+    eventlent implementation. 
+
+    Using eventlet.sleep(0.1) instead of eventlet.sleep(0) gives other processes
+    of IPA more cpu time to run.
