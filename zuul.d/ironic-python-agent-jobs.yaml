@@ -14,14 +14,11 @@
       - openstack/ironic-lib
     vars:
       devstack_localrc:
-        IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 384
         IRONIC_BUILD_DEPLOY_RAMDISK: True
 
 - job:
-    name: ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
+    name: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
     parent: ironic-ipa-base
-    timeout: 7200
     vars:
       devstack_services:
         s-account: True
@@ -36,9 +33,8 @@
         SWIFT_TEMPURL_KEY: secretkey
 
 - job:
-    name: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
+    name: ipa-tempest-partition-bios-ipmi-direct-src
     parent: ironic-ipa-base
-    timeout: 7200
     vars:
       devstack_services:
         s-account: True
@@ -52,18 +48,16 @@
         SWIFT_TEMPURL_KEY: secretkey
 
 - job:
-    name: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
+    name: ipa-tempest-partition-bios-ipmi-iscsi-dib-src
     parent: ironic-ipa-base
-    timeout: 7200
     vars:
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
 
 
 - job:
-    name: ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
+    name: ipa-tempest-wholedisk-bios-ipmi-iscsi-src
     parent: ironic-ipa-base
-    timeout: 7200
     vars:
       devstack_localrc:
         IRONIC_VM_EPHEMERAL_DISK: 0
@@ -72,7 +66,6 @@
 - job:
     name: ipa-tempest-ironic-inspector-src
     parent: ironic-ipa-base
-    timeout: 10800
     required-projects:
       # These are in addition to what is in ironic-ipa-base
       - openstack/ironic-inspector
@@ -94,7 +87,6 @@
 - job:
     name: ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa
     parent: ironic-ipa-base
-    timeout: 7200
     required-projects:
       - openstack/python-ironicclient
     vars:
@@ -103,11 +95,12 @@
         EBTABLES_RACE_FIX: True
         IRONIC_INSPECTOR_BUILD_RAMDISK: True
         USE_SUBNETPOOL: False
+        IRONIC_RAMDISK_TYPE: tinyipa
+        IRONIC_VM_SPECS_RAM: 384
 
 - job:
     name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
     parent: ironic-ipa-base
-    timeout: 7200
     required-projects:
       - openstack/ironic-python-agent
       - openstack/python-ironicclient
@@ -116,6 +109,7 @@
         IRONIC_DEFAULT_BOOT_OPTION: netboot
         EBTABLES_RACE_FIX: True
         IRONIC_INSPECTOR_BUILD_RAMDISK: True
+        IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 256
         USE_SUBNETPOOL: False
         SWIFT_ENABLE_TEMPURLS: True
@@ -168,41 +162,37 @@
         IRONIC_AUTOMATED_CLEAN_ENABLED: False
         IRONIC_BUILD_DEPLOY_RAMDISK: True
 
+# NOTE(rpittau) leaving tinypa jobs definitions to not break other projects
+# remove them after changing the references in the other projects like
+# ironic-python-agent-builder and disk-image-builder
 - job:
-    name: ironic-ipa-dib-base
-    parent: ironic-ipa-base
-    required-projects:
-      - openstack/diskimage-builder
-    timeout: 9600
+    name: ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
+    parent: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
     vars:
-      tempest_test_timeout: 2400
       devstack_localrc:
-        IRONIC_RAMDISK_TYPE: dib
-        IRONIC_TEMPEST_BUILD_TIMEOUT: 900
-        IRONIC_VM_INTERFACE_COUNT: 1
-        IRONIC_VM_SPECS_RAM: 3072
+        IRONIC_RAMDISK_TYPE: tinyipa
+        IRONIC_VM_SPECS_RAM: 384
 
 - job:
-    name: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
-    parent: ironic-ipa-dib-base
+    name: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
+    parent: ipa-tempest-partition-bios-ipmi-direct-src
     vars:
-      devstack_services:
-        s-account: True
-        s-container: True
-        s-object: True
-        s-proxy: True
       devstack_localrc:
-        IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
-        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
-        IRONIC_VM_EPHEMERAL_DISK: 0
-        SWIFT_ENABLE_TEMPURLS: True
-        SWIFT_TEMPURL_KEY: secretkey
+        IRONIC_RAMDISK_TYPE: tinyipa
+        IRONIC_VM_SPECS_RAM: 384
 
 - job:
-    name: ipa-tempest-partition-bios-ipmi-iscsi-dib-src
-    parent: ironic-ipa-dib-base
+    name: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
+    parent: ipa-tempest-partition-bios-ipmi-iscsi-dib-src
     vars:
       devstack_localrc:
-        IRONIC_DEFAULT_BOOT_OPTION: netboot
-        IRONIC_DEFAULT_DEPLOY_INTERFACE: iscsi
-        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: False
+        IRONIC_RAMDISK_TYPE: tinyipa
+        IRONIC_VM_SPECS_RAM: 384
+
+- job:
+    name: ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
+    parent: ipa-tempest-wholedisk-bios-ipmi-iscsi-src
+    vars:
+      devstack_localrc:
+        IRONIC_RAMDISK_TYPE: tinyipa
+        IRONIC_VM_SPECS_RAM: 384
