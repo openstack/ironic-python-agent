@@ -143,6 +143,9 @@ Retrieving the IPA logs will differ depending on which base image was used.
 * Operating system that do use ``systemd`` (ie Fedora, CentOS, RHEL)
 
   - logs may be viewed with ``sudo journalctl -u ironic-python-agent``
+  - if using a diskimage-builder ramdisk, it may be configured to output all
+    contents of the journal, including ironic-python-agent logs, by enabling
+    the `journal-to-console element <https://docs.openstack.org/diskimage-builder/latest/elements/journal-to-console/README.html>`_.
 
 Manually restart IPA
 ====================
