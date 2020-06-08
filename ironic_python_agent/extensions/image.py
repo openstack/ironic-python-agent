@@ -687,7 +687,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
 
 class ImageExtension(base.BaseAgentExtension):
 
-    @base.sync_command('install_bootloader')
+    @base.async_command('install_bootloader')
     def install_bootloader(self, root_uuid, efi_system_part_uuid=None,
                            prep_boot_part_uuid=None,
                            target_boot_mode='bios'):

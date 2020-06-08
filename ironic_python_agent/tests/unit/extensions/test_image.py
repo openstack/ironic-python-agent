@@ -54,7 +54,8 @@ class TestImageExtension(base.IronicAgentTest):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='bios')
         ]
-        self.agent_extension.install_bootloader(root_uuid=self.fake_root_uuid)
+        self.agent_extension.install_bootloader(
+            root_uuid=self.fake_root_uuid).join()
         mock_dispatch.assert_any_call('get_os_install_device')
         mock_dispatch.assert_any_call('get_boot_info')
         self.assertEqual(2, mock_dispatch.call_count)
@@ -79,7 +80,7 @@ class TestImageExtension(base.IronicAgentTest):
             root_uuid=self.fake_root_uuid,
             efi_system_part_uuid=self.fake_efi_system_part_uuid,
             target_boot_mode='uefi'
-        )
+        ).join()
         mock_dispatch.assert_any_call('get_os_install_device')
         mock_dispatch.assert_any_call('get_boot_info')
         self.assertEqual(2, mock_dispatch.call_count)
@@ -131,7 +132,7 @@ class TestImageExtension(base.IronicAgentTest):
 
         self.agent_extension.install_bootloader(
             root_uuid=self.fake_root_uuid,
-            efi_system_part_uuid=self.fake_efi_system_part_uuid)
+            efi_system_part_uuid=self.fake_efi_system_part_uuid).join()
 
         mock_dispatch.assert_any_call('get_os_install_device')
         mock_dispatch.assert_any_call('get_boot_info')
@@ -179,7 +180,7 @@ class TestImageExtension(base.IronicAgentTest):
 
         self.agent_extension.install_bootloader(
             root_uuid=self.fake_root_uuid,
-            efi_system_part_uuid=None)
+            efi_system_part_uuid=None).join()
 
         mock_dispatch.assert_any_call('get_os_install_device')
         mock_dispatch.assert_any_call('get_boot_info')
@@ -234,7 +235,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
         self.agent_extension.install_bootloader(
             root_uuid=self.fake_root_uuid,
-            efi_system_part_uuid=None)
+            efi_system_part_uuid=None).join()
 
         mock_dispatch.assert_any_call('get_os_install_device')
         mock_dispatch.assert_any_call('get_boot_info')
@@ -289,7 +290,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
         self.agent_extension.install_bootloader(
             root_uuid=self.fake_root_uuid,
-            efi_system_part_uuid=None)
+            efi_system_part_uuid=None).join()
 
         mock_dispatch.assert_any_call('get_os_install_device')
         mock_dispatch.assert_any_call('get_boot_info')
@@ -309,7 +310,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         self.agent_extension.install_bootloader(
             root_uuid=self.fake_root_uuid,
             efi_system_part_uuid=None,
-            prep_boot_part_uuid=self.fake_prep_boot_part_uuid)
+            prep_boot_part_uuid=self.fake_prep_boot_part_uuid).join()
         mock_dispatch.assert_any_call('get_os_install_device')
         mock_dispatch.assert_any_call('get_boot_info')
         self.assertEqual(2, mock_dispatch.call_count)
@@ -331,10 +332,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
         mock_execute.side_effect = FileNotFoundError
-        self.assertRaises(FileNotFoundError,
-                          self.agent_extension.install_bootloader,
-                          root_uuid=self.fake_root_uuid,
-                          efi_system_part_uuid=None)
+        result = self.agent_extension.install_bootloader(
+            root_uuid=self.fake_root_uuid,
+            efi_system_part_uuid=None).join()
+        self.assertIsNotNone(result.command_error)
         expected = [mock.call('efibootmgr', '--version')]
         mock_execute.assert_has_calls(expected)
 
