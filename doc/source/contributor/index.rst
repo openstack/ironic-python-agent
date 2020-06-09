@@ -29,7 +29,7 @@ Generated Developer Documentation
 .. toctree::
    :hidden:
 
-   api/autoindex
+   api/modules
 
 Indices and tables
 ==================
