@@ -619,6 +619,7 @@ class StandbyExtension(base.BaseAgentExtension):
                                                                   device)
                     stream_to = self.partition_uuids['partitions']['root']
                 else:
+                    self.partition_uuids = {}
                     stream_to = device
 
                 self._stream_raw_image_onto_device(image_info, stream_to)
@@ -705,6 +706,16 @@ class StandbyExtension(base.BaseAgentExtension):
             error_msg = 'Flushing file system buffers failed. Error: %s' % e
             LOG.error(error_msg)
             raise errors.CommandExecutionError(error_msg)
+
+    @base.sync_command('get_partition_uuids')
+    def get_partition_uuids(self):
+        """Return partition UUIDs."""
+        # NOTE(dtantsur): None means prepare_image hasn't been called (an empty
+        # dict is used for whole disk images).
+        if self.partition_uuids is None:
+            LOG.warning('No partition UUIDs recorded yet, prepare_image '
+                        'has to be called before get_partition_uuids')
+        return self.partition_uuids or {}
 
     # TODO(TheJulia): Once we have deploy/clean steps, this should
     # become a step, which we ideally have enabled by default.

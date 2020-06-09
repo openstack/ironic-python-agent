@@ -939,6 +939,9 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_info['disk_format'] = 'raw'
         image_info['stream_raw_images'] = True
         self._test_prepare_image_raw(image_info, partition=True)
+        self.assertEqual({'root uuid': 'a318821b-2a60-40e5-a011-7ac07fce342b',
+                          'partitions': {'root': '/dev/foo-part1'}},
+                         self.agent_extension.partition_uuids)
 
     def test_prepare_partition_image_raw_and_stream_false(self):
         image_info = _build_fake_partition_image_info()
@@ -1240,6 +1243,12 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertRaises(errors.ClockSyncError,
                           self.agent_extension._sync_clock)
         execute_mock.assert_any_call('hwclock', '-v', '--systohc')
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_get_partition_uuids(self, execute_mock):
+        self.agent_extension.partition_uuids = {'1': '2'}
+        result = self.agent_extension.get_partition_uuids()
+        self.assertEqual({'1': '2'}, result.serialize()['command_result'])
 
 
 @mock.patch('hashlib.md5', autospec=True)
