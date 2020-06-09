@@ -14,6 +14,7 @@
 
 import os
 import tempfile
+import time
 from unittest import mock
 
 from ironic_lib import exception
@@ -1204,6 +1205,57 @@ class TestStandbyExtension(base.IronicAgentTest):
                                               timeout=60)
         # Assert write was only called once and failed!
         file_mock.write.assert_called_once_with('some')
+
+    @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_stream_raw_image_onto_device_socket_read_timeout(
+            self, requests_mock, open_mock, md5_mock, fix_gpt_mock):
+
+        class create_timeout(object):
+            status_code = 200
+
+            def __init__(self, url, stream, proxies, verify, cert, timeout):
+                time.sleep(1)
+                self.count = 0
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if self.count == 1:
+                    time.sleep(4)
+                    return None
+                if self.count < 3:
+                    self.count += 1
+                    return "meow"
+                else:
+                    time.sleep(30)
+                    raise StopIteration
+
+            def iter_content(self, chunk_size):
+                return self
+
+        self.config(image_download_connection_timeout=1)
+        image_info = _build_fake_image_info()
+        file_mock = mock.Mock()
+        open_mock.return_value.__enter__.return_value = file_mock
+        file_mock.read.return_value = None
+        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['checksum']
+        requests_mock.side_effect = create_timeout
+        self.assertRaises(
+            errors.ImageDownloadError,
+            self.agent_extension._stream_raw_image_onto_device,
+            image_info,
+            '/dev/foo')
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
+                                              stream=True, proxies={},
+                                              timeout=1)
+        file_mock.write.assert_called_once_with('meow')
+        fix_gpt_mock.assert_not_called()
 
     def test__message_format_partition_bios(self):
         image_info = _build_fake_partition_image_info()

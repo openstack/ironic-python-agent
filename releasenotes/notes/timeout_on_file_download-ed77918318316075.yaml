@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixes failure to detect a hung file download connection in the
+    event that the kernel has not rapidly detected that the remote
+    server has hung up the socket. This can happen when there is
+    intermittent and transient connectivity issues such as those
+    that can occur due to LACP failure response hold-downs timers
+    in switching fabrics.
