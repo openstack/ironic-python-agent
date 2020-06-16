@@ -4,6 +4,7 @@
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.viewcode',
+              'sphinxcontrib.apidoc',
               'openstackdocstheme',
               ]
 
@@ -35,6 +36,14 @@ add_module_names = True
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'native'
+
+# sphinxcontrib.apidoc options
+apidoc_module_dir = '../../ironic_python_agent'
+apidoc_output_dir = 'contributor/api'
+apidoc_excluded_paths = [
+    'tests',
+]
+apidoc_separate_modules = True
 
 
 # -- Options for HTML output --------------------------------------------------
