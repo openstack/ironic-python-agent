@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes deployment failures when the image download is interrupted
+    mid-stream while the contents are being downloaded. Previously retries
+    were limited to only opening the initial connection.

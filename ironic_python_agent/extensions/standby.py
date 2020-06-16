@@ -405,16 +405,30 @@ def _download_image(image_info):
     """
     starttime = time.time()
     image_location = _image_location(image_info)
-    image_download = ImageDownload(image_info, time_obj=starttime)
-
-    with open(image_location, 'wb') as f:
+    for attempt in range(CONF.image_download_connection_retries + 1):
         try:
-            for chunk in image_download:
-                f.write(chunk)
-        except Exception as e:
-            msg = 'Unable to write image to {}. Error: {}'.format(
-                image_location, str(e))
-            raise errors.ImageDownloadError(image_info['id'], msg)
+            image_download = ImageDownload(image_info, time_obj=starttime)
+
+            with open(image_location, 'wb') as f:
+                try:
+                    for chunk in image_download:
+                        f.write(chunk)
+                except Exception as e:
+                    msg = 'Unable to write image to {}. Error: {}'.format(
+                        image_location, str(e))
+                    raise errors.ImageDownloadError(image_info['id'], msg)
+        except errors.ImageDownloadError as e:
+            if attempt == CONF.image_download_connection_retries:
+                raise
+            else:
+                LOG.warning('Image download failed, %(attempt)s of %(total)s: '
+                            '%(error)s',
+                            {'attempt': attempt,
+                             'total': CONF.image_download_connection_retries,
+                             'error': e})
+                time.sleep(CONF.image_download_connection_retry_interval)
+        else:
+            break
 
     totaltime = time.time() - starttime
     LOG.info("Image downloaded from {} in {} seconds".format(image_location,
@@ -549,16 +563,31 @@ class StandbyExtension(base.BaseAgentExtension):
              match the checksum as reported by glance in image_info.
         """
         starttime = time.time()
-        image_download = ImageDownload(image_info, time_obj=starttime)
-
-        with open(device, 'wb+') as f:
+        total_retries = CONF.image_download_connection_retries
+        for attempt in range(total_retries + 1):
             try:
-                for chunk in image_download:
-                    f.write(chunk)
-            except Exception as e:
-                msg = 'Unable to write image to device {}. Error: {}'.format(
-                      device, str(e))
-                raise errors.ImageDownloadError(image_info['id'], msg)
+                image_download = ImageDownload(image_info, time_obj=starttime)
+
+                with open(device, 'wb+') as f:
+                    try:
+                        for chunk in image_download:
+                            f.write(chunk)
+                    except Exception as e:
+                        msg = ('Unable to write image to device {}. '
+                               'Error: {}').format(device, str(e))
+                        raise errors.ImageDownloadError(image_info['id'], msg)
+            except errors.ImageDownloadError as e:
+                if attempt == CONF.image_download_connection_retries:
+                    raise
+                else:
+                    LOG.warning('Image download failed, %(attempt)s of '
+                                '%(total)s: %(error)s',
+                                {'attempt': attempt,
+                                 'total': total_retries,
+                                 'error': e})
+                    time.sleep(CONF.image_download_connection_retry_interval)
+            else:
+                break
 
         totaltime = time.time() - starttime
         LOG.info("Image streamed onto device {} in {} "
