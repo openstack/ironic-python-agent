@@ -1126,6 +1126,8 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device_write_error(self, requests_mock,
                                                       open_mock, md5_mock):
+        self.config(image_download_connection_timeout=1)
+        self.config(image_download_connection_retry_interval=0)
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
@@ -1139,12 +1141,20 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertRaises(errors.ImageDownloadError,
                           self.agent_extension._stream_raw_image_onto_device,
                           image_info, '/dev/foo')
-        requests_mock.assert_called_once_with(image_info['urls'][0],
-                                              cert=None, verify=True,
-                                              stream=True, proxies={},
-                                              timeout=60)
-        # Assert write was only called once and failed!
-        file_mock.write.assert_called_once_with('some')
+        calls = [mock.call('http://example.org', cert=None, proxies={},
+                           stream=True, timeout=1, verify=True),
+                 mock.call().iter_content(mock.ANY),
+                 mock.call('http://example.org', cert=None, proxies={},
+                           stream=True, timeout=1, verify=True),
+                 mock.call().iter_content(mock.ANY),
+                 mock.call('http://example.org', cert=None, proxies={},
+                           stream=True, timeout=1, verify=True),
+                 mock.call().iter_content(mock.ANY)]
+        requests_mock.assert_has_calls(calls)
+        write_calls = [mock.call('some'),
+                       mock.call('some'),
+                       mock.call('some')]
+        file_mock.write.assert_has_calls(write_calls)
 
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
@@ -1191,6 +1201,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                 return self
 
         self.config(image_download_connection_timeout=1)
+        self.config(image_download_connection_retry_interval=0)
         image_info = _build_fake_image_info()
         file_mock = mock.Mock()
         open_mock.return_value.__enter__.return_value = file_mock
@@ -1203,11 +1214,19 @@ class TestStandbyExtension(base.IronicAgentTest):
             self.agent_extension._stream_raw_image_onto_device,
             image_info,
             '/dev/foo')
-        requests_mock.assert_called_once_with(image_info['urls'][0],
-                                              cert=None, verify=True,
-                                              stream=True, proxies={},
-                                              timeout=1)
-        file_mock.write.assert_called_once_with('meow')
+
+        calls = [mock.call(image_info['urls'][0], cert=None, verify=True,
+                           stream=True, proxies={}, timeout=1),
+                 mock.call(image_info['urls'][0], cert=None, verify=True,
+                           stream=True, proxies={}, timeout=1),
+                 mock.call(image_info['urls'][0], cert=None, verify=True,
+                           stream=True, proxies={}, timeout=1)]
+        requests_mock.assert_has_calls(calls)
+
+        write_calls = [mock.call('meow'),
+                       mock.call('meow'),
+                       mock.call('meow')]
+        file_mock.write.assert_has_calls(write_calls)
         fix_gpt_mock.assert_not_called()
 
     def test__message_format_partition_bios(self):
