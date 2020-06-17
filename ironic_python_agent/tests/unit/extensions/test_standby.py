@@ -412,6 +412,7 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('requests.get', autospec=True)
     def test_download_image_bad_status(self, requests_mock):
+        self.config(image_download_connection_retry_interval=0)
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 404
@@ -1248,6 +1249,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                 return self
 
         self.config(image_download_connection_timeout=1)
+        self.config(image_download_connection_retries=2)
         self.config(image_download_connection_retry_interval=0)
         image_info = _build_fake_image_info()
         file_mock = mock.Mock()
@@ -1395,6 +1397,7 @@ class TestImageDownload(base.IronicAgentTest):
     @mock.patch('time.sleep', autospec=True)
     def test_download_image_retries(self, sleep_mock, requests_mock,
                                     time_mock):
+        self.config(image_download_connection_retries=2)
         response = requests_mock.return_value
         response.status_code = 500
         response.text = 'Oops'
@@ -1411,7 +1414,7 @@ class TestImageDownload(base.IronicAgentTest):
                                          stream=True, proxies={},
                                          timeout=60)
         self.assertEqual(3, requests_mock.call_count)
-        sleep_mock.assert_called_with(5)
+        sleep_mock.assert_called_with(10)
         self.assertEqual(2, sleep_mock.call_count)
 
     @mock.patch('time.sleep', autospec=True)
@@ -1436,7 +1439,7 @@ class TestImageDownload(base.IronicAgentTest):
                                          stream=True, proxies={},
                                          timeout=60)
         self.assertEqual(3, requests_mock.call_count)
-        sleep_mock.assert_called_with(5)
+        sleep_mock.assert_called_with(10)
         self.assertEqual(2, sleep_mock.call_count)
 
     def test_download_image_and_checksum(self, requests_mock, md5_mock):
@@ -1536,6 +1539,7 @@ foobar  irrelevant file.img
                                standby.ImageDownload, image_info)
 
     def test_download_image_and_checksum_failed(self, requests_mock, md5_mock):
+        self.config(image_download_connection_retry_interval=0)
         content = ['SpongeBob', 'SquarePants']
         cs_response = mock.Mock()
         cs_response.status_code = 400
