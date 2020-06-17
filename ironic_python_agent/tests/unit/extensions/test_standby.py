@@ -711,6 +711,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         execute_mock.assert_called_with('partprobe', 'manager',
                                         run_as_root=True,
                                         attempts=mock.ANY)
+        self.assertEqual({'root uuid': 'ROOT'},
+                         self.agent_extension.partition_uuids)
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.list_partitions',
@@ -779,6 +781,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         execute_mock.assert_called_with('partprobe', 'manager',
                                         run_as_root=True,
                                         attempts=mock.ANY)
+        self.assertEqual({'root uuid': 'root_uuid'},
+                         self.agent_extension.partition_uuids)
 
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
@@ -869,6 +873,59 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         self.assertFalse(configdrive_copy_mock.called)
         self.assertEqual('FAILED', async_result.command_status)
+
+    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
+                side_effect=OSError, autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute',
+                autospec=True)
+    @mock.patch('ironic_lib.disk_utils.list_partitions',
+                autospec=True)
+    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
+                autospec=True)
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._write_image',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._download_image',
+                autospec=True)
+    def test_prepare_image_no_hexdump(self,
+                                      download_mock,
+                                      write_mock,
+                                      dispatch_mock,
+                                      configdrive_copy_mock,
+                                      list_part_mock,
+                                      execute_mock,
+                                      disk_id_mock):
+        image_info = _build_fake_image_info()
+        download_mock.return_value = None
+        write_mock.return_value = None
+        dispatch_mock.return_value = 'manager'
+        configdrive_copy_mock.return_value = None
+        list_part_mock.return_value = [mock.MagicMock()]
+
+        async_result = self.agent_extension.prepare_image(
+            image_info=image_info,
+            configdrive='configdrive_data'
+        )
+        async_result.join()
+
+        download_mock.assert_called_once_with(image_info)
+        write_mock.assert_called_once_with(image_info, 'manager')
+        dispatch_mock.assert_called_once_with('get_os_install_device')
+        configdrive_copy_mock.assert_called_once_with(image_info['node_uuid'],
+                                                      'manager',
+                                                      'configdrive_data')
+
+        self.assertEqual('SUCCEEDED', async_result.command_status)
+        self.assertIn('result', async_result.command_result)
+        cmd_result = ('prepare_image: image ({}) written to device {} '
+                      'root_uuid=None').format(image_info['id'], 'manager')
+        self.assertEqual(cmd_result, async_result.command_result['result'])
+        list_part_mock.assert_called_with('manager')
+        execute_mock.assert_called_with('partprobe', 'manager',
+                                        run_as_root=True,
+                                        attempts=mock.ANY)
+        self.assertEqual({}, self.agent_extension.partition_uuids)
 
     @mock.patch('ironic_python_agent.utils.execute', mock.Mock())
     @mock.patch('ironic_lib.disk_utils.list_partitions',
@@ -1148,19 +1205,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         # Assert write was only called once and failed!
         file_mock.write.assert_called_once_with('some')
 
-    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
-                lambda dev: 'ROOT')
-    def test__message_format_whole_disk(self):
-        image_info = _build_fake_image_info()
-        msg = 'image ({}) already present on device {} '
-        device = '/dev/fake'
-        partition_uuids = {}
-        result_msg = standby._message_format(msg, image_info,
-                                             device, partition_uuids)
-        expected_msg = ('image (fake_id) already present on device '
-                        '/dev/fake root_uuid=ROOT')
-        self.assertEqual(expected_msg, result_msg)
-
     def test__message_format_partition_bios(self):
         image_info = _build_fake_partition_image_info()
         msg = ('image ({}) already present on device {} ')
@@ -1200,21 +1244,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         expected_msg = ('image (fake_id) already present on device '
                         '/dev/fake root_uuid=root_uuid '
                         'efi_system_partition_uuid=efi_id')
-        self.assertEqual(expected_msg, result_msg)
-
-    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
-                autospec=True)
-    def test__message_format_whole_disk_missing_oserror(self,
-                                                        ident_mock):
-        ident_mock.side_effect = OSError
-        image_info = _build_fake_image_info()
-        msg = 'image ({}) already present on device {}'
-        device = '/dev/fake'
-        partition_uuids = {}
-        result_msg = standby._message_format(msg, image_info,
-                                             device, partition_uuids)
-        expected_msg = ('image (fake_id) already present on device '
-                        '/dev/fake')
         self.assertEqual(expected_msg, result_msg)
 
     @mock.patch('ironic_python_agent.utils.determine_time_method',
