@@ -224,31 +224,21 @@ def _message_format(msg, image_info, device, partition_uuids):
     """Helper method to get and populate different messages."""
     message = None
     result_msg = msg
-    if image_info.get('image_type') == 'partition':
-        root_uuid = partition_uuids.get('root uuid')
-        efi_system_partition_uuid = (
-            partition_uuids.get('efi system partition uuid'))
-        if (image_info.get('deploy_boot_mode') == 'uefi'
-                and image_info.get('boot_option') == 'local'):
-            result_msg = msg + 'root_uuid={} efi_system_partition_uuid={}'
-            message = result_msg.format(image_info['id'], device,
-                                        root_uuid,
-                                        efi_system_partition_uuid)
-        else:
-            result_msg = msg + 'root_uuid={}'
-            message = result_msg.format(image_info['id'], device, root_uuid)
+
+    root_uuid = partition_uuids.get('root uuid')
+    efi_system_partition_uuid = (
+        partition_uuids.get('efi system partition uuid'))
+    if (image_info.get('deploy_boot_mode') == 'uefi'
+            and image_info.get('boot_option') == 'local'
+            and efi_system_partition_uuid):
+        result_msg = msg + 'root_uuid={} efi_system_partition_uuid={}'
+        message = result_msg.format(image_info['id'], device,
+                                    root_uuid,
+                                    efi_system_partition_uuid)
     else:
-        try:
-            # NOTE(TheJulia): ironic-lib disk_utils.get_disk_identifier
-            # can raise OSError if hexdump is not found.
-            root_uuid = disk_utils.get_disk_identifier(device)
-            result_msg = msg + 'root_uuid={}'
-            message = result_msg.format(image_info['id'], device, root_uuid)
-        except OSError as e:
-            LOG.warning('Failed to call get_disk_identifier: '
-                        'Unable to obtain the root_uuid parameter: '
-                        'The hexdump tool may be missing in IPA: %s', e)
-            message = result_msg.format(image_info['id'], device)
+        result_msg = msg + 'root_uuid={}'
+        message = result_msg.format(image_info['id'], device, root_uuid)
+
     return message
 
 
@@ -546,6 +536,22 @@ class StandbyExtension(base.BaseAgentExtension):
             # Note: the catch internal to the helper method logs any errors.
             pass
 
+    def _fix_up_partition_uuids(self, image_info, device):
+        if self.partition_uuids is None:
+            self.partition_uuids = {}
+
+        if image_info.get('image_type') == 'partition':
+            return
+
+        try:
+            root_uuid = disk_utils.get_disk_identifier(device)
+        except OSError as e:
+            LOG.warning('Failed to call get_disk_identifier: '
+                        'Unable to obtain the root_uuid parameter: '
+                        'The hexdump tool may be missing in IPA: %s', e)
+        else:
+            self.partition_uuids['root uuid'] = root_uuid
+
     @base.async_command('cache_image', _validate_image_info)
     def cache_image(self, image_info=None, force=False):
         """Asynchronously caches specified image to the local OS device.
@@ -571,6 +577,7 @@ class StandbyExtension(base.BaseAgentExtension):
             self._cache_and_write_image(image_info, device)
             msg = 'image ({}) cached to device {} '
 
+        self._fix_up_partition_uuids(image_info, device)
         result_msg = _message_format(msg, image_info, device,
                                      self.partition_uuids)
 
@@ -640,6 +647,8 @@ class StandbyExtension(base.BaseAgentExtension):
                 disk_utils.create_config_drive_partition(node_uuid,
                                                          device,
                                                          configdrive)
+
+        self._fix_up_partition_uuids(image_info, device)
         msg = 'image ({}) written to device {} '
         result_msg = _message_format(msg, image_info, device,
                                      self.partition_uuids)
