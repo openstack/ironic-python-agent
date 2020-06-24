@@ -282,7 +282,6 @@ class ImageDownload(object):
                  any reason.
         """
         self._time = time_obj or time.time()
-        self._last_chunk_time = None
         self._image_info = image_info
         self._request = None
 
@@ -344,6 +343,7 @@ class ImageDownload(object):
         :returns: A chunk of the image. Size of chunk is IMAGE_CHUNK_SIZE
                   which is a constant in this module.
         """
+        self._last_chunk_time = None
         for chunk in self._request.iter_content(IMAGE_CHUNK_SIZE):
             # Per requests forum posts/discussions, iter_content should
             # periodically yield to the caller for the client to do things

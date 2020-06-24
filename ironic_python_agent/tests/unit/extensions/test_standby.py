@@ -1217,7 +1217,6 @@ class TestStandbyExtension(base.IronicAgentTest):
             status_code = 200
 
             def __init__(self, url, stream, proxies, verify, cert, timeout):
-                time.sleep(1)
                 self.count = 0
 
             def __iter__(self):
@@ -1227,12 +1226,8 @@ class TestStandbyExtension(base.IronicAgentTest):
                 if self.count == 1:
                     time.sleep(4)
                     return None
-                if self.count < 3:
-                    self.count += 1
-                    return "meow"
-                else:
-                    time.sleep(30)
-                    raise StopIteration
+                self.count += 1
+                return "meow"
 
             def iter_content(self, chunk_size):
                 return self
