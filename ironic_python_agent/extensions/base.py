@@ -164,7 +164,7 @@ class AsyncCommandResult(BaseCommandResult):
 
             if isinstance(result, (bytes, str)):
                 result = {'result': '{}: {}'.format(self.command_name, result)}
-            LOG.info('Command: %(name)s, result: %(result)s',
+            LOG.info('Asynchronous command %(name)s completed: %(result)s',
                      {'name': self.command_name,
                       'result': utils.remove_large_keys(result)})
             with self.command_state_lock:
@@ -270,9 +270,6 @@ class ExecuteCommandMixin(object):
                 # recorded as a failed SyncCommandResult with an error message
                 LOG.exception('Command execution error: %s', e)
                 result = SyncCommandResult(command_name, kwargs, False, e)
-            LOG.info('Command %(name)s completed: %(result)s',
-                     {'name': command_name,
-                      'result': utils.remove_large_keys(result)})
             self.command_results[result.id] = result
             return result
 
@@ -299,10 +296,13 @@ def async_command(command_name, validator=None):
             # know about the mode
             bound_func = functools.partial(func, self)
 
-            return AsyncCommandResult(command_name,
-                                      command_params,
-                                      bound_func,
-                                      agent=self.agent).start()
+            ret = AsyncCommandResult(command_name,
+                                     command_params,
+                                     bound_func,
+                                     agent=self.agent).start()
+            LOG.info('Asynchronous command %(name)s started execution',
+                     {'name': command_name})
+            return ret
         return wrapper
     return async_decorator
 
@@ -325,6 +325,9 @@ def sync_command(command_name, validator=None):
                 validator(self, **command_params)
 
             result = func(self, **command_params)
+            LOG.info('Synchronous command %(name)s completed: %(result)s',
+                     {'name': command_name,
+                      'result': utils.remove_large_keys(result)})
             return SyncCommandResult(command_name,
                                      command_params,
                                      True,
