@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes the short timeout retries interval, which was previously ``5``
+    seconds, to a length that will allow the agent to retry after a
+    network interruption. The time between retries is now ``10`` seconds,
+    and the number of retries are set to ``9`` to help ensure intermittent
+    network outages do not cause recoverable failures.
