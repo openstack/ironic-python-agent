@@ -10,8 +10,8 @@
       jobs:
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
-        - ipa-tempest-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-bios-ipmi-iscsi-tinyipa-src
+        - ipa-tempest-bios-ipmi-direct-src
+        - ipa-tempest-bios-ipmi-iscsi-src
         - ironic-standalone-ipa-src
         - metalsmith-integration-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
@@ -30,8 +30,8 @@
     gate:
       queue: ironic
       jobs:
-        - ipa-tempest-bios-ipmi-direct-tinyipa-src
-        - ipa-tempest-bios-ipmi-iscsi-tinyipa-src
+        - ipa-tempest-bios-ipmi-direct-src
+        - ipa-tempest-bios-ipmi-iscsi-src
         - ironic-standalone-ipa-src
         - metalsmith-integration-ipa-src
     experimental:

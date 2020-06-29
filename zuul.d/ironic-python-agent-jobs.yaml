@@ -34,7 +34,7 @@
         SWIFT_TEMPURL_KEY: secretkey
 
 - job:
-    name: ipa-tempest-partition-bios-ipmi-direct-src
+    name: ipa-tempest-bios-ipmi-direct-src
     parent: ironic-ipa-base
     vars:
       devstack_services:
@@ -49,12 +49,16 @@
         SWIFT_TEMPURL_KEY: secretkey
 
 - job:
-    name: ipa-tempest-partition-bios-ipmi-iscsi-dib-src
+    name: ipa-tempest-bios-ipmi-iscsi-src
     parent: ironic-ipa-base
     vars:
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
 
+# note(rpittau) alias to not brake other repos (dib and ipa-builder)
+- job:
+    name: ipa-tempest-partition-bios-ipmi-iscsi-dib-src
+    parent: ipa-tempest-bios-ipmi-iscsi-src
 
 - job:
     name: ipa-tempest-wholedisk-bios-ipmi-iscsi-src
@@ -178,7 +182,7 @@
 
 - job:
     name: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
-    parent: ipa-tempest-partition-bios-ipmi-direct-src
+    parent: ipa-tempest-bios-ipmi-direct-src
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
@@ -186,7 +190,7 @@
 
 - job:
     name: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
-    parent: ipa-tempest-partition-bios-ipmi-iscsi-dib-src
+    parent: ipa-tempest-bios-ipmi-iscsi-src
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
@@ -200,7 +204,8 @@
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 384
 
-# Cloning the jobs so we can update ipa-builder and then we can the old jobs.
+# Cloning the jobs so we can update ipa-builder and then we can remove
+# the old jobs.
 - job:
     name: ipa-tempest-bios-ipmi-direct-tinyipa-src
     parent: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
