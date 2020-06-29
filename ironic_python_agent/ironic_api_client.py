@@ -159,6 +159,9 @@ class APIClient(object):
         if node_uuid:
             params['node_uuid'] = node_uuid
 
+        LOG.debug('Looking up node with addresses %r and UUID %s at %s',
+                  params['addresses'], node_uuid, self.api_url)
+
         try:
             response = self._request(
                 'GET', self.lookup_api,
