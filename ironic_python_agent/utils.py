@@ -634,10 +634,9 @@ _LARGE_KEYS = frozenset(['configdrive', 'system_logs'])
 def remove_large_keys(var):
     """Remove specific keys from the var, recursing into dicts and lists."""
     if isinstance(var, abc.Mapping):
-        return var.__class__(
-            (key, remove_large_keys(value)
-             if key not in _LARGE_KEYS else '<...>')
-            for key, value in var.items())
+        return {key: (remove_large_keys(value)
+                      if key not in _LARGE_KEYS else '<...>')
+                for key, value in var.items()}
     elif isinstance(var, abc.Sequence) and not isinstance(var, str):
         return var.__class__(map(remove_large_keys, var))
     else:
