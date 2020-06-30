@@ -1234,8 +1234,8 @@ class TestStandbyExtension(base.IronicAgentTest):
                 return self
 
             def __next__(self):
-                if self.count == 1:
-                    time.sleep(4)
+                if self.count:
+                    time.sleep(0.1)
                     return None
                 self.count += 1
                 return "meow"
@@ -1253,8 +1253,9 @@ class TestStandbyExtension(base.IronicAgentTest):
         hexdigest_mock = md5_mock.return_value.hexdigest
         hexdigest_mock.return_value = image_info['checksum']
         requests_mock.side_effect = create_timeout
-        self.assertRaises(
+        self.assertRaisesRegex(
             errors.ImageDownloadError,
+            'Timed out reading next chunk',
             self.agent_extension._stream_raw_image_onto_device,
             image_info,
             '/dev/foo')

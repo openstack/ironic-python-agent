@@ -356,13 +356,14 @@ class ImageDownload(object):
             if chunk:
                 self._last_chunk_time = time.time()
                 self._hash_algo.update(chunk)
+                yield chunk
             elif (time.time() - self._last_chunk_time
                   > CONF.image_download_connection_timeout):
                 LOG.error('Timeout reached waiting for a chunk of data from '
                           'a remote server.')
                 raise errors.ImageDownloadError(
+                    self._image_info['id'],
                     'Timed out reading next chunk from webserver')
-            yield chunk
 
     def verify_image(self, image_location):
         """Verifies the checksum of the local images matches expectations.
