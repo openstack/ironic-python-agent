@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Speeds up going from inspection to cleaning with fast-track enabled by
+    caching hardware information between the steps.
