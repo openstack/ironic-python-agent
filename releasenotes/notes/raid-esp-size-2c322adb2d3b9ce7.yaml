@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    The size of the ESP partition created for software RAID has been increased
+    from 128 MiB to 550 MiB. This change is in line with the recent
+    `diskimage-builder change
+    <https://opendev.org/openstack/diskimage-builder/commit/7fd52ba84180b4e749ccf4c9db8c49eafff46ea8>`_
+    as well as the `guidance from the author of gdisk
+    <https://www.rodsbooks.com/efi-bootloaders/principles.html>`_.

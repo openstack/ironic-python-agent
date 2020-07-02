@@ -649,7 +649,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_efi_part.assert_called_once_with('/dev/md0')
         expected = [
             mock.call('sgdisk', '-F', '/dev/sda'),
-            mock.call('sgdisk', '-n', '0:451s:+128MiB', '-t', '0:ef00', '-c',
+            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-0', '/dev/sda'),
             mock.call('partprobe'),
             mock.call('blkid'),
@@ -657,7 +657,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                       '/dev/sda'),
             mock.call('cp', '/dev/md0p12', '/dev/sda12'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
-            mock.call('sgdisk', '-n', '0:452s:+128MiB', '-t', '0:ef00', '-c',
+            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-1', '/dev/sdb'),
             mock.call('partprobe'),
             mock.call('blkid'),
@@ -693,14 +693,14 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_efi_part.assert_called_once_with('/dev/md0')
         expected = [
             mock.call('sgdisk', '-F', '/dev/sda'),
-            mock.call('sgdisk', '-n', '0:451s:+128MiB', '-t', '0:ef00', '-c',
+            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-0', '/dev/sda'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
-            mock.call('sgdisk', '-n', '0:452s:+128MiB', '-t', '0:ef00', '-c',
+            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-1', '/dev/sdb'),
             mock.call('partprobe'),
             mock.call('blkid'),
@@ -737,7 +737,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
         expected = [
             mock.call('sgdisk', '-F', '/dev/sda'),
-            mock.call('sgdisk', '-n', '0:451s:+128MiB', '-t', '0:ef00', '-c',
+            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-0', '/dev/sda'),
             mock.call('partprobe'),
             mock.call('blkid'),
@@ -745,7 +745,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                       '/dev/sda'),
             mock.call('cp', '/dev/md0p15', '/dev/sda12'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
-            mock.call('sgdisk', '-n', '0:452s:+128MiB', '-t', '0:ef00', '-c',
+            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-1', '/dev/sdb'),
             mock.call('partprobe'),
             mock.call('blkid'),
