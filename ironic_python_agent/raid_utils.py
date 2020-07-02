@@ -22,6 +22,11 @@ from ironic_python_agent import utils
 LOG = logging.getLogger(__name__)
 
 
+# NOTE(dtantsur): 550 MiB is used by DIB and seems a common guidance:
+# https://www.rodsbooks.com/efi-bootloaders/principles.html
+ESP_SIZE_MIB = 550
+
+
 def get_block_devices_for_raid(block_devices, logical_disks):
     """Get block devices that are involved in the RAID configuration.
 
@@ -88,11 +93,10 @@ def calculate_raid_start(target_boot_mode, partition_table_type, dev_name):
     # granularity is GiB, so you lose up to 1GiB just for a bios boot
     # partition...
     if target_boot_mode == 'uefi':
-        # Leave 129MiB - start_sector s for the esp (approx 128MiB)
-        # NOTE: any image efi partition is expected to be less
-        # than 128MiB
-        # TBD: 129MiB is a waste in most cases.
-        raid_start = '129MiB'
+        # Leave 551MiB - start_sector s for the esp (approx 550 MiB)
+        # TODO(dtantsur): 550 MiB is a waste in most cases, make it
+        # configurable?
+        raid_start = '%sMiB' % (ESP_SIZE_MIB + 1)
     else:
         if partition_table_type == 'gpt':
             # Leave 8MiB - start_sector s (approx 7MiB)

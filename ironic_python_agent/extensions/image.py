@@ -28,6 +28,7 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent.extensions import iscsi
 from ironic_python_agent import hardware
+from ironic_python_agent import raid_utils
 from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)
@@ -391,7 +392,7 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
         # We know that we kept this space when configuring raid,see
         # hardware.GenericHardwareManager.create_configuration.
         # We could also directly get the EFI partition size.
-        partsize_mib = 128
+        partsize_mib = raid_utils.ESP_SIZE_MIB
         partlabel_prefix = 'uefi-holder-'
         for number, holder in enumerate(holders):
             # NOTE: see utils.get_partition_table_type_from_specs
