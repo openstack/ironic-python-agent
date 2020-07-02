@@ -204,7 +204,7 @@ def collect_default(data, failures):
     :param failures: AccumulatedFailures object
     """
     wait_for_dhcp()
-    inventory = hardware.dispatch_to_managers('list_hardware_info')
+    inventory = hardware.list_hardware_info()
 
     data['inventory'] = inventory
     # Replicate the same logic as in deploy. We need to make sure that when

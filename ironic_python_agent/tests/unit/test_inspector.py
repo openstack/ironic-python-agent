@@ -252,6 +252,20 @@ class TestCollectDefault(BaseDiscoverTest):
         mock_dispatch.assert_called_once_with('list_hardware_info')
         mock_wait_for_dhcp.assert_called_once_with()
 
+    def test_cache_hardware_info(self, mock_dispatch, mock_wait_for_dhcp,
+                                 mock_get_mgrs):
+        mgrs = [{'name': 'extra', 'version': '1.42'},
+                {'name': 'generic', 'version': '1.1'}]
+        mock_dispatch.return_value = self.inventory
+        mock_get_mgrs.return_value = [
+            mock.Mock(**{'get_version.return_value': item}) for item in mgrs
+        ]
+
+        inspector.collect_default(self.data, self.failures)
+        inspector.collect_default(self.data, self.failures)
+        # Hardware is cached, so only one call is made
+        mock_dispatch.assert_called_once_with('list_hardware_info')
+
     def test_no_root_disk(self, mock_dispatch, mock_wait_for_dhcp,
                           mock_get_mgrs):
         mgrs = [{'name': 'extra', 'version': '1.42'},
