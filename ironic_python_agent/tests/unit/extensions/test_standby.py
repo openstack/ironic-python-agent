@@ -14,6 +14,7 @@
 
 import os
 import tempfile
+import time
 
 import mock
 from oslo_concurrency import processutils
@@ -1110,6 +1111,61 @@ class TestStandbyExtension(base.IronicAgentTest):
         expected_msg = ('image (fake_id) already present on device '
                         '/dev/fake root_uuid=ROOT')
         self.assertEqual(expected_msg, result_msg)
+
+    @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
+    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('six.moves.builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_stream_raw_image_onto_device_socket_read_timeout(
+            self, requests_mock, open_mock, md5_mock, fix_gpt_mock):
+
+        class create_timeout(object):
+            status_code = 200
+
+            def __init__(self, url, stream, proxies, verify, cert, timeout):
+                time.sleep(1)
+                self.count = 0
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                if self.count:
+                    time.sleep(0.1)
+                    return None
+                if self.count < 3:
+                    self.count += 1
+                    return "meow"
+                else:
+                    time.sleep(30)
+                    raise StopIteration
+
+            # Python 2
+            next = __next__
+
+            def iter_content(self, chunk_size):
+                return self
+
+        self.config(image_download_connection_timeout=1)
+        image_info = _build_fake_image_info()
+        file_mock = mock.Mock()
+        open_mock.return_value.__enter__.return_value = file_mock
+        file_mock.read.return_value = None
+        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['checksum']
+        requests_mock.side_effect = create_timeout
+        self.assertRaisesRegex(
+            errors.ImageDownloadError,
+            'Timed out reading next chunk',
+            self.agent_extension._stream_raw_image_onto_device,
+            image_info,
+            '/dev/foo')
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
+                                              stream=True, proxies={},
+                                              timeout=1)
+        file_mock.write.assert_called_once_with('meow')
+        self.assertFalse(fix_gpt_mock.called)
 
     def test__message_format_partition_bios(self):
         image_info = _build_fake_partition_image_info()

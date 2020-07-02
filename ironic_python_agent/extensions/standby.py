@@ -74,6 +74,19 @@ def _download_with_proxy(image_info, url, image_id):
     resp = None
     for attempt in range(CONF.image_download_connection_retries + 1):
         try:
+            # NOTE(TheJulia) The get request below does the following:
+            # * Performs dns lookups, if necessary
+            # * Opens the TCP socket to the remote host
+            # * Negotiates TLS, if applicable
+            # * Checks cert validity, if necessary, which may be
+            #   more tcp socket connections.
+            # * Issues the get request and then returns back to the caller the
+            #   handler which is used to stream the data into the agent.
+            # While this all may be at risk of transitory interrupts, most of
+            # these socket will have timeouts applied to them, although not
+            # exactly just as the timeout value exists. The risk in transitory
+            # failure is more so once we've started the download and we are
+            # processing the incoming data.
             resp = requests.get(url, stream=True, proxies=proxies,
                                 verify=verify, cert=cert,
                                 timeout=CONF.image_download_connection_timeout)
@@ -275,6 +288,7 @@ class ImageDownload(object):
                  any reason.
         """
         self._time = time_obj or time.time()
+        self._last_chunk_time = None
         self._image_info = image_info
         self._request = None
 
@@ -337,8 +351,25 @@ class ImageDownload(object):
                   which is a constant in this module.
         """
         for chunk in self._request.iter_content(IMAGE_CHUNK_SIZE):
-            self._hash_algo.update(chunk)
-            yield chunk
+            # Per requests forum posts/discussions, iter_content should
+            # periodically yield to the caller for the client to do things
+            # like stopwatch and potentially interrupt the download.
+            # While this seems weird and doesn't exactly seem to match the
+            # patterns in requests and urllib3, it does appear to be the
+            # case. Field testing in environments where TCP sockets were
+            # discovered in a read hanged state were navigated with
+            # this code.
+            if chunk:
+                self._last_chunk_time = time.time()
+                self._hash_algo.update(chunk)
+                yield chunk
+            elif (time.time() - self._last_chunk_time
+                  > CONF.image_download_connection_timeout):
+                LOG.error('Timeout reached waiting for a chunk of data from '
+                          'a remote server.')
+                raise errors.ImageDownloadError(
+                    self._image_info['id'],
+                    'Timed out reading next chunk from webserver')
 
     def verify_image(self, image_location):
         """Verifies the checksum of the local images matches expectations.
