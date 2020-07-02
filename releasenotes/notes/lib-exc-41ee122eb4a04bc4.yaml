@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes serializing exceptions originating from ironic-lib. Previously an
+    attempt to do so would result in a ``TypeError``, for example:
+    `Object of type 'InstanceDeployFailure' is not JSON serializable`.
