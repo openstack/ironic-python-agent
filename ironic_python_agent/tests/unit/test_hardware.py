@@ -3728,3 +3728,22 @@ def create_hdparm_info(supported=False, enabled=False, locked=False,
     update_values(values, enhanced_erase, 'enhanced_erase')
 
     return HDPARM_INFO_TEMPLATE % values
+
+
+@mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+            autospec=True)
+class TestListHardwareInfo(base.IronicAgentTest):
+
+    def test_caching(self, mock_dispatch):
+        fake_info = {'I am': 'hardware'}
+        mock_dispatch.return_value = fake_info
+
+        self.assertEqual(fake_info, hardware.list_hardware_info())
+        self.assertEqual(fake_info, hardware.list_hardware_info())
+        mock_dispatch.assert_called_once_with('list_hardware_info')
+
+        self.assertEqual(fake_info,
+                         hardware.list_hardware_info(use_cache=False))
+        self.assertEqual(fake_info, hardware.list_hardware_info())
+        mock_dispatch.assert_called_with('list_hardware_info')
+        self.assertEqual(2, mock_dispatch.call_count)

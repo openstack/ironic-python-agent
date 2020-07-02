@@ -486,7 +486,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         mock_inspector.assert_called_once_with()
 
-        self.assertFalse(mock_wait.called)
+        self.assertTrue(mock_wait.called)
         self.assertFalse(mock_dispatch.called)
 
     @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
@@ -542,7 +542,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertTrue(wsgi_server.handle_request.called)
 
         self.assertFalse(mock_inspector.called)
-        self.assertFalse(mock_wait.called)
+        self.assertTrue(mock_wait.called)
         self.assertFalse(mock_dispatch.called)
 
     @mock.patch.object(time, 'time', autospec=True)
