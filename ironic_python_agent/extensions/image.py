@@ -148,6 +148,37 @@ def _has_dracut(root):
     return True
 
 
+def _has_boot_sector(device):
+    """Checks the device for a boot sector indicator."""
+    stdout, stderr = utils.execute('file', '-s', device)
+    if 'boot sector' not in stdout:
+        return False
+    else:
+        # Now lets check the signature
+        ddout, dderr = utils.execute(
+            'dd', 'if=%s' % device, 'bs=218', 'count=1', binary=True)
+        stdout, stderr = utils.execute('file', '-', process_input=ddout)
+        # The bytes recovered by dd show as a "dos executable" when
+        # examined with file. In other words, the bootloader is present.
+        if 'executable' in stdout:
+            return True
+    return False
+
+
+def _find_bootable_device(partitions, dev):
+    """Checks the base device and partition for bootloader contents."""
+    LOG.debug('Looking for a bootable device in %s', dev)
+    for line in partitions.splitlines():
+        partition = line.split(':')
+        try:
+            if 'boot' in partition[6]:
+                if _has_boot_sector(dev) or _has_boot_sector(partition[0]):
+                    return True
+        except IndexError:
+            continue
+    return False
+
+
 def _is_bootloader_loaded(dev):
     """Checks the device to see if a MBR bootloader is present.
 
@@ -156,20 +187,6 @@ def _is_bootloader_loaded(dev):
     :returns: True if a device appears to be bootable with a boot
               loader, otherwise False.
     """
-
-    def _has_boot_sector(device):
-        """Check the device for a boot sector indiator."""
-        stdout, stderr = utils.execute('file', '-s', device)
-        if 'boot sector' in stdout:
-            # Now lets check the signature
-            ddout, dderr = utils.execute(
-                'dd', 'if=%s' % device, 'bs=218', 'count=1', binary=True)
-            stdout, stderr = utils.execute('file', '-', process_input=ddout)
-            # The bytes recovered by dd show as a "dos executable" when
-            # examined with file. In other words, the bootloader is present.
-            if 'executable' in stdout:
-                return True
-        return False
 
     boot = hardware.dispatch_to_managers('get_boot_info')
 
@@ -186,19 +203,7 @@ def _is_bootloader_loaded(dev):
     except processutils.ProcessExecutionError:
         return False
 
-    lines = stdout.splitlines()
-    for line in lines:
-        partition = line.split(':')
-        try:
-            # Find the bootable device, and check the base
-            # device and partition for bootloader contents.
-            if 'boot' in partition[6]:
-                if (_has_boot_sector(dev)
-                    or _has_boot_sector(partition[0])):
-                    return True
-        except IndexError:
-            continue
-    return False
+    return _find_bootable_device(stdout, dev)
 
 
 def _get_efi_bootloaders(location):
