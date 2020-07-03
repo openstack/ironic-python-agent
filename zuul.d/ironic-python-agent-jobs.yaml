@@ -72,6 +72,8 @@
       - openstack/python-ironic-inspector-client
     vars:
       devstack_localrc:
+        # FIXME(dtantsur): switch back to DIB
+        IRONIC_RAMDISK_TYPE: tinyipa
         DEVSTACK_GATE_TEMPEST_REGEX: InspectorBasicTest
         DEVSTACK_GATE_IRONIC_INSPECTOR: 1
         IRONIC_VM_EPHEMERAL_DISK: 0
