@@ -24,6 +24,7 @@ from oslo_config import fixture as config_fixture
 from oslotest import base as test_base
 
 from ironic_python_agent.extensions import base as ext_base
+from ironic_python_agent import hardware
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
@@ -60,6 +61,7 @@ class IronicAgentTest(test_base.BaseTestCase):
             self.patch(utils, 'execute', do_not_call)
 
         ext_base._EXT_MANAGER = None
+        hardware._CACHED_HW_INFO = None
 
     def _set_config(self):
         self.cfg_fixture = self.useFixture(config_fixture.Config(CONF))
