@@ -670,6 +670,8 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
 
         :return: a dictionary representing inventory
         """
+        start = time.time()
+        LOG.info('Collecting full inventory')
         # NOTE(dtantsur): don't forget to update docs when extending inventory
         hardware_info = {}
         hardware_info['interfaces'] = self.list_network_interfaces()
@@ -681,6 +683,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         hardware_info['system_vendor'] = self.get_system_vendor_info()
         hardware_info['boot'] = self.get_boot_info()
         hardware_info['hostname'] = netutils.get_hostname()
+        LOG.info('Inventory collected in %.2f second(s)', time.time() - start)
         return hardware_info
 
     def get_clean_steps(self, node, ports):
@@ -2111,6 +2114,23 @@ def dispatch_to_managers(method, *args, **kwargs):
                       .format(manager, method))
 
     raise errors.HardwareManagerMethodNotFound(method)
+
+
+_CACHED_HW_INFO = None
+
+
+def list_hardware_info(use_cache=True):
+    """List hardware information with caching."""
+    global _CACHED_HW_INFO
+
+    if _CACHED_HW_INFO is None:
+        _CACHED_HW_INFO = dispatch_to_managers('list_hardware_info')
+        return _CACHED_HW_INFO
+
+    if use_cache:
+        return _CACHED_HW_INFO
+    else:
+        return dispatch_to_managers('list_hardware_info')
 
 
 def cache_node(node):

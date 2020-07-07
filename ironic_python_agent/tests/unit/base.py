@@ -23,6 +23,7 @@ from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslotest import base as test_base
 
+from ironic_python_agent import hardware
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
@@ -57,6 +58,8 @@ class IronicAgentTest(test_base.BaseTestCase):
             self.patch(subprocess, 'check_call', do_not_call)
             self.patch(subprocess, 'check_output', do_not_call)
             self.patch(utils, 'execute', do_not_call)
+
+        hardware._CACHED_HW_INFO = None
 
     def _set_config(self):
         self.cfg_fixture = self.useFixture(config_fixture.Config(CONF))
