@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Devices with size 0 are now ignored when collecting inventory. Some
+    hardware represents virtual floppy devices this way, see e.g.
+    https://www.dell.com/community/Systems-Management-General/How-to-disable-iDRAC-Virtual-CD/td-p/4734424
