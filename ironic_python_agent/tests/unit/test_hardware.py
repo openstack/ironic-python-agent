@@ -141,7 +141,8 @@ BLK_DEVICE_TEMPLATE = (
     'KNAME="ram1" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
     'KNAME="ram2" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
     'KNAME="ram3" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
-    'KNAME="fd1" MODEL="magic" SIZE="4096" ROTA="1" TYPE="disk"'
+    'KNAME="fd1" MODEL="magic" SIZE="4096" ROTA="1" TYPE="disk"\n'
+    'KNAME="sdf" MODEL="virtual floppy" SIZE="0" ROTA="1" TYPE="disk"'
 )
 
 # NOTE(pas-ha) largest device is 1 byte smaller than 4GiB
@@ -172,7 +173,8 @@ RAID_BLK_DEVICE_TEMPLATE = (
     'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
     'ROTA="0" TYPE="raid1"\n'
     'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
-    'ROTA="0" TYPE="raid1"'
+    'ROTA="0" TYPE="raid1"\n'
+    'KNAME="md1" MODEL="RAID" SIZE="" ROTA="0" TYPE="raid1"'
 )
 RAID_BLK_DEVICE_TEMPLATE_DEVICES = [
     hardware.BlockDevice(name='/dev/sda', model='DRIVE 0',
@@ -183,6 +185,9 @@ RAID_BLK_DEVICE_TEMPLATE_DEVICES = [
                          vendor="FooTastic"),
     hardware.BlockDevice(name='/dev/md0', model='RAID',
                          size=1765517033470, rotational=False,
+                         vendor="FooTastic"),
+    hardware.BlockDevice(name='/dev/md1', model='RAID',
+                         size=0, rotational=False,
                          vendor="FooTastic"),
 ]
 
@@ -4268,7 +4273,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_readlink.return_value = '../../sda'
         mocked_fromdevfile.return_value = {}
         mocked_execute.return_value = (RAID_BLK_DEVICE_TEMPLATE, '')
-        result = hardware.list_all_block_devices()
+        result = hardware.list_all_block_devices(ignore_empty=False)
         mocked_execute.assert_called_once_with(
             'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
             check_exit_code=[0])
