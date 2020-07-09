@@ -165,13 +165,24 @@ BLK_DEVICE_TEMPLATE_SMALL_DEVICES = [
 
 # NOTE(TheJulia): This list intentionally contains duplicates
 # as the code filters them out by kernel device name.
+# NOTE(dszumski): We include some partitions here to verify that
+# they are filtered out when not requested. It is assumed that
+# ROTA has been set to 0 on some software RAID devices for testing
+# purposes. In practice is appears to inherit from the underyling
+# devices, so in this example it would normally be 1.
 RAID_BLK_DEVICE_TEMPLATE = (
     'KNAME="sda" MODEL="DRIVE 0" SIZE="1765517033472" '
     'ROTA="1" TYPE="disk"\n'
+    'KNAME="sda1" MODEL="DRIVE 0" SIZE="107373133824" '
+    'ROTA="1" TYPE="part"\n'
     'KNAME="sdb" MODEL="DRIVE 1" SIZE="1765517033472" '
     'ROTA="1" TYPE="disk"\n'
     'KNAME="sdb" MODEL="DRIVE 1" SIZE="1765517033472" '
     'ROTA="1" TYPE="disk"\n'
+    'KNAME="sdb1" MODEL="DRIVE 1" SIZE="107373133824" '
+    'ROTA="1" TYPE="part"\n'
+    'KNAME="md0p1" MODEL="RAID" SIZE="107236818944" '
+    'ROTA="0" TYPE="md"\n'
     'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
     'ROTA="0" TYPE="raid1"\n'
     'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
@@ -3236,9 +3247,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         hardware.list_all_block_devices.side_effect = [
             [raid_device1, raid_device2],  # list_all_block_devices raid
+            [],  # list_all_block_devices raid (md)
             [sda, sdb, sdc],  # list_all_block_devices disks
             [],  # list_all_block_devices parts
             [],  # list_all_block_devices raid
+            [],  # list_all_block_devices raid (md)
         ]
         mocked_get_component.side_effect = [
             ["/dev/sda1", "/dev/sdb1"],
@@ -3318,13 +3331,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         raid_device1_part1 = hardware.BlockDevice('/dev/md0p1', 'RAID-1',
                                                   1073741824, True)
         hardware.list_all_block_devices.side_effect = [
-            [raid_device1_part1],  # list_all_block_devices raid
+            [],  # list_all_block_devices raid
+            [raid_device1_part1],  # list_all_block_devices raid (md)
             [],  # list_all_block_devices disks
             [],  # list_all_block_devices parts
             [],  # list_all_block_devices raid
+            [],  # list_all_block_devices raid (md)
         ]
         mocked_get_component.return_value = []
-
         self.assertIsNone(self.hardware.delete_configuration(self.node, []))
         mocked_execute.assert_has_calls([
             mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
@@ -3345,12 +3359,15 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         hardware.list_all_block_devices.side_effect = [
             [raid_device1],  # list_all_block_devices raid
+            [],  # list_all_block_devices raid (type md)
             [],  # list_all_block_devices disks
             [],  # list_all_block_devices parts
             [raid_device1],  # list_all_block_devices raid
+            [],  # list_all_block_devices raid (type md)
             [],  # list_all_block_devices disks
             [],  # list_all_block_devices parts
             [raid_device1],  # list_all_block_devices raid
+            [],  # list_all_block_devices raid (type md)
         ]
         mocked_get_component.return_value = []
 
