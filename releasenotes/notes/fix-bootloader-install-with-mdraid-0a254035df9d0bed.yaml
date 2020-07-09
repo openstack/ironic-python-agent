@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes an issue where the bootloader installation can fail on a software
+    RAID volume when no root_device hint is set.
+    See `Story 2007905
+    <https://storyboard.openstack.org/#!/story/2007905>`_

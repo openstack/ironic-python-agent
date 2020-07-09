@@ -358,12 +358,24 @@ def list_all_block_devices(block_type='disk',
         # Other possible type values, which we skip recording:
         #   lvm, part, rom, loop
         if devtype != block_type:
-            if (devtype is not None
-                    and any(x in devtype for x in ['raid', 'md'])
-                    and not ignore_raid):
+            if (devtype is None or ignore_raid):
+                LOG.debug("Skipping: {!r}".format(line))
+                continue
+            elif ('raid' in devtype
+                  and block_type in ['raid', 'disk']):
                 LOG.debug(
-                    "TYPE detected to contain 'raid' or 'md', signifying a "
+                    "TYPE detected to contain 'raid', signifying a "
                     "RAID volume. Found: {!r}".format(line))
+            elif (devtype == 'md'
+                  and (block_type == 'part'
+                       or block_type == 'md')):
+                # NOTE(dszumski): Partitions on software RAID devices have type
+                # 'md'. This may also contain RAID devices in a broken state in
+                # rare occasions. See https://review.opendev.org/#/c/670807 for
+                # more detail.
+                LOG.debug(
+                    "TYPE detected to contain 'md', signifying a "
+                    "RAID partition. Found: {!r}".format(line))
             else:
                 LOG.debug(
                     "TYPE did not match. Wanted: {!r} but found: {!r}".format(
@@ -1786,6 +1798,16 @@ class GenericHardwareManager(HardwareManager):
             raid_devices = list_all_block_devices(block_type='raid',
                                                   ignore_raid=False,
                                                   ignore_empty=False)
+            # NOTE(dszumski): Fetch all devices of type 'md'. This
+            # will generally contain partitions on a software RAID
+            # device, but crucially may also contain devices in a
+            # broken state. See https://review.opendev.org/#/c/670807/
+            # for more detail.
+            raid_devices.extend(
+                list_all_block_devices(block_type='md',
+                                       ignore_raid=False,
+                                       ignore_empty=False)
+            )
             return raid_devices
 
         raid_devices = _scan_raids()
