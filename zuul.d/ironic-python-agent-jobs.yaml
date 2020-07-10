@@ -17,6 +17,7 @@
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 384
         IRONIC_BUILD_DEPLOY_RAMDISK: True
+        IRONIC_VM_COUNT: 2
 
 - job:
     name: ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
@@ -206,3 +207,12 @@
         IRONIC_DEFAULT_BOOT_OPTION: netboot
         IRONIC_DEFAULT_DEPLOY_INTERFACE: iscsi
         IRONIC_TEMPEST_WHOLE_DISK_IMAGE: False
+
+# Cloning the jobs so we can update ipa-builder and then we can the old jobs.
+- job:
+    name: ipa-tempest-bios-ipmi-direct-tinyipa-src
+    parent: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
+
+- job:
+    name: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
+    parent: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
