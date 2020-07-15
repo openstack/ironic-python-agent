@@ -153,16 +153,13 @@ def _has_boot_sector(device):
     stdout, stderr = utils.execute('file', '-s', device)
     if 'boot sector' not in stdout:
         return False
-    else:
-        # Now lets check the signature
-        ddout, dderr = utils.execute(
-            'dd', 'if=%s' % device, 'bs=218', 'count=1', binary=True)
-        stdout, stderr = utils.execute('file', '-', process_input=ddout)
-        # The bytes recovered by dd show as a "dos executable" when
-        # examined with file. In other words, the bootloader is present.
-        if 'executable' in stdout:
-            return True
-    return False
+    # Now lets check the signature
+    ddout, dderr = utils.execute(
+        'dd', 'if=%s' % device, 'bs=218', 'count=1', binary=True)
+    stdout, stderr = utils.execute('file', '-', process_input=ddout)
+    # The bytes recovered by dd show as a "dos executable" when
+    # examined with file. In other words, the bootloader is present.
+    return 'executable' in stdout
 
 
 def _find_bootable_device(partitions, dev):
@@ -279,7 +276,6 @@ def _manage_uefi(device, efi_system_part_uuid=None):
              using the efibootmgr.
              False - if no efi bootloader is found.
     """
-    efi_partition = None
     efi_partition_mount_point = None
     efi_mounted = False
 
@@ -465,6 +461,29 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
 
     # Just an empty list if not uefi boot mode, nvm, not used anyway
     return efi_partitions
+
+
+def _umount_all_partitions(path, path_variable, umount_warn_msg):
+    """Umount all partitions we may have mounted"""
+    umount_binds_success = True
+    LOG.debug("Unmounting all vfat partitions inside the image ...")
+    try:
+        utils.execute('chroot %(path)s /bin/sh -c "umount -a -t vfat"' %
+                      {'path': path}, shell=True,
+                      env_variables={'PATH': path_variable})
+    except processutils.ProcessExecutionError as e:
+        LOG.warning("Unable to umount vfat partitions. Error: %(error)s",
+                    {'error': e})
+
+    for fs in BIND_MOUNTS + ('/sys',):
+        try:
+            utils.execute('umount', path + fs, attempts=3,
+                          delay_on_retry=True)
+        except processutils.ProcessExecutionError as e:
+            umount_binds_success = False
+            LOG.warning(umount_warn_msg, {'path': path + fs, 'error': e})
+
+    return umount_binds_success
 
 
 def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
@@ -656,9 +675,8 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         raise errors.CommandExecutionError(error_msg)
 
     finally:
-        umount_warn_msg = "Unable to umount %(path)s. Error: %(error)s"
         # Umount binds and partition
-        umount_binds_fail = False
+        umount_warn_msg = "Unable to umount %(path)s. Error: %(error)s"
 
         # If umount fails for efi partition, then we cannot be sure that all
         # the changes were written back to the filesystem.
@@ -672,33 +690,8 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
             LOG.error(error_msg)
             raise errors.CommandExecutionError(error_msg)
 
-        # Umount the vfat partitions we may have mounted
-        LOG.debug("Unmounting all partitions inside the image ...")
-        try:
-            utils.execute('chroot %(path)s /bin/sh -c "umount -a -t vfat"' %
-                          {'path': path}, shell=True,
-                          env_variables={'PATH': path_variable})
-        except processutils.ProcessExecutionError as e:
-            LOG.warning("Unable to umount vfat partitions. Error: %(error)s",
-                        {'error': e})
-
-        for fs in BIND_MOUNTS:
-            try:
-                utils.execute('umount', path + fs, attempts=3,
-                              delay_on_retry=True)
-            except processutils.ProcessExecutionError as e:
-                umount_binds_fail = True
-                LOG.warning(umount_warn_msg, {'path': path + fs, 'error': e})
-
-        try:
-            utils.execute('umount', path + '/sys', attempts=3,
-                          delay_on_retry=True)
-        except processutils.ProcessExecutionError as e:
-            umount_binds_fail = True
-            LOG.warning(umount_warn_msg, {'path': path + '/sys', 'error': e})
-
         # If umounting the binds succeed then we can try to delete it
-        if not umount_binds_fail:
+        if _umount_all_partitions(path, path_variable, umount_warn_msg):
             try:
                 utils.execute('umount', path, attempts=3, delay_on_retry=True)
             except processutils.ProcessExecutionError as e:
