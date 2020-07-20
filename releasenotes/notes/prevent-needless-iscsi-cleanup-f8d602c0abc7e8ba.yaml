@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixes an issue with the ironic-python-agent where we would call to
+    setup the bootloader, which is necessary with software raid, but also
+    attempt to clean up iSCSI. This can cause issues when using the ``direct``
+    ``deploy_interface``. Now the agent will only clean up iSCSI connections
+    if iSCSI was explicitly started. For more information, please see
+    `story 2007937 <https://storyboard.openstack.org/#!/story/2007937>`_.
