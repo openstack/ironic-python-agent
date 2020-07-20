@@ -26,6 +26,9 @@ from ironic_python_agent import utils
 
 
 class FakeAgent(object):
+
+    iscsi_started = False
+
     def get_node_uuid(self):
         return 'my_node_uuid'
 
@@ -48,8 +51,11 @@ class TestISCSIExtensionTgt(base.IronicAgentTest):
                                 mock_destroy):
         mock_dispatch.return_value = self.fake_dev
         mock_execute.return_value = ('', '')
+        self.assertFalse(self.agent_extension.agent.iscsi_started)
+
         result = self.agent_extension.start_iscsi_target(iqn=self.fake_iqn)
 
+        self.assertTrue(self.agent_extension.agent.iscsi_started)
         expected = [mock.call('tgtd'),
                     mock.call('tgtadm', '--lld', 'iscsi', '--mode',
                               'target', '--op', 'show', attempts=10),
