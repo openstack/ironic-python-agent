@@ -46,6 +46,8 @@ class TestImageExtension(base.IronicAgentTest):
         self.fake_efi_system_part_uuid = '45AB-2312'
         self.fake_prep_boot_part_uuid = '76937797-3253-8843-999999999999'
         self.fake_dir = '/tmp/fake-dir'
+        self.agent_extension.agent = mock.Mock()
+        self.agent_extension.agent.iscsi_started = True
 
     @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
@@ -322,6 +324,31 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             target_boot_mode='bios'
         )
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
+
+    @mock.patch.object(iscsi, 'clean_up', autospec=True)
+    @mock.patch.object(image, '_install_grub2', autospec=True)
+    def test__install_bootloader_prep_no_iscsi(
+            self, mock_grub2, mock_iscsi_clean,
+            mock_execute, mock_dispatch):
+        self.agent_extension.agent.iscsi_started = False
+        mock_dispatch.side_effect = [
+            self.fake_dev, hardware.BootInfo(current_boot_mode='bios')
+        ]
+        self.agent_extension.install_bootloader(
+            root_uuid=self.fake_root_uuid,
+            efi_system_part_uuid=None,
+            prep_boot_part_uuid=self.fake_prep_boot_part_uuid).join()
+        mock_dispatch.assert_any_call('get_os_install_device')
+        mock_dispatch.assert_any_call('get_boot_info')
+        self.assertEqual(2, mock_dispatch.call_count)
+        mock_grub2.assert_called_once_with(
+            self.fake_dev,
+            root_uuid=self.fake_root_uuid,
+            efi_system_part_uuid=None,
+            prep_boot_part_uuid=self.fake_prep_boot_part_uuid,
+            target_boot_mode='bios'
+        )
+        mock_iscsi_clean.assert_not_called()
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
