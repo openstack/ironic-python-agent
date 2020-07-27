@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The ``deploy.erase_devices_metadata`` clean step can now also be used as
+    a deploy step.

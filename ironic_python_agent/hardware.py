@@ -1584,6 +1584,12 @@ class GenericHardwareManager(HardwareManager):
     def get_deploy_steps(self, node, ports):
         return [
             {
+                'step': 'erase_devices_metadata',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+            },
+            {
                 'step': 'apply_configuration',
                 'priority': 0,
                 'interface': 'raid',
