@@ -20,7 +20,7 @@ future==0.16.0
 gitdb==4.0.4
 GitPython==3.1.1
 greenlet==0.4.13
-hacking==3.0.1
+hacking==3.1.0
 ifaddr==0.1.6
 imagesize==1.0.0
 ironic-lib==4.1.0
