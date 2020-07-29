@@ -46,6 +46,11 @@ may want to implement are list_hardware_info(), to add additional hardware
 the GenericHardwareManager is unable to identify and erase_devices(), to
 erase devices in ways other than ATA secure erase or shredding.
 
+The examples_ directory has two example hardware managers that can be copied
+and adapter for your use case.
+
+.. _examples: https://opendev.org/openstack/ironic-python-agent/src/branch/master/examples
+
 Custom HardwareManagers and Cleaning
 ------------------------------------
 One of the reasons to build a custom hardware manager is to expose extra steps
