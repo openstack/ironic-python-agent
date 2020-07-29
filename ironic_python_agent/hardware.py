@@ -1614,7 +1614,7 @@ class GenericHardwareManager(HardwareManager):
         self.validate_configuration(raid_config, node)
         if delete_existing:
             self.delete_configuration(node, ports)
-        self._do_create_configuration(node, ports, raid_config)
+        return self._do_create_configuration(node, ports, raid_config)
 
     def create_configuration(self, node, ports):
         """Create a RAID configuration.
