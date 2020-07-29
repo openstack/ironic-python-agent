@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes the return value of the ``apply_configuration`` deploy step: the
+    ``agent`` RAID interface expects the final RAID configuration to be
+    returned.
