@@ -16,6 +16,7 @@ from unittest import mock
 
 from oslo_serialization import jsonutils
 from oslo_service import loopingcall
+import requests
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
@@ -311,6 +312,47 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
         self.assertEqual({'addresses': '00:0c:29:8c:11:b1,00:0c:29:8c:11:b2',
                           'node_uuid': 'someuuid'},
                          params)
+
+    @mock.patch.object(ironic_api_client, 'LOG', autospec=True)
+    def test_do_lookup_transient_exceptions(self, mock_log):
+        exc_list = [requests.exceptions.ConnectionError,
+                    requests.exceptions.ReadTimeout,
+                    requests.exceptions.HTTPError,
+                    requests.exceptions.Timeout,
+                    requests.exceptions.ConnectTimeout]
+        self.api_client.session.request = mock.Mock()
+        for exc in exc_list:
+            self.api_client.session.request.reset_mock()
+            mock_log.reset_mock()
+            self.api_client.session.request.side_effect = exc
+            error = self.api_client._do_lookup(self.hardware_info,
+                                               node_uuid=None)
+            self.assertFalse(error)
+            mock_log.error.assert_has_calls([])
+            self.assertEqual(1, mock_log.warning.call_count)
+
+    @mock.patch.object(ironic_api_client, 'LOG', autospec=True)
+    def test_do_lookup_unknown_exception(self, mock_log):
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.side_effect = \
+            requests.exceptions.RequestException('meow')
+        self.assertFalse(
+            self.api_client._do_lookup(self.hardware_info,
+                                       node_uuid=None))
+        self.assertEqual(1, mock_log.exception.call_count)
+
+    @mock.patch.object(ironic_api_client, 'LOG', autospec=True)
+    def test_do_lookup_unknown_exception_fallback(self, mock_log):
+        mock_log.exception.side_effect = TypeError
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.side_effect = \
+            requests.exceptions.RequestException('meow')
+        self.assertRaises(errors.LookupNodeError,
+                          self.api_client._do_lookup,
+                          self.hardware_info,
+                          node_uuid=None)
+        self.assertEqual(1, mock_log.exception.call_count)
+        self.assertEqual(2, mock_log.error.call_count)
 
     def test_do_lookup_bad_response_code(self):
         response = FakeResponse(status_code=400, content={
