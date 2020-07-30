@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixes retry logic issues with the Agent Lookup which can result in
+    the lookup failing prematurely before being completed, typically
+    resulting in an abrupt end to the agent logging and potentially
+    weird errors like TypeError being reported on the agent process
+    standard error output. For more information see
+    `bug 2007968 <https://storyboard.openstack.org/#!/story/2007968>`_.
