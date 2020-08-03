@@ -12,6 +12,8 @@
       - ^tox.ini$
     required-projects:
       - openstack/ironic-lib
+      - name: openstack/ironic-tempest-plugin
+        override-checkout: 2.0.0
     vars:
       devstack_localrc:
         IRONIC_BUILD_DEPLOY_RAMDISK: True
