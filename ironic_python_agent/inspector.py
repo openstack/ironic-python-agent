@@ -315,17 +315,38 @@ def collect_pci_devices_info(data, failures):
             with open(os.path.join(pci_devices_path, subdir,
                                    'device')) as vendor_device:
                 device = vendor_device.read().strip().split('x')[1]
+            with open(os.path.join(pci_devices_path, subdir,
+                                   'class')) as vendor_device:
+                pci_class = vendor_device.read().strip().split('x')[1]
         except IOError as exc:
-            LOG.warning('Failed to gather vendor id or product id '
+            LOG.warning('Failed to gather vendor id, product id or pci class '
                         'from PCI device %s: %s', subdir, exc)
             continue
         except IndexError as exc:
-            LOG.warning('Wrong format of vendor id or product id in PCI '
-                        'device %s: %s', subdir, exc)
+            LOG.warning('Wrong format of vendor id, product id or pci class '
+                        'in PCI device %s: %s', subdir, exc)
             continue
+
+        pci_revision = None
+        pci_revision_path = os.path.join(pci_devices_path, subdir,
+                                         'revision')
+        if os.path.isfile(pci_revision_path):
+            try:
+                with open(pci_revision_path) as revision_file:
+                    pci_revision = revision_file.read().strip().split('x')[1]
+            except IOError as exc:
+                LOG.warning('Failed to gather PCI revision from PCI '
+                            'device %s: %s', subdir, exc)
+            except IndexError as exc:
+                LOG.warning('Wrong format of PCI revision in PCI '
+                            'device %s: %s', subdir, exc)
+
         LOG.debug(
-            'Found a PCI device with vendor id %s and product id %s',
-            vendor, device)
+            'Found a PCI device with vendor id %s, product id %s, class %s '
+            'and revision %s', vendor, device, pci_class, pci_revision)
         pci_devices_info.append({'vendor_id': vendor,
-                                 'product_id': device})
+                                 'product_id': device,
+                                 'class': pci_class,
+                                 'revision': pci_revision,
+                                 'bus': subdir})
     data['pci_devices'] = pci_devices_info
