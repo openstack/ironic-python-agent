@@ -1,6 +1,10 @@
 #!/bin/bash
 
-COMMON_PACKAGES="wget python-pip unzip sudo gawk"
+if ! $(pip -V &>/dev/null); then
+    echo "Warning: Please install python-pip manually"
+    exit 1
+fi
+COMMON_PACKAGES="wget unzip sudo gawk"
 APT_PACKAGES="${COMMON_PACKAGES} squashfs-tools"
 YUM_PACKAGES="${COMMON_PACKAGES} squashfs-tools"
 ZYPPER_PACKAGES="${COMMON_PACKAGES} squashfs"
