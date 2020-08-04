@@ -710,7 +710,8 @@ class ImageExtension(base.BaseAgentExtension):
 
         """
         device = hardware.dispatch_to_managers('get_os_install_device')
-        iscsi.clean_up(device)
+        if self.agent.iscsi_started:
+            iscsi.clean_up(device)
         boot = hardware.dispatch_to_managers('get_boot_info')
         # FIXME(arne_wiebalck): make software RAID work with efibootmgr
         if (boot.current_boot_mode == 'uefi'
