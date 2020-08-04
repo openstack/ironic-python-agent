@@ -793,8 +793,9 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
            'priority': the order steps will be run in. Ironic will sort all
                        the deploy steps from all the drivers, with the largest
                        priority step being run first. If priority is set to 0,
-                       the step will not be run during deployment, but may be
-                       run during zapping.
+                       the step will not be run during deployment
+                       automatically, but may be requested via deploy
+                       templates.
            'reboot_requested': Whether the agent should request Ironic reboots
                                the node via the power driver after the
                                operation completes.

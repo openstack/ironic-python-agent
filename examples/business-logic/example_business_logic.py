@@ -96,3 +96,99 @@ class ExampleBusinessLogicHardwareManager(hardware.HardwareManager):
             else:
                 LOG.info('Node is %s seconds old, younger than 3 years, '
                          'cleaning passes.', server_age)
+
+    def get_deploy_steps(self, node, ports):
+        """Get a list of deploy steps with priority.
+
+        Returns a list of steps. Each step is represented by a dict::
+
+          {
+           'interface': the name of the driver interface that should execute
+                        the step.
+           'step': the HardwareManager function to call.
+           'priority': the order steps will be run in. Ironic will sort all
+                       the deploy steps from all the drivers, with the largest
+                       priority step being run first. If priority is set to 0,
+                       the step will not be run during deployment
+                       automatically, but may be requested via deploy
+                       templates.
+           'reboot_requested': Whether the agent should request Ironic reboots
+                               the node via the power driver after the
+                               operation completes.
+           'argsinfo': arguments specification.
+          }
+
+
+        Deploy steps are executed by similar logic to clean steps, but during
+        deploy time. The following priority ranges should be used:
+
+        * 81 to 99 - deploy steps to run before the image is written.
+        * 61 to 79 - deploy steps to run after the image is written but before
+          the bootloader is installed.
+        * 41 to 59 - steps to run after the image is written and the bootloader
+          is installed.
+
+        If priority is zero, the step must be explicitly selected via
+        an applied deploy template.
+
+        Note that each deploy step makes deployments longer. Try to use clean
+        steps for anything that is not required to be run just before an
+        instance is ready.
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        :return: a list of deploying steps, where each step is described as a
+                 dict as defined above
+
+        """
+        return [
+            {
+                'step': 'companyx_verify_memory',
+                'priority': 90,  # always run before the image is written
+                'interface': 'deploy',
+                'reboot_requested': False,
+            },
+            {
+                'step': 'companyx_apply_something',
+                'priority': 0,  # only run explicitly
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'argsinfo': {
+                    "required_value": {
+                        "description": "An example required argument.",
+                        "required": True,
+                    },
+                    "optional_value": {
+                        "description": "An example optional argument.",
+                        "required": False,
+                    }
+
+                }
+            },
+        ]
+
+    def companyx_verify_memory(self, node, ports):
+        expected = node.get('properties', {}).get('memory_mb')
+        if expected is None:
+            LOG.warning('The node does not have memory, cannot verify')
+            return
+        else:
+            expected = int(expected)
+
+        # Use dispatch_to_managers to avoid tight coupling between hardware
+        # managers. It would make sense even if this hardware manager
+        # implemented get_memory, because a more specific hardware managers
+        # could do it better.
+        current = hardware.dispatch_to_managers('get_memory')
+        if current.physical_mb < expected:
+            # Raising an exception will fail deployment and set the node's
+            # last_error accordingly.
+            raise errors.DeploymentError(
+                'Memory too low, expected {}, got {}'.format(
+                    expected, current.physical_mb))
+
+    # Make sure to provide default values for optional arguments.
+    def companyx_apply_something(self, node, ports, required_value,
+                                 optional_value=None):
+        LOG.info('apply_something called with required_value={} and '
+                 'optional_value={}'.format(required_value, optional_value))
