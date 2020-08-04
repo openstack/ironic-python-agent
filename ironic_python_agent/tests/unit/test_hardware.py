@@ -2784,6 +2784,69 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware.validate_configuration,
                           self.node, [])
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_do_create_configuration', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'delete_configuration', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'validate_configuration', autospec=True)
+    def test_apply_configuration(self, mocked_validate, mocked_delete,
+                                 mocked_create):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "10",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+
+        result = self.hardware.apply_configuration(self.node, [], raid_config)
+        self.assertIs(result, mocked_create.return_value)
+        mocked_validate.assert_called_once_with(self.hardware, raid_config,
+                                                self.node)
+        mocked_delete.assert_called_once_with(self.hardware, self.node, [])
+        mocked_create.assert_called_once_with(self.hardware, self.node, [],
+                                              raid_config)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_do_create_configuration', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'delete_configuration', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'validate_configuration', autospec=True)
+    def test_apply_configuration_no_delete(self, mocked_validate,
+                                           mocked_delete, mocked_create):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "10",
+                    "raid_level": "1",
+                    "controller": "software",
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                },
+            ]
+        }
+
+        result = self.hardware.apply_configuration(self.node, [], raid_config,
+                                                   delete_existing=False)
+        self.assertIs(result, mocked_create.return_value)
+        mocked_validate.assert_called_once_with(self.hardware, raid_config,
+                                                self.node)
+        self.assertFalse(mocked_delete.called)
+        mocked_create.assert_called_once_with(self.hardware, self.node, [],
+                                              raid_config)
+
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=False)
