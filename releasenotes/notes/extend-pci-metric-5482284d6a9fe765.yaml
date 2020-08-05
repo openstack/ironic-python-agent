@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Introspection of PCI devices now collects PCI class, revision and PCI bus.
