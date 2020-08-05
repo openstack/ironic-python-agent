@@ -177,7 +177,7 @@ class APIClient(object):
         if response.status_code != requests.codes.OK:
             LOG.warning(
                 'Failed looking up node with addresses %r at %s, '
-                'status code: %s',
+                'status code: %s. Check if inspection has completed.',
                 params['addresses'], self.api_url, response.status_code,
             )
             return False
