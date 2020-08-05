@@ -255,7 +255,8 @@ def _md_scan_and_assemble():
 
 def list_all_block_devices(block_type='disk',
                            ignore_raid=False,
-                           ignore_floppy=True):
+                           ignore_floppy=True,
+                           ignore_empty=True):
     """List all physical block devices
 
     The switches we use for lsblk: P for KEY="value" output, b for size output
@@ -271,6 +272,7 @@ def list_all_block_devices(block_type='disk',
                         devices and should be treated as such if encountered.
     :param ignore_floppy: Ignore floppy disk devices in the block device
                           list. By default, these devices are filtered out.
+    :param ignore_empty: Whether to ignore disks with size equal 0.
     :return: A list of BlockDevices
     """
 
@@ -361,6 +363,12 @@ def list_all_block_devices(block_type='disk',
         if (device['KNAME'].startswith('ram')
                 or device['KNAME'].startswith('zram')):
             LOG.debug('Skipping RAM device %s', device)
+            continue
+
+        # NOTE(dtantsur): some hardware represents virtual floppy devices as
+        # normal block devices with size 0. Filter them out.
+        if ignore_empty and not int(device['SIZE'] or 0):
+            LOG.debug('Skipping device %s with zero size', device)
             continue
 
         name = os.path.join('/dev', device['KNAME'])
@@ -1685,7 +1693,8 @@ class GenericHardwareManager(HardwareManager):
             utils.execute('mdadm', '--assemble', '--scan',
                           check_exit_code=False)
             raid_devices = list_all_block_devices(block_type='raid',
-                                                  ignore_raid=False)
+                                                  ignore_raid=False,
+                                                  ignore_empty=False)
             return raid_devices
 
         raid_devices = _scan_raids()
