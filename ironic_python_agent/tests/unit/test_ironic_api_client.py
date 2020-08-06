@@ -375,3 +375,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
     def test_get_agent_url_ipv6(self):
         url = self.api_client._get_agent_url(('1:2::3:4', '9999'))
         self.assertEqual('http://[1:2::3:4]:9999', url)
+
+    def test_get_agent_url_protocol(self):
+        url = self.api_client._get_agent_url(('1:2::3:4', '9999'), 'https')
+        self.assertEqual('https://[1:2::3:4]:9999', url)

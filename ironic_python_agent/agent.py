@@ -133,7 +133,8 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         try:
             self.api.heartbeat(
                 uuid=self.agent.get_node_uuid(),
-                advertise_address=self.agent.advertise_address
+                advertise_address=self.agent.advertise_address,
+                advertise_protocol=self.agent.advertise_protocol,
             )
             self.error_delay = self.initial_delay
             LOG.info('heartbeat successful')
@@ -165,7 +166,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
     def __init__(self, api_url, advertise_address, listen_address,
                  ip_lookup_attempts, ip_lookup_sleep, network_interface,
                  lookup_timeout, lookup_interval, standalone, agent_token,
-                 hardware_initialization_delay=0):
+                 hardware_initialization_delay=0, advertise_protocol='http'):
         super(IronicPythonAgent, self).__init__()
         if bool(cfg.CONF.keyfile) != bool(cfg.CONF.certfile):
             LOG.warning("Only one of 'keyfile' and 'certfile' options is "
@@ -192,6 +193,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             self.heartbeater = IronicPythonAgentHeartbeater(self)
         self.listen_address = listen_address
         self.advertise_address = advertise_address
+        self.advertise_protocol = advertise_protocol
         self.version = pkg_resources.get_distribution('ironic-python-agent')\
             .version
         self.api = app.Application(self, cfg.CONF)

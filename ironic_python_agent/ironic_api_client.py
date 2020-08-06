@@ -105,10 +105,11 @@ class APIClient(object):
                 return MIN_IRONIC_VERSION
         return self._ironic_api_version
 
-    def heartbeat(self, uuid, advertise_address):
+    def heartbeat(self, uuid, advertise_address, advertise_protocol='http'):
         path = self.heartbeat_api.format(uuid=uuid)
 
-        data = {'callback_url': self._get_agent_url(advertise_address)}
+        data = {'callback_url': self._get_agent_url(advertise_address,
+                                                    advertise_protocol)}
 
         api_ver = self._get_ironic_api_version()
 
@@ -209,6 +210,7 @@ class APIClient(object):
         # Got valid content
         raise loopingcall.LoopingCallDone(retvalue=content)
 
-    def _get_agent_url(self, advertise_address):
-        return 'http://{}:{}'.format(netutils.wrap_ipv6(advertise_address[0]),
-                                     advertise_address[1])
+    def _get_agent_url(self, advertise_address, advertise_protocol='http'):
+        return '{}://{}:{}'.format(advertise_protocol,
+                                   netutils.wrap_ipv6(advertise_address[0]),
+                                   advertise_address[1])

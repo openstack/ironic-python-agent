@@ -46,4 +46,5 @@ def run():
                             CONF.lookup_interval,
                             CONF.standalone,
                             CONF.agent_token,
-                            CONF.hardware_initialization_delay).run()
+                            CONF.hardware_initialization_delay,
+                            CONF.advertise_protocol).run()

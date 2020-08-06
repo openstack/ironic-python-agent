@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The new kernel parameter ``ipa-advertise-protocol`` can be used to change
+    the protocol of the callback URL to ``https``.
