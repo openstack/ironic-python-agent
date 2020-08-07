@@ -167,12 +167,41 @@ class APIClient(object):
                 'GET', self.lookup_api,
                 headers=self._get_ironic_api_version_header(),
                 params=params)
-        except Exception as err:
-            LOG.exception(
-                'Unhandled error looking up node with addresses %r at %s: %s',
-                params['addresses'], self.api_url, err,
+        except (requests.exceptions.Timeout,
+                requests.exceptions.ConnectTimeout,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.ReadTimeout,
+                requests.exceptions.HTTPError) as err:
+            LOG.warning(
+                'Error detected while attempting to perform lookup '
+                'with %s, retrying. Error: %s', self.api_url, err
             )
             return False
+        except Exception as err:
+            # NOTE(TheJulia): If you're looking here, and you're wondering
+            # why the retry logic is not working or your investigating a weird
+            # error or even IPA just exiting,
+            # See https://storyboard.openstack.org/#!/story/2007968
+            # To be clear, we're going to try to provide as much detail as
+            # possible in the exit handling
+            msg = ('Unhandled error looking up node with addresses {} at '
+                   '{}: {}'.format(params['addresses'], self.api_url, err))
+            # No matter what we do at this point, IPA is going to exit.
+            # This is because we don't know why the exception occured and
+            # we likely should not try to retry as such.
+            # We will attempt to provide as much detail to the logs as
+            # possible as to what occured, although depending on the logging
+            # subsystem, additional errors can occur, thus the additional
+            # handling below.
+            try:
+                LOG.exception(msg)
+                return False
+            except Exception as exc_err:
+                LOG.error(msg)
+                exc_msg = ('Unexpected exception occured while trying to '
+                           'log additional detail. Error: {}'.format(exc_err))
+                LOG.error(exc_msg)
+                raise errors.LookupNodeError(msg)
 
         if response.status_code != requests.codes.OK:
             LOG.warning(
