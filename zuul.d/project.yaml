@@ -8,6 +8,7 @@
       - release-notes-jobs-python3
     check:
       jobs:
+        - ipa-tox-examples
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
         - ipa-tempest-bios-ipmi-direct-src
