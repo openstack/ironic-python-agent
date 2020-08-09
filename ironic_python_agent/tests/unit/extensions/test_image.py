@@ -45,6 +45,8 @@ class TestImageExtension(base.IronicAgentTest):
         self.fake_efi_system_part_uuid = '45AB-2312'
         self.fake_prep_boot_part_uuid = '76937797-3253-8843-999999999999'
         self.fake_dir = '/tmp/fake-dir'
+        self.agent_extension.agent = mock.Mock()
+        self.agent_extension.agent.iscsi_started = True
 
     @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)

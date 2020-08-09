@@ -215,6 +215,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.hardware_initialization_delay = hardware_initialization_delay
         # IPA will stop serving requests and exit after this is set to False
         self.serve_api = True
+        self.iscsi_started = False
 
     def get_status(self):
         """Retrieve a serializable status.
