@@ -62,6 +62,12 @@ cli_opts = [
                      'Can be supplied as "ipa-advertise-port" '
                      'kernel parameter.'),
 
+    cfg.StrOpt('advertise_protocol',
+               default=APARAMS.get('ipa-advertise-protocol', 'http'),
+               choices=['http', 'https'],
+               help='Protocol to use for the callback URL. HTTP is used by '
+                    'default, set to "https" if you have HTTPS configured.'),
+
     cfg.IntOpt('ip_lookup_attempts',
                min=1,
                default=int(APARAMS.get('ipa-ip-lookup-attempts', 6)),
