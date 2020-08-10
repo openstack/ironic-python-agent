@@ -191,6 +191,15 @@ class TestCallInspector(base.IronicAgentTest):
                                           data='{"data": 42, "error": null}')
         self.assertIsNone(res)
 
+    def test_inspector_retries(self, mock_post):
+        mock_post.side_effect = requests.exceptions.ConnectionError
+        failures = utils.AccumulatedFailures()
+        data = collections.OrderedDict(data=42)
+        self.assertRaises(requests.exceptions.ConnectionError,
+                          inspector.call_inspector,
+                          data, failures)
+        self.assertEqual(5, mock_post.call_count)
+
 
 class BaseDiscoverTest(base.IronicAgentTest):
     def setUp(self):

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes an issue where intermittent or transitory connection issues can cause
+    inspection to fail. The ramdisk now retries to report to inspector a total
+    of five times.

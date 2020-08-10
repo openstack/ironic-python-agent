@@ -24,6 +24,7 @@ from oslo_serialization import jsonutils
 from oslo_utils import excutils
 import requests
 import stevedore
+import tenacity
 
 from ironic_python_agent import config
 from ironic_python_agent import encoding
@@ -115,6 +116,17 @@ def inspect():
     return resp.get('uuid')
 
 
+@tenacity.retry(
+    retry=tenacity.retry_if_exception_type(
+        requests.exceptions.ConnectionError),
+    stop=tenacity.stop_after_attempt(5),
+    wait=tenacity.wait_fixed(5),
+    reraise=True)
+def _post_to_inspector(url, data, verify, cert):
+    return requests.post(CONF.inspection_callback_url, data=data,
+                         verify=verify, cert=cert)
+
+
 def call_inspector(data, failures):
     """Post data to inspector."""
     data['error'] = failures.get_error()
@@ -127,8 +139,8 @@ def call_inspector(data, failures):
     data = encoder.encode(data)
 
     verify, cert = utils.get_ssl_client_options(CONF)
-    resp = requests.post(CONF.inspection_callback_url, data=data,
-                         verify=verify, cert=cert)
+    resp = _post_to_inspector(CONF.inspection_callback_url, data=data,
+                              verify=verify, cert=cert)
     if resp.status_code >= 400:
         LOG.error('inspector %s error %d: %s, proceeding with lookup',
                   CONF.inspection_callback_url,
