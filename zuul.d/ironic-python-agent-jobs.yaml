@@ -161,19 +161,11 @@
 
 - job:
     name: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
-    parent: ipa-tempest-bios-ipmi-direct-src
-    vars:
-      devstack_localrc:
-        IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 512
+    parent: ipa-tempest-bios-ipmi-direct-tinyipa-src
 
 - job:
     name: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
-    parent: ipa-tempest-bios-ipmi-iscsi-src
-    vars:
-      devstack_localrc:
-        IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 512
+    parent: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
 
 - job:
     name: ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
@@ -187,8 +179,16 @@
 # the old jobs.
 - job:
     name: ipa-tempest-bios-ipmi-direct-tinyipa-src
-    parent: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
+    parent: ipa-tempest-bios-ipmi-direct-src
+    vars:
+      devstack_localrc:
+        IRONIC_RAMDISK_TYPE: tinyipa
+        IRONIC_VM_SPECS_RAM: 512
 
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
-    parent: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
+    parent: ipa-tempest-bios-ipmi-iscsi-src
+    vars:
+      devstack_localrc:
+        IRONIC_RAMDISK_TYPE: tinyipa
+        IRONIC_VM_SPECS_RAM: 512
