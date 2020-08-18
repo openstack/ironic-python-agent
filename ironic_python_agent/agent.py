@@ -14,9 +14,7 @@
 
 import collections
 import ipaddress
-import os
 import random
-import select
 import socket
 import threading
 import time
@@ -79,13 +77,6 @@ class IronicPythonAgentHeartbeater(threading.Thread):
     min_jitter_multiplier = 0.3
     max_jitter_multiplier = 0.6
 
-    # Exponential backoff values used in case of an error. In reality we will
-    # only wait a portion of either of these delays based on the jitter
-    # multipliers.
-    initial_delay = 1.0
-    max_delay = 300.0
-    backoff_factor = 2.7
-
     def __init__(self, agent):
         """Initialize the heartbeat thread.
 
@@ -94,39 +85,19 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         """
         super(IronicPythonAgentHeartbeater, self).__init__()
         self.agent = agent
+        self.stop_event = threading.Event()
         self.api = agent.api_client
-        self.error_delay = self.initial_delay
-        self.reader = None
-        self.writer = None
+        self.interval = 0
 
     def run(self):
         """Start the heartbeat thread."""
         # The first heartbeat happens immediately
-        LOG.info('starting heartbeater')
-        interval = 0
+        LOG.info('Starting heartbeater')
         self.agent.set_agent_advertise_addr()
 
-        self.reader, self.writer = os.pipe()
-        p = select.poll()
-        p.register(self.reader, select.POLLIN)
-        try:
-            while True:
-                if p.poll(interval * 1000):
-                    if os.read(self.reader, 1).decode() == 'a':
-                        break
-
-                self.do_heartbeat()
-                interval_multiplier = random.uniform(
-                    self.min_jitter_multiplier,
-                    self.max_jitter_multiplier)
-                interval = self.agent.heartbeat_timeout * interval_multiplier
-                log_msg = 'sleeping before next heartbeat, interval: {}'
-                LOG.info(log_msg.format(interval))
-        finally:
-            os.close(self.reader)
-            os.close(self.writer)
-            self.reader = None
-            self.writer = None
+        while not self.stop_event.wait(self.interval):
+            self.do_heartbeat()
+            eventlet.sleep(0)
 
     def do_heartbeat(self):
         """Send a heartbeat to Ironic."""
@@ -136,28 +107,28 @@ class IronicPythonAgentHeartbeater(threading.Thread):
                 advertise_address=self.agent.advertise_address,
                 advertise_protocol=self.agent.advertise_protocol,
             )
-            self.error_delay = self.initial_delay
             LOG.info('heartbeat successful')
         except errors.HeartbeatConflictError:
             LOG.warning('conflict error sending heartbeat to {}'.format(
                 self.agent.api_url))
-            self.error_delay = min(self.error_delay * self.backoff_factor,
-                                   self.max_delay)
         except Exception:
             LOG.exception('error sending heartbeat to {}'.format(
                 self.agent.api_url))
-            self.error_delay = min(self.error_delay * self.backoff_factor,
-                                   self.max_delay)
+        finally:
+            interval_multiplier = random.uniform(self.min_jitter_multiplier,
+                                                 self.max_jitter_multiplier)
+            self.interval = self.agent.heartbeat_timeout * interval_multiplier
+            log_msg = 'sleeping before next heartbeat, interval: {0}'
+            LOG.info(log_msg.format(self.interval))
 
     def force_heartbeat(self):
-        os.write(self.writer, b'b')
+        self.do_heartbeat()
 
     def stop(self):
         """Stop the heartbeat thread."""
-        if self.writer is not None:
-            LOG.info('stopping heartbeater')
-            os.write(self.writer, b'a')
-            return self.join()
+        LOG.info('stopping heartbeater')
+        self.stop_event.set()
+        return self.join()
 
 
 class IronicPythonAgent(base.ExecuteCommandMixin):

@@ -60,21 +60,19 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
             hardware.HardwareManager)
         self.heartbeater.stop_event = mock.Mock()
 
-    @mock.patch('os.read', autospec=True)
-    @mock.patch('select.poll', autospec=True)
     @mock.patch('ironic_python_agent.agent._time', autospec=True)
     @mock.patch('random.uniform', autospec=True)
-    def test_heartbeat(self, mock_uniform, mock_time, mock_poll, mock_read):
+    def test_heartbeat(self, mock_uniform, mock_time):
         time_responses = []
         uniform_responses = []
         heartbeat_responses = []
-        poll_responses = []
-        expected_poll_calls = []
+        wait_responses = []
+        expected_stop_calls = []
 
         # FIRST RUN:
         # initial delay is 0
-        expected_poll_calls.append(mock.call(0))
-        poll_responses.append(False)
+        expected_stop_calls.append(mock.call(0))
+        wait_responses.append(False)
         # next heartbeat due at t=100
         heartbeat_responses.append(100)
         # random interval multiplier is 0.5
@@ -84,8 +82,8 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
 
         # SECOND RUN:
         # 50 * .5 = 25
-        expected_poll_calls.append(mock.call(1000 * 25.0))
-        poll_responses.append(False)
+        expected_stop_calls.append(mock.call(25.0))
+        wait_responses.append(False)
         # next heartbeat due at t=180
         heartbeat_responses.append(180)
         # random interval multiplier is 0.4
@@ -95,36 +93,34 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
 
         # THIRD RUN:
         # 50 * .4 = 20
-        expected_poll_calls.append(mock.call(1000 * 20.0))
-        poll_responses.append(False)
+        expected_stop_calls.append(mock.call(20.0))
+        wait_responses.append(False)
         # this heartbeat attempt fails
         heartbeat_responses.append(Exception('uh oh!'))
-        # we check the time to generate a fake deadline, now t=125
-        time_responses.append(125)
         # random interval multiplier is 0.5
         uniform_responses.append(0.5)
+        # we check the time to generate a fake deadline, now t=125
+        time_responses.append(125)
         # time is now 125.5
         time_responses.append(125.5)
 
         # FOURTH RUN:
-        # 50 * .5 = 25
-        expected_poll_calls.append(mock.call(1000 * 25.0))
+        # 50 * .5 = 20
+        expected_stop_calls.append(mock.call(25.0))
         # Stop now
-        poll_responses.append(True)
-        mock_read.return_value = b'a'
+        wait_responses.append(True)
 
         # Hook it up and run it
         mock_time.side_effect = time_responses
         mock_uniform.side_effect = uniform_responses
         self.mock_agent.heartbeat_timeout = 50
         self.heartbeater.api.heartbeat.side_effect = heartbeat_responses
-        mock_poll.return_value.poll.side_effect = poll_responses
+        self.heartbeater.stop_event.wait.side_effect = wait_responses
         self.heartbeater.run()
 
         # Validate expectations
-        self.assertEqual(expected_poll_calls,
-                         mock_poll.return_value.poll.call_args_list)
-        self.assertEqual(2.7, self.heartbeater.error_delay)
+        self.assertEqual(expected_stop_calls,
+                         self.heartbeater.stop_event.wait.call_args_list)
 
 
 @mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
