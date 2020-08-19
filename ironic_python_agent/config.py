@@ -23,7 +23,7 @@ CONF = cfg.CONF
 
 APARAMS = utils.get_agent_params()
 
-INSPECTION_DEFAULT_COLLECTOR = 'default'
+INSPECTION_DEFAULT_COLLECTOR = 'default,logs'
 INSPECTION_DEFAULT_DHCP_WAIT_TIMEOUT = 60
 
 cli_opts = [
