@@ -208,7 +208,51 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
+        wsgi_server.start.assert_called_once_with()
+        mock_wait.assert_called_once_with(mock.ANY)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
+        self.agent.heartbeater.start.assert_called_once_with()
+
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
+    @mock.patch('oslo_service.wsgi.Server', autospec=True)
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_run_with_ssl(self, mock_get_managers, mock_wsgi,
+                          mock_wait, mock_dispatch):
+        CONF.set_override('inspection_callback_url', '')
+        CONF.set_override('listen_tls', True)
+
+        wsgi_server = mock_wsgi.return_value
+
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server.start.side_effect = set_serve_api
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'config': {
+                'heartbeat_timeout': 300
+            }
+        }
+
+        self.agent.run()
+
+        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
+                                          app=self.agent.api,
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=True)
         wsgi_server.start.assert_called_once_with()
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
@@ -262,7 +306,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
@@ -320,7 +365,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
@@ -365,7 +411,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
@@ -412,7 +459,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
                                           host='2001:db8:dead:beef::cafe',
-                                          port=9998)
+                                          port=9998,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
@@ -455,7 +503,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                          mock_dispatch.call_args_list)
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
         self.agent.heartbeater.start.assert_called_once_with()
 
@@ -494,7 +543,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
 
         mock_inspector.assert_called_once_with()
@@ -557,7 +607,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
 
         mock_inspector.assert_called_once_with()
@@ -613,7 +664,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
 
         self.assertFalse(mock_inspector.called)
@@ -674,7 +726,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
 
         self.agent.heartbeater.start.assert_called_once_with()
@@ -827,7 +880,8 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
         self.assertTrue(mock_get_managers.called)
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server_request.start.assert_called_once_with()
 
         self.assertFalse(self.agent.heartbeater.called)
@@ -1051,7 +1105,8 @@ class TestBaseAgentVMediaToken(ironic_agent_base.IronicAgentTest):
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,
-                                          host=mock.ANY, port=9999)
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
         wsgi_server.start.assert_called_once_with()
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
