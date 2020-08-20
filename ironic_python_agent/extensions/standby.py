@@ -627,7 +627,8 @@ class StandbyExtension(base.BaseAgentExtension):
         :raises: ImageWriteError if writing the image fails.
         """
         LOG.debug('Caching image %s', image_info['id'])
-        device = hardware.dispatch_to_managers('get_os_install_device')
+        device = hardware.dispatch_to_managers('get_os_install_device',
+                                               permit_refresh=True)
 
         msg = 'image ({}) already present on device {} '
 
@@ -669,7 +670,8 @@ class StandbyExtension(base.BaseAgentExtension):
              large to store on the given device.
         """
         LOG.debug('Preparing image %s', image_info['id'])
-        device = hardware.dispatch_to_managers('get_os_install_device')
+        device = hardware.dispatch_to_managers('get_os_install_device',
+                                               permit_refresh=True)
 
         disk_format = image_info.get('disk_format')
         stream_raw_images = image_info.get('stream_raw_images', False)

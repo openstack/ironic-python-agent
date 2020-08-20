@@ -472,6 +472,10 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                     node_uuid=uuid)
                 LOG.debug('Received lookup results: %s', content)
                 self.process_lookup_data(content)
+                # Save the API url in case we need it later.
+                hardware.save_api_client(
+                    self.api_client, self.lookup_timeout,
+                    self.lookup_interval)
 
             elif cfg.CONF.inspection_callback_url:
                 LOG.info('No ipa-api-url configured, Heartbeat and lookup '

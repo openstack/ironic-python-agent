@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixes an issue with nodes undergoing fast-track from introspection to
+    deployment where the agent internal cache of the node may be stale.
+    In particular, this can be observed if node does not honor a root device
+    hint which is saved to Ironic's API *after* the agent was started.
+    More information can be found in `story 2008039
+    <https://storyboard.openstack.org/#!/story/2008039>`_.

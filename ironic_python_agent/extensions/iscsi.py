@@ -185,7 +185,8 @@ class ISCSIExtension(base.BaseAgentExtension):
         if iqn is None:
             iqn = 'iqn.2008-10.org.openstack:%s' % uuidutils.generate_uuid()
 
-        device = hardware.dispatch_to_managers('get_os_install_device')
+        device = hardware.dispatch_to_managers('get_os_install_device',
+                                               permit_refresh=True)
 
         if wipe_disk_metadata:
             disk_utils.destroy_disk_metadata(

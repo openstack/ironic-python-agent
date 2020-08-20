@@ -53,7 +53,9 @@ UNIT_CONVERTER.define('bytes = []')
 UNIT_CONVERTER.define('MB = 1048576 bytes')
 _MEMORY_ID_RE = re.compile(r'^memory(:\d+)?$')
 NODE = None
-
+API_CLIENT = None
+API_LOOKUP_TIMEOUT = None
+API_LOOKUP_INTERVAL = None
 SUPPORTED_SOFTWARE_RAID_LEVELS = frozenset(['0', '1', '1+0', '5', '6'])
 
 RAID_APPLY_CONFIGURATION_ARGSINFO = {
@@ -470,6 +472,40 @@ def list_all_block_devices(block_type='disk',
     return devices
 
 
+def save_api_client(client=None, timeout=None, interval=None):
+    """Preserves access to the API client for potential later re-use."""
+    global API_CLIENT, API_LOOKUP_TIMEOUT, API_LOOKUP_INTERVAL
+
+    if client and timeout and interval and not API_CLIENT:
+        API_CLIENT = client
+        API_LOOKUP_TIMEOUT = timeout
+        API_LOOKUP_INTERVAL = interval
+
+
+def update_cached_node():
+    """Attmepts to update the node cache via the API"""
+    cached_node = get_cached_node()
+    if API_CLIENT:
+        LOG.info('Agent is requesting to perform an explicit node cache '
+                 'update. This is to pickup any chanages in the cache '
+                 'before deployment.')
+        try:
+            if cached_node is None:
+                uuid = None
+            else:
+                uuid = cached_node['uuid']
+            content = API_CLIENT.lookup_node(
+                hardware_info=list_hardware_info(use_cache=True),
+                timeout=API_LOOKUP_TIMEOUT,
+                starting_interval=API_LOOKUP_INTERVAL,
+                uuid=uuid)
+            cache_node(content['node'])
+            return content['node']
+        except Exception as exc:
+            LOG.warning('Failed to update node cache. Error %s', exc)
+    return cached_node
+
+
 class HardwareSupport(object):
     """Example priorities for hardware managers.
 
@@ -597,7 +633,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
     def get_memory(self):
         raise errors.IncompatibleHardwareMethodError
 
-    def get_os_install_device(self):
+    def get_os_install_device(self, permit_refresh=False):
         raise errors.IncompatibleHardwareMethodError
 
     def get_bmc_address(self):
@@ -1052,13 +1088,18 @@ class GenericHardwareManager(HardwareManager):
             )
         return block_devices
 
-    def get_os_install_device(self):
+    def get_os_install_device(self, permit_refresh=False):
         cached_node = get_cached_node()
         root_device_hints = None
         if cached_node is not None:
             root_device_hints = (
                 cached_node['instance_info'].get('root_device')
                 or cached_node['properties'].get('root_device'))
+            if permit_refresh and not root_device_hints:
+                cached_node = update_cached_node()
+                root_device_hints = (
+                    cached_node['instance_info'].get('root_device')
+                    or cached_node['properties'].get('root_device'))
             LOG.debug('Looking for a device matching root hints %s',
                       root_device_hints)
 

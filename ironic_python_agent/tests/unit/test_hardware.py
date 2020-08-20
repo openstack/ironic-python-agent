@@ -1467,6 +1467,46 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mock_cached_node.assert_called_once_with()
         mock_dev.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'update_cached_node', autospec=True)
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_get_os_install_device_no_root_device(self, mock_cached_node,
+                                                  mock_dev,
+                                                  mock_update):
+        mock_cached_node.return_value = {'properties': {},
+                                         'uuid': 'node1',
+                                         'instance_info': {}}
+        mock_dev.return_value = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 wwn='wwn0',
+                                 wwn_with_extension='wwn0ven0',
+                                 wwn_vendor_extension='ven0',
+                                 serial='serial0'),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='magical disk',
+                                 size=10737418240,
+                                 rotational=True,
+                                 vendor='fake-vendor',
+                                 wwn='fake-wwn',
+                                 wwn_with_extension='fake-wwnven0',
+                                 wwn_vendor_extension='ven0',
+                                 serial='fake-serial',
+                                 by_path='/dev/disk/by-path/1:0:0:0'),
+        ]
+        mock_update.return_value = {'properties': {'root_device':
+                                                   {'name': '/dev/sda'}},
+                                    'uuid': 'node1',
+                                    'instance_info': {'magic': 'value'}}
+        self.assertEqual('/dev/sda',
+                         self.hardware.get_os_install_device(
+                             permit_refresh=True))
+        self.assertEqual(1, mock_cached_node.call_count)
+        mock_dev.assert_called_once_with()
+
     def test__get_device_info(self):
         fileobj = mock.mock_open(read_data='fake-vendor')
         with mock.patch(
@@ -4468,3 +4508,33 @@ class TestListHardwareInfo(base.IronicAgentTest):
         self.assertEqual(fake_info, hardware.list_hardware_info())
         mock_dispatch.assert_called_with('list_hardware_info')
         self.assertEqual(2, mock_dispatch.call_count)
+
+
+class TestAPIClientSaveAndUse(base.IronicAgentTest):
+
+    def test_save_api_client(self):
+        hardware.API_CLIENT = None
+        mock_api_client = mock.Mock()
+        hardware.save_api_client(mock_api_client, 1, 2)
+        self.assertEqual(mock_api_client, hardware.API_CLIENT)
+
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_update_node_cache(self, mock_cached_node, mock_dispatch):
+        mock_cached_node.return_value = {'uuid': 'node1'}
+        updated_node = {'uuid': 'node1', 'other': 'key'}
+        hardware.API_CLIENT = None
+        mock_api_client = mock.Mock()
+        hardware.save_api_client(mock_api_client, 1, 2)
+        mock_api_client.lookup_node.return_value = {'node': updated_node}
+        self.assertEqual(updated_node, hardware.update_cached_node())
+        mock_api_client.lookup_node.assert_called_with(
+            hardware_info=mock.ANY,
+            timeout=1,
+            starting_interval=2,
+            uuid='node1')
+        self.assertEqual(updated_node, hardware.NODE)
+        calls = [mock.call('list_hardware_info'),
+                 mock.call('wait_for_disks')]
+        mock_dispatch.assert_has_calls(calls)
