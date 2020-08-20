@@ -234,6 +234,16 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
                           uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
                           advertise_address=('192.0.2.1', '9999'))
 
+    def test_heartbeat_requests_connection_error(self):
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.side_effect = \
+            requests.exceptions.ConnectionError
+        self.assertRaisesRegex(errors.HeartbeatConnectionError,
+                               'transitory network failure or blocking port',
+                               self.api_client.heartbeat,
+                               uuid='meow',
+                               advertise_address=('192.0.2.1', '9999'))
+
     @mock.patch('eventlet.greenthread.sleep', autospec=True)
     @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup',
                 autospec=True)
