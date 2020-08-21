@@ -99,7 +99,7 @@
         IRONIC_INSPECTOR_BUILD_RAMDISK: True
         USE_SUBNETPOOL: False
         IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 384
+        IRONIC_VM_SPECS_RAM: 512
 
 - job:
     name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
@@ -174,7 +174,7 @@
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 384
+        IRONIC_VM_SPECS_RAM: 512
 
 - job:
     name: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
@@ -182,7 +182,7 @@
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 384
+        IRONIC_VM_SPECS_RAM: 512
 
 - job:
     name: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
@@ -190,7 +190,7 @@
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 384
+        IRONIC_VM_SPECS_RAM: 512
 
 - job:
     name: ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
@@ -198,7 +198,7 @@
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 384
+        IRONIC_VM_SPECS_RAM: 512
 
 # Cloning the jobs so we can update ipa-builder and then we can the old jobs.
 - job:
