@@ -35,10 +35,6 @@
         - ipa-tempest-bios-ipmi-iscsi-src
         - ironic-standalone-ipa-src
         - metalsmith-integration-ipa-src
-    experimental:
-      jobs:
-        - ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
-        - ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa
     post:
       jobs:
         - ironic-python-agent-build-image-tinyipa

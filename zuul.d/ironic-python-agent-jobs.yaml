@@ -89,43 +89,6 @@
         ironic-inspector: https://opendev.org/openstack/ironic-inspector
 
 
-# Experimental jobs
-- job:
-    name: ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa
-    parent: ironic-ipa-base
-    required-projects:
-      - openstack/python-ironicclient
-    vars:
-      devstack_localrc:
-        IRONIC_DEFAULT_BOOT_OPTION: netboot
-        EBTABLES_RACE_FIX: True
-        IRONIC_INSPECTOR_BUILD_RAMDISK: True
-        USE_SUBNETPOOL: False
-        IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 512
-
-- job:
-    name: ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
-    parent: ironic-ipa-base
-    required-projects:
-      - openstack/ironic-python-agent
-      - openstack/python-ironicclient
-    vars:
-      devstack_localrc:
-        IRONIC_DEFAULT_BOOT_OPTION: netboot
-        EBTABLES_RACE_FIX: True
-        IRONIC_INSPECTOR_BUILD_RAMDISK: True
-        IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 256
-        USE_SUBNETPOOL: False
-        SWIFT_ENABLE_TEMPURLS: True
-        SWIFT_TEMPURL_KEY: secretkey
-      devstack_services:
-        s-account: True
-        s-container: True
-        s-object: True
-        s-proxy: True
-
 - job:
     # Security testing for known issues
     name: ipa-tox-bandit
