@@ -16,6 +16,7 @@
         override-checkout: 2.0.0
     vars:
       devstack_localrc:
+        IRONIC_VM_SPECS_RAM: 512
         IRONIC_BUILD_DEPLOY_RAMDISK: True
         USE_PYTHON3: True
 
