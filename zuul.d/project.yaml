@@ -8,33 +8,33 @@
       - release-notes-jobs-python3
     check:
       jobs:
-        # - ipa-tox-examples
+        - ipa-tox-examples
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
         - ipa-tempest-bios-ipmi-direct-src
-        # - ipa-tempest-bios-ipmi-iscsi-src
-        # - ironic-standalone-ipa-src
-        # - metalsmith-integration-ipa-src
+        - ipa-tempest-bios-ipmi-iscsi-src
+        - ironic-standalone-ipa-src
+        - metalsmith-integration-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
-        # - ironic-python-agent-check-image-tinyipa:
-        #     voting: false
-        # - ironic-python-agent-check-image-dib-centos8:
-        #     voting: false
+        - ironic-python-agent-check-image-tinyipa:
+            voting: false
+        - ironic-python-agent-check-image-dib-centos8:
+            voting: false
         # Non-voting jobs
-        # - ipa-tempest-ironic-inspector-src:
-        #     voting: false
-        # - openstack-tox-functional-py36:
-        #    voting: false
-        # - ipa-tox-bandit:
-        #    voting: false
+        - ipa-tempest-ironic-inspector-src:
+            voting: false
+        - openstack-tox-functional-py36:
+            voting: false
+        - ipa-tox-bandit:
+            voting: false
     gate:
       queue: ironic
       jobs:
         - ipa-tempest-bios-ipmi-direct-src
-        # - ipa-tempest-bios-ipmi-iscsi-src
-        # - ironic-standalone-ipa-src
-        # - metalsmith-integration-ipa-src
+        - ipa-tempest-bios-ipmi-iscsi-src
+        - ironic-standalone-ipa-src
+        - metalsmith-integration-ipa-src
     experimental:
       jobs:
         - ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src
