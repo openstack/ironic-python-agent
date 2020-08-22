@@ -49,10 +49,14 @@ class AcceptingFailure(mock.Mock):
 
 class TestMisc(base.IronicAgentTest):
     def test_default_collector_loadable(self):
-        ext = inspector.extension_manager(
-            [config.INSPECTION_DEFAULT_COLLECTOR])
-        self.assertIs(ext[config.INSPECTION_DEFAULT_COLLECTOR].plugin,
-                      inspector.collect_default)
+        defaults = config.INSPECTION_DEFAULT_COLLECTOR.split(',')
+        # default should go first
+        self.assertEqual('default', defaults[0])
+        # logs much go last
+        self.assertEqual('logs', defaults[-1])
+        ext = inspector.extension_manager(defaults)
+        for collector in defaults:
+            self.assertTrue(callable(ext[collector].plugin))
 
     def test_raise_on_wrong_collector(self):
         self.assertRaisesRegex(errors.InspectionError,
@@ -246,7 +250,7 @@ class TestCollectDefault(BaseDiscoverTest):
         self.assertEqual('boot:if', self.data['boot_interface'])
         self.assertEqual(self.inventory['disks'][2].name,
                          self.data['root_disk'].name)
-        self.assertEqual({'collectors': ['default'], 'managers': mgrs},
+        self.assertEqual({'collectors': ['default', 'logs'], 'managers': mgrs},
                          self.data['configuration'])
 
         mock_dispatch.assert_called_once_with('list_hardware_info')
@@ -283,7 +287,7 @@ class TestCollectDefault(BaseDiscoverTest):
 
         self.assertEqual('boot:if', self.data['boot_interface'])
         self.assertNotIn('root_disk', self.data)
-        self.assertEqual({'collectors': ['default'], 'managers': mgrs},
+        self.assertEqual({'collectors': ['default', 'logs'], 'managers': mgrs},
                          self.data['configuration'])
 
         mock_dispatch.assert_called_once_with('list_hardware_info')

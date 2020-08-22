@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The ``logs`` inspection collector is now enabled by default, change
+    ``ipa-inspection-collectors`` to disable.
