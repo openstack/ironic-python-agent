@@ -8,6 +8,11 @@ extensions = ['sphinx.ext.autodoc',
               'openstackdocstheme',
               ]
 
+openstackdocs_projects = [
+    'ironic',
+    'ironic-inspector',
+]
+
 # autodoc generation is a bit aggressive and a nuisance when doing heavy
 # text edit cycles.
 # execute "export SPHINX_DEBUG=1" in your terminal to disable

@@ -5,15 +5,15 @@ Welcome to Ironic Python Agent!
 Overview
 ========
 
-Ironic Python Agent is an agent for controlling and deploying Ironic controlled
-baremetal nodes. Typically run in a ramdisk, the agent exposes a REST API for
-provisioning servers.
+Ironic Python Agent (often abbreviated as IPA) is an agent for controlling and
+deploying :ironic-doc:`Ironic <>` controlled baremetal nodes. Typically run in
+a ramdisk, the agent exposes a REST API for provisioning servers.
 
-Index
-=====
+Contents
+========
 
 .. toctree::
-  :maxdepth: 1
+  :maxdepth: 3
 
   install/index
   admin/index
