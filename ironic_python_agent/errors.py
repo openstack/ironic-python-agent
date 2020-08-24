@@ -348,3 +348,13 @@ class ClockSyncError(RESTError):
     """Error raised when attempting to sync the system clock."""
 
     message = 'Error syncing system clock'
+
+
+class HeartbeatConnectionError(IronicAPIError):
+    """Transitory connection failure occured attempting to contact the API."""
+
+    message = ("Error attempting to heartbeat - Possible transitory network "
+               "failure or blocking port may be present.")
+
+    def __init__(self, details):
+        super(HeartbeatConnectionError, self).__init__(details)

@@ -1,0 +1,10 @@
+---
+other:
+  - |
+    Adds an explicit capture of connectivity failures in the heartbeat
+    process to provide a more verbose error message in line with what is
+    occuring as opposed to just indicating that an error occured. This
+    new exception is called ``HeartbeatConnectionError`` and is likely only
+    going to be visible if there is a local connectivity failure such as a
+    router failure, switchport in a blocking state, or connection centered
+    transient failure.

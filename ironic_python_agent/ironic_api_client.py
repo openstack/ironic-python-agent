@@ -125,6 +125,8 @@ class APIClient(object):
 
         try:
             response = self._request('POST', path, data=data, headers=headers)
+        except requests.exceptions.ConnectionError as e:
+            raise errors.HeartbeatConnectionError(str(e))
         except Exception as e:
             raise errors.HeartbeatError(str(e))
 
