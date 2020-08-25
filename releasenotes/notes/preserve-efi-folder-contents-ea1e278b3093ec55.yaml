@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes the agent's EFI boot handling such that EFI assets from a partition
+    image are preserved and used instead of overridden. This should permit
+    operators to use Secure Boot with partition images IF the assets are
+    already present in the partition image.
