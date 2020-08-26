@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    The system file system configuration file for Linux machines, the
+    ``/etc/fstab`` file is now updated to include a reference to the
+    EFI partition in the case of a partition image base deployment.
+    Without this reference, images deployed using partition images
+    could end up in situations where upgrading the bootloader could fail.
