@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Since the Ussuri release, IPA has ignored the listen_host and listen_port
+    directives. This fixes the behavior and restores those configuration
+    values to working status.
+    https://storyboard.openstack.org/#!/story/2008016
