@@ -1,6 +1,6 @@
-===============================
-Installing Ironic Python Agent!
-===============================
+==============================
+Installing Ironic Python Agent
+==============================
 
 Image Builders
 ==============
@@ -106,14 +106,10 @@ ramdisk builds.
 Hardware Managers
 =================
 
-What is a HardwareManager?
---------------------------
 Hardware managers are how IPA supports multiple different hardware platforms
 in the same agent. Any action performed on hardware can be overridden by
 deploying your own hardware manager.
 
-Why build a custom HardwareManager?
------------------------------------
 Custom hardware managers allow you to include hardware-specific tools, files
 and cleaning steps in the Ironic Python Agent. For example, you could include a
 BIOS flashing utility and BIOS file in a custom ramdisk. Your custom
@@ -121,18 +117,10 @@ hardware manager could expose a cleaning step that calls the flashing utility
 and flashes the packaged BIOS version (or even download it from a tested web
 server).
 
-How can I build a custom HardwareManager?
------------------------------------------
 Operators wishing to build their own hardware managers should reference
-the documentation available at `Hardware Managers`_.
+the documentation available at :doc:`Hardware Managers
+</contributor/hardware_managers>`.
 
-.. _Hardware Managers: https://docs.openstack.org/ironic-python-agent/latest/contributor/hardware_managers.html
 .. _ironic-python-agent-builder: https://docs.openstack.org/ironic-python-agent-builder
 .. _DIB: https://docs.openstack.org/ironic-python-agent-builder/latest/admin/dib.html
 .. _TinyIPA: https://docs.openstack.org/ironic-python-agent-builder/latest/admin/tinyipa.html
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`search`

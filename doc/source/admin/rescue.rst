@@ -47,4 +47,4 @@ After the ``finalize_rescue`` command completes, DHCP will be configured on all
 network interfaces, and a `rescue` user will be created with the specified
 ``rescue_password``.
 
-.. _`build a TinyIPA image`: https://opendev.org/openstack/ironic-python-agent-builder/src/branch/master/tinyipa/README.rst
+.. _build a TinyIPA image: https://docs.openstack.org/ironic-python-agent-builder/latest/admin/tinyipa.html

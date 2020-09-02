@@ -3,11 +3,12 @@
 Hardware Managers
 =================
 
-What is a HardwareManager?
---------------------------
 Hardware managers are how IPA supports multiple different hardware platforms
 in the same agent. Any action performed on hardware can be overridden by
 deploying your own hardware manager.
+
+IPA ships with GenericHardwareManager, which implements basic cleaning and
+deployment methods compatible with most hardware.
 
 How are methods executed on HardwareManagers?
 ---------------------------------------------
@@ -19,11 +20,6 @@ a result from the method call is considered a success and its return value
 passed on to whatever dispatched the method. If the method is unable to run
 successfully on any hardware managers, `HardwareManagerMethodNotFound` is
 raised.
-
-Does IPA ship with a HardwareManager?
--------------------------------------
-IPA ships with GenericHardwareManager, which implements basic cleaning and
-deployment methods compatible with most hardware.
 
 Why build a custom HardwareManager?
 -----------------------------------
@@ -54,9 +50,9 @@ and adapter for your use case.
 Custom HardwareManagers and Cleaning
 ------------------------------------
 One of the reasons to build a custom hardware manager is to expose extra steps
-in Ironic Cleaning [1]_. A node will perform a set of cleaning steps any
-time the node is deleted by a tenant or moved from MANAGEABLE state to
-AVAILABLE state. If the node is using an agent\_\* driver, Ironic will query
+in :ironic-doc:`Ironic Cleaning </admin/cleaning.html>`. A node will perform
+a set of cleaning steps any time the node is deleted by a tenant or moved from
+``manageable`` state to ``available`` state. Ironic will query
 IPA for a list of clean steps that should be executed on the node. IPA
 will dispatch a call to `get_clean_steps()` on all available hardware managers
 and then return the combined list to Ironic.
@@ -133,7 +129,3 @@ about the platform it's running on. Suggested values are included in the
 will prevent the hardware manager from being used. IPA will never ship a
 hardware manager with a priority higher than 3, aka
 `HardwareSupport.SERVICE_PROVIDER`.
-
-References
-==========
-.. [1] Ironic Cleaning - https://docs.openstack.org/ironic/latest/admin/cleaning.html
