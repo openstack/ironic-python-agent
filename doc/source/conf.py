@@ -11,6 +11,7 @@ extensions = ['sphinx.ext.autodoc',
 openstackdocs_projects = [
     'ironic',
     'ironic-inspector',
+    'ironic-lib',
 ]
 
 # autodoc generation is a bit aggressive and a nuisance when doing heavy

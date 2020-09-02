@@ -7,8 +7,8 @@ Hardware managers are how IPA supports multiple different hardware platforms
 in the same agent. Any action performed on hardware can be overridden by
 deploying your own hardware manager.
 
-IPA ships with GenericHardwareManager, which implements basic cleaning and
-deployment methods compatible with most hardware.
+IPA ships with :doc:`GenericHardwareManager </admin/hardware_managers>`, which
+implements basic cleaning and deployment methods compatible with most hardware.
 
 How are methods executed on HardwareManagers?
 ---------------------------------------------
@@ -38,9 +38,12 @@ evaluate_hardware_support(), which should return one of the enums
 in hardware.HardwareSupport. Hardware support determines which hardware
 manager is executed first for a given function (see: "`How are methods
 executed on HardwareManagers?`_" for more info). Common methods you
-may want to implement are list_hardware_info(), to add additional hardware
-the GenericHardwareManager is unable to identify and erase_devices(), to
+may want to implement are ``list_hardware_info()``, to add additional hardware
+the GenericHardwareManager is unable to identify and ``erase_devices()``, to
 erase devices in ways other than ATA secure erase or shredding.
+
+Some reusable functions are provided by :ironic-lib-doc:`ironic-lib
+<reference/api/modules.html>`, its IPA is relatively stable.
 
 The examples_ directory has two example hardware managers that can be copied
 and adapter for your use case.
@@ -59,19 +62,24 @@ and then return the combined list to Ironic.
 
 To expose extra clean steps, the custom hardware manager should have a function
 named `get_clean_steps()` which returns a list of dictionaries. The
-dictionaries should be in the form::
+dictionaries should be in the form:
 
-    {
-        // A function on the custom hardware manager
-        'step': 'upgrade_firmware',
-        // An integer priority. Largest priorities are executed first
-        'priority': 10,
-        // Should always be the deploy interface
-        'interface': 'deploy',
-        // Request the node to be rebooted out of band by Ironic when the
-        // step completes successfully
-        'reboot_requested': False
-    }
+.. code-block:: python
+
+    def get_clean_steps(self, node, ports):
+        return [
+            {
+                # A function on the custom hardware manager
+                'step': 'upgrade_firmware',
+                # An integer priority. Largest priorities are executed first
+                'priority': 10,
+                # Should always be the deploy interface
+                'interface': 'deploy',
+                # Request the node to be rebooted out of band by Ironic when
+                # the step completes successfully
+                'reboot_requested': False
+            }
+        ]
 
 Then, you should create functions which match each of the `step` keys in
 the clean steps you return. The functions will take two parameters: `node`,
@@ -87,7 +95,9 @@ further managers are called. If the function raises
 `IncompatibleHardwareMethodError`, the next manager will be called. If the
 function raises any other exception, the command will be considered failed,
 the command result's error message will be set to the exception's error
-message, and no further managers will be called. An example step::
+message, and no further managers will be called. An example step:
+
+.. code-block:: python
 
     def upgrade_firmware(self, node, ports):
         if self._device_exists():
@@ -101,6 +111,84 @@ message, and no further managers will be called. An example step::
     If two managers return steps with the same `step` key, the priority will
     be set to whichever manager has a higher hardware support level and then
     use the higher priority in the case of a tie.
+
+Custom HardwareManagers and Deploying
+-------------------------------------
+
+Starting with the Victoria release cycle, :ironic-doc:`deployment
+<admin/node-deployment.html>` can be customized similarly to `cleaning
+<Custom HardwareManagers and Cleaning>`_. A hardware manager can define *deploy
+steps* that may be run during deployment by exposing a ``get_deploy_steps``
+call.
+
+There are two kinds of deploy steps:
+
+#. Steps that need to be run automatically must have a non-zero priority and
+   cannot take required arguments. For example:
+
+   .. code-block:: python
+
+    def get_deploy_steps(self, node, ports):
+        return [
+            {
+                # A function on the custom hardware manager
+                'step': 'upgrade_firmware',
+                # An integer priority. Largest priorities are executed first
+                'priority': 10,
+                # Should always be the deploy interface
+                'interface': 'deploy',
+            }
+        ]
+
+    # A deploy steps looks the same as a clean step.
+    def upgrade_firmware(self, node, ports):
+        if self._device_exists():
+            # Do the upgrade
+            return 'upgraded firmware'
+        else:
+            raise errors.IncompatibleHardwareMethodError()
+
+   Priority should be picked based on when exactly in the process the step will
+   run. See :ironic-doc:`agent step priorities
+   <admin/node-deployment.html#agent-steps>` for guidance.
+
+#. Steps that will be requested via :ironic-doc:`deploy templates
+   <admin/node-deployment.html#deploy-templates>` should have a priority of 0
+   and may take both required and optional arguments that will be provided via
+   the deploy templates. For example:
+
+   .. code-block:: python
+
+    def get_deploy_steps(self, node, ports):
+        return [
+            {
+                # A function on the custom hardware manager
+                'step': 'write_a_file',
+                # Steps with priority 0 don't run by default.
+                'priority': 0,
+                # Should be the deploy interface, unless there is driver-side
+                # support for another interface (as it is for RAID).
+                'interface': 'deploy',
+                # Arguments that can be required or optional.
+                'argsinfo': {
+                    'path': {
+                        'description': 'Path to file',
+                        'required': True,
+                    },
+                    'content': {
+                        'description': 'Content of the file',
+                        'required': True,
+                    },
+                    'mode': {
+                        'description': 'Mode of the file, defaults to 0644',
+                        'required': False,
+                    },
+                }
+            }
+        ]
+
+    def write_a_file(self, node, ports, path, contents, mode=0o644):
+        pass  # Mount the disk, write a file.
 
 Versioning
 ~~~~~~~~~~

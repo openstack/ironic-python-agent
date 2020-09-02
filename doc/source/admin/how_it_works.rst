@@ -148,6 +148,8 @@ collectors are:
 .. _hardware: https://pypi.org/project/hardware/
 .. _NUMA: https://en.wikipedia.org/wiki/Non-uniform_memory_access
 
+.. _hardware-inventory:
+
 Hardware Inventory
 ------------------
 IPA collects various hardware information using its
