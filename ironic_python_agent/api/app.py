@@ -23,7 +23,6 @@ from werkzeug import routing
 from werkzeug.wrappers import json as http_json
 
 from ironic_python_agent import encoding
-from ironic_python_agent import netutils
 
 
 LOG = log.getLogger(__name__)
@@ -86,8 +85,6 @@ def format_exception(value):
 
 class Application(object):
 
-    PORT = 9999
-
     def __init__(self, agent, conf):
         """Set up the API app.
 
@@ -132,10 +129,11 @@ class Application(object):
     def start(self):
         """Start the API service in the background."""
         self.service = wsgi.Server(self._conf, 'ironic-python-agent', app=self,
-                                   host=netutils.get_wildcard_address(),
-                                   port=self.PORT)
+                                   host=self.agent.listen_address.hostname,
+                                   port=self.agent.listen_address.port)
         self.service.start()
-        LOG.info('Started API service on port %s', self.PORT)
+        LOG.info('Started API service on port %s',
+                 self.agent.listen_address.port)
 
     def stop(self):
         """Stop the API service."""
@@ -144,7 +142,8 @@ class Application(object):
             return
         self.service.stop()
         self.service = None
-        LOG.info('Stopped API service on port %s', self.PORT)
+        LOG.info('Stopped API service on port %s',
+                 self.agent.listen_address.port)
 
     def handle_exception(self, environ, exc):
         """Handle an exception during request processing."""
