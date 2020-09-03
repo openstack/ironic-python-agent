@@ -69,7 +69,8 @@ class TestISCSIExtensionTgt(base.IronicAgentTest):
                               '--op', 'bind', '--tid', '1',
                               '--initiator-address', 'ALL')]
         mock_execute.assert_has_calls(expected)
-        mock_dispatch.assert_called_once_with('get_os_install_device')
+        mock_dispatch.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         self.assertEqual({'iscsi_target_iqn': self.fake_iqn},
                          result.command_result)
         self.assertFalse(mock_destroy.called)
@@ -98,7 +99,8 @@ class TestISCSIExtensionTgt(base.IronicAgentTest):
                               '--op', 'bind', '--tid', '1',
                               '--initiator-address', 'ALL')]
         mock_execute.assert_has_calls(expected)
-        mock_dispatch.assert_called_once_with('get_os_install_device')
+        mock_dispatch.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         self.assertEqual({'iscsi_target_iqn': self.fake_iqn},
                          result.command_result)
 
@@ -119,7 +121,8 @@ class TestISCSIExtensionTgt(base.IronicAgentTest):
                               '--op', 'show', attempts=10)]
 
         mock_execute.assert_has_calls(expected)
-        mock_dispatch.assert_called_once_with('get_os_install_device')
+        mock_dispatch.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         self.assertFalse(mock_destroy.called)
 
     @mock.patch.object(iscsi, '_wait_for_tgtd', autospec=True)
@@ -138,7 +141,8 @@ class TestISCSIExtensionTgt(base.IronicAgentTest):
                               'target', '--op', 'new', '--tid', '1',
                               '--targetname', self.fake_iqn)]
         mock_execute.assert_has_calls(expected)
-        mock_dispatch.assert_called_once_with('get_os_install_device')
+        mock_dispatch.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
 
     def test_start_iscsi_target_fail_command_not_exist(self, mock_execute,
                                                        mock_dispatch,

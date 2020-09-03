@@ -569,7 +569,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         self.assertEqual(image_info['id'],
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
@@ -595,7 +596,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         self.assertEqual(image_info['id'],
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
@@ -626,7 +628,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result.join()
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         self.assertEqual(image_info['id'],
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
@@ -654,7 +657,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result.join()
         self.assertFalse(download_mock.called)
         self.assertFalse(write_mock.called)
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         self.assertEqual(image_info['id'],
                          self.agent_extension.cached_image_id)
         self.assertEqual('SUCCEEDED', async_result.command_status)
@@ -699,7 +703,8 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         configdrive_copy_mock.assert_called_once_with(image_info['node_uuid'],
                                                       'manager',
                                                       'configdrive_data')
@@ -749,7 +754,8 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         self.assertFalse(configdrive_copy_mock.called)
 
         self.assertEqual('SUCCEEDED', async_result.command_status)
@@ -821,7 +827,8 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
 
         self.assertEqual(0, configdrive_copy_mock.call_count)
         self.assertEqual('SUCCEEDED', async_result.command_status)
@@ -871,7 +878,8 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
 
         self.assertFalse(configdrive_copy_mock.called)
         self.assertEqual('FAILED', async_result.command_status)
@@ -913,7 +921,8 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, 'manager')
-        dispatch_mock.assert_called_once_with('get_os_install_device')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
         configdrive_copy_mock.assert_called_once_with(image_info['node_uuid'],
                                                       'manager',
                                                       'configdrive_data')
@@ -967,7 +976,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         )
         async_result.join()
 
-        dispatch_mock.assert_any_call('get_os_install_device')
+        dispatch_mock.assert_any_call('get_os_install_device',
+                                      permit_refresh=True)
         self.assertFalse(configdrive_copy_mock.called)
 
         # Assert we've streamed the image or not
