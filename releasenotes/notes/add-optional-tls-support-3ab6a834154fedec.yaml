@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Enables support in IPA for hosting the API server over TLS. Using this
+    support requires setting ``[DEFAULT]listen_tls`` to True, and then setting
+    ``[ssl]cert_file``, ``[ssl]key_file``, and optionally ``[ssl]ca_file`` to
+    files embedded in the ramdisk IPA runs inside.
+

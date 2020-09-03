@@ -54,6 +54,18 @@ cli_opts = [
                 help='The port to listen on. '
                      'Can be supplied as "ipa-listen-port" kernel parameter.'),
 
+    # This is intentionally not settable via kernel command line, as it
+    # requires configuration parameters from oslo_service which are not
+    # configurable over the command line and require files-on-disk.
+    # Operators who want to use this support should configure it statically
+    # as part of a ramdisk build.
+    cfg.BoolOpt('listen_tls',
+                default=False,
+                help='When true, IPA will host API behind TLS. You will also '
+                     'need to configure [ssl] group options for cert_file, '
+                     'key_file, and, if desired, ca_file to validate client '
+                     'certificates.'),
+
     cfg.StrOpt('advertise_host',
                default=APARAMS.get('ipa-advertise-host', None),
                help='The host to tell Ironic to reply and send '

@@ -12,8 +12,16 @@
 
 import os
 
+import eventlet
+
 # NOTE(TheJulia): Eventlet, when monkey patching occurs, replaces the base
 # dns resolver methods. This can lead to compatability issues,
 # and un-expected exceptions being raised during the process
 # of monkey patching. Such as one if there are no resolvers.
 os.environ['EVENTLET_NO_GREENDNS'] = "yes"
+
+# NOTE(JayF) Without monkey_patching socket, API requests will hang with TLS
+# enabled. Enabling more than just socket for monkey patching causes failures
+# in image streaming. In an ideal world, we track down all those errors and
+# monkey patch everything as suggested in eventlet documentation.
+eventlet.monkey_patch(all=False, socket=True)

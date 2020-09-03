@@ -130,7 +130,8 @@ class Application(object):
         """Start the API service in the background."""
         self.service = wsgi.Server(self._conf, 'ironic-python-agent', app=self,
                                    host=self.agent.listen_address.hostname,
-                                   port=self.agent.listen_address.port)
+                                   port=self.agent.listen_address.port,
+                                   use_ssl=self._conf.listen_tls)
         self.service.start()
         LOG.info('Started API service on port %s',
                  self.agent.listen_address.port)
