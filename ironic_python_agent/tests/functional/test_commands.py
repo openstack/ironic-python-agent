@@ -24,7 +24,7 @@ class TestCommands(base.FunctionalBase):
     different test runs.
     """
 
-    node = {'uuid': '1', 'properties': {}}
+    node = {'uuid': '1', 'properties': {}, 'instance_info': {}}
 
     def step_1_get_empty_commands(self):
         response = self.request('get', 'commands')
