@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    When a recent enough version of ironic is detected and ``listen_tls`` is
+    ``False``, agent will now generate a self-signed TLS certificate and send
+    it to ironic on heartbeat. This ensures encrypted communication from
+    ironic to the agent. Set ``enable_auto_tls`` to ``False`` to disable this
+    behavior.

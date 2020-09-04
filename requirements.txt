@@ -18,3 +18,4 @@ rtslib-fb>=2.1.65 # Apache-2.0
 stevedore>=1.20.0 # Apache-2.0
 ironic-lib>=4.1.0 # Apache-2.0
 Werkzeug>=1.0.1 # BSD License
+cryptography>=2.3 # BSD/Apache-2.0

@@ -135,6 +135,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
                 uuid=self.agent.get_node_uuid(),
                 advertise_address=self.agent.advertise_address,
                 advertise_protocol=self.agent.advertise_protocol,
+                generated_cert=self.agent.generated_cert,
             )
             self.error_delay = self.initial_delay
             LOG.info('heartbeat successful')
@@ -216,6 +217,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         # got upgraded somewhere along the way.
         self.agent_token_required = cfg.CONF.agent_token_required
         self.iscsi_started = False
+        self.generated_cert = None
 
     def get_status(self):
         """Retrieve a serializable status.
@@ -370,9 +372,31 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             LOG.warning("No valid network interfaces found. "
                         "Node lookup will probably fail.")
 
+    def _start_auto_tls(self):
+        # NOTE(dtantsur): if listen_tls is True, assume static TLS
+        # configuration and don't auto-generate anything.
+        if cfg.CONF.listen_tls or not cfg.CONF.enable_auto_tls:
+            LOG.debug('Automated TLS is disabled')
+            return None, None
+
+        if not self.api_url or not self.api_client.supports_auto_tls():
+            LOG.warning('Ironic does not support automated TLS')
+            return None, None
+
+        self.set_agent_advertise_addr()
+
+        LOG.info('Generating TLS parameters automatically for IP %s',
+                 self.advertise_address.hostname)
+        tls_info = hardware.dispatch_to_managers(
+            'generate_tls_certificate', self.advertise_address.hostname)
+        self.generated_cert = tls_info.text
+        self.advertise_protocol = 'https'
+        return tls_info.path, tls_info.private_key_path
+
     def serve_ipa_api(self):
         """Serve the API until an extension terminates it."""
-        self.api.start()
+        cert_file, key_file = self._start_auto_tls()
+        self.api.start(cert_file, key_file)
         if not self.standalone and self.api_url:
             # Don't start heartbeating until the server is listening
             self.heartbeater.start()

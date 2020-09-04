@@ -66,6 +66,12 @@ cli_opts = [
                      'key_file, and, if desired, ca_file to validate client '
                      'certificates.'),
 
+    cfg.BoolOpt('enable_auto_tls',
+                default=True,
+                help='Enables auto-generating TLS parameters when listen_tls '
+                     'is False and ironic API version indicates support for '
+                     'automatic agent TLS.'),
+
     cfg.StrOpt('advertise_host',
                default=APARAMS.get('ipa-advertise-host', None),
                help='The host to tell Ironic to reply and send '
