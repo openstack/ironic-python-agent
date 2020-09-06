@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from distutils.version import StrictVersion
-
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -35,6 +32,9 @@ LOG = log.getLogger(__name__)
 MIN_IRONIC_VERSION = (1, 31)
 AGENT_VERSION_IRONIC_VERSION = (1, 36)
 AGENT_TOKEN_IRONIC_VERSION = (1, 62)
+# NOTE(dtantsur): change this constant every time you add support for more
+# versions to ensure that we send the highest version we know about.
+MAX_KNOWN_VERSION = AGENT_TOKEN_IRONIC_VERSION
 
 
 class APIClient(object):
@@ -80,17 +80,11 @@ class APIClient(object):
                                     cert=cert,
                                     **kwargs)
 
-    def _get_ironic_api_version_header(self):
-        # TODO(TheJulia): It would be great to improve version handling
-        # logic, but we need to ship a newer version if we can.
-        ironic_version = "%d.%d" % self._get_ironic_api_version()
-        agent_token_version = "%d.%d" % AGENT_TOKEN_IRONIC_VERSION
-        if (StrictVersion(ironic_version)
-                >= StrictVersion(agent_token_version)):
-            version = agent_token_version
-        else:
-            version = ironic_version
-        return {'X-OpenStack-Ironic-API-Version': version}
+    def _get_ironic_api_version_header(self, version=None):
+        if version is None:
+            ironic_version = self._get_ironic_api_version()
+            version = min(ironic_version, AGENT_TOKEN_IRONIC_VERSION)
+        return {'X-OpenStack-Ironic-API-Version': '%d.%d' % version}
 
     def _get_ironic_api_version(self):
         if not self._ironic_api_version:
@@ -121,7 +115,8 @@ class APIClient(object):
         if api_ver >= AGENT_VERSION_IRONIC_VERSION:
             data['agent_version'] = version.version_info.release_string()
 
-        headers = self._get_ironic_api_version_header()
+        api_ver = min(MAX_KNOWN_VERSION, api_ver)
+        headers = self._get_ironic_api_version_header(api_ver)
 
         try:
             response = self._request('POST', path, data=data, headers=headers)
