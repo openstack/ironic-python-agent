@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixes a minor incorrect keyword argument that was
+    matching between the method caller and the unit test but
+    not the actual method, unit test, and caller. This was
+    a non-fatal issue, and should now permit the agent to
+    attempt to lookup the node one last time before deploying
+    the instance image to pick-up a root device hint.

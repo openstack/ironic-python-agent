@@ -4533,7 +4533,7 @@ class TestAPIClientSaveAndUse(base.IronicAgentTest):
             hardware_info=mock.ANY,
             timeout=1,
             starting_interval=2,
-            uuid='node1')
+            node_uuid='node1')
         self.assertEqual(updated_node, hardware.NODE)
         calls = [mock.call('list_hardware_info'),
                  mock.call('wait_for_disks')]
