@@ -18,8 +18,8 @@ from distutils.version import StrictVersion
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
-from oslo_service import loopingcall
 import requests
+import tenacity
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
@@ -138,24 +138,22 @@ class APIClient(object):
             raise errors.HeartbeatError(msg)
 
     def lookup_node(self, hardware_info, timeout, starting_interval,
-                    node_uuid=None):
-        timer = loopingcall.BackOffLoopingCall(
-            self._do_lookup,
-            hardware_info=hardware_info,
-            node_uuid=node_uuid)
+                    node_uuid=None, max_interval=30):
+        retry = tenacity.retry(
+            retry=tenacity.retry_if_result(lambda r: r is False),
+            stop=tenacity.stop_after_delay(timeout),
+            wait=tenacity.wait_random_exponential(min=starting_interval,
+                                                  max=max_interval),
+            reraise=True)
         try:
-            node_content = timer.start(starting_interval=starting_interval,
-                                       timeout=timeout).wait()
-        except loopingcall.LoopingCallTimeOut:
+            return retry(self._do_lookup)(hardware_info=hardware_info,
+                                          node_uuid=node_uuid)
+        except tenacity.RetryError:
             raise errors.LookupNodeError('Could not look up node info. Check '
                                          'logs for details.')
-        return node_content
 
     def _do_lookup(self, hardware_info, node_uuid):
-        """The actual call to lookup a node.
-
-        Should be called as a `loopingcall.BackOffLoopingCall`.
-        """
+        """The actual call to lookup a node."""
         params = {
             'addresses': ','.join(iface.mac_address
                                   for iface in hardware_info['interfaces']
@@ -241,7 +239,7 @@ class APIClient(object):
                 return False
 
         # Got valid content
-        raise loopingcall.LoopingCallDone(retvalue=content)
+        return content
 
     def _get_agent_url(self, advertise_address, advertise_protocol='http'):
         return '{}://{}:{}'.format(advertise_protocol,
