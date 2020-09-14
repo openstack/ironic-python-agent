@@ -126,6 +126,7 @@
 - job:
     name: ironic-standalone-ipa-src
     parent: ironic-standalone
+    nodeset: openstack-single-node-focal
     description: Test ironic standalone with IPA from source
     vars:
       devstack_localrc:
