@@ -498,7 +498,7 @@ def update_cached_node():
                 hardware_info=list_hardware_info(use_cache=True),
                 timeout=API_LOOKUP_TIMEOUT,
                 starting_interval=API_LOOKUP_INTERVAL,
-                uuid=uuid)
+                node_uuid=uuid)
             cache_node(content['node'])
             return content['node']
         except Exception as exc:
