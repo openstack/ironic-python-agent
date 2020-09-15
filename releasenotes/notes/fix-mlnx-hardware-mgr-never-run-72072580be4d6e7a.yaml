@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes an issue with the IntelCnaHardwareManager which prevented hardware
+    managers with lower priority to be executed and therefore may blocked the
+    initialization and collection of hardware these managers are supposed to take
+    care of.
