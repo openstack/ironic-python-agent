@@ -32,12 +32,13 @@ server).
 
 How can I build a custom HardwareManager?
 -----------------------------------------
-Custom HardwareManagers should subclass hardware.HardwareManager or
-hardware.GenericHardwareManager. The only required method is
-evaluate_hardware_support(), which should return one of the enums
-in hardware.HardwareSupport. Hardware support determines which hardware
-manager is executed first for a given function (see: "`How are methods
-executed on HardwareManagers?`_" for more info). Common methods you
+In general, custom HardwareManagers should subclass hardware.HardwareManager.
+Subclassing hardware.GenericHardwareManager should only be considered if the
+aim is to raise the priority of all methods of the GenericHardwareManager.
+The only required method is evaluate_hardware_support(), which should return
+one of the enums in hardware.HardwareSupport. Hardware support determines
+which hardware manager is executed first for a given function (see: "`How are
+methods executed on HardwareManagers?`_" for more info). Common methods you
 may want to implement are ``list_hardware_info()``, to add additional hardware
 the GenericHardwareManager is unable to identify and ``erase_devices()``, to
 erase devices in ways other than ATA secure erase or shredding.
