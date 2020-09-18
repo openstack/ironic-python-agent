@@ -250,7 +250,7 @@ class ExecuteCommandMixin(object):
                     LOG.error('Tried to execute %(command)s, agent is still '
                               'executing %(last)s', {'command': command_name,
                                                      'last': last_command})
-                    raise errors.CommandExecutionError('agent is busy')
+                    raise errors.AgentIsBusy(last_command.command_name)
 
             try:
                 ext = self.get_extension(extension_part)
