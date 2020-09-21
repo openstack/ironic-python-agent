@@ -17,7 +17,7 @@ Deploy steps
     <admin/interfaces/deploy.html#direct-deploy>`.
     Should not be used explicitly, but can be overridden to provide a custom
     way of writing an image.
-``deploy.erase_device_metadata(node, ports)``
+``deploy.erase_devices_metadata(node, ports)``
     Erases partition tables from all recognized disk devices. Can be used with
     software RAID since it requires empty holder disks.
 ``raid.apply_configuration(node, ports, raid_config, delete_existing=True)``
@@ -32,7 +32,7 @@ Clean steps
     Securely erases all information from all recognized disk devices.
     Relatively fast when secure ATA erase is available, otherwise can take
     hours, especially on a virtual environment. Enabled by default.
-``deploy.erase_device_metadata``
+``deploy.erase_devices_metadata``
     Erases partition tables from all recognized disk devices. Can be used as
     an alternative to the much longer ``erase_devices`` step.
 ``raid.create_configuration``
