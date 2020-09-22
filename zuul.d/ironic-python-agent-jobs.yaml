@@ -14,9 +14,12 @@
     required-projects:
       - openstack/ironic-lib
     vars:
+      # The default is 1GB, we need a little more to prevent OOMs killing the jobs
+      configure_swap_size: 8192
       devstack_localrc:
         IRONIC_BUILD_DEPLOY_RAMDISK: True
         IRONIC_VM_COUNT: 2
+        IRONIC_VM_SPECS_RAM: 2500
 
 - job:
     name: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
