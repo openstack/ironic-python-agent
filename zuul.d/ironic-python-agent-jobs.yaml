@@ -21,6 +21,7 @@
         IRONIC_VM_COUNT: 2
         IRONIC_VM_SPECS_RAM: 2500
 
+# used by diskimage-builder
 - job:
     name: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
     parent: ironic-ipa-base
@@ -52,6 +53,7 @@
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
 
+# used by diskimage-builder
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-src
     parent: ironic-ipa-base
@@ -59,19 +61,7 @@
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
 
-# note(rpittau) alias to not brake other repos (dib and ipa-builder)
-- job:
-    name: ipa-tempest-partition-bios-ipmi-iscsi-dib-src
-    parent: ipa-tempest-bios-ipmi-iscsi-src
-
-- job:
-    name: ipa-tempest-wholedisk-bios-ipmi-iscsi-src
-    parent: ironic-ipa-base
-    vars:
-      devstack_localrc:
-        IRONIC_VM_EPHEMERAL_DISK: 0
-        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
-
+# used by ironic-python-agent-builder
 - job:
     name: ipa-tempest-ironic-inspector-src
     parent: ironic-ipa-base
@@ -90,7 +80,6 @@
         SWIFT_TEMPURL_KEY: secretkey
       devstack_plugins:
         ironic-inspector: https://opendev.org/openstack/ironic-inspector
-
 
 - job:
     # Security testing for known issues
@@ -126,6 +115,7 @@
       - ^tools/(?!bandit.yml).*$
       - ^tox.ini$
 
+# used by ironic-python-agent-builder
 - job:
     name: ironic-standalone-ipa-src
     parent: ironic-standalone
@@ -152,35 +142,7 @@
         IRONIC_AUTOMATED_CLEAN_ENABLED: False
         IRONIC_BUILD_DEPLOY_RAMDISK: True
 
-# NOTE(rpittau) leaving tinypa jobs definitions to not break other projects
-# remove them after changing the references in the other projects like
-# ironic-python-agent-builder and disk-image-builder
-- job:
-    name: ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
-    parent: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
-    vars:
-      devstack_localrc:
-        IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 512
-
-- job:
-    name: ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
-    parent: ipa-tempest-bios-ipmi-direct-tinyipa-src
-
-- job:
-    name: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
-    parent: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
-
-- job:
-    name: ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
-    parent: ipa-tempest-wholedisk-bios-ipmi-iscsi-src
-    vars:
-      devstack_localrc:
-        IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 512
-
-# Cloning the jobs so we can update ipa-builder and then we can remove
-# the old jobs.
+# used by ironic-python-agent-builder
 - job:
     name: ipa-tempest-bios-ipmi-direct-tinyipa-src
     parent: ipa-tempest-bios-ipmi-direct-src
@@ -189,6 +151,7 @@
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 512
 
+# used by ironic-python-agent-builder
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
     parent: ipa-tempest-bios-ipmi-iscsi-src
