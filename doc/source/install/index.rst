@@ -35,8 +35,11 @@ You can pass a variety of flags to IPA on start up to change its behavior.
 * ``--debug``: Enables debug logging.
 
 
-IPA and SSL
+IPA and TLS
 ===========
+
+Client Configuration
+--------------------
 
 During its operation IPA makes HTTP requests to a number of other services,
 currently including
@@ -47,12 +50,13 @@ currently including
   (Object storage service or other service storing user images
   when ironic is running in a standalone mode)
 
-When these services are configured to require SSL-encrypted connections,
+When these services are configured to require TLS-encrypted connections,
 IPA can be configured to either properly use such secure connections or
-ignore verifying such SSL connections.
+ignore verifying such TLS connections.
 
 Configuration mostly happens in the IPA config file
-(default is ``/etc/ironic_python_agent/ironic_python_agent.conf``)
+(default is ``/etc/ironic_python_agent/ironic_python_agent.conf``, can also
+be any file placed in ``/etc/ironic-python-agent.d``)
 or command line arguments passed to ``ironic-python-agent``,
 and it is possible to provide some options via kernel command line arguments
 instead.
@@ -60,7 +64,7 @@ instead.
 Available options in the ``[DEFAULT]`` config file section are:
 
 insecure
-  Whether to verify server SSL certificates.
+  Whether to verify server TLS certificates.
   When not specified explicitly, defaults to the value of ``ipa-insecure``
   kernel command line argument (converted to boolean).
   The default for this kernel command line argument is taken to be ``False``.
@@ -100,8 +104,55 @@ keyfile
 Currently a single set of cafile/certfile/keyfile options is used for all
 HTTP requests to the other services.
 
-Securing IPA's HTTP server itself with SSL is not yet supported in default
-ramdisk builds.
+Server Configuration
+--------------------
+
+Starting with the Victoria release, the API provided by ironic-python-agent can
+also be secured via TLS. There are two options to do that:
+
+Automatic TLS
+   This option is enabled by default if no other options are enabled. If ironic
+   supports API version 1.68, a new self-signed TLS certificate will be
+   generated in runtime and sent to ironic on heartbeat.
+
+   No special configuration is required on the ironic side.
+Manual TLS
+   If you need to provide your own TLS certificate, you can configure it when
+   building an image. Set the following options in the ironic-python-agent
+   configuration file:
+
+   .. code-block:: ini
+
+    [DEFAULT]
+    listen_tls = True
+    advertise_protocol = https
+    # Disable automatic TLS.
+    enable_auto_tls = False
+
+    [ssl]
+    # Certificate and private key file paths (on the ramdisk).
+    cert_file = /path/to/certificate
+    # The private key must not be password-protected!
+    key_file = /path/to/private/key
+    # Optionally, authenticate connecting clients (i.e. ironic conductors).
+    #ca_file = /path/to/ca
+
+   If using DIB to build the ramdisk, use the ironic-python-agent-tls_ element
+   to automate these steps.
+
+   On the ironic side you have two options:
+
+   * If the certificate can pass host validation, i.e. contains the correct host
+     name or IP address of the agent, add its path to each node with::
+
+        baremetal node set <node> --driver-info agent_verify_ca=/path/to/ca/or/certificate
+
+   * Usually, the IP address of the agent is not known in advance, so you need
+     to disable host validation instead::
+
+        baremetal node set <node> --driver-info agent_verify_ca=False
+
+.. _ironic-python-agent-tls: https://opendev.org/openstack/ironic-python-agent-builder/src/branch/master/dib/ironic-python-agent-tls
 
 Hardware Managers
 =================
