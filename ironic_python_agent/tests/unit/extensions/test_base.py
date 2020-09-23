@@ -117,6 +117,17 @@ class TestExecuteCommandMixin(test_base.IronicAgentTest):
                          result.command_status)
         self.assertEqual(exc, result.command_error)
 
+    def test_busy(self):
+        fake_extension = FakeExtension()
+        self.agent.ext_mgr = extension.ExtensionManager.make_test_instance(
+            [extension.Extension('fake', None, FakeExtension, fake_extension)])
+
+        self.agent.command_results = {
+            'fake': base.BaseCommandResult('name', {})
+        }
+        self.assertRaises(errors.AgentIsBusy,
+                          self.agent.execute_command, 'fake.fake_sync_command')
+
 
 class TestExtensionDecorators(test_base.IronicAgentTest):
     def setUp(self):

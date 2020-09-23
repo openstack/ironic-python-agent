@@ -91,6 +91,15 @@ class RequestedObjectNotFoundError(NotFound):
         super(RequestedObjectNotFoundError, self).__init__(details)
 
 
+class AgentIsBusy(CommandExecutionError):
+
+    message = 'Agent is busy'
+    status_code = 409
+
+    def __init__(self, command_name):
+        super().__init__('executing command %s' % command_name)
+
+
 class IronicAPIError(RESTError):
     """Error raised when a call to the agent API fails."""
 
