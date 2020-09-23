@@ -31,6 +31,7 @@ from ironic_python_agent import hardware
 from ironic_python_agent import inspector
 from ironic_python_agent import netutils
 from ironic_python_agent.tests.unit import base as ironic_agent_base
+from ironic_python_agent import tls_utils
 from ironic_python_agent import utils
 
 EXPECTED_ERROR = RuntimeError('command execution failed')
@@ -858,12 +859,55 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
     def test_run(self, mock_get_managers, mock_list_hardware,
-                 mock_wsgi):
+                 mock_wsgi, mock_dispatch):
+        wsgi_server_request = mock_wsgi.return_value
+
+        def set_serve_api():
+            self.agent.serve_api = False
+
+        wsgi_server_request.start.side_effect = set_serve_api
+
+        mock_dispatch.return_value = tls_utils.TlsCertificate(
+            'I am a cert', '/path/to/cert', '/path/to/key')
+
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+
+        self.agent.run()
+
+        self.assertTrue(mock_get_managers.called)
+        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
+                                          app=self.agent.api,
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=True)
+        wsgi_server_request.start.assert_called_once_with()
+        mock_dispatch.assert_called_once_with('generate_tls_certificate',
+                                              mock.ANY)
+
+        self.assertEqual('/path/to/cert', CONF.ssl.cert_file)
+        self.assertEqual('/path/to/key', CONF.ssl.key_file)
+        self.assertEqual('https', self.agent.advertise_protocol)
+
+        self.assertFalse(self.agent.heartbeater.called)
+        self.assertFalse(self.agent.api_client.lookup_node.called)
+
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch('oslo_service.wsgi.Server', autospec=True)
+    @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
+                       autospec=True)
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_run_no_tls(self, mock_get_managers, mock_list_hardware,
+                        mock_wsgi):
+        CONF.set_override('enable_auto_tls', False)
         wsgi_server_request = mock_wsgi.return_value
 
         def set_serve_api():
@@ -883,6 +927,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
                                           host=mock.ANY, port=9999,
                                           use_ssl=False)
         wsgi_server_request.start.assert_called_once_with()
+        self.assertEqual('http', self.agent.advertise_protocol)
 
         self.assertFalse(self.agent.heartbeater.called)
         self.assertFalse(self.agent.api_client.lookup_node.called)

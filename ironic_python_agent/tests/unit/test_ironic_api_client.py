@@ -204,6 +204,38 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
             'callback_url': 'http://[fc00:1111::4]:9999'}
         self.assertEqual(jsonutils.dumps(expected_data), data)
 
+    def test_successful_heartbeat_with_verify_ca(self):
+        response = FakeResponse(status_code=202)
+
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+        self.api_client._ironic_api_version = (
+            ironic_api_client.AGENT_VERIFY_CA_IRONIC_VERSION)
+        self.api_client.agent_token = 'magical'
+
+        self.api_client.heartbeat(
+            uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+            advertise_address=('192.0.2.1', '9999'),
+            advertise_protocol='https',
+            generated_cert='I am a cert',
+        )
+
+        heartbeat_path = 'v1/heartbeat/deadbeef-dabb-ad00-b105-f00d00bab10c'
+        request_args = self.api_client.session.request.call_args[0]
+        data = self.api_client.session.request.call_args[1]['data']
+        self.assertEqual('POST', request_args[0])
+        self.assertEqual(API_URL + heartbeat_path, request_args[1])
+        expected_data = {
+            'callback_url': 'https://192.0.2.1:9999',
+            'agent_token': 'magical',
+            'agent_version': version.version_info.release_string(),
+            'agent_verify_ca': 'I am a cert'}
+        self.assertEqual(jsonutils.dumps(expected_data), data)
+        headers = self.api_client.session.request.call_args[1]['headers']
+        self.assertEqual(
+            '%d.%d' % ironic_api_client.AGENT_VERIFY_CA_IRONIC_VERSION,
+            headers['X-OpenStack-Ironic-API-Version'])
+
     def test_heartbeat_requests_exception(self):
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.side_effect = Exception('api is down!')

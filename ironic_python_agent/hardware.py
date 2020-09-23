@@ -40,6 +40,7 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import base as ext_base
 from ironic_python_agent import netutils
 from ironic_python_agent import raid_utils
+from ironic_python_agent import tls_utils
 from ironic_python_agent import utils
 
 _global_managers = None
@@ -646,6 +647,9 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         raise errors.IncompatibleHardwareMethodError()
 
     def get_interface_info(self, interface_name):
+        raise errors.IncompatibleHardwareMethodError()
+
+    def generate_tls_certificate(self, ip_address):
         raise errors.IncompatibleHardwareMethodError()
 
     def erase_block_device(self, node, block_device):
@@ -2090,6 +2094,10 @@ class GenericHardwareManager(HardwareManager):
         cmd = ext.prepare_image(image_info=image_info, configdrive=configdrive)
         # The result is asynchronous, wait here.
         cmd.join()
+
+    def generate_tls_certificate(self, ip_address):
+        """Generate a TLS certificate for the IP address."""
+        return tls_utils.generate_tls_certificate(ip_address)
 
 
 def _compare_extensions(ext1, ext2):

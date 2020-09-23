@@ -16,6 +16,7 @@ import json
 
 from ironic_lib import metrics_utils
 from oslo_log import log
+from oslo_service import sslutils
 from oslo_service import wsgi
 import werkzeug
 from werkzeug import exceptions as http_exc
@@ -126,12 +127,20 @@ class Application(object):
             response = self.handle_exception(environ, exc)
         return response(environ, start_response)
 
-    def start(self):
+    def start(self, tls_cert_file=None, tls_key_file=None):
         """Start the API service in the background."""
+        if tls_cert_file and tls_key_file:
+            sslutils.register_opts(self._conf)
+            self._conf.set_override('cert_file', tls_cert_file, group='ssl')
+            self._conf.set_override('key_file', tls_key_file, group='ssl')
+            use_tls = True
+        else:
+            use_tls = self._conf.listen_tls
+
         self.service = wsgi.Server(self._conf, 'ironic-python-agent', app=self,
                                    host=self.agent.listen_address.hostname,
                                    port=self.agent.listen_address.port,
-                                   use_ssl=self._conf.listen_tls)
+                                   use_ssl=use_tls)
         self.service.start()
         LOG.info('Started API service on port %s',
                  self.agent.listen_address.port)

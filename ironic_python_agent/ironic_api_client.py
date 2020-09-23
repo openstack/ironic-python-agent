@@ -32,9 +32,10 @@ LOG = log.getLogger(__name__)
 MIN_IRONIC_VERSION = (1, 31)
 AGENT_VERSION_IRONIC_VERSION = (1, 36)
 AGENT_TOKEN_IRONIC_VERSION = (1, 62)
+AGENT_VERIFY_CA_IRONIC_VERSION = (1, 68)
 # NOTE(dtantsur): change this constant every time you add support for more
 # versions to ensure that we send the highest version we know about.
-MAX_KNOWN_VERSION = AGENT_TOKEN_IRONIC_VERSION
+MAX_KNOWN_VERSION = AGENT_VERIFY_CA_IRONIC_VERSION
 
 
 class APIClient(object):
@@ -101,7 +102,11 @@ class APIClient(object):
                 return MIN_IRONIC_VERSION
         return self._ironic_api_version
 
-    def heartbeat(self, uuid, advertise_address, advertise_protocol='http'):
+    def supports_auto_tls(self):
+        return self._get_ironic_api_version() >= AGENT_VERIFY_CA_IRONIC_VERSION
+
+    def heartbeat(self, uuid, advertise_address, advertise_protocol='http',
+                  generated_cert=None):
         path = self.heartbeat_api.format(uuid=uuid)
 
         data = {'callback_url': self._get_agent_url(advertise_address,
@@ -115,9 +120,14 @@ class APIClient(object):
         if api_ver >= AGENT_VERSION_IRONIC_VERSION:
             data['agent_version'] = version.version_info.release_string()
 
+        if api_ver >= AGENT_VERIFY_CA_IRONIC_VERSION and generated_cert:
+            data['agent_verify_ca'] = generated_cert
+
         api_ver = min(MAX_KNOWN_VERSION, api_ver)
         headers = self._get_ironic_api_version_header(api_ver)
 
+        LOG.debug('Heartbeat: announcing callback URL %s, API version is '
+                  '%d.%d', data['callback_url'], *api_ver)
         try:
             response = self._request('POST', path, data=data, headers=headers)
         except requests.exceptions.ConnectionError as e:
