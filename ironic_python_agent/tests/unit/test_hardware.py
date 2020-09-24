@@ -805,6 +805,64 @@ MDADM_DETAIL_OUTPUT_BROKEN_RAID0 = ("""/dev/md126:
 """)
 
 
+MDADM_EXAMINE_OUTPUT_MEMBER = ("""/dev/sda1:
+          Magic : a92b4efc
+        Version : 1.2
+    Feature Map : 0x0
+     Array UUID : 83143055:2781ddf5:2c8f44c7:9b45d92e
+           Name : horse.cern.ch:1  (local to host abc.xyz.com)
+  Creation Time : Tue Jun 11 12:43:37 2019
+     Raid Level : raid1
+   Raid Devices : 2
+
+ Avail Dev Size : 2093056 sectors (1022.00 MiB 1071.64 MB)
+     Array Size : 1046528 KiB (1022.00 MiB 1071.64 MB)
+    Data Offset : 2048 sectors
+   Super Offset : 8 sectors
+   Unused Space : before=1968 sectors, after=0 sectors
+          State : clean
+    Device UUID : 88bf2723:d082f14f:f95e87cf:b7c59b83
+
+    Update Time : Sun Sep 27 01:00:08 2020
+  Bad Block Log : 512 entries available at offset 16 sectors
+       Checksum : 340a1610 - correct
+         Events : 178
+
+
+   Device Role : Active device 0
+   Array State : A. ('A' == active, '.' == missing, 'R' == replacing)
+""")
+
+
+MDADM_EXAMINE_OUTPUT_NON_MEMBER = ("""/dev/sdz1:
+          Magic : a92b4efc
+        Version : 1.2
+    Feature Map : 0x0
+     Array UUID : 83143055:2781ddf5:2c8f44c7:9b45d92f
+           Name : horse.cern.ch:1  (local to host abc.xyz.com)
+  Creation Time : Tue Jun 11 12:43:37 2019
+     Raid Level : raid1
+   Raid Devices : 2
+
+ Avail Dev Size : 2093056 sectors (1022.00 MiB 1071.64 MB)
+     Array Size : 1046528 KiB (1022.00 MiB 1071.64 MB)
+    Data Offset : 2048 sectors
+   Super Offset : 8 sectors
+   Unused Space : before=1968 sectors, after=0 sectors
+          State : clean
+    Device UUID : 88bf2723:d082f14f:f95e87cf:b7c59b84
+
+    Update Time : Sun Sep 27 01:00:08 2020
+  Bad Block Log : 512 entries available at offset 16 sectors
+       Checksum : 340a1610 - correct
+         Events : 178
+
+
+   Device Role : Active device 0
+   Array State : A. ('A' == active, '.' == missing, 'R' == replacing)
+""")
+
+
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
         self._hardware_support = hardware_support
@@ -3864,16 +3922,47 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                self.node, [])
 
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_component_devices(self, mocked_execute):
+    def test__get_md_uuid(self, mocked_execute):
         mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT, '')]
-        component_devices = hardware._get_component_devices('/dev/md0')
-        self.assertEqual(['/dev/vde1', '/dev/vdf1'], component_devices)
+        md_uuid = hardware._get_md_uuid('/dev/md0')
+        self.assertEqual('83143055:2781ddf5:2c8f44c7:9b45d92e', md_uuid)
 
+    @mock.patch.object(hardware, '_get_md_uuid', autospec=True)
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_component_devices_broken_raid0(self, mocked_execute):
-        mocked_execute.side_effect = [(MDADM_DETAIL_OUTPUT_BROKEN_RAID0, '')]
-        component_devices = hardware._get_component_devices('/dev/md126')
-        self.assertEqual(['/dev/sda2'], component_devices)
+    def test__get_component_devices(self, mocked_execute,
+                                    mocked_list_all_block_devices,
+                                    mocked_md_uuid):
+        raid_device1 = hardware.BlockDevice('/dev/md0', 'RAID-1',
+                                            107374182400, True)
+        sda = hardware.BlockDevice('/dev/sda', 'model12', 21, True)
+        sdz = hardware.BlockDevice('/dev/sdz', 'model12', 21, True)
+        sda1 = hardware.BlockDevice('/dev/sda1', 'model12', 21, True)
+        sdz1 = hardware.BlockDevice('/dev/sdz1', 'model12', 21, True)
+
+        mocked_md_uuid.return_value = '83143055:2781ddf5:2c8f44c7:9b45d92e'
+        hardware.list_all_block_devices.side_effect = [
+            [sda, sdz],    # list_all_block_devices
+            [sda1, sdz1],  # list_all_block_devices partitions
+        ]
+        mocked_execute.side_effect = [
+            ['mdadm --examine output for sda', '_'],
+            ['mdadm --examine output for sdz', '_'],
+            [MDADM_EXAMINE_OUTPUT_MEMBER, '_'],
+            [MDADM_EXAMINE_OUTPUT_NON_MEMBER, '_'],
+        ]
+
+        component_devices = hardware._get_component_devices(raid_device1)
+        self.assertEqual(['/dev/sda1'], component_devices)
+        mocked_execute.assert_has_calls([
+            mock.call('mdadm', '--examine', '/dev/sda',
+                      use_standard_locale=True),
+            mock.call('mdadm', '--examine', '/dev/sdz',
+                      use_standard_locale=True),
+            mock.call('mdadm', '--examine', '/dev/sda1',
+                      use_standard_locale=True),
+            mock.call('mdadm', '--examine', '/dev/sdz1',
+                      use_standard_locale=True)])
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks(self, mocked_execute):

@@ -132,10 +132,34 @@ def _check_for_iscsi():
                     "Error: %s", e)
 
 
+def _get_md_uuid(raid_device):
+    """Get the md UUID of a Software RAID device.
+
+    :param raid_device: A Software RAID block device name.
+    :returns: A string containing the UUID of an md device.
+    """
+    try:
+        out, _ = utils.execute('mdadm', '--detail', raid_device,
+                               use_standard_locale=True)
+    except processutils.ProcessExecutionError as e:
+        msg = ('Could not get the details of %(dev)s: %(err)s' %
+               {'dev': raid_device, 'err': e})
+        LOG.warning(msg)
+        return
+
+    lines = out.splitlines()
+    # the first line contains the md device itself
+    for line in lines[1:]:
+        match = re.search(r'UUID : ([a-f0-9:]+)', line)
+        if match:
+            return match.group(1)
+
+
 def _get_component_devices(raid_device):
     """Get the component devices of a Software RAID device.
 
-    Examine an md device and return its constituent devices.
+    Get the UUID of the md device and scan all other devices
+    for the same md UUID.
 
     :param raid_device: A Software RAID block device name.
     :returns: A list of the component devices.
@@ -143,22 +167,35 @@ def _get_component_devices(raid_device):
     if not raid_device:
         return []
 
-    try:
-        out, _ = utils.execute('mdadm', '--detail', raid_device,
-                               use_standard_locale=True)
-    except processutils.ProcessExecutionError as e:
-        msg = ('Could not get component devices of %(dev)s: %(err)s' %
-               {'dev': raid_device, 'err': e})
-        LOG.warning(msg)
+    md_uuid = _get_md_uuid(raid_device)
+    if not md_uuid:
         return []
+    LOG.debug('%s has UUID %s', raid_device, md_uuid)
 
     component_devices = []
-    lines = out.splitlines()
-    # the first line contains the md device itself
-    for line in lines[1:]:
-        device = re.findall(r'/dev/\w+', line)
-        component_devices += device
+    block_devices = list_all_block_devices()
+    block_devices.extend(list_all_block_devices(block_type='part',
+                                                ignore_raid=True))
+    for bdev in block_devices:
+        try:
+            out, _ = utils.execute('mdadm', '--examine', bdev.name,
+                                   use_standard_locale=True)
+        except processutils.ProcessExecutionError as e:
+            if "No md superblock detected" in str(e):
+                # actually not a component device
+                LOG.debug('Not a component device %s', bdev.name)
+                continue
+            else:
+                LOG.warning("Failed to examine device %s: %s",
+                            bdev.name, e)
+                continue
+        lines = out.splitlines()
+        for line in lines:
+            if md_uuid in line:
+                component_devices.append(bdev.name)
 
+    LOG.info('Found component devices for %s:',
+             raid_device, component_devices)
     return component_devices
 
 
