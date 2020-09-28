@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes a bug where the partitions created during software RAID setup are cleaned
+    too early and therefore may prevent the proper cleaning of the md superblocks.
+    Leaving superblocks behind will impact the creation of new md devices later on.
