@@ -1881,6 +1881,7 @@ class GenericHardwareManager(HardwareManager):
             raise errors.SoftwareRAIDError(msg)
 
     def _delete_config_pass(self, raid_devices):
+        all_holder_disks = []
         for raid_device in raid_devices:
             component_devices = _get_component_devices(raid_device.name)
             if not component_devices:
@@ -1933,14 +1934,11 @@ class GenericHardwareManager(HardwareManager):
                     LOG.warning('Failed to remove superblock from %s: %s',
                                 raid_device.name, e)
 
-            # Remove the partitions we created during create_configuration.
-            for holder_disk in holder_disks:
-                LOG.debug('Removing partitions on %s', holder_disk)
-                try:
-                    utils.execute('wipefs', '-af', holder_disk)
-                except processutils.ProcessExecutionError:
-                    LOG.warning('Failed to remove partitions on %s',
-                                holder_disk)
+            # NOTE(arne_wiebalck): We cannot delete the partitions right
+            # away since there may be other partitions on the same disks
+            # which are members of other RAID devices. So we remember them
+            # for later.
+            all_holder_disks.extend(holder_disks)
 
             LOG.info('Deleted Software RAID device %s', raid_device.name)
 
@@ -1985,6 +1983,17 @@ class GenericHardwareManager(HardwareManager):
             except processutils.ProcessExecutionError as e:
                 LOG.warning('Failed to remove superblock from %s: %s',
                             raid_device.name, e)
+
+        # Erase all partition tables we created
+        all_holder_disks_uniq = list(
+            collections.OrderedDict.fromkeys(all_holder_disks))
+        for holder_disk in all_holder_disks_uniq:
+            LOG.info('Removing partitions on holder disk %s', holder_disk)
+            try:
+                utils.execute('wipefs', '-af', holder_disk)
+            except processutils.ProcessExecutionError as e:
+                LOG.warning('Failed to remove partitions on %s',
+                            holder_disk, e)
 
         LOG.debug("Finished deleting Software RAID(s)")
 
