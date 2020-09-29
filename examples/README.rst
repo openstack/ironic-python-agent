@@ -15,6 +15,15 @@ Use Cases include:
 * Implementing erase_device() using a vendor-provided utility for a given
   disk model.
 
+``custom-disk-erase``
+---------------------
+
+This example manager is meant to demonstrate good patterns for developing a
+hardware manager to perform disk erasure using a custom vendor utility.
+
+Use case:
+* Ensuring block devices of a specific model are erased using custom code
+
 ``business-logic``
 ------------------
 
