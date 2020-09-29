@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    IPA heartbeat intervals now rely on accurate clock time. Any clean or
+    deploy steps which attempt to sync the clock may cause heartbeats to not
+    be emitted. IPA syncs time at startup and shutdown, so these steps should
+    not be required.
