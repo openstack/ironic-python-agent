@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Detects md component devices by their UUID, rather than by scanning the
+    output of mdadm. This will prevent that devices miss md superblock
+    cleanup when they are currently not part of an array.
