@@ -712,7 +712,15 @@ class ImageExtension(base.BaseAgentExtension):
         device = hardware.dispatch_to_managers('get_os_install_device')
         if self.agent.iscsi_started:
             iscsi.clean_up(device)
+
         boot = hardware.dispatch_to_managers('get_boot_info')
+        if boot.current_boot_mode != target_boot_mode:
+            LOG.warning('Boot mode mismatch: target boot mode is %(target)s, '
+                        'current boot mode is %(current)s. Installing boot '
+                        'loader may fail or work incorrectly.',
+                        {'target': target_boot_mode,
+                         'current': boot.current_boot_mode})
+
         # FIXME(arne_wiebalck): make software RAID work with efibootmgr
         if (boot.current_boot_mode == 'uefi'
                 and not hardware.is_md_device(device)):
