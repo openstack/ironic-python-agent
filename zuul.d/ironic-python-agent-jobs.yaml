@@ -38,9 +38,13 @@
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
 
+# using bionic as nodeset because of limitations in DIB when building centos
+# images. DIB uses yum-tools to prepare the chroot environment, but the
+# package is not present in ubuntu focal because of lack of Python 2.x support.
 - job:
     name: ipa-tempest-bios-ipmi-direct-src
     parent: ironic-ipa-base
+    nodeset: openstack-single-node-bionic
     vars:
       devstack_services:
         s-account: True
@@ -54,14 +58,21 @@
         SWIFT_TEMPURL_KEY: secretkey
 
 # used by diskimage-builder
+# using bionic as nodeset because of limitations in DIB when building centos
+# images. DIB uses yum-tools to prepare the chroot environment, but the
+# package is not present in ubuntu focal because of lack of Python 2.x support.
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-src
     parent: ironic-ipa-base
+    nodeset: openstack-single-node-bionic
     vars:
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
 
 # used by ironic-python-agent-builder
+# using bionic as nodeset because of limitations in DIB when building centos
+# images. DIB uses yum-tools to prepare the chroot environment, but the
+# package is not present in ubuntu focal because of lack of Python 2.x support.
 - job:
     name: ipa-tempest-ironic-inspector-src
     parent: ironic-ipa-base
@@ -69,6 +80,7 @@
       # These are in addition to what is in ironic-ipa-base
       - openstack/ironic-inspector
       - openstack/python-ironic-inspector-client
+    nodeset: openstack-single-node-bionic
     vars:
       devstack_localrc:
         DEVSTACK_GATE_TEMPEST_REGEX: InspectorBasicTest
