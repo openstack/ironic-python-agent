@@ -95,6 +95,21 @@ class TestImageExtension(base.IronicAgentTest):
         )
         mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
+    @mock.patch.object(iscsi, 'clean_up', autospec=True)
+    @mock.patch.object(image, '_install_grub2', autospec=True)
+    def test__install_bootloader_no_root(self, mock_grub2, mock_iscsi_clean,
+                                         mock_execute, mock_dispatch):
+        mock_dispatch.side_effect = [
+            self.fake_dev, hardware.BootInfo(current_boot_mode='bios')
+        ]
+        self.agent_extension.install_bootloader(
+            root_uuid='0x00000000').join()
+        mock_dispatch.assert_any_call('get_os_install_device')
+        mock_dispatch.assert_any_call('get_boot_info')
+        self.assertEqual(2, mock_dispatch.call_count)
+        self.assertFalse(mock_grub2.called)
+        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
+
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(iscsi, 'clean_up', autospec=True)

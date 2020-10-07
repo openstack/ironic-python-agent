@@ -744,6 +744,13 @@ class ImageExtension(base.BaseAgentExtension):
                                 efi_system_part_uuid=efi_system_part_uuid):
                     return
 
+        # We don't have a working root UUID detection for whole disk images.
+        # Until we can do it, avoid a confusing traceback.
+        if root_uuid == '0x00000000' or root_uuid is None:
+            LOG.info('Not using grub2-install since root UUID is not provided.'
+                     ' Assuming a whole disk image')
+            return
+
         # In case we can't use efibootmgr for uefi we will continue using grub2
         LOG.debug('Using grub2-install to set up boot files')
         _install_grub2(device,

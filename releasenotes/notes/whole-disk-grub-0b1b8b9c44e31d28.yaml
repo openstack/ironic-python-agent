@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Avoids a traceback when using ``install_bootloader`` with whole disk
+    images. If the root UUID cannot be detected, don't try to call grub.
