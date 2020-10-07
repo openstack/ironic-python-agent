@@ -13,6 +13,8 @@
     required-projects:
       - openstack/ironic-lib
     vars:
+      # The default is 1GB, we need a little more to prevent OOMs killing the jobs
+      configure_swap_size: 8192
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 512
