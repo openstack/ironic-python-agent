@@ -116,15 +116,8 @@ def inspect():
     return resp.get('uuid')
 
 
-@tenacity.retry(
-    retry=tenacity.retry_if_exception_type(
-        requests.exceptions.ConnectionError),
-    stop=tenacity.stop_after_attempt(5),
-    wait=tenacity.wait_fixed(5),
-    reraise=True)
-def _post_to_inspector(url, data, verify, cert):
-    return requests.post(CONF.inspection_callback_url, data=data,
-                         verify=verify, cert=cert)
+_RETRY_WAIT = 5
+_RETRY_ATTEMPTS = 5
 
 
 def call_inspector(data, failures):
@@ -137,10 +130,19 @@ def call_inspector(data, failures):
 
     encoder = encoding.RESTJSONEncoder()
     data = encoder.encode(data)
-
     verify, cert = utils.get_ssl_client_options(CONF)
-    resp = _post_to_inspector(CONF.inspection_callback_url, data=data,
-                              verify=verify, cert=cert)
+
+    @tenacity.retry(
+        retry=tenacity.retry_if_exception_type(
+            requests.exceptions.ConnectionError),
+        stop=tenacity.stop_after_attempt(_RETRY_ATTEMPTS),
+        wait=tenacity.wait_fixed(_RETRY_WAIT),
+        reraise=True)
+    def _post_to_inspector():
+        return requests.post(CONF.inspection_callback_url, data=data,
+                             verify=verify, cert=cert)
+
+    resp = _post_to_inspector()
     if resp.status_code >= 400:
         LOG.error('inspector %s error %d: %s, proceeding with lookup',
                   CONF.inspection_callback_url,

@@ -191,6 +191,7 @@ class TestCallInspector(base.IronicAgentTest):
                                           data='{"data": 42, "error": null}')
         self.assertIsNone(res)
 
+    @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
     def test_inspector_retries(self, mock_post):
         mock_post.side_effect = requests.exceptions.ConnectionError
         failures = utils.AccumulatedFailures()
