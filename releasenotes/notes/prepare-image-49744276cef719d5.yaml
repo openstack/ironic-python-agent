@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes the ``write_image`` deploy step to actually check and return any
+    errors during its execution.

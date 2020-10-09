@@ -2139,7 +2139,7 @@ class GenericHardwareManager(HardwareManager):
         ext = ext_base.get_extension('standby')
         cmd = ext.prepare_image(image_info=image_info, configdrive=configdrive)
         # The result is asynchronous, wait here.
-        cmd.join()
+        return cmd.wait()
 
     def generate_tls_certificate(self, ip_address):
         """Generate a TLS certificate for the IP address."""

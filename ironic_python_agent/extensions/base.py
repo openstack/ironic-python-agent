@@ -79,6 +79,17 @@ class BaseCommandResult(encoding.SerializableComparable):
         """:returns: result of completed command."""
         return self
 
+    def wait(self):
+        """Join the result and extract its value.
+
+        Raises if the command failed.
+        """
+        self.join()
+        if self.command_error is not None:
+            raise self.command_error
+        else:
+            return self.command_result
+
 
 class SyncCommandResult(BaseCommandResult):
     """A result from a command that executes synchronously."""

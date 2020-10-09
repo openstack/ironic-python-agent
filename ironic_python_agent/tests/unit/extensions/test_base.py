@@ -149,6 +149,12 @@ class TestExtensionDecorators(test_base.IronicAgentTest):
                          result.command_result)
         self.agent.force_heartbeat.assert_called_once_with()
 
+    def test_wait_async_command_success(self):
+        result = self.extension.execute('fake_async_command', param='v1')
+        self.assertIsInstance(result, base.AsyncCommandResult)
+        result = result.wait()
+        self.assertEqual({'result': 'fake_async_command: v1'}, result)
+
     def test_async_command_success_without_agent(self):
         extension = FakeExtension(agent=None)
         result = extension.execute('fake_async_command', param='v1')
@@ -181,6 +187,11 @@ class TestExtensionDecorators(test_base.IronicAgentTest):
         self.assertIsInstance(result.command_error, ExecutionError)
         self.assertIsNone(result.command_result)
         self.agent.force_heartbeat.assert_called_once_with()
+
+    def test_wait_async_command_execution_failure(self):
+        result = self.extension.execute('fake_async_command', param='v2')
+        self.assertIsInstance(result, base.AsyncCommandResult)
+        self.assertRaises(ExecutionError, result.wait)
 
     def test_async_command_name(self):
         self.assertEqual(
