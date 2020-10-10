@@ -155,19 +155,29 @@
         IRONIC_BUILD_DEPLOY_RAMDISK: True
 
 # used by ironic-python-agent-builder
+# we can use focal here but we need to disable dstat because of
+# https://bugs.launchpad.net/ubuntu/+source/dstat/+bug/1866619
 - job:
     name: ipa-tempest-bios-ipmi-direct-tinyipa-src
     parent: ipa-tempest-bios-ipmi-direct-src
+    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 512
+      devstack_services:
+        dstat: false
 
 # used by ironic-python-agent-builder
+# we can use focal here but we need to disable dstat because of
+# https://bugs.launchpad.net/ubuntu/+source/dstat/+bug/1866619
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
     parent: ipa-tempest-bios-ipmi-iscsi-src
+    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 512
+      devstack_services:
+        dstat: false
