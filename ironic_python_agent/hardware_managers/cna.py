@@ -69,29 +69,20 @@ def _disable_embedded_lldp_agent_in_cna_card():
                     .format(str(failed_dirs).strip('[]')))
 
 
-class IntelCnaHardwareManager(hardware.GenericHardwareManager):
+class IntelCnaHardwareManager(hardware.HardwareManager):
     HARDWARE_MANAGER_NAME = 'IntelCnaHardwareManager'
     HARDWARE_MANAGER_VERSION = '1.0'
 
     def evaluate_hardware_support(self):
         if _detect_cna_card():
             LOG.debug('Found Intel CNA network card')
+            # On Intel CNA cards, in order to make LLDP info collecting
+            # possible, the embedded LLDP agent, which runs inside that
+            # card, needs to be turned off.
+            if CONF.collect_lldp:
+                LOG.info('Disable CNA network card embedded lldp agent now')
+                _disable_embedded_lldp_agent_in_cna_card()
             return hardware.HardwareSupport.MAINLINE
         else:
             LOG.debug('No Intel CNA network card found')
             return hardware.HardwareSupport.NONE
-
-    def collect_lldp_data(self, interface_names):
-        """Collect and convert LLDP info from the node.
-
-        On Intel CNA cards, in order to make LLDP info collecting possible,
-        the embedded LLDP agent, which runs inside that card, needs to be
-        turned off. Then we can give the control back to the super class.
-
-        :param interface_names: list of names of node's interfaces.
-        :return: a dict, containing the lldp data from every interface.
-        """
-
-        _disable_embedded_lldp_agent_in_cna_card()
-        return super(IntelCnaHardwareManager, self).collect_lldp_data(
-            interface_names)
