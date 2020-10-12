@@ -203,6 +203,36 @@ def _get_component_devices(raid_device):
     return component_devices
 
 
+def _get_actual_component_devices(raid_device):
+    """Get the component devices of a Software RAID device.
+
+    Examine an md device and return its constituent devices.
+
+    :param raid_device: A Software RAID block device name.
+    :returns: A list of the component devices.
+    """
+    if not raid_device:
+        return []
+
+    try:
+        out, _ = utils.execute('mdadm', '--detail', raid_device,
+                               use_standard_locale=True)
+    except processutils.ProcessExecutionError as e:
+        msg = ('Could not get component devices of %(dev)s: %(err)s' %
+               {'dev': raid_device, 'err': e})
+        LOG.warning(msg)
+        return []
+
+    component_devices = []
+    lines = out.splitlines()
+    # the first line contains the md device itself
+    for line in lines[1:]:
+        device = re.findall(r'/dev/\w+', line)
+        component_devices += device
+
+    return component_devices
+
+
 def _calc_memory(sys_dict):
     physical = 0
     for sys_child in sys_dict['children']:
@@ -1865,6 +1895,20 @@ class GenericHardwareManager(HardwareManager):
                 msg = "Failed to create md device {} on {}: {}".format(
                     md_device, ' '.join(component_devices), e)
                 raise errors.SoftwareRAIDError(msg)
+
+            # check for missing devices and re-add them
+            actual_components = _get_actual_component_devices(md_device)
+            missing = list(set(component_devices) - set(actual_components))
+            for dev in missing:
+                try:
+                    LOG.warning('Found %s to be missing from %s '
+                                '... re-adding!', dev, md_device)
+                    utils.execute('mdadm', '--add', md_device, dev,
+                                  attempts=3, delay_on_retry=True)
+                except processutils.ProcessExecutionError as e:
+                    msg = "Failed re-add {} to {}: {}".format(
+                        dev, md_device, e)
+                    raise errors.SoftwareRAIDError(msg)
 
         LOG.info("Successfully created Software RAID")
 

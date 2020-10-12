@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Upon the creation of Software RAID devices, component devices are
+    sometimes kicked out immediately (for no apparent reason). This
+    fix re-adds devices in such cases in order to prevent the component
+    to be missing next time the device is assembled, which, for instance
+    may prevent the UEFI ESPs to be installed properly.
