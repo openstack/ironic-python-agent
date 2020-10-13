@@ -1,3 +1,5 @@
+# disabling dstat because of
+# https://bugs.launchpad.net/ubuntu/+source/dstat/+bug/1866619
 - job:
     name: ironic-ipa-base
     parent: ironic-base
@@ -19,7 +21,9 @@
       devstack_localrc:
         IRONIC_BUILD_DEPLOY_RAMDISK: True
         IRONIC_VM_COUNT: 2
-        IRONIC_VM_SPECS_RAM: 2500
+        IRONIC_VM_SPECS_RAM: 2750
+      devstack_services:
+        dstat: false
 
 # used by diskimage-builder
 - job:
@@ -38,13 +42,9 @@
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
 
-# using bionic as nodeset because of limitations in DIB when building centos
-# images. DIB uses yum-tools to prepare the chroot environment, but the
-# package is not present in ubuntu focal because of lack of Python 2.x support.
 - job:
     name: ipa-tempest-bios-ipmi-direct-src
     parent: ironic-ipa-base
-    nodeset: openstack-single-node-bionic
     vars:
       devstack_services:
         s-account: True
@@ -58,21 +58,15 @@
         SWIFT_TEMPURL_KEY: secretkey
 
 # used by diskimage-builder
-# using bionic as nodeset because of limitations in DIB when building centos
-# images. DIB uses yum-tools to prepare the chroot environment, but the
-# package is not present in ubuntu focal because of lack of Python 2.x support.
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-src
     parent: ironic-ipa-base
-    nodeset: openstack-single-node-bionic
+    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
 
 # used by ironic-python-agent-builder
-# using bionic as nodeset because of limitations in DIB when building centos
-# images. DIB uses yum-tools to prepare the chroot environment, but the
-# package is not present in ubuntu focal because of lack of Python 2.x support.
 - job:
     name: ipa-tempest-ironic-inspector-src
     parent: ironic-ipa-base
@@ -80,7 +74,7 @@
       # These are in addition to what is in ironic-ipa-base
       - openstack/ironic-inspector
       - openstack/python-ironic-inspector-client
-    nodeset: openstack-single-node-bionic
+    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         DEVSTACK_GATE_TEMPEST_REGEX: InspectorBasicTest
@@ -131,7 +125,6 @@
 - job:
     name: ironic-standalone-ipa-src
     parent: ironic-standalone
-    nodeset: openstack-single-node-focal
     description: Test ironic standalone with IPA from source
     vars:
       devstack_localrc:
@@ -155,29 +148,19 @@
         IRONIC_BUILD_DEPLOY_RAMDISK: True
 
 # used by ironic-python-agent-builder
-# we can use focal here but we need to disable dstat because of
-# https://bugs.launchpad.net/ubuntu/+source/dstat/+bug/1866619
 - job:
     name: ipa-tempest-bios-ipmi-direct-tinyipa-src
     parent: ipa-tempest-bios-ipmi-direct-src
-    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 512
-      devstack_services:
-        dstat: false
 
 # used by ironic-python-agent-builder
-# we can use focal here but we need to disable dstat because of
-# https://bugs.launchpad.net/ubuntu/+source/dstat/+bug/1866619
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
     parent: ipa-tempest-bios-ipmi-iscsi-src
-    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 512
-      devstack_services:
-        dstat: false
