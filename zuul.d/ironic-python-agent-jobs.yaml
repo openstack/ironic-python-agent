@@ -1,3 +1,5 @@
+# disabling dstat because of
+# https://bugs.launchpad.net/ubuntu/+source/dstat/+bug/1866619
 - job:
     name: ironic-ipa-base
     parent: ironic-base
@@ -19,7 +21,9 @@
       devstack_localrc:
         IRONIC_BUILD_DEPLOY_RAMDISK: True
         IRONIC_VM_COUNT: 2
-        IRONIC_VM_SPECS_RAM: 2500
+        IRONIC_VM_SPECS_RAM: 2750
+      devstack_services:
+        dstat: false
 
 # used by diskimage-builder
 - job:
@@ -57,6 +61,7 @@
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-src
     parent: ironic-ipa-base
+    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
@@ -69,6 +74,7 @@
       # These are in addition to what is in ironic-ipa-base
       - openstack/ironic-inspector
       - openstack/python-ironic-inspector-client
+    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         DEVSTACK_GATE_TEMPEST_REGEX: InspectorBasicTest
@@ -119,7 +125,6 @@
 - job:
     name: ironic-standalone-ipa-src
     parent: ironic-standalone
-    nodeset: openstack-single-node-focal
     description: Test ironic standalone with IPA from source
     vars:
       devstack_localrc:
