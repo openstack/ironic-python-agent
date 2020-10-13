@@ -1898,7 +1898,7 @@ class GenericHardwareManager(HardwareManager):
 
             # check for missing devices and re-add them
             actual_components = _get_actual_component_devices(md_device)
-            missing = list(set(component_devices) - set(actual_components))
+            missing = set(component_devices) - set(actual_components)
             for dev in missing:
                 try:
                     LOG.warning('Found %s to be missing from %s '
