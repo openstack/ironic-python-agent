@@ -124,37 +124,37 @@ HDPARM_INFO_TEMPLATE = (
 
 BLK_DEVICE_TEMPLATE = (
     'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '
-    'ROTA="0" TYPE="disk" SERIAL="123"\n'
+    'ROTA="0" TYPE="disk" SERIAL="123" UUID="F531-BDC3"\n'
     'KNAME="sdb" MODEL="Fastable SD131 7" SIZE="10737418240" '
-    'ROTA="0" TYPE="disk"\n'
+    'ROTA="0" TYPE="disk" UUID="9a5e5cca-e03d-4cbd-9054-9e6ca9048222"\n'
     'KNAME="sdc" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
-    ' ROTA="0" TYPE="disk"\n'
+    ' ROTA="0" TYPE="disk" UUID=""\n'
     'KNAME="sdd" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
-    ' ROTA="0" TYPE="disk"\n'
-    'KNAME="loop0" MODEL="" SIZE="109109248" ROTA="1" TYPE="loop"\n'
-    'KNAME="zram0" MODEL="" SIZE="" ROTA="0" TYPE="disk"\n'
-    'KNAME="ram0" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
-    'KNAME="ram1" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
-    'KNAME="ram2" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
-    'KNAME="ram3" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk"\n'
-    'KNAME="fd1" MODEL="magic" SIZE="4096" ROTA="1" TYPE="disk"\n'
-    'KNAME="sdf" MODEL="virtual floppy" SIZE="0" ROTA="1" TYPE="disk"'
+    ' ROTA="0" TYPE="disk" UUID=""\n'
+    'KNAME="loop0" MODEL="" SIZE="109109248" ROTA="1" TYPE="loop" UUID=""\n'
+    'KNAME="zram0" MODEL="" SIZE="" ROTA="0" TYPE="disk" UUID=""\n'
+    'KNAME="ram0" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk" UUID=""\n'
+    'KNAME="ram1" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk" UUID=""\n'
+    'KNAME="ram2" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk" UUID=""\n'
+    'KNAME="ram3" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk" UUID=""\n'
+    'KNAME="fd1" MODEL="magic" SIZE="4096" ROTA="1" TYPE="disk" UUID=""\n'
+    'KNAME="sdf" MODEL="virtual floppy" SIZE="0" ROTA="1" TYPE="disk" UUID=""'
 )
 
 # NOTE(pas-ha) largest device is 1 byte smaller than 4GiB
 BLK_DEVICE_TEMPLATE_SMALL = (
     'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '
-    'ROTA="0" TYPE="disk"\n'
+    'ROTA="0" TYPE="disk" UUID="F531-BDC3"\n'
     'KNAME="sdb" MODEL="AlmostBigEnough Drive" SIZE="4294967295" '
-    'ROTA="0" TYPE="disk"'
+    'ROTA="0" TYPE="disk" UUID=""'
 )
 BLK_DEVICE_TEMPLATE_SMALL_DEVICES = [
     hardware.BlockDevice(name='/dev/sda', model='TinyUSB Drive',
                          size=3116853504, rotational=False,
-                         vendor="FooTastic"),
+                         vendor="FooTastic", uuid="F531-BDC3"),
     hardware.BlockDevice(name='/dev/sdb', model='AlmostBigEnough Drive',
                          size=4294967295, rotational=False,
-                         vendor="FooTastic"),
+                         vendor="FooTastic", uuid=""),
 ]
 
 # NOTE(TheJulia): This list intentionally contains duplicates
@@ -166,36 +166,36 @@ BLK_DEVICE_TEMPLATE_SMALL_DEVICES = [
 # devices, so in this example it would normally be 1.
 RAID_BLK_DEVICE_TEMPLATE = (
     'KNAME="sda" MODEL="DRIVE 0" SIZE="1765517033472" '
-    'ROTA="1" TYPE="disk"\n'
+    'ROTA="1" TYPE="disk" UUID=""\n'
     'KNAME="sda1" MODEL="DRIVE 0" SIZE="107373133824" '
-    'ROTA="1" TYPE="part"\n'
+    'ROTA="1" TYPE="part" UUID=""\n'
     'KNAME="sdb" MODEL="DRIVE 1" SIZE="1765517033472" '
-    'ROTA="1" TYPE="disk"\n'
+    'ROTA="1" TYPE="disk" UUID=""\n'
     'KNAME="sdb" MODEL="DRIVE 1" SIZE="1765517033472" '
-    'ROTA="1" TYPE="disk"\n'
+    'ROTA="1" TYPE="disk" UUID=""\n'
     'KNAME="sdb1" MODEL="DRIVE 1" SIZE="107373133824" '
-    'ROTA="1" TYPE="part"\n'
+    'ROTA="1" TYPE="part" UUID=""\n'
     'KNAME="md0p1" MODEL="RAID" SIZE="107236818944" '
-    'ROTA="0" TYPE="md"\n'
+    'ROTA="0" TYPE="md" UUID=""\n'
     'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
-    'ROTA="0" TYPE="raid1"\n'
+    'ROTA="0" TYPE="raid1" UUID=""\n'
     'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
-    'ROTA="0" TYPE="raid1"\n'
-    'KNAME="md1" MODEL="RAID" SIZE="" ROTA="0" TYPE="raid1"'
+    'ROTA="0" TYPE="raid1" UUID=""\n'
+    'KNAME="md1" MODEL="RAID" SIZE="" ROTA="0" TYPE="raid1" UUID=""'
 )
 RAID_BLK_DEVICE_TEMPLATE_DEVICES = [
     hardware.BlockDevice(name='/dev/sda', model='DRIVE 0',
                          size=1765517033472, rotational=True,
-                         vendor="FooTastic"),
+                         vendor="FooTastic", uuid=""),
     hardware.BlockDevice(name='/dev/sdb', model='DRIVE 1',
                          size=1765517033472, rotational=True,
-                         vendor="FooTastic"),
+                         vendor="FooTastic", uuid=""),
     hardware.BlockDevice(name='/dev/md0', model='RAID',
                          size=1765517033470, rotational=False,
-                         vendor="FooTastic"),
+                         vendor="FooTastic", uuid=""),
     hardware.BlockDevice(name='/dev/md1', model='RAID',
                          size=0, rotational=False,
-                         vendor="FooTastic"),
+                         vendor="FooTastic", uuid=""),
 ]
 
 SHRED_OUTPUT_0_ITERATIONS_ZERO_FALSE = ()
@@ -1330,7 +1330,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE, '')
         self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID',
             check_exit_code=[0])
         mock_cached_node.assert_called_once_with()
 
@@ -1352,7 +1352,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         # should always be smaller
         self.assertEqual('/dev/md0', self.hardware.get_os_install_device())
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID',
             check_exit_code=[0])
         mock_cached_node.assert_called_once_with()
 
@@ -1371,7 +1371,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ex = self.assertRaises(errors.DeviceNotFound,
                                self.hardware.get_os_install_device)
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID',
             check_exit_code=[0])
         self.assertIn(str(4 * units.Gi), ex.details)
         mock_cached_node.assert_called_once_with()
@@ -4553,7 +4553,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.return_value = (BLK_DEVICE_TEMPLATE_SMALL, '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID',
             check_exit_code=[0])
         self.assertEqual(BLK_DEVICE_TEMPLATE_SMALL_DEVICES, result)
         mocked_udev.assert_called_once_with()
@@ -4572,7 +4572,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.return_value = (RAID_BLK_DEVICE_TEMPLATE, '')
         result = hardware.list_all_block_devices(ignore_empty=False)
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID',
             check_exit_code=[0])
         self.assertEqual(RAID_BLK_DEVICE_TEMPLATE_DEVICES, result)
         mocked_udev.assert_called_once_with()
@@ -4585,7 +4585,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.return_value = ('TYPE="foo" MODEL="model"', '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE',
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID',
             check_exit_code=[0])
         self.assertEqual([], result)
         mocked_udev.assert_called_once_with()
@@ -4597,8 +4597,8 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.return_value = ('TYPE="disk" MODEL="model"', '')
         self.assertRaisesRegex(
             errors.BlockDeviceError,
-            r'^Block device caused unknown error: KNAME, ROTA, SIZE must be '
-            r'returned by lsblk.$',
+            r'^Block device caused unknown error: KNAME, ROTA, SIZE, UUID '
+            r'must be returned by lsblk.$',
             hardware.list_all_block_devices)
         mocked_udev.assert_called_once_with()
 
