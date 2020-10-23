@@ -14,6 +14,7 @@
 
 from unittest import mock
 
+from oslo_config import cfg
 from oslo_serialization import jsonutils
 import requests
 
@@ -24,6 +25,8 @@ from ironic_python_agent.tests.unit import base
 from ironic_python_agent import version
 
 API_URL = 'http://agent-api.ironic.example.org/'
+
+CONF = cfg.CONF
 
 
 class FakeResponse(object):
@@ -73,6 +76,16 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
         self.assertFalse(self.api_client.session.request.called)
         self.assertEqual(ironic_api_client.MIN_IRONIC_VERSION,
                          self.api_client._get_ironic_api_version())
+
+    def test__get_ironic_api_version_set_via_conf(self):
+        self.api_client._ironic_api_version = None
+        CONF.set_override('ironic_api_version', "1.47")
+        self.api_client.session.request = mock.create_autospec(
+            self.api_client.session.request,
+            return_value=None)
+
+        self.assertEqual((1, 47), self.api_client._get_ironic_api_version())
+        self.assertFalse(self.api_client.session.request.called)
 
     def test__get_ironic_api_version_error(self):
         self.api_client._ironic_api_version = None

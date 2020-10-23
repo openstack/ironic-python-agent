@@ -88,19 +88,31 @@ class APIClient(object):
         return {'X-OpenStack-Ironic-API-Version': '%d.%d' % version}
 
     def _get_ironic_api_version(self):
-        if not self._ironic_api_version:
+        if self._ironic_api_version:
+            return self._ironic_api_version
+
+        if CONF.ironic_api_version is not None:
             try:
-                response = self._request('GET', '/')
-                data = jsonutils.loads(response.content)
-                version = data['default_version']['version'].split('.')
+                version = CONF.ironic_api_version.split('.')
                 self._ironic_api_version = (int(version[0]), int(version[1]))
+                return self._ironic_api_version
             except Exception:
-                LOG.exception("An error occurred while attempting to discover "
-                              "the available Ironic API versions, falling "
-                              "back to using version %s",
-                              ".".join(map(str, MIN_IRONIC_VERSION)))
-                return MIN_IRONIC_VERSION
-        return self._ironic_api_version
+                LOG.exception("An error occurred while attempting to parse"
+                              "the ironic_api_version. Will fall back to "
+                              "auto-detection")
+
+        try:
+            response = self._request('GET', '/')
+            data = jsonutils.loads(response.content)
+            version = data['default_version']['version'].split('.')
+            self._ironic_api_version = (int(version[0]), int(version[1]))
+            return self._ironic_api_version
+        except Exception:
+            LOG.exception("An error occurred while attempting to discover "
+                          "the available Ironic API versions, falling "
+                          "back to using version %s",
+                          ".".join(map(str, MIN_IRONIC_VERSION)))
+            return MIN_IRONIC_VERSION
 
     def supports_auto_tls(self):
         return self._get_ironic_api_version() >= AGENT_VERIFY_CA_IRONIC_VERSION
