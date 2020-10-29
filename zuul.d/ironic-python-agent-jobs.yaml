@@ -61,7 +61,6 @@
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-src
     parent: ironic-ipa-base
-    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
@@ -74,7 +73,6 @@
       # These are in addition to what is in ironic-ipa-base
       - openstack/ironic-inspector
       - openstack/python-ironic-inspector-client
-    nodeset: openstack-single-node-focal
     vars:
       devstack_localrc:
         DEVSTACK_GATE_TEMPEST_REGEX: InspectorBasicTest
