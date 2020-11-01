@@ -381,6 +381,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         expected = [mock.call('efibootmgr', '--version')]
         mock_execute.assert_has_calls(expected)
 
+    @mock.patch.object(os.path, 'exists', lambda *_: True)
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
@@ -409,16 +410,18 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               env_variables={
                                   'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
-                              '"grub-install %s"' %
+                              '"grub2-install %s"' %
                                (self.fake_dir, self.fake_dev)), shell=True,
                               env_variables={
                                   'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
                     mock.call(('chroot %s /bin/sh -c '
-                               '"grub-mkconfig -o '
-                               '/boot/grub/grub.cfg"' % self.fake_dir),
+                               '"grub2-mkconfig -o '
+                               '/boot/grub2/grub.cfg"' % self.fake_dir),
                               shell=True,
                               env_variables={
-                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin',
+                                  'GRUB_DISABLE_OS_PROBER': 'true'},
+                              use_standard_locale=True),
                     mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
                               (self.fake_dir)), shell=True,
                               env_variables={
@@ -478,7 +481,9 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
                               env_variables={
-                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin',
+                                  'GRUB_DISABLE_OS_PROBER': 'true'},
+                              use_standard_locale=True),
                     mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
                               (self.fake_dir)), shell=True,
                               env_variables={
@@ -556,7 +561,9 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
                               env_variables={
-                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin',
+                                  'GRUB_DISABLE_OS_PROBER': 'true'},
+                              use_standard_locale=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
@@ -963,7 +970,9 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                '/boot/grub/grub.cfg"' % self.fake_dir),
                               shell=True,
                               env_variables={
-                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin',
+                                  'GRUB_DISABLE_OS_PROBER': 'true'},
+                              use_standard_locale=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
@@ -1055,7 +1064,9 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                        '/boot/grub/grub.cfg"' % self.fake_dir),
                       shell=True,
                       env_variables={
-                          'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
+                          'PATH': '/sbin:/bin:/usr/sbin:/sbin',
+                          'GRUB_DISABLE_OS_PROBER': 'true'},
+                      use_standard_locale=True),
             mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
                       (self.fake_dir)), shell=True,
                       env_variables={

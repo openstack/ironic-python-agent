@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixes an issue where deployments of Fedora or Centos can hang when
+    using grub2 with the execution of the ``grub2-mkconfig`` command
+    not returning before the deployment process times out. This is
+    because ``grub2-mkconfig`` triggers ``os-prober`` which can
+    take an extended period of time to evaluate additional unrelated
+    devices for dual-boot scenarios. Since operators are not dual
+    booting their machines enrolled in ironic, it seems like an
+    un-necessary scan and has thus been disabled.

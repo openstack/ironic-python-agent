@@ -658,13 +658,13 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                            r'GRUB_CMDLINE_LINUX="\1 %s"'
                            % " ".join(rd_md_uuids),
                            contents))
-
-        # Generate the grub configuration file
         utils.execute('chroot %(path)s /bin/sh -c '
                       '"%(bin)s-mkconfig -o '
                       '/boot/%(bin)s/grub.cfg"' %
                       {'path': path, 'bin': binary_name}, shell=True,
-                      env_variables={'PATH': path_variable})
+                      env_variables={'PATH': path_variable,
+                                     'GRUB_DISABLE_OS_PROBER': 'true'},
+                      use_standard_locale=True)
 
         LOG.info("GRUB2 successfully installed on %s", device)
 
