@@ -2,6 +2,6 @@
 features:
   - |
     Deployers in highly-secure environments can now manually set Ironic API
-    version instead of relying on unauthentication autodetection via
-    ipa-ironic-api-version on the kernel command line. This is not a
-    reccomended configuration.
+    version instead of relying on unauthenticated autodetection via
+    the ``ipa-ironic-api-version`` on the kernel command line. This is not a
+    recommended configuration.

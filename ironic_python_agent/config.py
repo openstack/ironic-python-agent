@@ -284,10 +284,13 @@ cli_opts = [
                     'connection when downloading an image.'),
     cfg.StrOpt('ironic_api_version',
                default=APARAMS.get('ipa-ironic-api-version', None),
-               help='Ironic API version in format "x.x". If not set, version '
-                    'will be auto-detected. This is not a recommended '
-                    'configuration.')
-
+               help='Ironic API version in format "x.x". If not set, the API '
+                    'version will be auto-detected. Defining an API version '
+                    'using this setting is not advisiable nor recommended as '
+                    'it blocks auto-detection of the API version. '
+                    'This is an advanced override setting which may only '
+                    'be useful if the environment requires API version '
+                    'auto-detection to be disabled or blocked.'),
 ]
 
 CONF.register_cli_opts(cli_opts)
