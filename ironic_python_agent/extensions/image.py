@@ -61,7 +61,8 @@ def _get_partition(device, uuid):
 
     try:
         _rescan_device(device)
-        lsblk = utils.execute('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE', device)
+        lsblk = utils.execute(
+            'lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL', device)
         report = lsblk[0]
         for line in report.split('\n'):
             part = {}
@@ -81,6 +82,10 @@ def _get_partition(device, uuid):
                           "%(dev)s", {'uuid': uuid, 'dev': device})
                 return '/dev/' + part.get('KNAME')
             if part.get('PARTUUID') == uuid:
+                LOG.debug("Partition %(uuid)s found on device "
+                          "%(dev)s", {'uuid': uuid, 'dev': device})
+                return '/dev/' + part.get('KNAME')
+            if part.get('LABEL') == uuid:
                 LOG.debug("Partition %(uuid)s found on device "
                           "%(dev)s", {'uuid': uuid, 'dev': device})
                 return '/dev/' + part.get('KNAME')

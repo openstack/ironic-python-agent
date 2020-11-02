@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    For Software RAID, the IPA will use partition LABEL along with UUID and PARTUUID
+    passed from the conductor to identify the root partition. The root file system 
+    LABEL can be set as value of the ``rootfs_uuid`` image metadata property.
