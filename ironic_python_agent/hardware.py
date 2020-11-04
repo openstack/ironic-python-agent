@@ -83,9 +83,9 @@ def _get_device_info(dev, devclass, field):
                   'r') as f:
             return f.read().strip()
     except IOError:
-        LOG.warning(
-            "Can't find field {} for device {} in device class {}".format(
-                field, dev, devclass))
+        LOG.warning("Can't find field %(field)s for"
+                    "device %(dev)s in device class %(class)s",
+                    {'field': field, 'dev': dev, 'class': devclass})
 
 
 def _get_system_lshw_dict():
@@ -146,9 +146,8 @@ def _get_md_uuid(raid_device):
         out, _ = utils.execute('mdadm', '--detail', raid_device,
                                use_standard_locale=True)
     except processutils.ProcessExecutionError as e:
-        msg = ('Could not get the details of %(dev)s: %(err)s' %
-               {'dev': raid_device, 'err': e})
-        LOG.warning(msg)
+        LOG.warning('Could not get the details of %(dev)s: %(err)s',
+                    {'dev': raid_device, 'err': e})
         return
 
     lines = out.splitlines()
@@ -174,7 +173,8 @@ def _get_component_devices(raid_device):
     md_uuid = _get_md_uuid(raid_device)
     if not md_uuid:
         return []
-    LOG.debug('%s has UUID %s', raid_device, md_uuid)
+    LOG.debug('%(device)s has UUID %(uuid)s',
+              {'device': raid_device, 'uuid': md_uuid})
 
     component_devices = []
     block_devices = list_all_block_devices()
@@ -190,8 +190,8 @@ def _get_component_devices(raid_device):
                 LOG.debug('Not a component device %s', bdev.name)
                 continue
             else:
-                LOG.warning("Failed to examine device %s: %s",
-                            bdev.name, e)
+                LOG.warning("Failed to examine device %(name)s: %(err)s",
+                            {'name': bdev.name, 'err': e})
                 continue
         lines = out.splitlines()
         for line in lines:
@@ -218,9 +218,8 @@ def _get_actual_component_devices(raid_device):
         out, _ = utils.execute('mdadm', '--detail', raid_device,
                                use_standard_locale=True)
     except processutils.ProcessExecutionError as e:
-        msg = ('Could not get component devices of %(dev)s: %(err)s' %
-               {'dev': raid_device, 'err': e})
-        LOG.warning(msg)
+        LOG.warning('Could not get component devices of %(dev)s: %(err)s',
+                    {'dev': raid_device, 'err': e})
         return []
 
     component_devices = []
@@ -269,9 +268,8 @@ def get_holder_disks(raid_device):
         out, _ = utils.execute('mdadm', '--detail', raid_device,
                                use_standard_locale=True)
     except processutils.ProcessExecutionError as e:
-        msg = ('Could not get holder disks of %(dev)s: %(err)s' %
-               {'dev': raid_device, 'err': e})
-        LOG.warning(msg)
+        LOG.warning('Could not get holder disks of %(dev)s: %(err)s',
+                    {'dev': raid_device, 'err': e})
         return []
 
     holder_disks = []
@@ -287,9 +285,9 @@ def get_holder_disks(raid_device):
 
         device = utils.extract_device(part)
         if not device:
-            msg = ('Could not get holder disks of %s: unexpected pattern '
-                   'for partition %s') % (raid_device, part)
-            raise errors.SoftwareRAIDError(msg)
+            raise errors.SoftwareRAIDError(
+                'Could not get holder disks of %s: unexpected pattern '
+                'for partition %s' % (raid_device, part))
         holder_disks.append(device)
 
     return holder_disks
@@ -1008,7 +1006,8 @@ class GenericHardwareManager(HardwareManager):
                                            binascii.hexlify(data).decode()))
                 except (binascii.Error, binascii.Incomplete) as e:
                     LOG.warning('An error occurred while processing TLV type '
-                                '%s for interface %s: %s', (typ, ifname, e))
+                                '%(type)s for interface %(name)s: %(err)s',
+                                {'type': typ, 'name': ifname, 'err': e})
             lldp_data[ifname] = processed_tlvs
         return lldp_data
 
@@ -1257,12 +1256,10 @@ class GenericHardwareManager(HardwareManager):
                 'agent_continue_if_ata_erase_failed', False)
             if execute_shred:
                 LOG.warning('Failed to invoke ata_erase, '
-                            'falling back to shred: %(err)s',
-                            {'err': e})
+                            'falling back to shred: %s', e)
             else:
                 msg = ('Failed to invoke ata_erase, '
-                       'fallback to shred is not enabled: %(err)s'
-                       % {'err': e})
+                       'fallback to shred is not enabled: %s' % e)
                 LOG.error(msg)
                 raise errors.IncompatibleHardwareMethodError(msg)
 
@@ -1334,8 +1331,8 @@ class GenericHardwareManager(HardwareManager):
         try:
             utils.execute(*args)
         except (processutils.ProcessExecutionError, OSError) as e:
-            msg = "Erasing block device %(dev)s failed with error %(err)s"
-            LOG.error(msg, {'dev': block_device.name, 'err': e})
+            LOG.error("Erasing block device %(dev)s failed with error %(err)s",
+                      {'dev': block_device.name, 'err': e})
             return False
 
         return True
@@ -1368,8 +1365,9 @@ class GenericHardwareManager(HardwareManager):
             out, _ = utils.execute('lsblk', '--fs', '--noheadings',
                                    block_device.name)
         except processutils.ProcessExecutionError as e:
-            LOG.warning("Could not determine if %s is a RAID member: %s",
-                        block_device.name, e)
+            LOG.warning("Could not determine if %(name)s is a RAID member: "
+                        "%(err)s",
+                        {'name': block_device.name, "err": e})
             return True
 
         return 'linux_raid_member' in out
@@ -1391,9 +1389,9 @@ class GenericHardwareManager(HardwareManager):
                 if flag == '1':
                     return True
         except IOError as e:
-            LOG.warning("Could not determine if %s is a read-only device. "
-                        "Error: %s",
-                        block_device.name, e)
+            LOG.warning("Could not determine if %(name)s is a"
+                        "read-only device. Error: %(err)s",
+                        {'name': block_device.name, 'err': e})
         return False
 
     def _get_ata_security_lines(self, block_device):
@@ -1576,7 +1574,8 @@ class GenericHardwareManager(HardwareManager):
                 try:
                     ipaddress.ip_address(out)
                 except ValueError as exc:
-                    LOG.warning('Invalid IP address %s: %s', out, exc)
+                    LOG.warning('Invalid IP address %(output)s: %(exc)s',
+                                {'output': out, 'exc': exc})
                     continue
 
                 # In case we get 0.0.0.0 on a valid channel, we need to keep
@@ -1653,7 +1652,8 @@ class GenericHardwareManager(HardwareManager):
                 try:
                     return str(ipaddress.ip_interface(address).ip)
                 except ValueError as exc:
-                    LOG.warning('Invalid IP address %s: %s', address, exc)
+                    LOG.warning('Invalid IP address %(addr)s: %(exception)s',
+                                {'addr': address, 'exception': exc})
                     continue
         except (processutils.ProcessExecutionError, OSError) as exc:
             # Not error, because it's normal in virtual environment
@@ -1797,8 +1797,8 @@ class GenericHardwareManager(HardwareManager):
                 # Presumably no partitions (or no partition table)
                 continue
         if with_parts:
-            msg = ("Partitions detected on devices %s during RAID config"
-                   % ', '.join(with_parts))
+            msg = ("Partitions detected on devices %s during RAID config" %
+                   ', '.join(with_parts))
             raise errors.SoftwareRAIDError(msg)
 
         partition_table_type = utils.get_partition_table_type_from_specs(node)
@@ -1848,8 +1848,9 @@ class GenericHardwareManager(HardwareManager):
                     raid_utils.calc_raid_partition_sectors(psize, start)
                 )
                 try:
-                    LOG.debug("Creating partition on {}: {} {}".format(
-                        device, start_str, end_str))
+                    LOG.debug("Creating partition on %(dev)s: %(str)s %(end)s",
+                              {'dev': device, 'str': start_str,
+                               'end': end_str})
                     utils.execute('parted', device, '-s', '-a',
                                   'optimal', '--', 'mkpart', 'primary',
                                   start_str, end_str)
@@ -1885,8 +1886,8 @@ class GenericHardwareManager(HardwareManager):
             if raid_level == '1+0':
                 raid_level = '10'
             try:
-                LOG.debug("Creating md device {} on {}".format(
-                          md_device, component_devices))
+                LOG.debug("Creating md device %(dev)s on %(comp)s",
+                          {'dev': md_device, 'comp': component_devices})
                 utils.execute('mdadm', '--create', md_device, '--force',
                               '--run', '--metadata=1', '--level', raid_level,
                               '--raid-devices', len(component_devices),
@@ -1901,8 +1902,9 @@ class GenericHardwareManager(HardwareManager):
             missing = set(component_devices) - set(actual_components)
             for dev in missing:
                 try:
-                    LOG.warning('Found %s to be missing from %s '
-                                '... re-adding!', dev, md_device)
+                    LOG.warning('Found %(device)s to be missing from %(md)s '
+                                '... re-adding!',
+                                {'device': dev, 'md': md_device})
                     utils.execute('mdadm', '--add', md_device, dev,
                                   attempts=3, delay_on_retry=True)
                 except processutils.ProcessExecutionError as e:
@@ -1970,14 +1972,12 @@ class GenericHardwareManager(HardwareManager):
                 # a partition on an md device (as, for instance, created
                 # by the conductor for the config drive). This will be
                 # cleaned with the hosting md device.
-                msg = ("Software RAID cleaning is skipping "
-                       "partition %s" % raid_device.name)
-                LOG.info(msg)
+                LOG.info("Software RAID cleaning is skipping "
+                         "partition %s", raid_device.name)
                 continue
             holder_disks = get_holder_disks(raid_device.name)
 
-            LOG.info("Deleting Software RAID device {}".format(
-                     raid_device.name))
+            LOG.info("Deleting Software RAID device %s", raid_device.name)
             LOG.debug('Found component devices %s', component_devices)
             LOG.debug('Found holder disks %s', holder_disks)
 
@@ -1985,13 +1985,13 @@ class GenericHardwareManager(HardwareManager):
             try:
                 utils.execute('wipefs', '-af', raid_device.name)
             except processutils.ProcessExecutionError as e:
-                LOG.warning('Failed to wipefs %s: %s',
-                            raid_device.name, e)
+                LOG.warning('Failed to wipefs %(device)s: %(err)s',
+                            {'device': raid_device.name, 'err': e})
             try:
                 utils.execute('mdadm', '--stop', raid_device.name)
             except processutils.ProcessExecutionError as e:
-                LOG.warning('Failed to stop %s: %s',
-                            raid_device.name, e)
+                LOG.warning('Failed to stop %(device)s: %(err)s',
+                            {'device': raid_device.name, 'err': e})
 
             # Remove md metadata from component devices.
             for component_device in component_devices:
@@ -2012,8 +2012,9 @@ class GenericHardwareManager(HardwareManager):
                     utils.execute('mdadm', '--zero-superblock',
                                   component_device)
                 except processutils.ProcessExecutionError as e:
-                    LOG.warning('Failed to remove superblock from %s: %s',
-                                raid_device.name, e)
+                    LOG.warning('Failed to remove superblock from'
+                                '%(device)s: %(err)s',
+                                {'device': raid_device.name, 'err': e})
 
             # NOTE(arne_wiebalck): We cannot delete the partitions right
             # away since there may be other partitions on the same disks
@@ -2055,15 +2056,15 @@ class GenericHardwareManager(HardwareManager):
                     # actually not a component device
                     continue
                 else:
-                    msg = "Failed to examine device {}: {}".format(
-                        blk.name, e)
-                    LOG.warning(msg)
+                    LOG.warning("Failed to examine device %(name)s: %(err)s",
+                                {'name': blk.name, 'err': e})
                     continue
             try:
                 utils.execute('mdadm', '--zero-superblock', blk.name)
             except processutils.ProcessExecutionError as e:
-                LOG.warning('Failed to remove superblock from %s: %s',
-                            raid_device.name, e)
+                LOG.warning('Failed to remove superblock from'
+                            '%(device)s: %(err)s',
+                            {'device': raid_device.name, 'err': e})
 
         # Erase all partition tables we created
         all_holder_disks_uniq = list(
@@ -2087,7 +2088,7 @@ class GenericHardwareManager(HardwareManager):
 
         :param raid_config: The current RAID configuration in the usual format.
         """
-        LOG.debug("Validating Software RAID config: {}".format(raid_config))
+        LOG.debug("Validating Software RAID config: %s", raid_config)
 
         if not raid_config:
             LOG.error("No RAID config passed")
@@ -2223,8 +2224,8 @@ def get_managers():
         for extension in extensions:
             if extension.obj.evaluate_hardware_support() > 0:
                 preferred_managers.append(extension.obj)
-                LOG.info('Hardware manager found: {}'.format(
-                    extension.entry_point_target))
+                LOG.info('Hardware manager found: %s',
+                         extension.entry_point_target)
 
         if not preferred_managers:
             raise errors.HardwareManagerNotFound
@@ -2260,8 +2261,9 @@ def dispatch_to_all_managers(method, *args, **kwargs):
             try:
                 response = getattr(manager, method)(*args, **kwargs)
             except errors.IncompatibleHardwareMethodError:
-                LOG.debug('HardwareManager {} does not support {}'
-                          .format(manager, method))
+                LOG.debug('HardwareManager %(manager)s does not '
+                          'support %(method)s',
+                          {'manager': manager, 'method': method})
                 continue
             except Exception as e:
                 LOG.exception('Unexpected error dispatching %(method)s to '
@@ -2270,8 +2272,9 @@ def dispatch_to_all_managers(method, *args, **kwargs):
                 raise
             responses[manager.__class__.__name__] = response
         else:
-            LOG.debug('HardwareManager {} does not have method {}'
-                      .format(manager, method))
+            LOG.debug('HardwareManager %(manager)s does not '
+                      'have method %(method)s',
+                      {'manager': manager, 'method': method})
 
     if responses == {}:
         raise errors.HardwareManagerMethodNotFound(method)
@@ -2302,16 +2305,18 @@ def dispatch_to_managers(method, *args, **kwargs):
             try:
                 return getattr(manager, method)(*args, **kwargs)
             except(errors.IncompatibleHardwareMethodError):
-                LOG.debug('HardwareManager {} does not support {}'
-                          .format(manager, method))
+                LOG.debug('HardwareManager %(manager)s does not '
+                          'support %(method)s',
+                          {'manager': manager, 'method': method})
             except Exception as e:
                 LOG.exception('Unexpected error dispatching %(method)s to '
                               'manager %(manager)s: %(e)s',
                               {'method': method, 'manager': manager, 'e': e})
                 raise
         else:
-            LOG.debug('HardwareManager {} does not have method {}'
-                      .format(manager, method))
+            LOG.debug('HardwareManager %(manager)s does not '
+                      'have method %(method)s',
+                      {'manager': manager, 'method': method})
 
     raise errors.HardwareManagerMethodNotFound(method)
 
