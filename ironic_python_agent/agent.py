@@ -64,6 +64,14 @@ class IronicPythonAgentStatus(encoding.Serializable):
     serializable_fields = ('started_at', 'version')
 
     def __init__(self, started_at, version):
+        """
+        Initialize the connection.
+
+        Args:
+            self: (todo): write your description
+            started_at: (todo): write your description
+            version: (todo): write your description
+        """
         self.started_at = started_at
         self.version = version
 
@@ -123,6 +131,12 @@ class IronicPythonAgentHeartbeater(threading.Thread):
             LOG.info(log_msg.format(self.interval))
 
     def force_heartbeat(self):
+        """
+        Force a heartbeat heartbeat.
+
+        Args:
+            self: (todo): write your description
+        """
         self.do_heartbeat()
 
     def stop(self):
@@ -139,6 +153,24 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                  ip_lookup_attempts, ip_lookup_sleep, network_interface,
                  lookup_timeout, lookup_interval, standalone, agent_token,
                  hardware_initialization_delay=0, advertise_protocol='http'):
+        """
+        Initialize the api.
+
+        Args:
+            self: (todo): write your description
+            api_url: (str): write your description
+            advertise_address: (str): write your description
+            listen_address: (str): write your description
+            ip_lookup_attempts: (todo): write your description
+            ip_lookup_sleep: (str): write your description
+            network_interface: (str): write your description
+            lookup_timeout: (int): write your description
+            lookup_interval: (int): write your description
+            standalone: (todo): write your description
+            agent_token: (str): write your description
+            hardware_initialization_delay: (todo): write your description
+            advertise_protocol: (todo): write your description
+        """
         super(IronicPythonAgent, self).__init__()
         if bool(cfg.CONF.keyfile) != bool(cfg.CONF.certfile):
             LOG.warning("Only one of 'keyfile' and 'certfile' options is "
@@ -202,6 +234,13 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         )
 
     def validate_agent_token(self, token):
+        """
+        Validate token.
+
+        Args:
+            self: (todo): write your description
+            token: (str): write your description
+        """
         # We did not get a token, i.e. None and
         # we've previously seen a token, which is
         # a mid-cluster upgrade case with long-running ramdisks.
@@ -322,6 +361,12 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                                                       result_id)
 
     def force_heartbeat(self):
+        """
+        Called when heartbeat.
+
+        Args:
+            self: (todo): write your description
+        """
         if not self.standalone:
             self.heartbeater.force_heartbeat()
 
@@ -344,6 +389,12 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                         "Node lookup will probably fail.")
 
     def _start_auto_tls(self):
+        """
+        Start auto - agent.
+
+        Args:
+            self: (todo): write your description
+        """
         # NOTE(dtantsur): if listen_tls is True, assume static TLS
         # configuration and don't auto-generate anything.
         if cfg.CONF.listen_tls or not cfg.CONF.enable_auto_tls:

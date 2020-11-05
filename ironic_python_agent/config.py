@@ -297,6 +297,11 @@ CONF.register_cli_opts(cli_opts)
 
 
 def list_opts():
+    """
+    List opts
+
+    Args:
+    """
     return [('DEFAULT', cli_opts)]
 
 

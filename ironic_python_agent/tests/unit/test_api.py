@@ -36,6 +36,12 @@ class Response(wrappers.Response, http_json.JSONMixin):
 class TestIronicAPI(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
+        """
+        Sets the socket.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestIronicAPI, self).setUp()
         self.mock_agent = mock.MagicMock()
         self.app = app.Application(self.mock_agent, cfg.CONF)
@@ -109,17 +115,35 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
                                   path_prefix=path_prefix)
 
     def test_root(self):
+        """
+        Get the root of the root.
+
+        Args:
+            self: (todo): write your description
+        """
         response = self.get_json('/', path_prefix='')
         data = response.json
         self.assertEqual('OpenStack Ironic Python Agent API', data['name'])
 
     def test_v1_root(self):
+        """
+        : return the root path of the test.
+
+        Args:
+            self: (todo): write your description
+        """
         response = self.get_json('/v1', path_prefix='')
         data = response.json
         self.assertIn('status', data)
         self.assertIn('commands', data)
 
     def test_not_found(self):
+        """
+        Test if the test was successful.
+
+        Args:
+            self: (todo): write your description
+        """
         response = self.get_json('/v1/foo', path_prefix='',
                                  expect_errors=True)
         self.assertEqual(404, response.status_code)
@@ -127,6 +151,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual('Client', data['faultcode'])
 
     def test_get_agent_status(self):
+        """
+        Returns the status of the agent.
+
+        Args:
+            self: (todo): write your description
+        """
         status = agent.IronicPythonAgentStatus(time.time(),
                                                'v72ac9')
         self.mock_agent.get_status.return_value = status
@@ -140,6 +170,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual(status.version, data['version'])
 
     def test_execute_agent_command_success_no_wait(self):
+        """
+        Executes the test to the proxied agent.
+
+        Args:
+            self: (todo): write your description
+        """
         command = {
             'name': 'do_things',
             'params': {'key': 'value'},
@@ -167,6 +203,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual(expected_result, data)
 
     def test_execute_agent_command_success_with_true_wait(self):
+        """
+        Executes the command and sends a command to execute
+
+        Args:
+            self: (todo): write your description
+        """
         command = {
             'name': 'do_things',
             'params': {'key': 'value'},
@@ -194,6 +236,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual(expected_result, data)
 
     def test_execute_agent_command_success_with_false_wait(self):
+        """
+        Executes a command with the response todo_agent.
+
+        Args:
+            self: (todo): write your description
+        """
         command = {
             'name': 'do_things',
             'params': {'key': 'value'},
@@ -221,6 +269,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual(expected_result, data)
 
     def test_execute_agent_command_validation(self):
+        """
+        Executes the command to execute command.
+
+        Args:
+            self: (todo): write your description
+        """
         invalid_command = {}
         response = self.post_json('/commands',
                                   invalid_command,
@@ -232,6 +286,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertIn(msg, data['faultstring'])
 
     def test_execute_agent_command_params_validation(self):
+        """
+        Executes the given command to execute command.
+
+        Args:
+            self: (todo): write your description
+        """
         invalid_command = {'name': 'do_things', 'params': []}
         response = self.post_json('/commands',
                                   invalid_command,
@@ -244,6 +304,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertIn(msg, data['faultstring'])
 
     def test_list_command_results(self):
+        """
+        Return a list of test results.
+
+        Args:
+            self: (todo): write your description
+        """
         cmd_result = base.SyncCommandResult(u'do_things',
                                             {u'key': u'value'},
                                             True,
@@ -262,6 +328,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         }, response.json)
 
     def test_get_command_result(self):
+        """
+        Returns the result of the command.
+
+        Args:
+            self: (todo): write your description
+        """
         cmd_result = base.SyncCommandResult('do_things',
                                             {'key': 'value'},
                                             True,
@@ -276,6 +348,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual(serialized_cmd_result, data)
 
     def test_execute_agent_command_with_token(self):
+        """
+        Executes a command with the given arguments.
+
+        Args:
+            self: (todo): write your description
+        """
         agent_token = str('0123456789' * 10)
         command = {
             'name': 'do_things',
@@ -309,6 +387,12 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual(expected_result, data)
 
     def test_execute_agent_command_with_token_invalid(self):
+        """
+        Executes a command with the given arguments
+
+        Args:
+            self: (todo): write your description
+        """
         agent_token = str('0123456789' * 10)
         command = {
             'name': 'do_things',

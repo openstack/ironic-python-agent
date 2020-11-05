@@ -41,12 +41,24 @@ class IronicInspection(threading.Thread):
     backoff_factor = 2.7
 
     def __init__(self):
+        """
+        Initialize the certificate
+
+        Args:
+            self: (todo): write your description
+        """
         super(IronicInspection, self).__init__()
         if bool(cfg.CONF.keyfile) != bool(cfg.CONF.certfile):
             LOG.warning("Only one of 'keyfile' and 'certfile' options is "
                         "defined in config file. Its value will be ignored.")
 
     def _run(self):
+        """
+        Run the daemon.
+
+        Args:
+            self: (todo): write your description
+        """
         try:
             daemon_mode = cfg.CONF.introspection_daemon
             interval = cfg.CONF.introspection_daemon_post_interval

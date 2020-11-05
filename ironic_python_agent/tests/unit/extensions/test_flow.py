@@ -38,15 +38,35 @@ FLOW_INFO = [
 class FakeExtension(base.BaseAgentExtension):
     @base.async_command('sleep')
     def sleep(self, sleep_info=None):
+        """
+        Waits for the job.
+
+        Args:
+            self: (todo): write your description
+            sleep_info: (todo): write your description
+        """
         time.sleep(sleep_info['time'])
 
     @base.sync_command('sync_sleep')
     def sync_sleep(self, sleep_info=None):
+        """
+        Waits the wait_info.
+
+        Args:
+            self: (todo): write your description
+            sleep_info: (todo): write your description
+        """
         time.sleep(sleep_info['time'])
 
 
 class TestFlowExtension(test_base.IronicAgentTest):
     def setUp(self):
+        """
+        Sets the extension of the extension.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestFlowExtension, self).setUp()
         self.agent_extension = flow.FlowExtension()
         self.agent_extension.ext_mgr = enabled.EnabledExtensionManager.\
@@ -56,6 +76,13 @@ class TestFlowExtension(test_base.IronicAgentTest):
 
     @mock.patch('time.sleep', autospec=True)
     def test_sleep_flow_success(self, sleep_mock):
+        """
+        Waits for a running job and wait for a running.
+
+        Args:
+            self: (todo): write your description
+            sleep_mock: (todo): write your description
+        """
         result = self.agent_extension.start_flow(flow=FLOW_INFO)
         result.join()
         sleep_calls = [mock.call(i) for i in range(1, 8)]
@@ -63,6 +90,13 @@ class TestFlowExtension(test_base.IronicAgentTest):
 
     @mock.patch('time.sleep', autospec=True)
     def test_sleep_flow_failed(self, sleep_mock):
+        """
+        Perform a command todo.
+
+        Args:
+            self: (todo): write your description
+            sleep_mock: (todo): write your description
+        """
         sleep_mock.side_effect = errors.RESTError()
         result = self.agent_extension.start_flow(flow=FLOW_INFO)
         result.join()
@@ -72,6 +106,13 @@ class TestFlowExtension(test_base.IronicAgentTest):
 
     @mock.patch('time.sleep', autospec=True)
     def test_sleep_flow_failed_on_second_command(self, sleep_mock):
+        """
+        Test if the number of the expected to be executed.
+
+        Args:
+            self: (todo): write your description
+            sleep_mock: (todo): write your description
+        """
         sleep_mock.side_effect = [None, Exception('foo'), None, None]
         result = self.agent_extension.start_flow(flow=FLOW_INFO[:4])
         result.join()
@@ -81,9 +122,21 @@ class TestFlowExtension(test_base.IronicAgentTest):
         self.assertEqual(2, sleep_mock.call_count)
 
     def test_validate_exts_success(self):
+        """
+        Validate the test extension is valid.
+
+        Args:
+            self: (todo): write your description
+        """
         flow._validate_exts(self.agent_extension, flow=FLOW_INFO)
 
     def test_validate_exts_failed_to_find_extension(self):
+        """
+        Test if the extension of an extension.
+
+        Args:
+            self: (todo): write your description
+        """
         self.agent_extension.ext_mgr.names = mock.Mock()
         self.agent_extension.ext_mgr.names.return_value = ['fake_fake']
         self.assertRaises(errors.RequestedObjectNotFoundError,
@@ -91,6 +144,12 @@ class TestFlowExtension(test_base.IronicAgentTest):
                           flow=FLOW_INFO)
 
     def test_validate_exts_failed_empty_command_map(self):
+        """
+        Test if the ext_validate_command_empty.
+
+        Args:
+            self: (todo): write your description
+        """
         fake_ext = self.agent_extension.ext_mgr['fake'].obj
         delattr(fake_ext, 'command_map')
         self.assertRaises(errors.InvalidCommandParamsError,
@@ -98,6 +157,12 @@ class TestFlowExtension(test_base.IronicAgentTest):
                           flow=FLOW_INFO)
 
     def test_validate_exts_failed_missing_command(self):
+        """
+        Verify that the command is valid.
+
+        Args:
+            self: (todo): write your description
+        """
         fake_ext = self.agent_extension.ext_mgr['fake'].obj
         fake_ext.command_map = {'not_exist': 'fake'}
         self.assertRaises(errors.InvalidCommandParamsError,

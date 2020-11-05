@@ -42,16 +42,33 @@ _NO_LOGGING_FIELDS = ('logs',)
 
 
 def _extension_manager_err_callback(names):
+    """
+    Ensure an error callback.
+
+    Args:
+        names: (str): write your description
+    """
     raise errors.InspectionError('Failed to load collector %s' % names)
 
 
 def extension_manager(names):
+    """
+    Return a extension manager for extension extension extension.
+
+    Args:
+        names: (str): write your description
+    """
     return stevedore.NamedExtensionManager(
         _COLLECTOR_NS, names=names, name_order=True,
         on_missing_entrypoints_callback=_extension_manager_err_callback)
 
 
 def _get_collector_names():
+    """
+    Return a list of collector names.
+
+    Args:
+    """
     return [x.strip() for x in CONF.inspection_collectors.split(',')
             if x.strip()]
 
@@ -139,6 +156,11 @@ def call_inspector(data, failures):
         wait=tenacity.wait_fixed(_RETRY_WAIT),
         reraise=True)
     def _post_to_inspector():
+        """
+        Create a post request to a post request.
+
+        Args:
+        """
         return requests.post(CONF.inspection_callback_url, data=data,
                              verify=verify, cert=cert)
 

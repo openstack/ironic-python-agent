@@ -168,6 +168,14 @@ class ExampleBusinessLogicHardwareManager(hardware.HardwareManager):
         ]
 
     def companyx_verify_memory(self, node, ports):
+        """
+        Verify that the company.
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+            ports: (list): write your description
+        """
         expected = node.get('properties', {}).get('memory_mb')
         if expected is None:
             LOG.warning('The node does not have memory, cannot verify')
@@ -190,5 +198,15 @@ class ExampleBusinessLogicHardwareManager(hardware.HardwareManager):
     # Make sure to provide default values for optional arguments.
     def companyx_apply_something(self, node, ports, required_value,
                                  optional_value=None):
+        """
+        Applies the company to the given node.
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+            ports: (list): write your description
+            required_value: (todo): write your description
+            optional_value: (todo): write your description
+        """
         LOG.info('apply_something called with required_value={} and '
                  'optional_value={}'.format(required_value, optional_value))

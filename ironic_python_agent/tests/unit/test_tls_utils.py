@@ -27,12 +27,24 @@ from ironic_python_agent import tls_utils
 class GenerateTestCase(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
+        """
+        Sets the database.
+
+        Args:
+            self: (todo): write your description
+        """
         super().setUp()
         tempdir = tempfile.mkdtemp()
         self.crt_file = os.path.join(tempdir, 'localhost.crt')
         self.key_file = os.path.join(tempdir, 'localhost.key')
 
     def test__generate(self):
+        """
+        Generate a certificate authority was generated certificate.
+
+        Args:
+            self: (todo): write your description
+        """
         result = tls_utils._generate_tls_certificate(self.crt_file,
                                                      self.key_file,
                                                      'localhost', '127.0.0.1')
@@ -61,6 +73,15 @@ class GenerateTestCase(ironic_agent_base.IronicAgentTest):
     @mock.patch('os.makedirs', autospec=True)
     @mock.patch.object(tls_utils, '_generate_tls_certificate', autospec=True)
     def test_generate(self, mock_generate, mock_makedirs, mock_hostname):
+        """
+        Generate a tls tls ) pair.
+
+        Args:
+            self: (todo): write your description
+            mock_generate: (todo): write your description
+            mock_makedirs: (str): write your description
+            mock_hostname: (str): write your description
+        """
         result = tls_utils.generate_tls_certificate('127.0.0.1')
         mock_generate.assert_called_once_with(result.path,
                                               result.private_key_path,

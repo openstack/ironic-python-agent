@@ -22,6 +22,12 @@ from ironic_python_agent.tests.unit import base
 @mock.patch('ironic_python_agent.hardware.cache_node', autospec=True)
 class TestCleanExtension(base.IronicAgentTest):
     def setUp(self):
+        """
+        Sets the extension.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestCleanExtension, self).setUp()
         self.agent_extension = clean.CleanExtension()
         self.node = {'uuid': 'dda135fb-732d-4742-8e72-df8f3199d244'}
@@ -40,6 +46,15 @@ class TestCleanExtension(base.IronicAgentTest):
                 autospec=True)
     def test_get_clean_steps(self, mock_dispatch, mock_version,
                              mock_cache_node):
+        """
+        Perform information about a node.
+
+        Args:
+            self: (todo): write your description
+            mock_dispatch: (str): write your description
+            mock_version: (str): write your description
+            mock_cache_node: (todo): write your description
+        """
         mock_version.return_value = self.version
 
         manager_steps = {
@@ -145,6 +160,15 @@ class TestCleanExtension(base.IronicAgentTest):
                 autospec=True)
     def test_execute_clean_step(self, mock_version, mock_dispatch,
                                 mock_cache_node):
+        """
+        Execute a single test step.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_dispatch: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         result = 'cleaned'
         mock_dispatch.return_value = result
 
@@ -171,6 +195,15 @@ class TestCleanExtension(base.IronicAgentTest):
                 autospec=True)
     def test_execute_clean_step_tuple_result(self, mock_version,
                                              mock_dispatch, mock_cache_node):
+        """
+        Execute a test result of the test_version_tuple.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_dispatch: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         result = ('stdout', 'stderr')
         mock_dispatch.return_value = result
 
@@ -194,6 +227,14 @@ class TestCleanExtension(base.IronicAgentTest):
     @mock.patch('ironic_python_agent.hardware.check_versions',
                 autospec=True)
     def test_execute_clean_step_no_step(self, mock_version, mock_cache_node):
+        """
+        Execute a single step of a step.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         async_result = self.agent_extension.execute_clean_step(
             step={}, node=self.node, ports=self.ports,
             clean_version=self.version)
@@ -209,6 +250,15 @@ class TestCleanExtension(base.IronicAgentTest):
                 autospec=True)
     def test_execute_clean_step_fail(self, mock_version, mock_dispatch,
                                      mock_cache_node):
+        """
+        Execute the test_version of the step.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_dispatch: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         mock_dispatch.side_effect = RuntimeError
 
         async_result = self.agent_extension.execute_clean_step(
@@ -231,6 +281,15 @@ class TestCleanExtension(base.IronicAgentTest):
     def test_execute_clean_step_version_mismatch(self, mock_version,
                                                  mock_dispatch,
                                                  mock_cache_node):
+        """
+        Execute the cached version of the test_execute.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_dispatch: (str): write your description
+            mock_cache_node: (todo): write your description
+        """
         mock_version.side_effect = errors.VersionMismatch(
             {'GenericHardwareManager': 1}, {'GenericHardwareManager': 2})
 

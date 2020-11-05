@@ -19,6 +19,12 @@ LOG = log.getLogger()
 
 
 def _is_supported_disk(block_device):
+    """
+    Returns true if a block device is supported.
+
+    Args:
+        block_device: (todo): write your description
+    """
     # Helper methods are outside the class, to prevent them from being called
     # by dispatch_to_managers.
     #

@@ -26,6 +26,11 @@ CONF = cfg.CONF
 
 
 def _detect_cna_card():
+    """
+    Detect cna devices on the cna device.
+
+    Args:
+    """
     addr_path = '/sys/class/net'
     for net_dev in os.listdir(addr_path):
         link_path = '{}/{}/device/driver/module'.format(addr_path, net_dev)
@@ -48,6 +53,11 @@ def _detect_cna_card():
 
 
 def _disable_embedded_lldp_agent_in_cna_card():
+    """
+    Disables an embedded embedded embedded embedded embedded lldp embedding.
+
+    Args:
+    """
     addr_path = '/sys/kernel/debug/i40e'
     failed_dirs = []
     if os.path.exists(addr_path):
@@ -74,6 +84,12 @@ class IntelCnaHardwareManager(hardware.HardwareManager):
     HARDWARE_MANAGER_VERSION = '1.0'
 
     def evaluate_hardware_support(self):
+        """
+        Evaluate the hardware hardware.
+
+        Args:
+            self: (todo): write your description
+        """
         if _detect_cna_card():
             LOG.debug('Found Intel CNA network card')
             # On Intel CNA cards, in order to make LLDP info collecting

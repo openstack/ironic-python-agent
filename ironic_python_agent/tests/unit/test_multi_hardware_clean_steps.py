@@ -22,23 +22,60 @@ from ironic_python_agent.tests.unit import base
 
 
 def _build_clean_step(name, priority, reboot=False, abort=False):
+    """
+    Build a clean up the step.
+
+    Args:
+        name: (str): write your description
+        priority: (int): write your description
+        reboot: (todo): write your description
+        abort: (todo): write your description
+    """
     return {'step': name, 'priority': priority,
             'reboot_requested': reboot, 'abortable': abort}
 
 
 class AFakeMainlineHardwareManager(hardware.HardwareManager):
     def evaluate_hardware_support(self):
+        """
+        Evaluate the hardware hardware support.
+
+        Args:
+            self: (todo): write your description
+        """
         return hardware.HardwareSupport.MAINLINE
 
     def get_clean_steps(self, node, ports):
+        """
+        Returns the list of a node.
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+            ports: (str): write your description
+        """
         return [_build_clean_step('duped_ml', 20)]
 
 
 class AFakeGenericHardwareManager(hardware.HardwareManager):
     def evaluate_hardware_support(self):
+        """
+        Evaluate the hardware support.
+
+        Args:
+            self: (todo): write your description
+        """
         return hardware.HardwareSupport.GENERIC
 
     def get_clean_steps(self, node, ports):
+        """
+        Returns the list of a node.
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+            ports: (str): write your description
+        """
         return [_build_clean_step('duped_ml', 20),
                 _build_clean_step('duped_gn', 30),
                 _build_clean_step('ZHigherPrio', 1)]
@@ -46,9 +83,23 @@ class AFakeGenericHardwareManager(hardware.HardwareManager):
 
 class ZFakeGenericHardwareManager(hardware.HardwareManager):
     def evaluate_hardware_support(self):
+        """
+        Evaluate the hardware support.
+
+        Args:
+            self: (todo): write your description
+        """
         return hardware.HardwareSupport.GENERIC
 
     def get_clean_steps(self, node, ports):
+        """
+        Returns a list of steps that were built.
+
+        Args:
+            self: (todo): write your description
+            node: (todo): write your description
+            ports: (str): write your description
+        """
         return [_build_clean_step('duped_ml', 20),
                 _build_clean_step('duped_gn', 30),
                 _build_clean_step('ZHigherPrio', 100)]
@@ -58,6 +109,12 @@ class ZFakeGenericHardwareManager(hardware.HardwareManager):
                    lambda _self: None)
 class TestMultipleHardwareManagerCleanSteps(base.IronicAgentTest):
     def setUp(self):
+        """
+        Set up the extension.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestMultipleHardwareManagerCleanSteps, self).setUp()
 
         self.agent_extension = clean.CleanExtension()
@@ -82,6 +139,12 @@ class TestMultipleHardwareManagerCleanSteps(base.IronicAgentTest):
         hardware._global_managers = None
 
     def test_clean_step_ordering(self):
+        """
+        Clean up the step step.
+
+        Args:
+            self: (todo): write your description
+        """
         as_results = self.agent_extension.get_clean_steps(node={'uuid': '1'},
                                                           ports=[])
         results = as_results.join().command_result

@@ -23,11 +23,24 @@ from ironic_python_agent import utils
 class TestLogExtension(base.IronicAgentTest):
 
     def setUp(self):
+        """
+        Sets the extension of the extension.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestLogExtension, self).setUp()
         self.agent_extension = log.LogExtension()
 
     @mock.patch.object(utils, 'collect_system_logs', autospec=True)
     def test_collect_system_logs(self, mock_collect):
+        """
+        Test for logs
+
+        Args:
+            self: (todo): write your description
+            mock_collect: (todo): write your description
+        """
         ret = 'Squidward Tentacles'
         mock_collect.return_value = ret
 
