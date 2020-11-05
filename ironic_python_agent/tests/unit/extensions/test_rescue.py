@@ -21,6 +21,12 @@ from ironic_python_agent.tests.unit.extensions.test_base import FakeAgent
 class TestRescueExtension(test_base.BaseTestCase):
 
     def setUp(self):
+        """
+        Sets extension.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestRescueExtension, self).setUp()
         self.agent_extension = rescue.RescueExtension()
         self.agent_extension.agent = FakeAgent()
@@ -28,6 +34,13 @@ class TestRescueExtension(test_base.BaseTestCase):
     @mock.patch('ironic_python_agent.extensions.rescue.crypt.crypt',
                 autospec=True)
     def test_write_rescue_password(self, mock_crypt):
+        """
+        Writes the password for the mock.
+
+        Args:
+            self: (todo): write your description
+            mock_crypt: (todo): write your description
+        """
         mock_crypt.return_value = '12deadbeef'
         mock_open = mock.mock_open()
         with mock.patch('ironic_python_agent.extensions.rescue.open',
@@ -43,6 +56,13 @@ class TestRescueExtension(test_base.BaseTestCase):
     @mock.patch('ironic_python_agent.extensions.rescue.crypt.crypt',
                 autospec=True)
     def test_write_rescue_password_ioerror(self, mock_crypt):
+        """
+        Returns a patch lock lock lock.
+
+        Args:
+            self: (todo): write your description
+            mock_crypt: (todo): write your description
+        """
         mock_crypt.return_value = '12deadbeef'
         mock_open = mock.mock_open()
         with mock.patch('ironic_python_agent.extensions.rescue.open',
@@ -56,6 +76,14 @@ class TestRescueExtension(test_base.BaseTestCase):
     @mock.patch('ironic_python_agent.extensions.rescue.crypt.crypt',
                 autospec=True)
     def _write_password_hashed_test(self, password, mock_crypt):
+        """
+        Writes the password to a password.
+
+        Args:
+            self: (todo): write your description
+            password: (str): write your description
+            mock_crypt: (todo): write your description
+        """
         mock_open = mock.mock_open()
         with mock.patch('ironic_python_agent.extensions.rescue.open',
                         mock_open):
@@ -68,6 +96,12 @@ class TestRescueExtension(test_base.BaseTestCase):
             file_handle.write.assert_called_once_with(password)
 
     def test_hashed_passwords(self):
+        """
+        Test if password password.
+
+        Args:
+            self: (todo): write your description
+        """
         # NOTE(TheJulia): Sort of redundant in that we're not actually
         # verifying content here, but these are semi-realistic values
         # that may be passed in, so best to just keep it regardless.
@@ -84,6 +118,13 @@ class TestRescueExtension(test_base.BaseTestCase):
     @mock.patch('ironic_python_agent.extensions.rescue.RescueExtension.'
                 'write_rescue_password', autospec=True)
     def test_finalize_rescue(self, mock_write_rescue_password):
+        """
+        Finalize the agent.
+
+        Args:
+            self: (todo): write your description
+            mock_write_rescue_password: (todo): write your description
+        """
         self.agent_extension.agent.serve_api = True
         self.agent_extension.finalize_rescue(rescue_password='password')
         mock_write_rescue_password.assert_called_once_with(

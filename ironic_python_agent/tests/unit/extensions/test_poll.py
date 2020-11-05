@@ -21,6 +21,12 @@ from ironic_python_agent.tests.unit import base
 
 class TestPollExtension(base.IronicAgentTest):
     def setUp(self):
+        """
+        Sets extension.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestPollExtension, self).setUp()
         self.mock_agent = mock.Mock(spec=agent.IronicPythonAgent)
         self.agent_extension = poll.PollExtension(agent=self.mock_agent)
@@ -33,6 +39,13 @@ class TestPollExtension(base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers',
                        autospec=True)
     def test_get_hardware_info_success(self, mock_dispatch):
+        """
+        Gets the hardware information.
+
+        Args:
+            self: (todo): write your description
+            mock_dispatch: (todo): write your description
+        """
         mock_dispatch.return_value = {'foo': 'bar'}
         result = self.agent_extension.get_hardware_info()
         mock_dispatch.assert_called_once_with('list_hardware_info')
@@ -40,6 +53,12 @@ class TestPollExtension(base.IronicAgentTest):
         self.assertEqual('SUCCEEDED', result.command_status)
 
     def test_set_node_info_success(self):
+        """
+        Sets the info of a node
+
+        Args:
+            self: (todo): write your description
+        """
         self.mock_agent.standalone = True
         node_info = {'node': {'uuid': 'fake-node', 'properties': {}},
                      'config': {'agent_token_required': True,
@@ -49,6 +68,12 @@ class TestPollExtension(base.IronicAgentTest):
         self.assertEqual('SUCCEEDED', result.command_status)
 
     def test_set_node_info_not_standalone(self):
+        """
+        Sets the test_agent_notension.
+
+        Args:
+            self: (todo): write your description
+        """
         self.mock_agent.standalone = False
         node_info = {'node': {'uuid': 'fake-node', 'properties': {}},
                      'config': {'agent_token_required': True,

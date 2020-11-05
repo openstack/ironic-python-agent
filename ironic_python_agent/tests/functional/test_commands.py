@@ -27,10 +27,22 @@ class TestCommands(base.FunctionalBase):
     node = {'uuid': '1', 'properties': {}, 'instance_info': {}}
 
     def step_1_get_empty_commands(self):
+        """
+        Get the list of commands that have been sent.
+
+        Args:
+            self: (todo): write your description
+        """
         response = self.request('get', 'commands')
         self.assertEqual({'commands': []}, response)
 
     def step_2_run_command(self):
+        """
+        Executes a command.
+
+        Args:
+            self: (todo): write your description
+        """
         # NOTE(mariojv): get_clean_steps always returns the default
         # HardwareManager clean steps if there's not a more specific HWM. So,
         # this command succeeds even with an empty node and port. This test's
@@ -42,6 +54,12 @@ class TestCommands(base.FunctionalBase):
         self.assertIsNone(response['command_error'])
 
     def step_3_get_commands(self):
+        """
+        Execute a step commands.
+
+        Args:
+            self: (todo): write your description
+        """
         # This test relies on step 2 to succeed since step 2 runs the command
         # we're checking for
         response = self.request('get', 'commands')
@@ -50,6 +68,12 @@ class TestCommands(base.FunctionalBase):
             'get_clean_steps', response['commands'][0]['command_name'])
 
     def step_4_get_command_by_id(self):
+        """
+        Do a step command step.
+
+        Args:
+            self: (todo): write your description
+        """
         # First, we have to query the commands API to retrieve the ID. Make
         # sure this API call succeeds again, just in case it fails for some
         # reason after the last test. This test relies on step 2 to succeed
@@ -62,6 +86,12 @@ class TestCommands(base.FunctionalBase):
         self.assertEqual('get_clean_steps', command_from_id['command_name'])
 
     def step_5_run_non_existent_command(self):
+        """
+        Runs the step command.
+
+        Args:
+            self: (todo): write your description
+        """
         fake_command = {'name': 'bad_extension.fake_command', 'params': {}}
         self.request('post', 'commands', expect_error=404, json=fake_command)
 
@@ -78,5 +108,11 @@ class TestCommands(base.FunctionalBase):
             yield getattr(self, name)
 
     def test_positive_get_post_commands(self):
+        """
+        Get the post - post - post - test.
+
+        Args:
+            self: (todo): write your description
+        """
         for step in self.positive_get_post_command_steps():
             step()

@@ -34,6 +34,13 @@ DEFAULT_ISCSI_PORTAL_PORT = 3260
 
 
 def _execute(cmd, error_msg, **kwargs):
+    """
+    Execute a command and return the output.
+
+    Args:
+        cmd: (str): write your description
+        error_msg: (todo): write your description
+    """
     try:
         stdout, stderr = utils.execute(*cmd, **kwargs)
     except processutils.ProcessExecutionError as e:
@@ -84,6 +91,14 @@ def _start_tgtd(iqn, portal_port, device):
 
 
 def _start_lio(iqn, portal_port, device):
+    """
+    Starts a new isc vm.
+
+    Args:
+        iqn: (str): write your description
+        portal_port: (int): write your description
+        device: (str): write your description
+    """
     try:
         storage = rtslib_fb.BlockStorageObject(name=iqn, dev=device)
         target = rtslib_fb.Target(rtslib_fb.FabricModule('iscsi'), iqn,

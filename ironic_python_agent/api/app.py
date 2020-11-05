@@ -44,6 +44,17 @@ def jsonify(value, status=200):
 
 def make_link(url, rel_name, resource='', resource_args='',
               bookmark=False, type_=None):
+    """
+    Create a link to a link.
+
+    Args:
+        url: (str): write your description
+        rel_name: (str): write your description
+        resource: (todo): write your description
+        resource_args: (str): write your description
+        bookmark: (int): write your description
+        type_: (todo): write your description
+    """
     if rel_name == 'describedby':
         url = _DOCS_URL
         type_ = 'text/html'
@@ -66,6 +77,12 @@ def make_link(url, rel_name, resource='', resource_args='',
 
 
 def version(url):
+    """
+    Generate the link.
+
+    Args:
+        url: (str): write your description
+    """
     return {
         'id': 'v1',
         'links': [
@@ -77,6 +94,12 @@ def version(url):
 
 # Emulate WSME format
 def format_exception(value):
+    """
+    Formats the exception as string.
+
+    Args:
+        value: (str): write your description
+    """
     code = getattr(value, 'status_code', None) or getattr(value, 'code', 500)
     return {
         'faultcode': 'Server' if code >= 500 else 'Client',
@@ -171,6 +194,13 @@ class Application(object):
             return jsonify(formatted, status=getattr(exc, 'status_code', 500))
 
     def api_root(self, request):
+        """
+        Return the root of the api.
+
+        Args:
+            self: (todo): write your description
+            request: (todo): write your description
+        """
         url = request.url_root.rstrip('/')
         return jsonify({
             'name': 'OpenStack Ironic Python Agent API',
@@ -181,6 +211,13 @@ class Application(object):
         })
 
     def api_v1(self, request):
+        """
+        Return the link information of a link to the request.
+
+        Args:
+            self: (todo): write your description
+            request: (todo): write your description
+        """
         url = request.url_root.rstrip('/')
         return jsonify(dict({
             'commands': [
@@ -198,16 +235,38 @@ class Application(object):
         }, **version(url)))
 
     def api_status(self, request):
+        """
+        Get status of all metrics.
+
+        Args:
+            self: (todo): write your description
+            request: (todo): write your description
+        """
         with metrics_utils.get_metrics_logger(__name__).timer('get_status'):
             status = self.agent.get_status()
             return jsonify(status)
 
     def api_list_commands(self, request):
+        """
+        List metrics.
+
+        Args:
+            self: (todo): write your description
+            request: (todo): write your description
+        """
         with metrics_utils.get_metrics_logger(__name__).timer('list_commands'):
             results = self.agent.list_command_results()
             return jsonify({'commands': results})
 
     def api_get_command(self, request, cmd):
+        """
+        Send a get request
+
+        Args:
+            self: (todo): write your description
+            request: (todo): write your description
+            cmd: (str): write your description
+        """
         with metrics_utils.get_metrics_logger(__name__).timer('get_command'):
             result = self.agent.get_command_result(cmd)
             wait = request.args.get('wait')
@@ -218,6 +277,13 @@ class Application(object):
             return jsonify(result)
 
     def api_run_command(self, request):
+        """
+        Send a command to the api.
+
+        Args:
+            self: (todo): write your description
+            request: (todo): write your description
+        """
         body = request.get_json(force=True)
         if ('name' not in body or 'params' not in body
                 or not isinstance(body['params'], dict)):

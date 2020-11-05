@@ -27,17 +27,35 @@ CLIENT_ID = 'ff:00:00:00:00:00:02:00:00:02:c9:00:7c:fe:90:03:00:29:26:52'
 
 class MlnxHardwareManager(base.IronicAgentTest):
     def setUp(self):
+        """
+        Sets the hardware.
+
+        Args:
+            self: (todo): write your description
+        """
         super(MlnxHardwareManager, self).setUp()
         self.hardware = mlnx.MellanoxDeviceHardwareManager()
         self.node = {'uuid': 'dda135fb-732d-4742-8e72-df8f3199d244',
                      'driver_internal_info': {}}
 
     def test_infiniband_address_to_mac(self):
+        """
+        Assigns the address of the macro.
+
+        Args:
+            self: (todo): write your description
+        """
         self.assertEqual(
             '7c:fe:90:29:26:52',
             mlnx._infiniband_address_to_mac(IB_ADDRESS))
 
     def test_generate_client_id(self):
+        """
+        Generate client id.
+
+        Args:
+            self: (todo): write your description
+        """
         self.assertEqual(
             CLIENT_ID,
             mlnx._generate_client_id(IB_ADDRESS))
@@ -45,6 +63,14 @@ class MlnxHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_detect_hardware(self, mocked_get_device_info, mock_listdir):
+        """
+        Perform hardware hardware hardware.
+
+        Args:
+            self: (todo): write your description
+            mocked_get_device_info: (todo): write your description
+            mock_listdir: (list): write your description
+        """
         mock_listdir.return_value = ['eth0', 'ib0']
         mocked_get_device_info.side_effect = ['0x8086', '0x15b3']
         self.assertTrue(mlnx._detect_hardware())
@@ -53,6 +79,14 @@ class MlnxHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_detect_hardware_no_mlnx(
             self, mocked_get_device_info, mock_listdir):
+        """
+        Test for hardware hardware hardware hardware.
+
+        Args:
+            self: (todo): write your description
+            mocked_get_device_info: (todo): write your description
+            mock_listdir: (todo): write your description
+        """
         mock_listdir.return_value = ['eth0', 'eth1']
         mocked_get_device_info.side_effect = ['0x8086', '0x8086']
         self.assertFalse(mlnx._detect_hardware())
@@ -61,6 +95,14 @@ class MlnxHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_detect_hardware_error(
             self, mocked_get_device_info, mock_listdir):
+        """
+        Test if the error message for a device.
+
+        Args:
+            self: (todo): write your description
+            mocked_get_device_info: (todo): write your description
+            mock_listdir: (list): write your description
+        """
         mock_listdir.return_value = ['eth0', 'ib0']
         mocked_get_device_info.side_effect = ['0x8086', None]
         self.assertFalse(mlnx._detect_hardware())
@@ -69,6 +111,14 @@ class MlnxHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_evaluate_hardware_support(
             self, mocked_get_device_info, mock_listdir):
+        """
+        Evaluate support.
+
+        Args:
+            self: (todo): write your description
+            mocked_get_device_info: (todo): write your description
+            mock_listdir: (list): write your description
+        """
         mock_listdir.return_value = ['eth0', 'ib0']
         mocked_get_device_info.side_effect = ['0x8086', '0x15b3']
         self.assertEqual(
@@ -79,6 +129,14 @@ class MlnxHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_evaluate_hardware_support_no_mlnx(
             self, mocked_get_device_info, mock_listdir):
+        """
+        Perform the mock device.
+
+        Args:
+            self: (todo): write your description
+            mocked_get_device_info: (todo): write your description
+            mock_listdir: (list): write your description
+        """
         mock_listdir.return_value = ['eth0', 'eth1']
         mocked_get_device_info.side_effect = ['0x8086', '0x8086']
         self.assertEqual(
@@ -88,6 +146,14 @@ class MlnxHardwareManager(base.IronicAgentTest):
     @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_get_interface_info(self, mocked_get_device_info, mock_get_mac):
+        """
+        Return interface information.
+
+        Args:
+            self: (todo): write your description
+            mocked_get_device_info: (todo): write your description
+            mock_get_mac: (todo): write your description
+        """
         mocked_get_device_info.side_effect = ['0x15b3', '0x0014']
         mock_get_mac.return_value = IB_ADDRESS
         network_interface = self.hardware.get_interface_info('ib0')
@@ -101,6 +167,14 @@ class MlnxHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_get_interface_info_no_ib_interface(
             self, mocked_get_device_info, mock_get_mac):
+        """
+        Get interface interface interface interface interface interface.
+
+        Args:
+            self: (todo): write your description
+            mocked_get_device_info: (todo): write your description
+            mock_get_mac: (str): write your description
+        """
         mocked_get_device_info.side_effect = ['0x15b3']
         mock_get_mac.return_value = '7c:fe:90:29:26:52'
         self.assertRaises(
@@ -111,6 +185,14 @@ class MlnxHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_get_interface_info_no_mlnx_interface(
             self, mocked_get_device_info, mock_get_mac):
+        """
+        Get the interface interface interface interface interface.
+
+        Args:
+            self: (todo): write your description
+            mocked_get_device_info: (todo): write your description
+            mock_get_mac: (todo): write your description
+        """
         mocked_get_device_info.side_effect = ['0x8086']
         mock_get_mac.return_value = IB_ADDRESS
         self.assertRaises(
@@ -121,6 +203,14 @@ class MlnxHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     def test_get_interface_info_no_mac_address(
             self, mocked_get_device_info, mock_get_mac):
+        """
+        Gets the interface instance of the interface.
+
+        Args:
+            self: (todo): write your description
+            mocked_get_device_info: (todo): write your description
+            mock_get_mac: (todo): write your description
+        """
         mock_get_mac.return_value = None
         self.assertRaises(
             errors.IncompatibleHardwareMethodError,

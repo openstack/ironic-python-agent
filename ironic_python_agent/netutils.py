@@ -59,6 +59,12 @@ class RawPromiscuousSockets(object):
                            for name in interface_names]
 
     def __enter__(self):
+        """
+        Ensure interface to the given interface.
+
+        Args:
+            self: (todo): write your description
+        """
         for interface_name, sock, ifr in self.interfaces:
             LOG.info('Interface %s entering promiscuous mode to capture ',
                      interface_name)
@@ -84,6 +90,15 @@ class RawPromiscuousSockets(object):
         return [(sock[0], sock[1]) for sock in self.interfaces]
 
     def __exit__(self, exception_type, exception_val, trace):
+        """
+        Exit the given exception.
+
+        Args:
+            self: (todo): write your description
+            exception_type: (todo): write your description
+            exception_val: (todo): write your description
+            trace: (bool): write your description
+        """
         for name, sock, ifr in self.interfaces:
             # bitwise or with the opposite of promiscuous mode to remove
             ifr.ifr_flags &= ~IFF_PROMISC
@@ -95,6 +110,12 @@ class RawPromiscuousSockets(object):
                               name)
 
     def _get_socket(self):
+        """
+        Return a socket.
+
+        Args:
+            self: (todo): write your description
+        """
         return socket.socket(socket.AF_PACKET, socket.SOCK_RAW, self.protocol)
 
 
@@ -214,14 +235,32 @@ def get_default_ip_addr(type, interface_id):
 
 
 def get_ipv4_addr(interface_id):
+    """
+    Returns the ipv4 address associated with the given interface.
+
+    Args:
+        interface_id: (str): write your description
+    """
     return get_default_ip_addr(netifaces.AF_INET, interface_id)
 
 
 def get_ipv6_addr(interface_id):
+    """
+    Returns the ipv6 address for the given interface.
+
+    Args:
+        interface_id: (str): write your description
+    """
     return get_default_ip_addr(netifaces.AF_INET6, interface_id)
 
 
 def get_mac_addr(interface_id):
+    """
+    Get the mac address associated with the given interface.
+
+    Args:
+        interface_id: (str): write your description
+    """
     try:
         addrs = netifaces.ifaddresses(interface_id)
         return addrs[netifaces.AF_LINK][0]['addr']
@@ -234,10 +273,21 @@ def get_mac_addr(interface_id):
 # 1. import os; os.uname()[1]
 # 2. import platform; platform.node()
 def get_hostname():
+    """
+    Returns the hostname of the given hostname.
+
+    Args:
+    """
     return socket.gethostname()
 
 
 def interface_has_carrier(interface_name):
+    """
+    Returns true if the interface has an interface interface has an interface.
+
+    Args:
+        interface_name: (str): write your description
+    """
     path = '/sys/class/net/{}/carrier'.format(interface_name)
     try:
         with open(path, 'rt') as fp:
@@ -249,12 +299,23 @@ def interface_has_carrier(interface_name):
 
 
 def wrap_ipv6(ip):
+    """
+    Convert a ipv6 address to a ipv6 address.
+
+    Args:
+        ip: (int): write your description
+    """
     if netutils.is_valid_ipv6(ip):
         return "[%s]" % ip
     return ip
 
 
 def get_wildcard_address():
+    """
+    Returns the ip address of the given ip address.
+
+    Args:
+    """
     if netutils.is_ipv6_enabled():
         return "::"
     return "0.0.0.0"

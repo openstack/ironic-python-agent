@@ -27,6 +27,13 @@ class TestError(errors.RESTError):
     message = 'message'
 
     def __init__(self, details=None):
+        """
+        Initialize the details
+
+        Args:
+            self: (todo): write your description
+            details: (todo): write your description
+        """
         # Follows the pattern seen in most in error classes
         super(TestError, self).__init__(details)
 
@@ -34,6 +41,12 @@ class TestError(errors.RESTError):
 class TestErrors(base.IronicAgentTest):
 
     def test_RESTError(self):
+        """
+        Eval of the error.
+
+        Args:
+            self: (todo): write your description
+        """
         e = errors.RESTError()
         d = e.serialize()
 
@@ -48,6 +61,12 @@ class TestErrors(base.IronicAgentTest):
         self.assertEqual(errors.RESTError.details, d['details'])
 
     def test_RESTError_details(self):
+        """
+        Test for the test for this test.
+
+        Args:
+            self: (todo): write your description
+        """
         e = errors.RESTError(DETAILS)
         self.assertEqual("RESTError", e.type)
         self.assertEqual(500, e.code)
@@ -91,6 +110,12 @@ class TestErrors(base.IronicAgentTest):
                       {'info': obj_info, 'chk': check_details})
 
     def test_error_classes(self):
+        """
+        !
+
+        Args:
+            self: (todo): write your description
+        """
         cases = [(errors.InvalidContentError(DETAILS), SAME_DETAILS),
                  (errors.NotFound(), SAME_CL_DETAILS),
                  (errors.CommandExecutionError(DETAILS), SAME_DETAILS),
@@ -129,6 +154,12 @@ class TestErrors(base.IronicAgentTest):
             self._test_class(obj, check_details)
 
     def test_error_string(self):
+        """
+        Test if the test string.
+
+        Args:
+            self: (todo): write your description
+        """
         err = TestError('test error')
         self.assertEqual('message: test error', str(err))
         self.assertEqual('TestError(\'message: test error\')', repr(err))

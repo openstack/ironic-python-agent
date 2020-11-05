@@ -34,18 +34,41 @@ cfg.CONF.import_opt('lldp_timeout', 'ironic_python_agent.config')
 
 
 def socket_socket_sig(family=None, type=None, proto=None):
+    """
+    A socket socket socket socket.
+
+    Args:
+        family: (str): write your description
+        type: (str): write your description
+        proto: (todo): write your description
+    """
     # Signature for socket.socket to be used by mock
     pass
 
 
 class TestNetutils(base.IronicAgentTest):
     def setUp(self):
+        """
+        Sets the result of this thread.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestNetutils, self).setUp()
 
     @mock.patch('fcntl.ioctl', autospec=True)
     @mock.patch('select.select', autospec=True)
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info(self, sock_mock, select_mock, fcntl_mock):
+        """
+        Get lldp details.
+
+        Args:
+            self: (todo): write your description
+            sock_mock: (todo): write your description
+            select_mock: (todo): write your description
+            fcntl_mock: (todo): write your description
+        """
         expected_lldp = {
             'eth1': [
                 (0, b''),
@@ -95,6 +118,15 @@ class TestNetutils(base.IronicAgentTest):
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info_socket_recv_error(self, sock_mock, select_mock,
                                              fcntl_mock):
+        """
+        Get socket socket socket socket.
+
+        Args:
+            self: (todo): write your description
+            sock_mock: (todo): write your description
+            select_mock: (todo): write your description
+            fcntl_mock: (todo): write your description
+        """
         expected_lldp = {
             'eth1': [
                 (0, b''),
@@ -138,6 +170,15 @@ class TestNetutils(base.IronicAgentTest):
     @mock.patch('select.select', autospec=True)
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info_multiple(self, sock_mock, select_mock, fcntl_mock):
+        """
+        Get lldp details.
+
+        Args:
+            self: (todo): write your description
+            sock_mock: (todo): write your description
+            select_mock: (todo): write your description
+            fcntl_mock: (str): write your description
+        """
         expected_lldp = {
             'eth1': [
                 (0, b''),
@@ -193,6 +234,15 @@ class TestNetutils(base.IronicAgentTest):
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info_one_empty_interface(self, sock_mock, select_mock,
                                                fcntl_mock):
+        """
+        Test for the lldp interface.
+
+        Args:
+            self: (todo): write your description
+            sock_mock: (todo): write your description
+            select_mock: (todo): write your description
+            fcntl_mock: (todo): write your description
+        """
         expected_lldp = {
             'eth1': [],
             'eth0': [
@@ -236,6 +286,15 @@ class TestNetutils(base.IronicAgentTest):
     @mock.patch('select.select', autospec=True)
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info_empty(self, sock_mock, select_mock, fcntl_mock):
+        """
+        Get lldp - ll - used lldp - lldp.
+
+        Args:
+            self: (todo): write your description
+            sock_mock: (todo): write your description
+            select_mock: (todo): write your description
+            fcntl_mock: (todo): write your description
+        """
         expected_lldp = {
             'eth1': [],
             'eth0': []
@@ -274,6 +333,15 @@ class TestNetutils(base.IronicAgentTest):
     @mock.patch('select.select', autospec=True)
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_lldp_info_malformed(self, sock_mock, select_mock, fcntl_mock):
+        """
+        Get lldp - related to the - socket.
+
+        Args:
+            self: (todo): write your description
+            sock_mock: (todo): write your description
+            select_mock: (todo): write your description
+            fcntl_mock: (str): write your description
+        """
         expected_lldp = {
             'eth1': [],
             'eth0': [],
@@ -319,6 +387,14 @@ class TestNetutils(base.IronicAgentTest):
     @mock.patch('fcntl.ioctl', autospec=True)
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_raw_promiscuous_sockets(self, sock_mock, fcntl_mock):
+        """
+        Test if raw raw raw raw raw raw raw raw raw raw socket.
+
+        Args:
+            self: (todo): write your description
+            sock_mock: (todo): write your description
+            fcntl_mock: (todo): write your description
+        """
         interfaces = ['eth0', 'ens9f1']
         protocol = 3
         sock1 = mock.Mock()
@@ -341,6 +417,14 @@ class TestNetutils(base.IronicAgentTest):
     @mock.patch('fcntl.ioctl', autospec=True)
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_raw_promiscuous_sockets_bind_fail(self, sock_mock, fcntl_mock):
+        """
+        Run raw raw raw raw raw raw raw raw raw raw raw raw raw handshake.
+
+        Args:
+            self: (todo): write your description
+            sock_mock: (todo): write your description
+            fcntl_mock: (todo): write your description
+        """
         interfaces = ['eth0', 'ens9f1']
         protocol = 3
         sock1 = mock.Mock()
@@ -350,6 +434,11 @@ class TestNetutils(base.IronicAgentTest):
         sock2.bind.side_effect = RuntimeError()
 
         def _run_with_bind_fail():
+            """
+            Runs a failure failure on the network.
+
+            Args:
+            """
             with netutils.RawPromiscuousSockets(interfaces, protocol):
                 self.fail('Unreachable code')
 
@@ -366,6 +455,14 @@ class TestNetutils(base.IronicAgentTest):
     @mock.patch('fcntl.ioctl', autospec=True)
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_raw_promiscuous_sockets_exception(self, sock_mock, fcntl_mock):
+        """
+        Test if raw raw raw raw raw raw raw raw raw raw raw raw raw exception.
+
+        Args:
+            self: (todo): write your description
+            sock_mock: (todo): write your description
+            fcntl_mock: (todo): write your description
+        """
         interfaces = ['eth0', 'ens9f1']
         protocol = 3
         sock1 = mock.Mock()
@@ -374,6 +471,11 @@ class TestNetutils(base.IronicAgentTest):
         sock_mock.side_effect = [sock1, sock2]
 
         def _run_with_exception():
+            """
+            Runs the given exception with the given exception.
+
+            Args:
+            """
             with netutils.RawPromiscuousSockets(interfaces, protocol):
                 raise RuntimeError()
 
@@ -388,9 +490,21 @@ class TestNetutils(base.IronicAgentTest):
         sock2.close.assert_called_once_with()
 
     def test_wrap_ipv6(self):
+        """
+        Wrapper for ipv6.
+
+        Args:
+            self: (todo): write your description
+        """
         res = netutils.wrap_ipv6('1:2::3:4')
         self.assertEqual('[1:2::3:4]', res)
 
     def test_wrap_ipv6_with_ipv4(self):
+        """
+        Wrapper for ipv4 ipv6.
+
+        Args:
+            self: (todo): write your description
+        """
         res = netutils.wrap_ipv6('1.2.3.4')
         self.assertEqual('1.2.3.4', res)

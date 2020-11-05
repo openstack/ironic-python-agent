@@ -597,6 +597,14 @@ class StandbyExtension(base.BaseAgentExtension):
             pass
 
     def _fix_up_partition_uuids(self, image_info, device):
+        """
+        Fix the partition on a partition.
+
+        Args:
+            self: (todo): write your description
+            image_info: (todo): write your description
+            device: (todo): write your description
+        """
         if self.partition_uuids is None:
             self.partition_uuids = {}
 

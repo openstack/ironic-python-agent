@@ -37,6 +37,12 @@ class IronicAgentTest(test_base.BaseTestCase):
     block_execute = True
 
     def setUp(self):
+        """
+        Configure the ironic hardware.
+
+        Args:
+            self: (todo): write your description
+        """
         super(IronicAgentTest, self).setUp()
 
         self._set_config()
@@ -64,6 +70,12 @@ class IronicAgentTest(test_base.BaseTestCase):
         hardware._CACHED_HW_INFO = None
 
     def _set_config(self):
+        """
+        Set the default configuration.
+
+        Args:
+            self: (todo): write your description
+        """
         self.cfg_fixture = self.useFixture(config_fixture.Config(CONF))
 
     def config(self, **kw):

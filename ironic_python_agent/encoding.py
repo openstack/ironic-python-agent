@@ -39,9 +39,23 @@ class SerializableComparable(Serializable):
     __hash__ = None
 
     def __eq__(self, other):
+        """
+        Determine the objects.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         return self.serialize() == other.serialize()
 
     def __ne__(self, other):
+        """
+        Serialize two objects.
+
+        Args:
+            self: (todo): write your description
+            other: (todo): write your description
+        """
         return self.serialize() != other.serialize()
 
 

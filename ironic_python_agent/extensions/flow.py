@@ -21,6 +21,13 @@ LOG = log.getLogger(__name__)
 
 
 def _validate_exts(ext, flow=None):
+    """
+    Validate all of the extension.
+
+    Args:
+        ext: (todo): write your description
+        flow: (todo): write your description
+    """
     for task in flow:
         for method in task:
             ext_name, cmd = ext.split_command(method)
@@ -34,6 +41,13 @@ def _validate_exts(ext, flow=None):
 class FlowExtension(base.BaseAgentExtension, base.ExecuteCommandMixin):
     @base.async_command('start_flow', _validate_exts)
     def start_flow(self, flow=None):
+        """
+        Start a new flow.
+
+        Args:
+            self: (todo): write your description
+            flow: (todo): write your description
+        """
         for task in flow:
             for method, params in task.items():
                 LOG.info("Executing method %s for now", method)

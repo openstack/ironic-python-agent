@@ -25,6 +25,12 @@ class BlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
     """Test to ensure we block access to the 'execute' type functions"""
 
     def test_exception_raised_for_execute(self):
+        """
+        Execute the test test functions.
+
+        Args:
+            self: (todo): write your description
+        """
         execute_functions = (ironic_lib.utils.execute, processutils.execute,
                              subprocess.call, subprocess.check_call,
                              subprocess.check_output, utils.execute)
@@ -41,6 +47,13 @@ class BlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
 
     @mock.patch.object(utils, "execute", autospec=True)
     def test_can_mock_execute(self, mock_exec):
+        """
+        Executes the mock can be executed command.
+
+        Args:
+            self: (todo): write your description
+            mock_exec: (todo): write your description
+        """
         # NOTE(jlvillal): We had discovered an issue where mocking wasn't
         # working because we had used a mock to block access to the execute
         # functions. This caused us to "mock a mock" and didn't work correctly.
@@ -52,6 +65,13 @@ class BlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
 
     @mock.patch.object(ironic_lib.utils, "execute", autospec=True)
     def test_exception_raised_for_execute_parent_mocked(self, mock_exec):
+        """
+        Execute the exception todo_exception.
+
+        Args:
+            self: (todo): write your description
+            mock_exec: (todo): write your description
+        """
         # Make sure that even if we mock the parent execute function, that we
         # still get an exception for a child. So in this case utils.execute()
         # calls ironic_lib.utils.execute(). Make sure an exception is raised
@@ -74,6 +94,13 @@ class DontBlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
 
     @mock.patch.object(ironic_lib.utils, "execute", autospec=True)
     def test_no_exception_raised_for_execute(self, mock_exec):
+        """
+        Executes the number of the test.
+
+        Args:
+            self: (todo): write your description
+            mock_exec: (todo): write your description
+        """
         # Make sure we can call utils.execute() even though we didn't mock it.
         # We do mock ironic_lib.utils.execute() so we don't actually execute
         # anything.

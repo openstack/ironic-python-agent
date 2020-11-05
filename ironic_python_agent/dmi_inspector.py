@@ -98,6 +98,12 @@ def parse_dmi(data):
 
 
 def _parse_handle_block(lines):
+    """
+    Parse the output block.
+
+    Args:
+        lines: (str): write your description
+    """
     rows = {}
     list_value = False
     for line in lines.splitlines():
@@ -119,6 +125,14 @@ def _parse_handle_block(lines):
 
 
 def _save_data(dmi_info, memorydata, devicedata):
+    """
+    Saves the data to memory
+
+    Args:
+        dmi_info: (todo): write your description
+        memorydata: (todo): write your description
+        devicedata: (todo): write your description
+    """
     if memorydata:
         try:
             device_count = sum([int(d['Number Of Devices'])

@@ -46,6 +46,13 @@ class APIClient(object):
     agent_token = None
 
     def __init__(self, api_url):
+        """
+        Initialize the connection.
+
+        Args:
+            self: (todo): write your description
+            api_url: (str): write your description
+        """
         self.api_url = api_url.rstrip('/')
 
         # Only keep alive a maximum of 2 connections to the API. More will be
@@ -59,6 +66,16 @@ class APIClient(object):
         self.encoder = encoding.RESTJSONEncoder()
 
     def _request(self, method, path, data=None, headers=None, **kwargs):
+        """
+        Make an http request.
+
+        Args:
+            self: (todo): write your description
+            method: (str): write your description
+            path: (str): write your description
+            data: (str): write your description
+            headers: (dict): write your description
+        """
         request_url = '{api_url}{path}'.format(api_url=self.api_url, path=path)
 
         if data is not None:
@@ -82,12 +99,25 @@ class APIClient(object):
                                     **kwargs)
 
     def _get_ironic_api_version_header(self, version=None):
+        """
+        Return the api header.
+
+        Args:
+            self: (todo): write your description
+            version: (str): write your description
+        """
         if version is None:
             ironic_version = self._get_ironic_api_version()
             version = min(ironic_version, AGENT_TOKEN_IRONIC_VERSION)
         return {'X-OpenStack-Ironic-API-Version': '%d.%d' % version}
 
     def _get_ironic_api_version(self):
+        """
+        Get api version.
+
+        Args:
+            self: (todo): write your description
+        """
         if self._ironic_api_version:
             return self._ironic_api_version
 
@@ -115,10 +145,26 @@ class APIClient(object):
             return MIN_IRONIC_VERSION
 
     def supports_auto_tls(self):
+        """
+        Returns true if auto - tls api version is on.
+
+        Args:
+            self: (todo): write your description
+        """
         return self._get_ironic_api_version() >= AGENT_VERIFY_CA_IRONIC_VERSION
 
     def heartbeat(self, uuid, advertise_address, advertise_protocol='http',
                   generated_cert=None):
+        """
+        Sends a heartbeat.
+
+        Args:
+            self: (todo): write your description
+            uuid: (str): write your description
+            advertise_address: (bool): write your description
+            advertise_protocol: (bool): write your description
+            generated_cert: (todo): write your description
+        """
         path = self.heartbeat_api.format(uuid=uuid)
 
         data = {'callback_url': self._get_agent_url(advertise_address,
@@ -156,6 +202,17 @@ class APIClient(object):
 
     def lookup_node(self, hardware_info, timeout, starting_interval,
                     node_uuid=None, max_interval=30):
+        """
+        Look up a node.
+
+        Args:
+            self: (todo): write your description
+            hardware_info: (bool): write your description
+            timeout: (float): write your description
+            starting_interval: (int): write your description
+            node_uuid: (str): write your description
+            max_interval: (int): write your description
+        """
         retry = tenacity.retry(
             retry=tenacity.retry_if_result(lambda r: r is False),
             stop=tenacity.stop_after_delay(timeout),
@@ -259,6 +316,14 @@ class APIClient(object):
         return content
 
     def _get_agent_url(self, advertise_address, advertise_protocol='http'):
+        """
+        Returns the url for an agent.
+
+        Args:
+            self: (todo): write your description
+            advertise_address: (str): write your description
+            advertise_protocol: (str): write your description
+        """
         return '{}://{}:{}'.format(advertise_protocol,
                                    netutils.wrap_ipv6(advertise_address[0]),
                                    advertise_address[1])

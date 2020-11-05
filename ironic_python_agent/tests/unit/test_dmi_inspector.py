@@ -24,12 +24,25 @@ from ironic_python_agent import utils
 
 class TestCollectDmidecodeInfo(base.IronicAgentTest):
     def setUp(self):
+        """
+        Sets the error status.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestCollectDmidecodeInfo, self).setUp()
         self.data = {}
         self.failures = utils.AccumulatedFailures()
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_dmidecode_info_ok(self, mock_execute):
+        """
+        Makes a test test code
+
+        Args:
+            self: (todo): write your description
+            mock_execute: (todo): write your description
+        """
         mock_execute.return_value = dmi_data.DMI_DATA
 
         dmi_inspector.collect_dmidecode_info(self.data, None)
@@ -44,6 +57,13 @@ class TestCollectDmidecodeInfo(base.IronicAgentTest):
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_dmidecode_info_bad_data(self, mock_execute):
+        """
+        Mockcode data
+
+        Args:
+            self: (todo): write your description
+            mock_execute: (todo): write your description
+        """
         mock_execute.return_value = ("""Handle 0x0000\nFoo\nBar: Baz\n""", "")
         expected = {'dmi': {'bios': {}, 'cpu': [], 'memory': {'devices': []}}}
 
@@ -56,6 +76,13 @@ class TestCollectDmidecodeInfo(base.IronicAgentTest):
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_dmidecode_info_failure(self, mock_execute):
+        """
+        Set test status code for test.
+
+        Args:
+            self: (todo): write your description
+            mock_execute: (todo): write your description
+        """
         mock_execute.side_effect = processutils.ProcessExecutionError()
 
         dmi_inspector.collect_dmidecode_info(self.data, self.failures)
@@ -66,6 +93,12 @@ class TestCollectDmidecodeInfo(base.IronicAgentTest):
                                              '-t', 'processor', '-t', 'memory')
 
     def test_parse_dmi_bios(self):
+        """
+        Test if the input is bios.
+
+        Args:
+            self: (todo): write your description
+        """
         inputdata = dmi_data.BIOS_DATA[0]
         expected = dmi_data.BIOS_OUTPUT
 
@@ -73,6 +106,12 @@ class TestCollectDmidecodeInfo(base.IronicAgentTest):
         self.assertEqual(expected, ret)
 
     def test_parse_dmi_cpu(self):
+        """
+        Evaluate the cpu.
+
+        Args:
+            self: (todo): write your description
+        """
         inputdata = dmi_data.CPU_DATA[0]
         expected = dmi_data.CPU_OUTPUT
 
@@ -80,6 +119,12 @@ class TestCollectDmidecodeInfo(base.IronicAgentTest):
         self.assertEqual(expected, ret)
 
     def test_parse_dmi_memory(self):
+        """
+        !
+
+        Args:
+            self: (todo): write your description
+        """
         inputdata = dmi_data.MEMORY_DATA[0]
         expected = dmi_data.MEMORY_OUTPUT
 
@@ -87,6 +132,12 @@ class TestCollectDmidecodeInfo(base.IronicAgentTest):
         self.assertEqual(expected, ret)
 
     def test_save_data(self):
+        """
+        Save data to disk to disk.
+
+        Args:
+            self: (todo): write your description
+        """
         dmi_info = {}
         dmi_info['bios'] = {}
         dmi_info['cpu'] = []
@@ -104,6 +155,12 @@ class TestCollectDmidecodeInfo(base.IronicAgentTest):
         self.assertEqual(expected, ret)
 
     def test_save_data_error_number_of_devices(self):
+        """
+        Save data to test data_error.
+
+        Args:
+            self: (todo): write your description
+        """
         dmi_info = {}
         dmi_info['bios'] = {}
         dmi_info['cpu'] = []
@@ -117,6 +174,12 @@ class TestCollectDmidecodeInfo(base.IronicAgentTest):
                           [{'bar': 'foo'}, {'bar': 'foo'}])
 
     def test_save_data_error_handle(self):
+        """
+        Store test data to json to json
+
+        Args:
+            self: (todo): write your description
+        """
         dmi_info = {}
         dmi_info['bios'] = {}
         dmi_info['cpu'] = []

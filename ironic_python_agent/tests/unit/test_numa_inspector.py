@@ -24,6 +24,12 @@ from ironic_python_agent import utils
 
 class TestCollectNumaTopologyInfo(base.IronicAgentTest):
     def setUp(self):
+        """
+        Sets the set of jobs.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestCollectNumaTopologyInfo, self).setUp()
         self.data = {}
         self.failures = utils.AccumulatedFailures()
@@ -35,6 +41,17 @@ class TestCollectNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(os, 'listdir', autospec=True)
     def test_collect_success(self, mock_listdir, mock_isdir, mock_memory_info,
                              mock_cores_info, mock_nics_info):
+        """
+        Collect test test test information.
+
+        Args:
+            self: (todo): write your description
+            mock_listdir: (list): write your description
+            mock_isdir: (str): write your description
+            mock_memory_info: (todo): write your description
+            mock_cores_info: (todo): write your description
+            mock_nics_info: (todo): write your description
+        """
         numa_node_dirs = ['node0', 'node1']
         mock_listdir.return_value = numa_node_dirs
         mock_isdir.return_value = True
@@ -69,6 +86,13 @@ class TestCollectNumaTopologyInfo(base.IronicAgentTest):
 
     @mock.patch.object(os.path, 'isdir', autospec=True)
     def test_collect_no_numa_dirs(self, mock_isdir):
+        """
+        Collects all numa directories.
+
+        Args:
+            self: (todo): write your description
+            mock_isdir: (str): write your description
+        """
         mock_isdir.return_value = False
         numa_insp.collect_numa_topology_info(self.data, self.failures)
         self.assertNotIn("numa_topology", self.data)
@@ -81,6 +105,17 @@ class TestCollectNumaTopologyInfo(base.IronicAgentTest):
     def test_collect_no_nics_dirs(self, mock_listdir, mock_isdir,
                                   mock_memory_info, mock_cores_info,
                                   mock_nics_info):
+        """
+        Collect the number of nics in the mock.
+
+        Args:
+            self: (todo): write your description
+            mock_listdir: (list): write your description
+            mock_isdir: (str): write your description
+            mock_memory_info: (todo): write your description
+            mock_cores_info: (todo): write your description
+            mock_nics_info: (todo): write your description
+        """
         numa_node_dirs = ['node0', 'node1']
         mock_listdir.return_value = numa_node_dirs
         mock_isdir.return_value = True
@@ -103,6 +138,17 @@ class TestCollectNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(os, 'listdir', autospec=True)
     def test_collect_failure(self, mock_listdir, mock_isdir, mock_memory_info,
                              mock_cores_info, mock_nics_info):
+        """
+        Collect the number of the number of a mock.
+
+        Args:
+            self: (todo): write your description
+            mock_listdir: (list): write your description
+            mock_isdir: (str): write your description
+            mock_memory_info: (todo): write your description
+            mock_cores_info: (todo): write your description
+            mock_nics_info: (todo): write your description
+        """
         numa_node_dirs = ['node0', 'node1']
         mock_listdir.return_value = numa_node_dirs
         mock_isdir.return_value = True
@@ -116,17 +162,35 @@ class TestCollectNumaTopologyInfo(base.IronicAgentTest):
 
 class TestGetNumaTopologyInfo(base.IronicAgentTest):
     def setUp(self):
+        """
+        Sets the ontology.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestGetNumaTopologyInfo, self).setUp()
         self.data = {}
         self.failures = utils.AccumulatedFailures()
 
     def test_get_numa_node_id_valid_format(self):
+        """
+        Test if the test node id is valid.
+
+        Args:
+            self: (todo): write your description
+        """
         numa_node_dir = '/sys/devices/system/node/node0'
         expected_numa_node_id = 0
         numa_node_id = numa_insp.get_numa_node_id(numa_node_dir)
         self.assertEqual(expected_numa_node_id, numa_node_id)
 
     def test_get_numa_node_id_invalid_format(self):
+        """
+        Test if the test id for a test.
+
+        Args:
+            self: (todo): write your description
+        """
         self.assertRaises(errors.IncompatibleNumaFormatError,
                           numa_insp.get_numa_node_id,
                           '/sys/devices/system/node/node-*0')
@@ -139,6 +203,13 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
 
     @mock.patch.object(numa_insp, 'get_numa_node_id', autospec=True)
     def test_get_nodes_memory_info(self, mock_node_id):
+        """
+        Get the memory information of the mock.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (str): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/node0',
                           '/sys/devices/system/node/node1']
         mock_node_id.side_effect = [0, 1]
@@ -158,6 +229,13 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
 
     @mock.patch.object(numa_insp, 'get_numa_node_id', autospec=True)
     def test_bad_nodes_memory_info(self, mock_node_id):
+        """
+        Test if the given the mock node_node_id.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (int): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/node0',
                           '/sys/devices/system/node/node1']
         mock_node_id.side_effect = [0, 1]
@@ -173,6 +251,13 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
 
     @mock.patch.object(numa_insp, 'get_numa_node_id', autospec=True)
     def test_nodes_invalid_numa_format_memory_info(self, mock_node_id):
+        """
+        Test if the mock nodes are valid.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (str): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/node0',
                           '/sys/devices/system/node/node1']
         mock_node_id.side_effect = [0, 1]
@@ -189,6 +274,13 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
 
     @mock.patch.object(numa_insp, 'get_numa_node_id', autospec=True)
     def test_nodes_invalid_memory_unit(self, mock_node_id):
+        """
+        Test if the unit of nodes exist.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (str): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/node0',
                           '/sys/devices/system/node/node1']
         mock_node_id.side_effect = [0, 1]
@@ -206,6 +298,13 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(numa_insp, 'get_numa_node_id', autospec=True)
     def test_get_numa_node_id_invalid_format_memory_info(self,
                                                          mock_node_id):
+        """
+        Test if the node information to test for the test.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (str): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/node-*0',
                           '/sys/devices/system/node/node1']
         mock_node_id.side_effect = errors.IncompatibleNumaFormatError
@@ -218,6 +317,15 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(numa_insp, 'get_numa_node_id', autospec=True)
     def test_get_nodes_cores_info(self, mock_node_id,
                                   mock_listdir, mock_isdir):
+        """
+        Return information about the number of the mock.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (int): write your description
+            mock_listdir: (list): write your description
+            mock_isdir: (str): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/node0',
                           '/sys/devices/system/node/node1']
         mock_node_id.side_effect = [0, 1]
@@ -246,6 +354,15 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(numa_insp, 'get_numa_node_id', autospec=True)
     def test_bad_nodes_cores_info(self, mock_node_id,
                                   mock_listdir, mock_isdir):
+        """
+        Return a list of bad bad bad nodes for a mock node.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (str): write your description
+            mock_listdir: (list): write your description
+            mock_isdir: (str): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/node0']
         mock_node_id.return_value = 0
         thread_dirs = ['cpu0', 'cpu1', 'cpu2', 'cpu3', 'cpu4', 'cpu5']
@@ -263,6 +380,13 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(numa_insp, 'get_numa_node_id', autospec=True)
     def test_get_numa_node_id_invalid_format_cores_info(self,
                                                         mock_node_id):
+        """
+        Get the number of nodes that have been sent.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (str): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/nodeid0']
         mock_node_id.side_effect = errors.IncompatibleNumaFormatError
         self.assertRaises(errors.IncompatibleNumaFormatError,
@@ -275,6 +399,15 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
     def test_nodes_invalid_threaddir_format_cores_info(self, mock_node_id,
                                                        mock_listdir,
                                                        mock_isdir):
+        """
+        Return a list of nodes that have been run on a mock.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (int): write your description
+            mock_listdir: (list): write your description
+            mock_isdir: (str): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/node0']
         mock_node_id.return_value = 0
         thread_dirs = ['cpuid0', 'cpu1', 'cpu2', 'cpu3', 'cpu4', 'cpu5']
@@ -294,6 +427,15 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(numa_insp, 'get_numa_node_id', autospec=True)
     def test_bad_nodes_thread_dirs(self, mock_node_id,
                                    mock_listdir, mock_isdir):
+        """
+        Returns a list of nodes in the given node.
+
+        Args:
+            self: (todo): write your description
+            mock_node_id: (int): write your description
+            mock_listdir: (list): write your description
+            mock_isdir: (str): write your description
+        """
         numa_node_dirs = ['/sys/devices/system/node/node0']
         mock_node_id.return_value = 0
         mock_listdir.side_effect = errors.IncompatibleNumaFormatError("")
@@ -305,6 +447,14 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(os.path, 'isfile', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     def test_get_nodes_nics_info(self, mock_listdir, mock_isfile):
+        """
+        Return a dictionary of nics nics.
+
+        Args:
+            self: (todo): write your description
+            mock_listdir: (list): write your description
+            mock_isfile: (str): write your description
+        """
         nic_dirs = ['enp0s01', 'enp0s02']
         mock_listdir.return_value = nic_dirs
         mock_isfile.return_value = True
@@ -321,6 +471,14 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(os.path, 'isfile', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     def test_bad_nodes_nics_info(self, mock_listdir, mock_isfile):
+        """
+        Return a list of a mock nodes.
+
+        Args:
+            self: (todo): write your description
+            mock_listdir: (list): write your description
+            mock_isfile: (str): write your description
+        """
         nic_dirs = ['enp0s01', 'enp0s02']
         mock_listdir.return_value = nic_dirs
         mock_isfile.return_value = True
@@ -336,6 +494,14 @@ class TestGetNumaTopologyInfo(base.IronicAgentTest):
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True)
     def test_no_nics_dir(self, mock_isdir, mock_listdir):
+        """
+        Test if nics nics nics exist in the mock.
+
+        Args:
+            self: (todo): write your description
+            mock_isdir: (str): write your description
+            mock_listdir: (list): write your description
+        """
         mock_isdir.return_value = False
         nic_dirs = ['enp0s01', 'enp0s02']
         mock_listdir.return_value = nic_dirs

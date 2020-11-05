@@ -60,6 +60,12 @@ class BaseCommandResult(encoding.SerializableComparable):
         self.command_result = None
 
     def __str__(self):
+        """
+        Returns a string representation of the device.
+
+        Args:
+            self: (todo): write your description
+        """
         return ("Command name: %(name)s, "
                 "params: %(params)s, status: %(status)s, result: "
                 "%(result)s." %
@@ -204,6 +210,13 @@ class AsyncCommandResult(BaseCommandResult):
 
 class BaseAgentExtension(object):
     def __init__(self, agent=None):
+        """
+        Initialize the agent.
+
+        Args:
+            self: (todo): write your description
+            agent: (str): write your description
+        """
         super(BaseAgentExtension, self).__init__()
         self.agent = agent
         self.command_map = dict(
@@ -213,6 +226,13 @@ class BaseAgentExtension(object):
         )
 
     def execute(self, command_name, **kwargs):
+        """
+        Execute a command.
+
+        Args:
+            self: (todo): write your description
+            command_name: (str): write your description
+        """
         cmd = self.command_map.get(command_name)
         if cmd is None:
             raise errors.InvalidCommandError(
@@ -220,6 +240,15 @@ class BaseAgentExtension(object):
         return cmd(**kwargs)
 
     def check_cmd_presence(self, ext_obj, ext, cmd):
+        """
+        Check if the presence of the given ext_obj.
+
+        Args:
+            self: (todo): write your description
+            ext_obj: (todo): write your description
+            ext: (str): write your description
+            cmd: (str): write your description
+        """
         if not (hasattr(ext_obj, 'execute') and hasattr(ext_obj, 'command_map')
                 and cmd in ext_obj.command_map):
             raise errors.InvalidCommandParamsError(
@@ -228,11 +257,24 @@ class BaseAgentExtension(object):
 
 class ExecuteCommandMixin(object):
     def __init__(self):
+        """
+        Initialize the command
+
+        Args:
+            self: (todo): write your description
+        """
         self.command_lock = threading.Lock()
         self.command_results = collections.OrderedDict()
         self.ext_mgr = None
 
     def get_extension(self, extension_name):
+        """
+        Get the extension of the given extension.
+
+        Args:
+            self: (todo): write your description
+            extension_name: (str): write your description
+        """
         if self.ext_mgr is None:
             raise errors.ExtensionError('Extension manager is not initialized')
         ext = self.ext_mgr[extension_name].obj
@@ -240,6 +282,13 @@ class ExecuteCommandMixin(object):
         return ext
 
     def split_command(self, command_name):
+        """
+        Splits command name into the given command_name.
+
+        Args:
+            self: (todo): write your description
+            command_name: (str): write your description
+        """
         command_parts = command_name.split('.', 1)
         if len(command_parts) != 2:
             raise errors.InvalidCommandError(
@@ -294,10 +343,23 @@ def async_command(command_name, validator=None):
     `command_name` parameter when returned for consistency.
     """
     def async_decorator(func):
+        """
+        Decorator that adds a command to a command.
+
+        Args:
+            func: (todo): write your description
+        """
         func.command_name = command_name
 
         @functools.wraps(func)
         def wrapper(self, **command_params):
+            """
+            Execute a command.
+
+            Args:
+                self: (todo): write your description
+                command_params: (dict): write your description
+            """
             # Run a validator before passing everything off to async.
             # validators should raise exceptions or return silently.
             if validator:
@@ -326,10 +388,23 @@ def sync_command(command_name, validator=None):
     command can also choose to implement validation inline.
     """
     def sync_decorator(func):
+        """
+        Decorator to add a command to the command.
+
+        Args:
+            func: (todo): write your description
+        """
         func.command_name = command_name
 
         @functools.wraps(func)
         def wrapper(self, **command_params):
+            """
+            Wrapper around a command.
+
+            Args:
+                self: (todo): write your description
+                command_params: (dict): write your description
+            """
             # Run a validator before invoking the function.
             # validators should raise exceptions or return silently.
             if validator:
@@ -352,6 +427,12 @@ _EXT_MANAGER = None
 
 
 def init_ext_manager(agent):
+    """
+    Initialize the manager manager.
+
+    Args:
+        agent: (str): write your description
+    """
     global _EXT_MANAGER
     _EXT_MANAGER = extension.ExtensionManager(
         namespace='ironic_python_agent.extensions',
@@ -363,6 +444,12 @@ def init_ext_manager(agent):
 
 
 def get_extension(name):
+    """
+    Get the extension of the given extension.
+
+    Args:
+        name: (str): write your description
+    """
     if _EXT_MANAGER is None:
         raise errors.ExtensionError('Extension manager is not initialized')
     ext = _EXT_MANAGER[name].obj

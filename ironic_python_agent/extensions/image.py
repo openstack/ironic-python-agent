@@ -139,6 +139,12 @@ def _get_partition(device, uuid):
 
 
 def _has_dracut(root):
+    """
+    Check if the status is_dr exists
+
+    Args:
+        root: (str): write your description
+    """
     try:
         utils.execute('chroot %(path)s /bin/sh -c '
                       '"which dracut"' %

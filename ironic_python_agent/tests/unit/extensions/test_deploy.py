@@ -20,6 +20,12 @@ from ironic_python_agent.tests.unit import base
 @mock.patch('ironic_python_agent.hardware.cache_node', autospec=True)
 class TestDeployExtension(base.IronicAgentTest):
     def setUp(self):
+        """
+        Sets the extension of the extension.
+
+        Args:
+            self: (todo): write your description
+        """
         super(TestDeployExtension, self).setUp()
         self.agent_extension = deploy.DeployExtension()
         self.node = {'uuid': 'dda135fb-732d-4742-8e72-df8f3199d244'}
@@ -38,6 +44,15 @@ class TestDeployExtension(base.IronicAgentTest):
                 autospec=True)
     def test_get_deploy_steps(self, mock_dispatch, mock_version,
                               mock_cache_node):
+        """
+        Gets the lock on the minion.
+
+        Args:
+            self: (todo): write your description
+            mock_dispatch: (str): write your description
+            mock_version: (str): write your description
+            mock_cache_node: (todo): write your description
+        """
         mock_version.return_value = self.version
 
         manager_steps = {
@@ -143,6 +158,15 @@ class TestDeployExtension(base.IronicAgentTest):
                 autospec=True)
     def test_execute_deploy_step(self, mock_version, mock_dispatch,
                                  mock_cache_node):
+        """
+        Execute a single mock command.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_dispatch: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         result = 'deployed'
         mock_dispatch.return_value = result
 
@@ -169,6 +193,15 @@ class TestDeployExtension(base.IronicAgentTest):
                 autospec=True)
     def test_execute_deploy_step_with_args(self, mock_version, mock_dispatch,
                                            mock_cache_node):
+        """
+        Executes the mock command on the mock.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_dispatch: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         result = 'deployed'
         mock_dispatch.return_value = result
 
@@ -197,6 +230,15 @@ class TestDeployExtension(base.IronicAgentTest):
                 autospec=True)
     def test_execute_deploy_step_tuple_result(self, mock_version,
                                               mock_dispatch, mock_cache_node):
+        """
+        Execute the mock version of the mock.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_dispatch: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         result = ('stdout', 'stderr')
         mock_dispatch.return_value = result
 
@@ -220,6 +262,14 @@ class TestDeployExtension(base.IronicAgentTest):
     @mock.patch('ironic_python_agent.hardware.check_versions',
                 autospec=True)
     def test_execute_deploy_step_no_step(self, mock_version, mock_cache_node):
+        """
+        Executes the mock version of the mock.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         async_result = self.agent_extension.execute_deploy_step(
             step={}, node=self.node, ports=self.ports,
             deploy_version=self.version)
@@ -235,6 +285,15 @@ class TestDeployExtension(base.IronicAgentTest):
                 autospec=True)
     def test_execute_deploy_step_fail(self, mock_version, mock_dispatch,
                                       mock_cache_node):
+        """
+        Executes the mock exist.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_dispatch: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         mock_dispatch.side_effect = RuntimeError
 
         async_result = self.agent_extension.execute_deploy_step(
@@ -257,6 +316,15 @@ class TestDeployExtension(base.IronicAgentTest):
     def test_execute_deploy_step_version_mismatch(self, mock_version,
                                                   mock_dispatch,
                                                   mock_cache_node):
+        """
+        Executes the mock version of the mock version.
+
+        Args:
+            self: (todo): write your description
+            mock_version: (todo): write your description
+            mock_dispatch: (todo): write your description
+            mock_cache_node: (todo): write your description
+        """
         mock_version.side_effect = errors.VersionMismatch(
             {'GenericHardwareManager': 1}, {'GenericHardwareManager': 2})
 

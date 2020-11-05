@@ -247,6 +247,14 @@ class AccumulatedFailures(object):
     """Object to accumulate failures without raising exception."""
 
     def __init__(self, exc_class=RuntimeError):
+        """
+        Initialize the exception.
+
+        Args:
+            self: (todo): write your description
+            exc_class: (todo): write your description
+            RuntimeError: (int): write your description
+        """
         self._failures = []
         self._exc_class = exc_class
 
@@ -279,11 +287,23 @@ class AccumulatedFailures(object):
             raise self._exc_class(self.get_error())
 
     def __nonzero__(self):
+        """
+        Returns a boolean indicating whether the non - zero zero or none.
+
+        Args:
+            self: (todo): write your description
+        """
         return bool(self._failures)
 
     __bool__ = __nonzero__
 
     def __repr__(self):  # pragma: no cover
+        """
+        Return a human - readable representation of this object.
+
+        Args:
+            self: (todo): write your description
+        """
         # This is for tests
         if self:
             return '<%s: %s>' % (self.__class__.__name__,
@@ -408,6 +428,14 @@ def collect_system_logs(journald_max_lines=None):
     LOG.info('Collecting system logs and debugging information')
 
     def try_get_command_output(io_dict, file_name, command):
+        """
+        Try to get command output.
+
+        Args:
+            io_dict: (todo): write your description
+            file_name: (str): write your description
+            command: (str): write your description
+        """
         try:
             io_dict[file_name] = get_command_output(command)
         except errors.CommandExecutionError:
