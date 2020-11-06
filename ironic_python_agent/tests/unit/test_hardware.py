@@ -1697,6 +1697,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(3952 * 1024 * 1024, mem.total)
         self.assertEqual(3952, mem.physical_mb)
 
+    @mock.patch('psutil.virtual_memory', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_memory_lshw_list(self, mocked_execute, mocked_psutil):
+        mocked_psutil.return_value.total = 3952 * 1024 * 1024
+        mocked_execute.return_value = (f"[{LSHW_JSON_OUTPUT_V2[0]}]", "")
+        mem = self.hardware.get_memory()
+
+        self.assertEqual(3952 * 1024 * 1024, mem.total)
+        self.assertEqual(65536, mem.physical_mb)
+
     @mock.patch('ironic_python_agent.netutils.get_hostname', autospec=True)
     def test_list_hardware_info(self, mocked_get_hostname):
         self.hardware.list_network_interfaces = mock.Mock()
