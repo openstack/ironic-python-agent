@@ -1109,7 +1109,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
                               self.fake_dev)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
@@ -1133,7 +1133,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
                               self.fake_dev)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
@@ -1156,7 +1156,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
                               self.fake_dev),
                     mock.call('findfs', 'UUID=%s' % self.fake_root_uuid),
                     mock.call('findfs', 'PARTUUID=%s' % self.fake_root_uuid)]
@@ -1176,7 +1176,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
                               self.fake_dev)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
@@ -1184,6 +1184,26 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     def test__get_partition_partuuid(self, mock_is_md_device, mock_execute,
                                      mock_dispatch):
+        mock_is_md_device.side_effect = [False, False]
+        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
+        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
+        KNAME="test2" UUID="903e7bf9-8a13-4f7f-811b-25dc16faf6f7" TYPE="part" \
+                      LABEL="%s"''' % self.fake_root_uuid)
+        mock_execute.side_effect = (None, None, [lsblk_output])
+
+        root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
+        self.assertEqual('/dev/test2', root_part)
+        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
+                              self.fake_dev)]
+        mock_execute.assert_has_calls(expected)
+        self.assertFalse(mock_dispatch.called)
+
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    def test__get_partition_label(self, mock_is_md_device, mock_execute,
+                                  mock_dispatch):
         mock_is_md_device.side_effect = [False, False]
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
@@ -1195,7 +1215,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
                               self.fake_dev)]
         mock_execute.assert_has_calls(expected)
         self.assertFalse(mock_dispatch.called)
