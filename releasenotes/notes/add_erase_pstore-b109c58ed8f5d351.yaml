@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Adds a clean step to erase the Linux kernel's pstore. The step is disabled
+    by default.
+security:
+  - |
+    If enabled, the new clean step 'erase_pstore' removes all pstore entries
+    (the oops/panic logs from a failing kernel) upon cleaning. This is to
+    reduce the risk that potentially sensitive data is preserved across
+    instantiations (and therefore different users) of a bare metal node.

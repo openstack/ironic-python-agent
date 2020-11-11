@@ -22,6 +22,7 @@ from multiprocessing.pool import ThreadPool
 import os
 import re
 import shlex
+import shutil
 import time
 
 from ironic_lib import disk_utils
@@ -1314,6 +1315,37 @@ class GenericHardwareManager(HardwareManager):
                                     for k, v in erase_errors.items()]))
             raise errors.BlockDeviceEraseError(excpt_msg)
 
+    def _find_pstore_mount_point(self):
+        """Find the pstore mount point by scanning /proc/mounts.
+
+        :returns: The pstore mount if existing, none otherwise.
+        """
+        with open("/proc/mounts", "r") as mounts:
+            for line in mounts:
+                # /proc/mounts format is: "device mountpoint fstype ..."
+                m = re.match(r'^pstore (\S+) pstore', line)
+                if m:
+                    return m.group(1)
+
+    def erase_pstore(self, node, ports):
+        """Attempt to erase the kernel pstore.
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        """
+        pstore_path = self._find_pstore_mount_point()
+        if not pstore_path:
+            LOG.debug("No pstore found")
+            return
+
+        LOG.info("Cleaning up pstore in %s", pstore_path)
+        for file in os.listdir(pstore_path):
+            filepath = os.path.join(pstore_path, file)
+            try:
+                shutil.rmtree(filepath)
+            except OSError:
+                os.remove(filepath)
+
     def _shred_block_device(self, node, block_device):
         """Erase a block device using shred.
 
@@ -1676,6 +1708,13 @@ class GenericHardwareManager(HardwareManager):
             {
                 'step': 'erase_devices_metadata',
                 'priority': 99,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'erase_pstore',
+                'priority': 0,
                 'interface': 'deploy',
                 'reboot_requested': False,
                 'abortable': True
