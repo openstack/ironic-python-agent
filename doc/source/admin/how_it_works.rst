@@ -184,8 +184,8 @@ fields:
 ``disks``
     list of disk block devices with fields: ``name``, ``model``,
     ``size`` (in bytes), ``rotational`` (boolean), ``wwn``, ``serial``,
-    ``vendor``, ``wwn_with_extension``, ``wwn_vendor_extension``, ``hctl``
-    and ``by_path`` (the full disk path, in the form
+    ``uuid``, ``vendor``, ``wwn_with_extension``, ``wwn_vendor_extension``,
+    ``hctl`` and ``by_path`` (the full disk path, in the form
     ``/dev/disk/by-path/<rest-of-path>``).
 
 ``interfaces``

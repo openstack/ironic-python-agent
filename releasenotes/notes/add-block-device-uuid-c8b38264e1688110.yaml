@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adds UUID of the disks to the inventory of block devices that is
+    collected during inspection.

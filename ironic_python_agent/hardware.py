@@ -416,7 +416,7 @@ def list_all_block_devices(block_type='disk',
                     "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
 
     # NOTE(dtantsur): keep in sync with utils.LSBLK_COLUMNS
-    columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE']
+    columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE', 'UUID']
     report = utils.execute('lsblk', '-Pbia', '-o{}'.format(','.join(columns)),
                            check_exit_code=[0])[0]
     lines = report.splitlines()
@@ -534,6 +534,7 @@ def list_all_block_devices(block_type='disk',
                                    vendor=_get_device_info(device['KNAME'],
                                                            'block', 'vendor'),
                                    by_path=by_path_name,
+                                   uuid=device['UUID'],
                                    **extra))
     return devices
 
@@ -600,11 +601,13 @@ class BlockDevice(encoding.SerializableComparable):
 
     def __init__(self, name, model, size, rotational, wwn=None, serial=None,
                  vendor=None, wwn_with_extension=None,
-                 wwn_vendor_extension=None, hctl=None, by_path=None):
+                 wwn_vendor_extension=None, hctl=None, by_path=None,
+                 uuid=None):
         self.name = name
         self.model = model
         self.size = size
         self.rotational = rotational
+        self.uuid = uuid
         self.wwn = wwn
         self.serial = serial
         self.vendor = vendor
