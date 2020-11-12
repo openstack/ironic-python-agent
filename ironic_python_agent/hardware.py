@@ -2425,6 +2425,10 @@ def cache_node(node):
     expected root device to appear.
 
     :param node: Ironic node object
+    :param wait_for_disks: Default True switch to wait for disk setup to be
+                           completed so the node information can be aligned
+                           with the physical storage devices of the host.
+                           This is likely to be used in unit testing.
     """
     global NODE
     new_node = NODE is None or NODE['uuid'] != node['uuid']

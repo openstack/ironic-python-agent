@@ -25,6 +25,7 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import standby
 from ironic_python_agent import hardware
 from ironic_python_agent.tests.unit import base
+from ironic_python_agent import utils
 
 
 def _build_fake_image_info(url='http://example.org'):
@@ -66,6 +67,11 @@ class TestStandbyExtension(base.IronicAgentTest):
                                      count=1,
                                      architecture='generic',
                                      flags='')
+        with mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                        autospec=True):
+            hardware.cache_node(
+                {'uuid': '1-2-3-4',
+                 'instance_info': {}})
 
     def test_validate_image_info_success(self):
         standby._validate_image_info(None, _build_fake_image_info())
@@ -1357,6 +1363,58 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.agent_extension.partition_uuids = {'1': '2'}
         result = self.agent_extension.get_partition_uuids()
         self.assertEqual({'1': '2'}, result.serialize()['command_result'])
+
+    @mock.patch.object(utils, 'get_partition_table_type_from_specs',
+                       lambda self: 'gpt')
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
+    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
+    def test_write_partition_image_no_node_uuid_uefi(
+            self, work_on_disk_mock,
+            image_mb_mock,
+            execute_mock, open_mock,
+            dispatch_mock):
+        image_info = _build_fake_partition_image_info()
+        image_info['node_uuid'] = None
+        device = '/dev/sda'
+        root_mb = image_info['root_mb']
+        swap_mb = image_info['swap_mb']
+        ephemeral_mb = image_info['ephemeral_mb']
+        ephemeral_format = image_info['ephemeral_format']
+        node_uuid = image_info['node_uuid']
+        pr_ep = image_info['preserve_ephemeral']
+        configdrive = image_info['configdrive']
+        boot_mode = image_info['deploy_boot_mode']
+        boot_option = image_info['boot_option']
+        cpu_arch = self.fake_cpu.architecture
+
+        image_path = standby._image_location(image_info)
+
+        image_mb_mock.return_value = 1
+        dispatch_mock.return_value = self.fake_cpu
+        uuids = {'root uuid': 'root_uuid'}
+        expected_uuid = {'root uuid': 'root_uuid'}
+        image_mb_mock.return_value = 1
+        work_on_disk_mock.return_value = uuids
+
+        standby._write_image(image_info, device)
+        image_mb_mock.assert_called_once_with(image_path)
+        work_on_disk_mock.assert_called_once_with(device, root_mb, swap_mb,
+                                                  ephemeral_mb,
+                                                  ephemeral_format,
+                                                  image_path,
+                                                  node_uuid,
+                                                  configdrive=configdrive,
+                                                  preserve_ephemeral=pr_ep,
+                                                  boot_mode=boot_mode,
+                                                  boot_option=boot_option,
+                                                  disk_label='gpt',
+                                                  cpu_arch=cpu_arch)
+
+        self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
+        self.assertIsNone(node_uuid)
 
 
 @mock.patch('hashlib.md5', autospec=True)
