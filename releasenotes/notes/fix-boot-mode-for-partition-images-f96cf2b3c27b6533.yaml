@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes issue where the running system operating mode was not taken into
+    account when writing partition images. The agent now utilises a helper
+    instead of explicitly expecting the flavor derived information to
+    supply all deployment context.

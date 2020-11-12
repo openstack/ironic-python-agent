@@ -160,7 +160,7 @@ def _write_partition_image(image, image_info, device):
     preserve_ep = image_info['preserve_ephemeral']
     configdrive = image_info['configdrive']
     boot_option = image_info.get('boot_option', 'local')
-    boot_mode = image_info.get('deploy_boot_mode', 'bios')
+    boot_mode = utils.get_node_boot_mode(cached_node)
     disk_label = utils.get_partition_table_type_from_specs(cached_node)
     root_mb = image_info['root_mb']
 

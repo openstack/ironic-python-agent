@@ -1364,6 +1364,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         result = self.agent_extension.get_partition_uuids()
         self.assertEqual({'1': '2'}, result.serialize()['command_result'])
 
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda self: 'uefi')
     @mock.patch.object(utils, 'get_partition_table_type_from_specs',
                        lambda self: 'gpt')
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
@@ -1386,7 +1387,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
         configdrive = image_info['configdrive']
-        boot_mode = image_info['deploy_boot_mode']
         boot_option = image_info['boot_option']
         cpu_arch = self.fake_cpu.architecture
 
@@ -1408,7 +1408,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   node_uuid,
                                                   configdrive=configdrive,
                                                   preserve_ephemeral=pr_ep,
-                                                  boot_mode=boot_mode,
+                                                  boot_mode='uefi',
                                                   boot_option=boot_option,
                                                   disk_label='gpt',
                                                   cpu_arch=cpu_arch)
