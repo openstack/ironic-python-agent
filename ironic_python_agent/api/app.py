@@ -16,7 +16,6 @@ import json
 
 from ironic_lib import metrics_utils
 from oslo_log import log
-from oslo_service import sslutils
 from oslo_service import wsgi
 import werkzeug
 from werkzeug import exceptions as http_exc
@@ -130,7 +129,6 @@ class Application(object):
     def start(self, tls_cert_file=None, tls_key_file=None):
         """Start the API service in the background."""
         if tls_cert_file and tls_key_file:
-            sslutils.register_opts(self._conf)
             self._conf.set_override('cert_file', tls_cert_file, group='ssl')
             self._conf.set_override('key_file', tls_key_file, group='ssl')
             use_tls = True

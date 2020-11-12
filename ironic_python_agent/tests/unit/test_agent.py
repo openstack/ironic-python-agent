@@ -20,6 +20,7 @@ from ironic_lib import exception as lib_exc
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from oslo_service import sslutils
 import pkg_resources
 from stevedore import extension
 
@@ -837,6 +838,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 
     def setUp(self):
         super(TestAgentStandalone, self).setUp()
+        sslutils.register_opts(CONF)
         self.agent = agent.IronicPythonAgent('https://fake_api.example.'
                                              'org:8081/',
                                              agent.Host(hostname='203.0.113.1',

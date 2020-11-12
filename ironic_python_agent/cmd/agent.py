@@ -16,6 +16,7 @@ import sys
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_service import sslutils
 from oslo_utils import strutils
 
 from ironic_python_agent import agent
@@ -34,6 +35,13 @@ def run():
         ipa_debug = strutils.bool_from_string(ipa_debug)
         CONF.set_override('debug', ipa_debug)
     log.setup(CONF, 'ironic-python-agent')
+    # Used for TLS configuration
+    sslutils.register_opts(CONF)
+
+    logger = log.getLogger(__name__)
+    logger.debug("Configuration:")
+    CONF.log_opt_values(logger, log.DEBUG)
+
     agent.IronicPythonAgent(CONF.api_url,
                             agent.Host(hostname=CONF.advertise_host,
                                        port=CONF.advertise_port),
