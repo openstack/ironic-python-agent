@@ -97,7 +97,12 @@ def _get_system_lshw_dict():
     :return: A python dict from the lshw json output
     """
     out, _e = utils.execute('lshw', '-quiet', '-json', log_stdout=False)
-    return json.loads(out)
+    out = json.loads(out)
+    # Depending on lshw version, output might be a list, starting with
+    # https://github.com/lyonel/lshw/commit/135a853c60582b14c5b67e5cd988a8062d9896f4  # noqa
+    if isinstance(out, list):
+        return out[0]
+    return out
 
 
 def _udev_settle():
@@ -1143,10 +1148,6 @@ class GenericHardwareManager(HardwareManager):
             LOG.warning('Could not get real physical RAM from lshw: %s', e)
             physical = None
         else:
-            # Depending on lshw version, output might be a list, starting with
-            # https://github.com/lyonel/lshw/commit/135a853c60582b14c5b67e5cd988a8062d9896f4  # noqa
-            if isinstance(sys_dict, list):
-                sys_dict = sys_dict[0]
             physical = _calc_memory(sys_dict)
 
             if not physical:

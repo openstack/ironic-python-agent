@@ -4391,6 +4391,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('GENERIC', vendor_info.manufacturer)
 
     @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_system_vendor_info_lshw_list(self, mocked_execute):
+        mocked_execute.return_value = (f"[{LSHW_JSON_OUTPUT_V2[0]}]", "")
+        vendor_info = self.hardware.get_system_vendor_info()
+        self.assertEqual('ABCD', vendor_info.product_name)
+        self.assertEqual('1234', vendor_info.serial_number)
+        self.assertEqual('ABCD', vendor_info.manufacturer)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_system_vendor_info_failure(self, mocked_execute):
         mocked_execute.side_effect = processutils.ProcessExecutionError()
         vendor_info = self.hardware.get_system_vendor_info()
