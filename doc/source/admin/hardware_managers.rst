@@ -35,6 +35,9 @@ Clean steps
 ``deploy.erase_devices_metadata``
     Erases partition tables from all recognized disk devices. Can be used as
     an alternative to the much longer ``erase_devices`` step.
+``deploy.erase_pstore``
+    Erases entries from pstore, the kernel's oops/panic logger. Disabled by
+    default. Can be enabled via priority overrides.
 ``raid.create_configuration``
     Create a RAID configuration. This step belongs to the ``raid`` interface
     and must be used through the :ironic-doc:`ironic RAID feature

@@ -14,6 +14,7 @@
 
 import binascii
 import os
+import shutil
 import time
 from unittest import mock
 
@@ -859,6 +860,24 @@ MDADM_EXAMINE_OUTPUT_NON_MEMBER = ("""/dev/sdz1:
 """)
 
 
+PROC_MOUNTS_OUTPUT = ("""
+debugfs /sys/kernel/debug debugfs rw,relatime 0 0
+/dev/sda2 / ext4 rw,relatime,errors=remount-ro 0 0
+tmpfs /run/user/1000 tmpfs rw,nosuid,nodev,relatime  0 0
+pstore /sys/fs/pstore pstore rw,nosuid,nodev,noexec,relatime 0 0
+/dev/loop19 /snap/core/10126 squashfs ro,nodev,relatime 0 0
+""")
+
+
+PROC_MOUNTS_OUTPUT_NO_PSTORE = ("""
+debugfs /sys/kernel/debug debugfs rw,relatime 0 0
+/dev/sda2 / ext4 rw,relatime,errors=remount-ro 0 0
+tmpfs /run/user/1000 tmpfs rw,nosuid,nodev,relatime  0 0
+pstore /sys/fs/pstore qstore rw,nosuid,nodev,noexec,relatime 0 0
+/dev/loop19 /snap/core/10126 squashfs ro,nodev,relatime 0 0
+""")
+
+
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
         self._hardware_support = hardware_support
@@ -917,6 +936,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             {
                 'step': 'erase_devices_metadata',
                 'priority': 99,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'erase_pstore',
+                'priority': 0,
                 'interface': 'deploy',
                 'reboot_requested': False,
                 'abortable': True
@@ -2630,6 +2656,44 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             self, True, '--security-erase-enhanced')
         test_security_erase_option(
             self, False, '--security-erase')
+
+    def test__find_pstore_mount_point(self):
+        with mock.patch('builtins.open',
+                        mock.mock_open(),
+                        create=True) as mocked_open:
+            mocked_open.return_value.__iter__ = \
+                lambda self: iter(PROC_MOUNTS_OUTPUT.splitlines())
+
+            self.assertEqual(self.hardware._find_pstore_mount_point(),
+                             "/sys/fs/pstore")
+            mocked_open.assert_called_once_with('/proc/mounts', 'r')
+
+    def test__find_pstore_mount_point_no_pstore(self):
+        with mock.patch('builtins.open',
+                        mock.mock_open(),
+                        create=True) as mocked_open:
+            mocked_open.return_value.__iter__.return_value = \
+                PROC_MOUNTS_OUTPUT_NO_PSTORE.splitlines()
+            self.assertIsNone(self.hardware._find_pstore_mount_point())
+            mocked_open.assert_called_once_with('/proc/mounts', 'r')
+
+    @mock.patch('os.listdir', autospec=True)
+    @mock.patch.object(shutil, 'rmtree', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_find_pstore_mount_point', autospec=True)
+    def test_erase_pstore(self, mocked_find_pstore, mocked_rmtree,
+                          mocked_listdir):
+        mocked_find_pstore.return_value = '/sys/fs/pstore'
+        pstore_entries = ['dmesg-erst-663482778',
+                          'dmesg-erst-663482779']
+        mocked_listdir.return_value = pstore_entries
+        self.hardware.erase_pstore(self.node, [])
+        mocked_listdir.assert_called_once()
+        self.assertEqual(mocked_rmtree.call_count,
+                         len(pstore_entries))
+        mocked_rmtree.assert_has_calls([
+            mock.call('/sys/fs/pstore/' + arg) for arg in pstore_entries
+        ])
 
     @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
