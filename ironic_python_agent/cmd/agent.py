@@ -21,12 +21,17 @@ from oslo_utils import strutils
 
 from ironic_python_agent import agent
 from ironic_python_agent import config
+from ironic_python_agent import utils
 
 CONF = cfg.CONF
 
 
 def run():
     """Entrypoint for IronicPythonAgent."""
+    # NOTE(dtantsur): this must happen very early of the files from
+    # /etc/ironic-python-agent.d won't be loaded
+    utils.copy_config_from_vmedia()
+
     log.register_options(CONF)
     CONF(args=sys.argv[1:])
     # Debug option comes from oslo.log, allow overriding it via kernel cmdline
