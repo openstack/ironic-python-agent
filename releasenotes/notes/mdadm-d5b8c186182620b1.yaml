@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The ``mdadm`` utility is no longer a hard requirement. It's still required
+    if software RAID is used (even when not managed by ironic).
