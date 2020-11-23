@@ -311,6 +311,10 @@ def is_md_device(raid_device):
         utils.execute('mdadm', '--detail', raid_device)
         LOG.debug("%s is an md device", raid_device)
         return True
+    except FileNotFoundError:
+        LOG.debug('mdadm has not been found, assuming %s is not an md device',
+                  raid_device)
+        return False
     except processutils.ProcessExecutionError:
         LOG.debug("%s is not an md device", raid_device)
         return False
@@ -362,6 +366,9 @@ def _md_scan_and_assemble():
     """
     try:
         utils.execute('mdadm', '--assemble', '--scan', '--verbose')
+    except FileNotFoundError:
+        LOG.warning('mdadm has not been found, RAID devices will not be '
+                    'supported')
     except processutils.ProcessExecutionError:
         LOG.info('No new RAID devices assembled during start-up')
 
