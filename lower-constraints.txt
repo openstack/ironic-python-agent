@@ -1,7 +1,6 @@
 alabaster==0.7.10
 appdirs==1.4.3
 Babel==2.5.3
-bandit==1.1.0
 bashate==0.5.1
 certifi==2018.1.18
 cffi==1.14.0
@@ -16,13 +15,10 @@ eventlet==0.18.2
 extras==1.0.0
 fasteners==0.14.1
 fixtures==3.0.0
-flake8==2.5.5
-flake8-import-order==0.17.1
 future==0.16.0
 gitdb==4.0.4
 GitPython==3.1.1
 greenlet==0.4.15
-hacking==3.1.0
 ifaddr==0.1.6
 imagesize==1.0.0
 ironic-lib==4.1.0
@@ -31,7 +27,6 @@ Jinja2==2.10
 keystoneauth1==3.4.0
 linecache2==1.0.0
 MarkupSafe==1.1.1
-mccabe==0.2.1
 monotonic==1.4
 mox3==0.25.0
 msgpack-python==0.5.6
@@ -51,12 +46,9 @@ oslotest==3.2.0
 Paste==2.0.3
 PasteDeploy==1.5.2
 pbr==2.0.0
-pep8==1.5.7
 Pint==0.5
 psutil==3.2.2
-pycodestyle==2.3.1
 pycparser==2.18
-pyflakes==0.8.1
 Pygments==2.2.0
 pyinotify==0.9.6
 pyparsing==2.2.0
