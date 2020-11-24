@@ -21,6 +21,7 @@ import stat
 import tempfile
 
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_log import log
 
 from ironic_python_agent import errors
@@ -31,6 +32,7 @@ from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)
 
+CONF = cfg.CONF
 
 BIND_MOUNTS = ('/dev', '/proc', '/run')
 
@@ -540,7 +542,8 @@ class ImageExtension(base.BaseAgentExtension):
 
     @base.sync_command('install_bootloader')
     def install_bootloader(self, root_uuid, efi_system_part_uuid=None,
-                           prep_boot_part_uuid=None):
+                           prep_boot_part_uuid=None,
+                           ignore_bootloader_failure=None):
         """Install the GRUB2 bootloader on the image.
 
         :param root_uuid: The UUID of the root partition.
@@ -558,6 +561,13 @@ class ImageExtension(base.BaseAgentExtension):
         device = hardware.dispatch_to_managers('get_os_install_device')
         if self.agent.iscsi_started:
             iscsi.clean_up(device)
+        # Always allow the API client to be the final word on if this is
+        # overridden or not.
+        if ignore_bootloader_failure is None:
+            ignore_failure = CONF.ignore_bootloader_failure
+        else:
+            ignore_failure = ignore_bootloader_failure
+
         boot = hardware.dispatch_to_managers('get_boot_info')
         if boot.current_boot_mode == 'uefi':
             has_efibootmgr = True
@@ -574,13 +584,24 @@ class ImageExtension(base.BaseAgentExtension):
                 has_efibootmgr = False
 
             if has_efibootmgr:
-                if _manage_uefi(device,
-                                efi_system_part_uuid=efi_system_part_uuid):
-                    return
+                try:
+                    if _manage_uefi(
+                            device,
+                            efi_system_part_uuid=efi_system_part_uuid):
+                        return
+                except Exception as e:
+                    LOG.error('Error setting up bootloader. Error %s', e)
+                    if not ignore_failure:
+                        raise
 
         # In case we can't use efibootmgr for uefi we will continue using grub2
         LOG.debug('Using grub2-install to set up boot files')
-        _install_grub2(device,
-                       root_uuid=root_uuid,
-                       efi_system_part_uuid=efi_system_part_uuid,
-                       prep_boot_part_uuid=prep_boot_part_uuid)
+        try:
+            _install_grub2(device,
+                           root_uuid=root_uuid,
+                           efi_system_part_uuid=efi_system_part_uuid,
+                           prep_boot_part_uuid=prep_boot_part_uuid)
+        except Exception as e:
+            LOG.error('Error setting up bootloader. Error %s', e)
+            if not ignore_failure:
+                raise
