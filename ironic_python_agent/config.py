@@ -296,6 +296,18 @@ cli_opts = [
                     'via lldp.  If "all" is set then IPA should attempt '
                     'to bring up all VLANs from lldp on all interfaces. '
                     'By default, no VLANs will be brought up.'),
+    cfg.BoolOpt('ignore_bootloader_failure',
+                default=APARAMS.get('ipa-ignore-bootloader-failure'),
+                help='If the agent should ignore failures to install a '
+                     'bootloader configuration into UEFI NVRAM. This '
+                     'option should only be considered if the hardware '
+                     'is automatically searching and adding UEFI '
+                     'bootloaders from partitions. Use on a system '
+                     'which is NOT doing this will likely cause the '
+                     'deployment to fail. This setting should only be '
+                     'used if you are absolutely sure of what you are '
+                     'doing and that your hardware supports '
+                     'such functionality. Hint: Most hardware does not.'),
 ]
 
 CONF.register_cli_opts(cli_opts)
