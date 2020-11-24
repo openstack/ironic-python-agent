@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Adds an configuration option which can be encoded into the ramdisk itself
+    or the PXE parameters being provided to instruct the agent to ignore
+    bootloader installation or configuration failures. This functionality is
+    useful to work around well-intentioned hardware which is auto-populating
+    all possible device into the UEFI nvram firmware in order to try and help
+    ensure the machine boots. Except, this can also mean any
+    explict configuration attempt will fail. Operators needing this bypass
+    can use the ``ipa-ignore-bootloader-failure`` configuration option on the
+    PXE command line or utilize the ``ignore_bootloader_failure`` option
+    for the Ramdisk configuration.
+    In a future version of ironic, this setting may be able to be overriden
+    by ironic node level configuration.
