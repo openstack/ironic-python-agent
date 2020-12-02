@@ -1071,6 +1071,12 @@ class GenericHardwareManager(HardwareManager):
                  as None.
         """
         global WARN_BIOSDEVNAME_NOT_FOUND
+
+        if self._is_vlan(interface_name):
+            LOG.debug('Interface %s is a VLAN, biosdevname not called',
+                      interface_name)
+            return
+
         try:
             stdout, _ = utils.execute('biosdevname', '-i',
                                       interface_name)
@@ -1093,10 +1099,19 @@ class GenericHardwareManager(HardwareManager):
                                                       interface_name)
         return os.path.exists(device_path)
 
+    def _is_vlan(self, interface_name):
+        # A VLAN interface does not have /device, check naming convention
+        # used when adding VLAN interface
+
+        interface, sep, vlan = interface_name.partition('.')
+
+        return vlan.isdigit()
+
     def list_network_interfaces(self):
         network_interfaces_list = []
         iface_names = os.listdir('{}/class/net'.format(self.sys_path))
-        iface_names = [name for name in iface_names if self._is_device(name)]
+        iface_names = [name for name in iface_names
+                       if self._is_vlan(name) or self._is_device(name)]
 
         if CONF.collect_lldp:
             self.lldp_data = dispatch_to_managers('collect_lldp_data',
@@ -1107,6 +1122,16 @@ class GenericHardwareManager(HardwareManager):
                 'get_interface_info', interface_name=iface_name)
             result.lldp = self._get_lldp_data(iface_name)
             network_interfaces_list.append(result)
+
+        # If configured, bring up vlan interfaces. If the actual vlans aren't
+        # defined they are derived from LLDP data
+        if CONF.enable_vlan_interfaces:
+            vlan_iface_names = netutils.bring_up_vlan_interfaces(
+                network_interfaces_list)
+            for vlan_iface_name in vlan_iface_names:
+                result = dispatch_to_managers(
+                    'get_interface_info', interface_name=vlan_iface_name)
+                network_interfaces_list.append(result)
 
         return network_interfaces_list
 

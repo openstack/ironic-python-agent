@@ -291,6 +291,15 @@ cli_opts = [
                     'This is an advanced override setting which may only '
                     'be useful if the environment requires API version '
                     'auto-detection to be disabled or blocked.'),
+    cfg.StrOpt('enable_vlan_interfaces',
+               default=APARAMS.get('ipa-enable-vlan-interfaces', ''),
+               help='Comma-separated list of VLAN interfaces to enable, '
+                    'in the format "interface.vlan".  If only an '
+                    'interface is provided, then IPA should attempt to '
+                    'bring up all VLANs on that interface detected '
+                    'via lldp.  If "all" is set then IPA should attempt '
+                    'to bring up all VLANs from lldp on all interfaces. '
+                    'By default, no VLANs will be brought up.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

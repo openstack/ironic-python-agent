@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Adds the ability to bring up VLAN interfaces and include them in the
+    introspection report.  A new kernel params field is added -
+    ``ipa-enable-vlan-interfaces``, which defines either the VLAN interface
+    to enable, the interface to use, or 'all' - which indicates all
+    interfaces.  If the particular VLAN is not provided, IPA will
+    use the LLDP information for the interface to determine which VLANs should
+    be enabled. See
+    `story 2008298 <https://storyboard.openstack.org/#!/story/2008298>`_.
+
