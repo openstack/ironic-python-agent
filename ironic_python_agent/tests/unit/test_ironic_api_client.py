@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 from unittest import mock
 
 from oslo_config import cfg
@@ -32,7 +33,9 @@ CONF = cfg.CONF
 class FakeResponse(object):
     def __init__(self, content=None, status_code=200, headers=None):
         content = content or {}
-        self.content = jsonutils.dumps(content)
+        self.text = json.dumps(content)
+        # TODO(dtantsur): remove in favour of using text/json()
+        self.content = self.text.encode('utf-8')
         self._json = content
         self.status_code = status_code
         self.headers = headers or {}
@@ -260,13 +263,62 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
 
     def test_heartbeat_invalid_status_code(self):
         response = FakeResponse(status_code=404)
+        response.text = 'Not a JSON'
         self.api_client.session.request = mock.Mock()
         self.api_client.session.request.return_value = response
 
-        self.assertRaises(errors.HeartbeatError,
-                          self.api_client.heartbeat,
-                          uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
-                          advertise_address=('192.0.2.1', '9999'))
+        self.assertRaisesRegex(errors.HeartbeatError,
+                               'Error 404: Not a JSON',
+                               self.api_client.heartbeat,
+                               uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+                               advertise_address=('192.0.2.1', '9999'))
+
+    def test_heartbeat_error_format_1(self):
+        response = FakeResponse(
+            status_code=404,
+            content={'error_message': '{"faultcode": "Client", '
+                     '"faultstring": "Resource could not be found.", '
+                     '"debuginfo": null}'})
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaisesRegex(errors.HeartbeatError,
+                               'Error 404: Resource could not be found',
+                               self.api_client.heartbeat,
+                               uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+                               advertise_address=('192.0.2.1', '9999'))
+
+    def test_heartbeat_error_format_2(self):
+        response = FakeResponse(
+            status_code=404,
+            content={'error_message': {
+                "faultcode\\": "Client",
+                "faultstring": "Resource could not be found.",
+                "debuginfo": None}})
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaisesRegex(errors.HeartbeatError,
+                               'Error 404: Resource could not be found',
+                               self.api_client.heartbeat,
+                               uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+                               advertise_address=('192.0.2.1', '9999'))
+
+    def test_heartbeat_error_format_3(self):
+        response = FakeResponse(
+            status_code=404,
+            content={'error_message': {
+                "code": 404,
+                "title": "Resource could not be found.",
+                "description": None}})
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.return_value = response
+
+        self.assertRaisesRegex(errors.HeartbeatError,
+                               'Error 404: Resource could not be found',
+                               self.api_client.heartbeat,
+                               uuid='deadbeef-dabb-ad00-b105-f00d00bab10c',
+                               advertise_address=('192.0.2.1', '9999'))
 
     def test_heartbeat_409_status_code(self):
         response = FakeResponse(status_code=409)
