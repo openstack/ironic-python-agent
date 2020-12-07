@@ -105,6 +105,26 @@ class APIClient(object):
     def supports_auto_tls(self):
         return self._get_ironic_api_version() >= AGENT_VERIFY_CA_IRONIC_VERSION
 
+    def _error_from_response(self, response):
+        try:
+            body = response.json()
+        except ValueError:
+            text = response.text
+        else:
+            body = body.get('error_message', body)
+            if not isinstance(body, dict):
+                # Old ironic format
+                try:
+                    body = jsonutils.loads(body)
+                except ValueError:
+                    body = {}
+
+            text = (body.get('faultstring')
+                    or body.get('title')
+                    or response.text)
+
+        return 'Error %d: %s' % (response.status_code, text)
+
     def heartbeat(self, uuid, advertise_address, advertise_protocol='http',
                   generated_cert=None):
         path = self.heartbeat_api.format(uuid=uuid)
@@ -136,11 +156,11 @@ class APIClient(object):
             raise errors.HeartbeatError(str(e))
 
         if response.status_code == requests.codes.CONFLICT:
-            data = jsonutils.loads(response.content)
-            raise errors.HeartbeatConflictError(data.get('faultstring'))
+            error = self._error_from_response(response)
+            raise errors.HeartbeatConflictError(error)
         elif response.status_code != requests.codes.ACCEPTED:
-            msg = 'Invalid status code: {}'.format(response.status_code)
-            raise errors.HeartbeatError(msg)
+            error = self._error_from_response(response)
+            raise errors.HeartbeatError(error)
 
     def lookup_node(self, hardware_info, timeout, starting_interval,
                     node_uuid=None, max_interval=30):
@@ -213,9 +233,10 @@ class APIClient(object):
 
         if response.status_code != requests.codes.OK:
             LOG.warning(
-                'Failed looking up node with addresses %r at %s, '
-                'status code: %s. Check if inspection has completed.',
-                params['addresses'], self.api_url, response.status_code,
+                'Failed looking up node with addresses %r at %s. '
+                '%s. Check if inspection has completed.',
+                params['addresses'], self.api_url,
+                self._error_from_response(response)
             )
             return False
 
