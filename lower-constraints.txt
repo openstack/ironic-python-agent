@@ -5,6 +5,7 @@ bashate==0.5.1
 certifi==2018.1.18
 cffi==1.14.0
 chardet==3.0.4
+cliff==3.1.0
 coverage==4.0
 cryptography==2.3
 debtcollector==1.19.0
