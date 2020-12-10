@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import ipaddress
 import os
 import tempfile
@@ -36,6 +37,7 @@ class GenerateTestCase(ironic_agent_base.IronicAgentTest):
         result = tls_utils._generate_tls_certificate(self.crt_file,
                                                      self.key_file,
                                                      'localhost', '127.0.0.1')
+        now = datetime.datetime.utcnow()
         self.assertTrue(result.startswith("-----BEGIN CERTIFICATE-----\n"),
                         result)
         self.assertTrue(result.endswith("\n-----END CERTIFICATE-----\n"),
@@ -48,6 +50,11 @@ class GenerateTestCase(ironic_agent_base.IronicAgentTest):
                                               backends.default_backend())
         self.assertEqual([(x509.NameOID.COMMON_NAME, 'localhost')],
                          [(item.oid, item.value) for item in cert.subject])
+        # Sanity check for validity range
+        self.assertLess(cert.not_valid_before,
+                        now - datetime.timedelta(seconds=1800))
+        self.assertGreater(cert.not_valid_after,
+                           now + datetime.timedelta(seconds=1800))
         subject_alt_name = cert.extensions.get_extension_for_oid(
             x509.ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
         self.assertTrue(subject_alt_name.critical)

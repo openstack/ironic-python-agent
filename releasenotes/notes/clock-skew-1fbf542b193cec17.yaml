@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Automatically generated TLS certificates now have their validity starting
+    in the past (1 hour by default) to allow for clock skew.
