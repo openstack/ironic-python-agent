@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    Agent configuration files found on attached virtual media or config drive
+    devices are now copied to the ramdisk and loaded on start up.

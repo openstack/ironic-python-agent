@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from collections import abc
+import contextlib
 import copy
 import errno
 import glob
@@ -21,6 +22,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
@@ -142,6 +144,42 @@ def _get_vmedia_device():
             pass
 
 
+@contextlib.contextmanager
+def _mounted(source):
+    """A context manager for a temporary mount."""
+    dest = tempfile.mkdtemp()
+    try:
+        try:
+            execute("mount", source, dest)
+        except processutils.ProcessExecutionError as e:
+            msg = ("Unable to mount virtual media device %(device)s: "
+                   "%(error)s" % {'device': source, 'error': e})
+            raise errors.VirtualMediaBootError(msg)
+
+        yield dest
+    finally:
+        try:
+            execute("umount", dest)
+        except processutils.ProcessExecutionError:
+            pass
+
+        try:
+            shutil.rmtree(dest)
+        except Exception:
+            pass
+
+
+def _find_device_by_labels(labels):
+    """Find device matching any of the provided labels."""
+    for label in labels + [lbl.upper() for lbl in labels]:
+        try:
+            path, _e = execute('blkid', '-L', label)
+        except processutils.ProcessExecutionError:
+            pass
+        else:
+            return path.strip()
+
+
 def _get_vmedia_params():
     """This method returns the parameters passed through virtual media floppy.
 
@@ -149,15 +187,8 @@ def _get_vmedia_params():
     :raises: VirtualMediaBootError when it cannot find the virtual media device
     """
     parameters_file = "parameters.txt"
-
-    vmedia_device_file_lower_case = "/dev/disk/by-label/ir-vfd-dev"
-    vmedia_device_file_upper_case = "/dev/disk/by-label/IR-VFD-DEV"
-    if os.path.exists(vmedia_device_file_lower_case):
-        vmedia_device_file = vmedia_device_file_lower_case
-    elif os.path.exists(vmedia_device_file_upper_case):
-        vmedia_device_file = vmedia_device_file_upper_case
-    else:
-
+    vmedia_device_file = _find_device_by_labels(['ir-vfd-dev'])
+    if not vmedia_device_file:
         # TODO(rameshg87): This block of code is there only for compatibility
         # reasons (so that newer agent can work with older Ironic). Remove
         # this after Liberty release.
@@ -168,31 +199,53 @@ def _get_vmedia_params():
 
         vmedia_device_file = os.path.join("/dev", vmedia_device)
 
-    vmedia_mount_point = tempfile.mkdtemp()
-    try:
-        try:
-            stdout, stderr = execute("mount", vmedia_device_file,
-                                     vmedia_mount_point)
-        except processutils.ProcessExecutionError as e:
-            msg = ("Unable to mount virtual media device %(device)s: "
-                   "%(error)s" % {'device': vmedia_device_file, 'error': e})
-            raise errors.VirtualMediaBootError(msg)
-
+    with _mounted(vmedia_device_file) as vmedia_mount_point:
         parameters_file_path = os.path.join(vmedia_mount_point,
                                             parameters_file)
         params = _read_params_from_file(parameters_file_path)
 
-        try:
-            stdout, stderr = execute("umount", vmedia_mount_point)
-        except processutils.ProcessExecutionError:
-            pass
-    finally:
-        try:
-            shutil.rmtree(vmedia_mount_point)
-        except Exception:
-            pass
-
     return params
+
+
+def _early_log(msg, *args):
+    """Log via printing (before oslo.log is configured)."""
+    print('ironic-python-agent:', msg % args, file=sys.stderr)
+
+
+def copy_config_from_vmedia():
+    """Copies any configuration from a virtual media device.
+
+    Copies files under /etc/ironic-python-agent and /etc/ironic-python-agent.d.
+    """
+    vmedia_device_file = _find_device_by_labels(
+        ['config-2', 'vmedia_boot_iso'])
+    if not vmedia_device_file:
+        _early_log('No virtual media device detected')
+        return
+
+    with _mounted(vmedia_device_file) as vmedia_mount_point:
+        for ext in ('', '.d'):
+            src = os.path.join(vmedia_mount_point, 'etc',
+                               'ironic-python-agent%s' % ext)
+            if not os.path.isdir(src):
+                _early_log('%s not found', src)
+                continue
+
+            dest = '/etc/ironic-python-agent%s' % ext
+            _early_log('Copying configuration from %s to %s', src, dest)
+            try:
+                os.makedirs(dest, exist_ok=True)
+
+                # TODO(dtantsur): use shutil.copytree(.., dirs_exist_ok=True)
+                # when the minimum supported Python is 3.8.
+                for name in os.listdir(src):
+                    src_file = os.path.join(src, name)
+                    dst_file = os.path.join(dest, name)
+                    shutil.copy(src_file, dst_file)
+            except Exception as exc:
+                msg = ("Unable to copy vmedia configuration %s to %s: %s"
+                       % (src, dest, exc))
+                raise errors.VirtualMediaBootError(msg)
 
 
 def _get_cached_params():
