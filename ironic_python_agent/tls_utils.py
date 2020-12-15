@@ -22,8 +22,14 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
 from cryptography import x509
+from oslo_log import log
 
+from ironic_python_agent import config
 from ironic_python_agent import netutils
+
+
+LOG = log.getLogger()
+CONF = config.CONF
 
 
 def _create_private_key(output):
@@ -70,19 +76,25 @@ def _generate_tls_certificate(output, private_key_output,
         x509.NameAttribute(x509.NameOID.COMMON_NAME, common_name),
     ])
     alt_name = x509.SubjectAlternativeName([x509.IPAddress(ip_address)])
+    allowed_clock_skew = CONF.auto_tls_allowed_clock_skew
+    not_valid_before = (datetime.datetime.utcnow()
+                        - datetime.timedelta(seconds=allowed_clock_skew))
+    not_valid_after = (datetime.datetime.utcnow()
+                       + datetime.timedelta(days=valid_for_days))
     cert = (x509.CertificateBuilder()
             .subject_name(subject)
             .issuer_name(subject)
             .public_key(private_key.public_key())
             .serial_number(x509.random_serial_number())
-            .not_valid_before(datetime.datetime.utcnow())
-            .not_valid_after(datetime.datetime.utcnow()
-                             + datetime.timedelta(days=valid_for_days))
+            .not_valid_before(not_valid_before)
+            .not_valid_after(not_valid_after)
             .add_extension(alt_name, critical=True)
             .sign(private_key, hashes.SHA256(), backends.default_backend()))
     pub_bytes = cert.public_bytes(serialization.Encoding.PEM)
     with open(output, "wb") as f:
         f.write(pub_bytes)
+    LOG.info('Generated TLS certificate for IP address %s valid from %s '
+             'to %s', ip_address, not_valid_before, not_valid_after)
     return pub_bytes.decode('utf-8')
 
 

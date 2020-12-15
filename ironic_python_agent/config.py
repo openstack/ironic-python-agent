@@ -72,6 +72,11 @@ cli_opts = [
                      'is False and ironic API version indicates support for '
                      'automatic agent TLS.'),
 
+    cfg.IntOpt('auto_tls_allowed_clock_skew',
+               default=3600, min=0,
+               help='Clock skew (in seconds) allowed in the generated TLS '
+                    'certificate.'),
+
     cfg.StrOpt('advertise_host',
                default=APARAMS.get('ipa-advertise-host', None),
                help='The host to tell Ironic to reply and send '
