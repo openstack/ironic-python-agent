@@ -1,6 +1,5 @@
 - project:
     templates:
-      - openstack-python-jobs
       - openstack-python3-train-jobs
       - openstack-cover-jobs
       - publish-openstack-docs-pti
@@ -28,7 +27,6 @@
             voting: false
         - openstack-tox-functional:
             voting: false
-        - openstack-tox-lower-constraints
         - ipa-tox-bandit:
             voting: false
     gate:
@@ -39,7 +37,6 @@
         - ipa-tempest-wholedisk-bios-ipmi-direct-tinyipa-src
         - ipa-tempest-wholedisk-bios-ipmi-iscsi-tinyipa-src
         - ironic-standalone-ipa-src
-        - openstack-tox-lower-constraints
     experimental:
       jobs:
         - ipa-tempest-dsvm-partition-bios-ipmi-iscsi-tinyipa256-src

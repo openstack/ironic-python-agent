@@ -14,6 +14,8 @@
       - openstack/ironic-lib
       - name: openstack/ironic-tempest-plugin
         override-checkout: 2.0.0
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
     vars:
       devstack_localrc:
         IRONIC_VM_SPECS_RAM: 512
@@ -33,7 +35,6 @@
       devstack_localrc:
         IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
         IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
-        USE_PYTHON3: False
         IRONIC_VM_EPHEMERAL_DISK: 0
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
@@ -50,7 +51,6 @@
         s-proxy: True
       devstack_localrc:
         IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
-        USE_PYTHON3: False
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
 
@@ -146,6 +146,9 @@
     name: ironic-standalone-ipa-src
     parent: ironic-standalone
     description: Test ironic standalone with IPA from source
+    required-projects:
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
     vars:
       devstack_localrc:
         IRONIC_BUILD_DEPLOY_RAMDISK: True
@@ -158,7 +161,8 @@
     parent: metalsmith-integration-glance-localboot-centos7
     required-projects:
       - openstack/ironic-python-agent
-      - openstack/ironic-python-agent-builder
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
       - openstack/ironic-lib
     vars:
       devstack_localrc:
@@ -169,6 +173,10 @@
 - job:
     name: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
     parent: ironic-ipa-base
+    required-projects:
+      - openstack/diskimage-builder
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
     timeout: 9600
     vars:
       tempest_test_timeout: 2400
