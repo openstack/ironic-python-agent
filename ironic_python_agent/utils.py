@@ -212,6 +212,39 @@ def _early_log(msg, *args):
     print('ironic-python-agent:', msg % args, file=sys.stderr)
 
 
+def _copy_config_from(path):
+    for ext in ('', '.d'):
+        src = os.path.join(path, 'etc', 'ironic-python-agent%s' % ext)
+        if not os.path.isdir(src):
+            _early_log('%s not found', src)
+            continue
+
+        dest = '/etc/ironic-python-agent%s' % ext
+        _early_log('Copying configuration from %s to %s', src, dest)
+        try:
+            os.makedirs(dest, exist_ok=True)
+
+            # TODO(dtantsur): use shutil.copytree(.., dirs_exist_ok=True)
+            # when the minimum supported Python is 3.8.
+            for name in os.listdir(src):
+                src_file = os.path.join(src, name)
+                dst_file = os.path.join(dest, name)
+                shutil.copy(src_file, dst_file)
+        except Exception as exc:
+            msg = ("Unable to copy vmedia configuration %s to %s: %s"
+                   % (src, dest, exc))
+            raise errors.VirtualMediaBootError(msg)
+
+
+def _find_mount_point(device):
+    try:
+        path, _e = execute('findmnt', '-n', '-oTARGET', device)
+    except processutils.ProcessExecutionError:
+        return
+    else:
+        return path.strip()
+
+
 def copy_config_from_vmedia():
     """Copies any configuration from a virtual media device.
 
@@ -223,29 +256,12 @@ def copy_config_from_vmedia():
         _early_log('No virtual media device detected')
         return
 
-    with _mounted(vmedia_device_file) as vmedia_mount_point:
-        for ext in ('', '.d'):
-            src = os.path.join(vmedia_mount_point, 'etc',
-                               'ironic-python-agent%s' % ext)
-            if not os.path.isdir(src):
-                _early_log('%s not found', src)
-                continue
-
-            dest = '/etc/ironic-python-agent%s' % ext
-            _early_log('Copying configuration from %s to %s', src, dest)
-            try:
-                os.makedirs(dest, exist_ok=True)
-
-                # TODO(dtantsur): use shutil.copytree(.., dirs_exist_ok=True)
-                # when the minimum supported Python is 3.8.
-                for name in os.listdir(src):
-                    src_file = os.path.join(src, name)
-                    dst_file = os.path.join(dest, name)
-                    shutil.copy(src_file, dst_file)
-            except Exception as exc:
-                msg = ("Unable to copy vmedia configuration %s to %s: %s"
-                       % (src, dest, exc))
-                raise errors.VirtualMediaBootError(msg)
+    mounted = _find_mount_point(vmedia_device_file)
+    if mounted:
+        _copy_config_from(mounted)
+    else:
+        with _mounted(vmedia_device_file) as vmedia_mount_point:
+            _copy_config_from(vmedia_mount_point)
 
 
 def _get_cached_params():

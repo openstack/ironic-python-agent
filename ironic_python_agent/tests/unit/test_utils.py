@@ -1028,12 +1028,26 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
         mock_copy.assert_not_called()
 
     def test_no_files(self, mock_execute, mock_copy, mock_find_device):
+        mock_execute.side_effect = [
+            processutils.ProcessExecutionError,
+            ('', ''),
+            ('', ''),
+        ]
         mock_find_device.return_value = '/dev/something'
         utils.copy_config_from_vmedia()
         mock_execute.assert_has_calls([
+            mock.call('findmnt', '-n', '-oTARGET', '/dev/something'),
             mock.call('mount', '/dev/something', mock.ANY),
             mock.call('umount', mock.ANY),
         ])
+        mock_copy.assert_not_called()
+
+    def test_mounted_no_files(self, mock_execute, mock_copy, mock_find_device):
+        mock_execute.return_value = '/some/path', ''
+        mock_find_device.return_value = '/dev/something'
+        utils.copy_config_from_vmedia()
+        mock_execute.assert_called_once_with(
+            'findmnt', '-n', '-oTARGET', '/dev/something')
         mock_copy.assert_not_called()
 
     @mock.patch.object(os, 'makedirs', autospec=True)
@@ -1042,7 +1056,7 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
         mock_find_device.return_value = '/dev/something'
         path = None
 
-        def _fake_exec(command, arg1, arg2=None):
+        def _fake_exec(command, arg1, arg2=None, *args):
             nonlocal path
             if command == 'mount':
                 path = arg2
@@ -1059,6 +1073,8 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
                 with open(os.path.join(path, 'etc', 'ironic-python-agent.d',
                                        'ironic.conf'), 'wt') as fp:
                     fp.write('I am a config')
+            elif command == 'findmnt':
+                raise processutils.ProcessExecutionError("")
             else:
                 self.assertEqual('umount', command)
 
@@ -1080,3 +1096,39 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
             mock.call(mock.ANY, '/etc/ironic-python-agent.d/ironic.conf'),
         ], any_order=True)
         self.assertFalse(os.path.exists(path))
+
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    def test_copy_mounted(self, mock_makedirs, mock_execute, mock_copy,
+                          mock_find_device):
+        mock_find_device.return_value = '/dev/something'
+        path = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(path))
+
+        # NOTE(dtantsur): makedirs is mocked
+        os.mkdir(os.path.join(path, 'etc'))
+        os.mkdir(os.path.join(path, 'etc', 'ironic-python-agent'))
+        os.mkdir(os.path.join(path, 'etc', 'ironic-python-agent.d'))
+        with open(os.path.join(path, 'not copied'), 'wt') as fp:
+            fp.write('not copied')
+        with open(os.path.join(path, 'etc', 'ironic-python-agent',
+                               'ironic.crt'), 'wt') as fp:
+            fp.write('I am a cert')
+        with open(os.path.join(path, 'etc', 'ironic-python-agent.d',
+                               'ironic.conf'), 'wt') as fp:
+            fp.write('I am a config')
+
+        mock_execute.return_value = path, ''
+        mock_find_device.return_value = '/dev/something'
+
+        utils.copy_config_from_vmedia()
+
+        mock_makedirs.assert_has_calls([
+            mock.call('/etc/ironic-python-agent', exist_ok=True),
+            mock.call('/etc/ironic-python-agent.d', exist_ok=True),
+        ], any_order=True)
+        mock_execute.assert_called_once_with(
+            'findmnt', '-n', '-oTARGET', '/dev/something')
+        mock_copy.assert_has_calls([
+            mock.call(mock.ANY, '/etc/ironic-python-agent/ironic.crt'),
+            mock.call(mock.ANY, '/etc/ironic-python-agent.d/ironic.conf'),
+        ], any_order=True)
