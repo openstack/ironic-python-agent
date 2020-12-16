@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Correctly decodes error messages from ironic API.
