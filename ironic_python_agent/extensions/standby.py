@@ -151,12 +151,17 @@ def _write_partition_image(image, image_info, device):
              provided image.
     :raises: ImageWriteError if writing the image to disk encounters any error.
     """
+    # Retrieve the cached node as it has the latest information
+    # and allows us to also sanity check the deployment so we don't end
+    # up writing MBR when we're in UEFI mode.
+    cached_node = hardware.get_cached_node()
+
     node_uuid = image_info.get('node_uuid')
     preserve_ep = image_info['preserve_ephemeral']
     configdrive = image_info['configdrive']
     boot_option = image_info.get('boot_option', 'netboot')
     boot_mode = image_info.get('deploy_boot_mode', 'bios')
-    disk_label = image_info.get('disk_label', 'msdos')
+    disk_label = utils.get_partition_table_type_from_specs(cached_node)
     root_mb = image_info['root_mb']
 
     cpu_arch = hardware.dispatch_to_managers('get_cpus').architecture

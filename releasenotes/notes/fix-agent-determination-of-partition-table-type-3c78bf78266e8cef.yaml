@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes the agent process for determining what partition label type to
+    utilize when writing partition images. In many cases, this could fallback
+    to ``msdos`` if the instance flavor was not properly labeled.
