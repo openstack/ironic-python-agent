@@ -24,6 +24,8 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import netutils
 
+from ironic_python_agent import utils
+
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 
@@ -32,6 +34,14 @@ IFF_PROMISC = 0x100
 SIOCGIFFLAGS = 0x8913
 SIOCSIFFLAGS = 0x8914
 INFINIBAND_ADDR_LEN = 59
+
+# LLDP definitions needed to extract vlan information
+LLDP_TLV_ORG_SPECIFIC = 127
+# 802.1Q defines from http://www.ieee802.org/1/pages/802.1Q-2014.html, Annex D
+LLDP_802dot1_OUI = "0080c2"
+# subtypes
+dot1_VLAN_NAME = "03"
+VLAN_ID_LEN = len(LLDP_802dot1_OUI + dot1_VLAN_NAME)
 
 
 class ifreq(ctypes.Structure):
@@ -258,3 +268,110 @@ def get_wildcard_address():
     if netutils.is_ipv6_enabled():
         return "::"
     return "0.0.0.0"
+
+
+def _get_configured_vlans():
+    return [x.strip() for x in CONF.enable_vlan_interfaces.split(',')
+            if x.strip()]
+
+
+def _add_vlan_interface(interface, vlan, interfaces_list):
+
+    vlan_name = interface + '.' + vlan
+
+    # if any(x for x in interfaces_list if x.name == vlan_name):
+    if any(x.name == vlan_name for x in interfaces_list):
+        LOG.info("VLAN interface %s has already been added", vlan_name)
+        return ''
+
+    try:
+        LOG.info('Adding VLAN interface %s', vlan_name)
+        # Add the interface
+        utils.execute('ip', 'link', 'add', 'link', interface, 'name',
+                      vlan_name, 'type', 'vlan', 'id', vlan,
+                      check_exit_code=[0, 2])
+
+        # Bring up interface
+        utils.execute('ip', 'link', 'set', 'dev', vlan_name, 'up')
+
+    except Exception as exc:
+        LOG.warning('Exception when running ip commands to add VLAN '
+                    'interface: %s', exc)
+        return ''
+
+    return vlan_name
+
+
+def _add_vlans_from_lldp(lldp, interface, interfaces_list):
+    interfaces = []
+
+    # Get the lldp packets received on this interface
+    if lldp:
+        for type, value in lldp:
+            if (type == LLDP_TLV_ORG_SPECIFIC
+                    and value.startswith(LLDP_802dot1_OUI
+                                         + dot1_VLAN_NAME)):
+                vlan = str(int(value[VLAN_ID_LEN: VLAN_ID_LEN + 4], 16))
+                name = _add_vlan_interface(interface, vlan,
+                                           interfaces_list)
+                if name:
+                    interfaces.append(name)
+    else:
+        LOG.debug('VLAN interface %s does not have lldp info', interface)
+
+    return interfaces
+
+
+def bring_up_vlan_interfaces(interfaces_list):
+    """Bring up vlan interfaces based on kernel params
+
+    Use the configured value of ``enable_vlan_interfaces`` to determine
+    if VLAN interfaces should be brought up using ``ip`` commands.  If
+    ``enable_vlan_interfaces`` defines a particular vlan then bring up
+    that vlan.  If it defines an interface or ``all`` then use LLDP info
+    to figure out which VLANs should be brought up.
+
+    :param interfaces_list: List of current interfaces
+    :return: List of vlan interface names that have been added
+    """
+    interfaces = []
+    vlan_interfaces = _get_configured_vlans()
+    for vlan_int in vlan_interfaces:
+        # TODO(bfournie) skip if pxe boot interface
+        if '.' in vlan_int:
+            # interface and vlan are provided
+            interface, vlan = vlan_int.split('.', 1)
+            if any(x.name == interface for x in interfaces_list):
+                name = _add_vlan_interface(interface, vlan,
+                                           interfaces_list)
+                if name:
+                    interfaces.append(name)
+            else:
+                LOG.warning('Provided VLAN interface %s does not exist',
+                            interface)
+        elif CONF.collect_lldp:
+            # Get the vlans from lldp info
+            if vlan_int == 'all':
+                # Use all interfaces
+                for iface in interfaces_list:
+                    names = _add_vlans_from_lldp(
+                        iface.lldp, iface.name, interfaces_list)
+                    if names:
+                        interfaces.extend(names)
+            else:
+                # Use provided interface
+                lldp = next((x.lldp for x in interfaces_list
+                             if x.name == vlan_int), None)
+                if lldp:
+                    names = _add_vlans_from_lldp(lldp, vlan_int,
+                                                 interfaces_list)
+                    if names:
+                        interfaces.extend(names)
+                else:
+                    LOG.warning('Provided interface name %s was not found',
+                                vlan_int)
+        else:
+            LOG.warning('Attempting to add VLAN interfaces but specific '
+                        'interface not provided and LLDP not enabled')
+
+    return interfaces
