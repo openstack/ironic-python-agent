@@ -12,6 +12,8 @@
       - ^tox.ini$
     required-projects:
       - openstack/ironic-lib
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
     vars:
       # The default is 1GB, we need a little more to prevent OOMs killing the jobs
       configure_swap_size: 8192
@@ -150,6 +152,9 @@
     name: ironic-standalone-ipa-src
     parent: ironic-standalone
     description: Test ironic standalone with IPA from source
+    required-projects:
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
     vars:
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
@@ -163,7 +168,8 @@
     parent: metalsmith-integration-glance-localboot-centos7
     required-projects:
       - openstack/ironic-python-agent
-      - openstack/ironic-python-agent-builder
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
       - openstack/ironic-lib
     vars:
       devstack_localrc:
@@ -176,6 +182,8 @@
     parent: ironic-ipa-base
     required-projects:
       - openstack/diskimage-builder
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: 2.2.0
     timeout: 9600
     vars:
       tempest_test_timeout: 2400
