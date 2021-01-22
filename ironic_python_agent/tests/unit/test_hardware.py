@@ -3862,6 +3862,89 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(hardware.BootInfo(current_boot_mode='uefi'), result)
         mocked_isdir.assert_called_once_with('/sys/firmware/efi')
 
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_erase_block_device_nvme_crypto_success(self, mocked_execute,
+                                                    mocked_raid_member):
+        info = self.node['driver_internal_info']
+        info['agent_enable_nvme_erase'] = True
+        info['agent_continue_if_secure_erase_failed'] = True
+        mocked_raid_member.return_value = False
+        mocked_execute.side_effect = [
+            (hws.NVME_CLI_INFO_TEMPLATE_CRYPTO_SUPPORTED, ''),
+            ('', ''),
+        ]
+
+        block_device = hardware.BlockDevice('/dev/nvme0n1', "testdisk",
+                                            1073741824, False)
+        retval = self.hardware._nvme_erase(block_device)
+        mocked_execute.assert_has_calls([
+            mock.call('nvme', 'id-ctrl', '/dev/nvme0n1', '-o', 'json'),
+            mock.call('nvme', 'format', '/dev/nvme0n1', '-s', 2),
+        ])
+
+        self.assertTrue(retval)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_erase_block_device_nvme_userdata_success(self, mocked_execute,
+                                                      mocked_raid_member):
+        info = self.node['driver_internal_info']
+        info['agent_enable_nvme_erase'] = True
+        info['agent_continue_if_secure_erase_failed'] = True
+        mocked_raid_member.return_value = False
+        mocked_execute.side_effect = [
+            (hws.NVME_CLI_INFO_TEMPLATE_USERDATA_SUPPORTED, ''),
+            ('', ''),
+        ]
+
+        block_device = hardware.BlockDevice('/dev/nvme0n1', "testdisk",
+                                            1073741824, False)
+        retval = self.hardware._nvme_erase(block_device)
+        mocked_execute.assert_has_calls([
+            mock.call('nvme', 'id-ctrl', '/dev/nvme0n1', '-o', 'json'),
+            mock.call('nvme', 'format', '/dev/nvme0n1', '-s', 1),
+        ])
+
+        self.assertTrue(retval)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_erase_block_device_nvme_failed(self, mocked_execute,
+                                            mocked_raid_member):
+        info = self.node['driver_internal_info']
+        info['agent_enable_nvme_erase'] = True
+        mocked_raid_member.return_value = False
+        mocked_execute.side_effect = [
+            (hws.NVME_CLI_INFO_TEMPLATE_CRYPTO_SUPPORTED, ''),
+            (processutils.ProcessExecutionError()),
+        ]
+
+        block_device = hardware.BlockDevice('/dev/nvme0n1', "testdisk",
+                                            1073741824, False)
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware._nvme_erase, block_device)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_linux_raid_member', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_erase_block_device_nvme_format_unsupported(self, mocked_execute,
+                                                        mocked_raid_member):
+        info = self.node['driver_internal_info']
+        info['agent_enable_nvme_erase'] = True
+        mocked_raid_member.return_value = False
+        mocked_execute.side_effect = [
+            (hws.NVME_CLI_INFO_TEMPLATE_FORMAT_UNSUPPORTED, ''),
+        ]
+
+        block_device = hardware.BlockDevice('/dev/nvme0n1', "testdisk",
+                                            1073741824, False)
+        self.assertRaises(errors.BlockDeviceEraseError,
+                          self.hardware._nvme_erase, block_device)
+
 
 @mock.patch.object(hardware.GenericHardwareManager,
                    'get_os_install_device', autospec=True)
