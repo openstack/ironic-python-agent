@@ -274,6 +274,7 @@ def _manage_uefi(device, efi_system_part_uuid=None):
 
     :param device: the device to be checked.
     :param efi_system_part_uuid: efi partition uuid.
+    :raises: DeviceNotFound if the efi partition cannot be found.
     :return: True - if it founds any efi bootloader and the nvram was updated
              using the efibootmgr.
              False - if no efi bootloader is found.
@@ -289,38 +290,45 @@ def _manage_uefi(device, efi_system_part_uuid=None):
         local_path = tempfile.mkdtemp()
         # Trust the contents on the disk in the event of a whole disk image.
         efi_partition = utils.get_efi_part_on_device(device)
-        if not efi_partition:
+        if not efi_partition and efi_system_part_uuid:
             # _get_partition returns <device>+<partition> and we only need the
             # partition number
             partition = _get_partition(device, uuid=efi_system_part_uuid)
             efi_partition = int(partition.replace(device, ""))
 
-        if efi_partition:
-            efi_partition_mount_point = os.path.join(local_path, "boot/efi")
-            if not os.path.exists(efi_partition_mount_point):
-                os.makedirs(efi_partition_mount_point)
+        if not efi_partition:
+            # NOTE(dtantsur): we cannot have a valid EFI deployment without an
+            # EFI partition at all. This code path is easily hit when using an
+            # image that is not UEFI compatible (which sadly applies to most
+            # cloud images out there, with a nice exception of Ubuntu).
+            raise errors.DeviceNotFound(
+                "No EFI partition could be detected on device %s and "
+                "EFI partition UUID has not been recorded during deployment "
+                "(which is often the case for whole disk images). "
+                "Are you using a UEFI-compatible image?" % device)
 
-            # The mount needs the device with the partition, in case the
-            # device ends with a digit we add a `p` and the partition number we
-            # found, otherwise we just join the device and the partition number
-            if device[-1].isdigit():
-                efi_device_part = '{}p{}'.format(device, efi_partition)
-                utils.execute('mount', efi_device_part,
-                              efi_partition_mount_point)
-            else:
-                efi_device_part = '{}{}'.format(device, efi_partition)
-                utils.execute('mount', efi_device_part,
-                              efi_partition_mount_point)
-            efi_mounted = True
+        efi_partition_mount_point = os.path.join(local_path, "boot/efi")
+        if not os.path.exists(efi_partition_mount_point):
+            os.makedirs(efi_partition_mount_point)
+
+        # The mount needs the device with the partition, in case the
+        # device ends with a digit we add a `p` and the partition number we
+        # found, otherwise we just join the device and the partition number
+        if device[-1].isdigit():
+            efi_device_part = '{}p{}'.format(device, efi_partition)
+            utils.execute('mount', efi_device_part, efi_partition_mount_point)
         else:
-            # If we can't find the partition we need to decide what should
-            # happen
-            return False
+            efi_device_part = '{}{}'.format(device, efi_partition)
+            utils.execute('mount', efi_device_part, efi_partition_mount_point)
+        efi_mounted = True
+
         valid_efi_bootloaders = _get_efi_bootloaders(efi_partition_mount_point)
         if valid_efi_bootloaders:
             _run_efibootmgr(valid_efi_bootloaders, device, efi_partition)
             return True
         else:
+            # NOTE(dtantsur): if we have an empty EFI partition, try to use
+            # grub-install to populate it.
             return False
 
     except processutils.ProcessExecutionError as e:
