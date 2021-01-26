@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Provides a more specific error message if a UEFI-incompatible image
+    is used in the UEFI mode.
