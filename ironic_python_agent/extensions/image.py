@@ -38,7 +38,8 @@ CONF = cfg.CONF
 
 BIND_MOUNTS = ('/dev', '/proc', '/run')
 
-BOOTLOADERS_EFI = ['bootx64.efi', 'grubaa64.efi', 'winload.efi']
+BOOTLOADERS_EFI = ['bootaa64.efi', 'bootx64.efi', 'grubaa64.efi',
+                   'winload.efi']
 
 
 def _rescan_device(device):

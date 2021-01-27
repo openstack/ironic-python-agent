@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix UEFI boot entry creation for aarch64 when using diskimage-builder
+    created whole disk images.
