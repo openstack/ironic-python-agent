@@ -428,8 +428,7 @@ def list_all_block_devices(block_type='disk',
                     "version of block device name is unavailable "
                     "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
 
-    # NOTE(dtantsur): keep in sync with utils.LSBLK_COLUMNS
-    columns = ['KNAME', 'MODEL', 'SIZE', 'ROTA', 'TYPE', 'UUID']
+    columns = utils.LSBLK_COLUMNS
     report = utils.execute('lsblk', '-Pbia', '-o{}'.format(','.join(columns)),
                            check_exit_code=[0])[0]
     lines = report.splitlines()
@@ -461,7 +460,7 @@ def list_all_block_devices(block_type='disk',
         # Other possible type values, which we skip recording:
         #   lvm, part, rom, loop
         if devtype != block_type:
-            if (devtype is None or ignore_raid):
+            if devtype is None or ignore_raid:
                 LOG.debug("Skipping: {!r}".format(line))
                 continue
             elif ('raid' in devtype
