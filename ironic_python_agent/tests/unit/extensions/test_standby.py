@@ -195,6 +195,7 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         execute_mock.assert_called_once_with(*command, check_exit_code=[0])
 
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda self: 'bios')
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
@@ -241,6 +242,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   disk_label=disk_label,
                                                   cpu_arch=cpu_arch)
 
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda self: 'bios')
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
@@ -316,6 +318,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_mb_mock.assert_called_once_with(image_path)
         self.assertFalse(work_on_disk_mock.called)
 
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda self: 'bios')
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
