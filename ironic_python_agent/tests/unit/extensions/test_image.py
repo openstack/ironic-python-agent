@@ -2107,6 +2107,16 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                        mock_get_part_uuid,
                                        mock_execute, mock_dispatch):
         mock_utils_efi_part.return_value = None
+        self.assertRaises(errors.DeviceNotFound,
+                          image._manage_uefi, self.fake_dev, None)
+        self.assertFalse(mock_get_part_uuid.called)
+
+    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    def test__manage_uefi_empty_partition_by_uuid(self, mock_utils_efi_part,
+                                                  mock_get_part_uuid,
+                                                  mock_execute, mock_dispatch):
+        mock_utils_efi_part.return_value = None
         mock_get_part_uuid.return_value = self.fake_root_part
         result = image._manage_uefi(self.fake_dev, self.fake_root_uuid)
         self.assertFalse(result)
