@@ -1,6 +1,6 @@
 ---
 upgrade:
   - |
-    The kernel parameter ``lldp-timeout`` was deprecated during Newton
-    development cycle and removed, please use ``ipa-lldp-timeout``
+    The kernel parameter ``lldp-timeout`` (deprecated during the Newton
+    development cycle) has been removed, please use ``ipa-lldp-timeout``
     instead.
