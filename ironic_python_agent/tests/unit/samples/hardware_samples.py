@@ -97,43 +97,52 @@ HDPARM_INFO_TEMPLATE = (
     'Checksum: correct\n'
 )
 
-BLK_DEVICE_TEMPLATE = (
-    'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '
-    'ROTA="0" TYPE="disk" SERIAL="123" UUID="F531-BDC3" PARTUUID=""\n'
-    'KNAME="sdb" MODEL="Fastable SD131 7" SIZE="10737418240" '
-    'ROTA="0" TYPE="disk" UUID="9a5e5cca-e03d-4cbd-9054-9e6ca9048222" '
-    'PARTUUID=""\n'
-    'KNAME="sdc" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
-    ' ROTA="0" TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="sdd" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
-    ' ROTA="0" TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="loop0" MODEL="" SIZE="109109248" ROTA="1" TYPE="loop" UUID="" '
-    'PARTUUID=""\n'
-    'KNAME="zram0" MODEL="" SIZE="" ROTA="0" TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="ram0" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk" UUID="" '
-    'PARTUUID=""\n'
-    'KNAME="ram1" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk" UUID="" '
-    'PARTUUID=""\n'
-    'KNAME="ram2" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk" UUID="" '
-    'PARTUUID=""\n'
-    'KNAME="ram3" MODEL="" SIZE="8388608" ROTA="0" TYPE="disk" UUID="" '
-    'PARTUUID=""\n'
-    'KNAME="fd1" MODEL="magic" SIZE="4096" ROTA="1" TYPE="disk" UUID="" '
-    'PARTUUID=""\n'
-    'KNAME="sdf" MODEL="virtual floppy" SIZE="0" ROTA="1" TYPE="disk" UUID="" '
-    'PARTUUID=""\n'
-    'KNAME="dm-0" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
-    ' ROTA="0" TYPE="mpath" UUID="" PARTUUID=""\n'
-
-)
+BLK_DEVICE_TEMPLATE = """
+{
+    "blockdevices": [
+        {"kname":"sda", "model":"TinyUSB Drive", "size":3116853504,
+        "rota":false, "type":"disk", "serial":123, "uuid":"F531-BDC3",
+        "partuuid":null},
+        {"kname":"sdb", "model":"Fastable SD131 7", "size":10737418240,
+        "rota":false, "type":"disk",
+        "uuid":"9a5e5cca-e03d-4cbd-9054-9e6ca9048222", "partuuid":null},
+        {"kname":"sdc", "model":"NWD-BLP4-1600", "size":1765517033472,
+        "rota":false, "type":"disk", "uuid":null, "partuuid":null},
+        {"kname":"sdd", "model":"NWD-BLP4-1600", "size":1765517033472,
+        "rota":false, "type":"disk", "uuid":null, "partuuid":null},
+        {"kname":"loop0", "model":null, "size":109109248, "rota":true,
+        "type":"loop", "uuid":null, "partuuid": null},
+        {"kname":"zram0", "model":null, "size":0, "rota":false, "type":"disk",
+        "uuid":null, "partuuid":null},
+        {"kname":"ram0", "model":null, "size":8388608, "rota":false,
+        "type":"disk", "uuid":null, "partuuid":null},
+        {"kname":"ram1", "model":null, "size":8388608, "rota":false,
+        "type":"disk", "uuid":null, "partuuid":null},
+        {"kname":"ram2", "model":null, "size":8388608, "rota":false,
+        "type":"disk", "uuid":null, "partuuid":null},
+        {"kname":"ram3", "model":null, "size":8388608, "rota":false,
+        "type":"disk", "uuid":null, "partuuid":null},
+        {"kname":"fd1", "model":"magic", "size":4096, "rota":true,
+        "type":"disk", "uuid":null, "partuuid":null},
+        {"kname":"sdf", "model":"virtual floppy", "size":0, "rota":true,
+        "type":"disk", "uuid":null, "partuuid":null},
+        {"kname":"dm-0", "model":"NWD-BLP4-1600", "size":"1765517033472",
+        "rota":false, "type":"mpath", "uuid":null, "partuuid":null}
+    ]
+}
+"""
 
 # NOTE(pas-ha) largest device is 1 byte smaller than 4GiB
-BLK_DEVICE_TEMPLATE_SMALL = (
-    'KNAME="sda" MODEL="TinyUSB Drive" SIZE="3116853504" '
-    'ROTA="0" TYPE="disk" UUID="F531-BDC3" PARTUUID=""\n'
-    'KNAME="sdb" MODEL="AlmostBigEnough Drive" SIZE="4294967295" '
-    'ROTA="0" TYPE="disk" UUID="" PARTUUID=""'
-)
+BLK_DEVICE_TEMPLATE_SMALL = """
+{
+  "blockdevices": [
+    {"kname":"sda", "model":"TinyUSB Drive", "size":3116853504, "rota":false,
+    "type":"disk", "uuid":"F531-BDC", "partuuid":null},
+    {"kname":"sdb", "model":"AlmostBigEnough Drive", "size":"4294967295",
+    "rota":false, "type":"disk", "uuid":null, "partuuid":null}
+  ]
+}
+"""
 
 # NOTE(TheJulia): This list intentionally contains duplicates
 # as the code filters them out by kernel device name.
@@ -142,76 +151,92 @@ BLK_DEVICE_TEMPLATE_SMALL = (
 # ROTA has been set to 0 on some software RAID devices for testing
 # purposes. In practice is appears to inherit from the underyling
 # devices, so in this example it would normally be 1.
-RAID_BLK_DEVICE_TEMPLATE = (
-    'KNAME="sda" MODEL="DRIVE 0" SIZE="1765517033472" '
-    'ROTA="1" TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="sda1" MODEL="DRIVE 0" SIZE="107373133824" '
-    'ROTA="1" TYPE="part" UUID="" PARTUUID=""\n'
-    'KNAME="sdb" MODEL="DRIVE 1" SIZE="1765517033472" '
-    'ROTA="1" TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="sdb" MODEL="DRIVE 1" SIZE="1765517033472" '
-    'ROTA="1" TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="sdb1" MODEL="DRIVE 1" SIZE="107373133824" '
-    'ROTA="1" TYPE="part" UUID="" PARTUUID=""\n'
-    'KNAME="md0p1" MODEL="RAID" SIZE="107236818944" '
-    'ROTA="0" TYPE="md" UUID="" PARTUUID=""\n'
-    'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
-    'ROTA="0" TYPE="raid1" UUID="" PARTUUID=""\n'
-    'KNAME="md0" MODEL="RAID" SIZE="1765517033470" '
-    'ROTA="0" TYPE="raid1" UUID="" PARTUUID=""\n'
-    'KNAME="md1" MODEL="RAID" SIZE="" ROTA="0" TYPE="raid1" UUID="" '
-    'PARTUUID=""'
-)
+RAID_BLK_DEVICE_TEMPLATE = ("""
+{
+    "blockdevices": [
+      {"kname":"sda", "model":"DRIVE 0", "size":1765517033472, "rota":true,
+      "type":"disk", "uuid":null, "partuuid":null},
+      {"kname":"sda1", "model":"DRIVE 0", "size":107373133824, "rota":true,
+      "type":"part", "uuid":null, "partuuid":null},
+      {"kname":"sdb", "model":"DRIVE 1", "size":1765517033472, "rota":true,
+      "type":"disk", "uuid":null, "partuuid":null},
+      {"kname":"sdb", "model":"DRIVE 1", "size":1765517033472, "rota":true,
+      "type":"disk", "uuid":null, "partuuid":null},
+      {"kname":"sdb1", "model":"DRIVE 1", "size":107373133824, "rota":true,
+      "type":"part", "uuid":null, "partuuid":null},
+      {"kname":"md0p1", "model":"RAID", "size":107236818944, "rota":false,
+      "type":"md", "uuid":null, "partuuid":null},
+      {"kname":"md0", "model":"RAID", "size":1765517033470, "rota":false,
+      "type":"raid1", "uuid":null, "partuuid":null},
+      {"kname":"md0", "model":"RAID", "size":1765517033470, "rota":false,
+      "type":"raid1", "uuid":null, "partuuid":null},
+      {"kname":"md1", "model":"RAID", "size":0, "rota":false, "type":"raid1",
+      "uuid":null, "partuuid":null}
+    ]
+}
+""")
 
-MULTIPATH_BLK_DEVICE_TEMPLATE = (
-    'KNAME="sda" MODEL="INTEL_SSDSC2CT060A3" SIZE="60022480896" ROTA="0" '
-    'TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="sda2" MODEL="" SIZE="59162722304" ROTA="0" TYPE="part" '
-    'UUID="f8b55d59-96c3-3982-b129-1b6b2ee8da86" '
-    'PARTUUID="c97c8aac-7796-4433-b1fc-9b5fac43edf3"\n'
-    'KNAME="sda3" MODEL="" SIZE="650002432" ROTA="0" TYPE="part" '
-    'UUID="b3b03565-5f13-3c93-b2a6-6d90e25be926" '
-    'PARTUUID="6c85beff-b2bd-4a1c-91b7-8abb5256459d"\n'
-    'KNAME="sda1" MODEL="" SIZE="209715200" ROTA="0" TYPE="part" '
-    'UUID="0a83355d-7500-3f5f-9abd-66f6fd03714c" '
-    'PARTUUID="eba28b26-b76a-402c-94dd-0b66a523a485"\n'
-    'KNAME="dm-0" MODEL="" SIZE="60022480896" ROTA="0" TYPE="mpath" '
-    'UUID="" PARTUUID=""\n'
-    'KNAME="dm-4" MODEL="" SIZE="650002432" ROTA="0" TYPE="part" '
-    'UUID="b3b03565-5f13-3c93-b2a6-6d90e25be926" '
-    'PARTUUID="6c85beff-b2bd-4a1c-91b7-8abb5256459d"\n'
-    'KNAME="dm-2" MODEL="" SIZE="209715200" ROTA="0" TYPE="part" '
-    'UUID="0a83355d-7500-3f5f-9abd-66f6fd03714c" '
-    'PARTUUID="eba28b26-b76a-402c-94dd-0b66a523a485"\n'
-    'KNAME="dm-3" MODEL="" SIZE="59162722304" ROTA="0" TYPE="part" '
-    'UUID="f8b55d59-96c3-3982-b129-1b6b2ee8da86" '
-    'PARTUUID="c97c8aac-7796-4433-b1fc-9b5fac43edf3"\n'
-    'KNAME="sdb" MODEL="INTEL_SSDSC2CT060A3" SIZE="60022480896" '
-    'ROTA="0" TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="sdb2" MODEL="" SIZE="59162722304" ROTA="0" TYPE="part" '
-    'UUID="f8b55d59-96c3-3982-b129-1b6b2ee8da86" '
-    'PARTUUID="c97c8aac-7796-4433-b1fc-9b5fac43edf3"\n'
-    'KNAME="sdb3" MODEL="" SIZE="650002432" ROTA="0" TYPE="part" '
-    'UUID="b3b03565-5f13-3c93-b2a6-6d90e25be926" '
-    'PARTUUID="6c85beff-b2bd-4a1c-91b7-8abb5256459d"\n'
-    'KNAME="sdb1" MODEL="" SIZE="209715200" ROTA="0" TYPE="part" '
-    'UUID="0a83355d-7500-3f5f-9abd-66f6fd03714c" '
-    'PARTUUID="eba28b26-b76a-402c-94dd-0b66a523a485"\n'
-    'KNAME="sdc" MODEL="ST1000DM003-1CH162" SIZE="1000204886016" '
-    'ROTA="1" TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="sdc1" MODEL="" SIZE="899999072256" ROTA="1" TYPE="part" '
-    'UUID="457f7d3c-9376-4997-89bd-d1a7c8b04060" '
-    'PARTUUID="c9433d2e-3bbc-47b4-92bf-43c1d80f06e0"\n'
-    'KNAME="dm-1" MODEL="" SIZE="1000204886016" ROTA="0" TYPE="mpath" '
-    'UUID="" PARTUUID=""\n'
-)
+MULTIPATH_BLK_DEVICE_TEMPLATE = ("""
+{
+    "blockdevices": [
+      {"kname":"sda", "model":"INTEL_SSDSC2CT060A3", "size":"60022480896",
+      "rota":false, "type":"disk", "uuid":null, "partuuid":null},
+      {"kname":"sda2", "model":null, "size":"59162722304", "rota":false,
+      "type":"part", "uuid":"f8b55d59-96c3-3982-b129-1b6b2ee8da86",
+      "partuuid":"c97c8aac-7796-4433-b1fc-9b5fac43edf3"},
+      {"kname":"sda3", "model":null, "size":"650002432", "rota":false,
+      "type":"part", "uuid":"b3b03565-5f13-3c93-b2a6-6d90e25be926",
+      "partuuid":"6c85beff-b2bd-4a1c-91b7-8abb5256459d"},
+      {"kname":"sda1", "model":null, "size":"209715200", "rota":false,
+      "type":"part", "uuid":"0a83355d-7500-3f5f-9abd-66f6fd03714c",
+      "partuuid":"eba28b26-b76a-402c-94dd-0b66a523a485"},
+      {"kname":"dm-0", "model":null, "size":"60022480896", "rota":false,
+      "type":"mpath", "uuid":null, "partuuid":null},
+      {"kname":"dm-4", "model":null, "size":"650002432", "rota":false,
+      "type":"part", "uuid":"b3b03565-5f13-3c93-b2a6-6d90e25be926",
+      "partuuid":"6c85beff-b2bd-4a1c-91b7-8abb5256459d"},
+      {"kname":"dm-2", "model":null, "size":"209715200", "rota":false,
+      "type":"part", "uuid":"0a83355d-7500-3f5f-9abd-66f6fd03714c",
+      "partuuid":"eba28b26-b76a-402c-94dd-0b66a523a485"},
+      {"kname":"dm-3", "model":null, "size":"59162722304", "rota":false,
+      "type":"part", "uuid":"f8b55d59-96c3-3982-b129-1b6b2ee8da86",
+      "partuuid":"c97c8aac-7796-4433-b1fc-9b5fac43edf3"},
+      {"kname":"sdb", "model":"INTEL_SSDSC2CT060A3", "size":"60022480896",
+      "rota":false, "type":"disk", "uuid":null, "partuuid":null},
+      {"kname":"sdb2", "model":null, "size":"59162722304",
+      "rota":false, "type":"part",
+      "uuid":"f8b55d59-96c3-3982-b129-1b6b2ee8da86",
+      "partuuid":"c97c8aac-7796-4433-b1fc-9b5fac43edf3"},
+      {"kname":"sdb3", "model":null, "size":"650002432",
+      "rota":false, "type":"part",
+      "uuid":"b3b03565-5f13-3c93-b2a6-6d90e25be926",
+      "partuuid":"6c85beff-b2bd-4a1c-91b7-8abb5256459d"},
+      {"kname":"sdb1", "model":null, "size":"209715200",
+      "rota":false, "type":"part",
+      "uuid":"0a83355d-7500-3f5f-9abd-66f6fd03714c",
+      "partuuid":"eba28b26-b76a-402c-94dd-0b66a523a485"},
+      {"kname":"sdc", "model":"ST1000DM003-1CH162", "size":"1000204886016",
+      "rota":true, "type":"disk", "uuid":null, "partuuid":null},
+      {"kname":"sdc1", "model":null, "size":"899999072256",
+      "rota":true, "type":"part",
+      "uuid":"457f7d3c-9376-4997-89bd-d1a7c8b04060",
+      "partuuid":"c9433d2e-3bbc-47b4-92bf-43c1d80f06e0"},
+      {"kname":"dm-1", "model":null, "size":"1000204886016", "rota":false,
+      "type":"mpath", "uuid":null, "partuuid":null}
+    ]
+}
+""")
 
-PARTUUID_DEVICE_TEMPLATE = (
-    'KNAME="sda" MODEL="DRIVE 0" SIZE="1765517033472" '
-    'ROTA="1" TYPE="disk" UUID="" PARTUUID=""\n'
-    'KNAME="sda1" MODEL="DRIVE 0" SIZE="107373133824" '
-    'ROTA="1" TYPE="part" UUID="987654-3210" PARTUUID="1234-5678"\n'
-)
+PARTUUID_DEVICE_TEMPLATE = ("""
+{
+    "blockdevices": [
+      {"kname":"sda", "model":"DRIVE 0", "size":1765517033472, "rota":true,
+      "type":"disk", "uuid":null, "partuuid":null},
+      {"kname":"sda1", "model":"DRIVE 0", "size":107373133824, "rota":true,
+      "type":"part", "uuid":"987654-3210", "partuuid":"1234-5678"}
+    ]
+}
+""")
 
 SHRED_OUTPUT_0_ITERATIONS_ZERO_FALSE = ()
 
@@ -240,7 +265,6 @@ SHRED_OUTPUT_2_ITERATIONS_ZERO_FALSE = (
     'shred: /dev/sda: pass 2/2 (random)...20GiB/29GiB 69%\n'
     'shred: /dev/sda: pass 2/2 (random)...29GiB/29GiB 100%\n'
 )
-
 
 LSCPU_OUTPUT = """
 Architecture:          x86_64
@@ -893,7 +917,6 @@ Copyright (C) 2002-13, Bruce Allen, Christian Franke, www.smartmontools.org
 ATA Security is:  Unavailable
 """)  # noqa
 
-
 IPMITOOL_LAN6_PRINT_DYNAMIC_ADDR = """
 IPv6 Dynamic Address 0:
     Source/Type:    DHCPv6
@@ -1008,7 +1031,6 @@ Working Devices : 2
        1     259        3        1      active sync   /dev/nvme1n1p1
 """)
 
-
 MDADM_DETAIL_OUTPUT_BROKEN_RAID0 = ("""/dev/md126:
            Version : 1.2
         Raid Level : raid0
@@ -1026,7 +1048,6 @@ MDADM_DETAIL_OUTPUT_BROKEN_RAID0 = ("""/dev/md126:
 
        -       8        2        -        /dev/sda2
 """)
-
 
 MDADM_EXAMINE_OUTPUT_MEMBER = ("""/dev/sda1:
           Magic : a92b4efc
@@ -1056,7 +1077,6 @@ MDADM_EXAMINE_OUTPUT_MEMBER = ("""/dev/sda1:
    Array State : A. ('A' == active, '.' == missing, 'R' == replacing)
 """)
 
-
 MDADM_EXAMINE_OUTPUT_NON_MEMBER = ("""/dev/sdz1:
           Magic : a92b4efc
         Version : 1.2
@@ -1085,7 +1105,6 @@ MDADM_EXAMINE_OUTPUT_NON_MEMBER = ("""/dev/sdz1:
    Array State : A. ('A' == active, '.' == missing, 'R' == replacing)
 """)
 
-
 PROC_MOUNTS_OUTPUT = ("""
 debugfs /sys/kernel/debug debugfs rw,relatime 0 0
 /dev/sda2 / ext4 rw,relatime,errors=remount-ro 0 0
@@ -1093,7 +1112,6 @@ tmpfs /run/user/1000 tmpfs rw,nosuid,nodev,relatime  0 0
 pstore /sys/fs/pstore pstore rw,nosuid,nodev,noexec,relatime 0 0
 /dev/loop19 /snap/core/10126 squashfs ro,nodev,relatime 0 0
 """)
-
 
 PROC_MOUNTS_OUTPUT_NO_PSTORE = ("""
 debugfs /sys/kernel/debug debugfs rw,relatime 0 0

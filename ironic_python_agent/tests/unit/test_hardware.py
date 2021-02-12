@@ -824,8 +824,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 stderr='the -c option requires a path to check'),  # dm-1
         ]
         expected = [
-            mock.call('lsblk', '-Pbia',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+                      check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-ll', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sda2'),
@@ -903,8 +904,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 stderr='the -c option requires a path to check'),  # dm-1
         ]
         expected = [
-            mock.call('lsblk', '-Pbia',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+                      check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-ll', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sda2'),
@@ -957,8 +959,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         # should always be smaller
         self.assertEqual('/dev/md0', self.hardware.get_os_install_device())
         expected = [
-            mock.call('lsblk', '-Pbia',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+                      check_exit_code=[0]),
         ]
 
         mocked_execute.assert_has_calls(expected)
@@ -982,11 +985,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ex = self.assertRaises(errors.DeviceNotFound,
                                self.hardware.get_os_install_device)
         expected = [
-            mock.call('lsblk', '-Pbia',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+                      check_exit_code=[0]),
         ]
 
         mocked_execute.assert_has_calls(expected)
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-bia', '--json',
+            '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+            check_exit_code=[0])
         self.assertIn(str(4 * units.Gi), ex.details)
         mock_cached_node.assert_called_once_with()
         self.assertEqual(1, mocked_mpath.call_count)
@@ -1491,8 +1499,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           for dev in range(3)]
         mock_readlink.assert_has_calls(expected_calls)
         expected_calls = [
-            mock.call('lsblk', '-Pbia',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+                      check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sdb'),
             mock.call('multipath', '-c', '/dev/sdc'),
@@ -3578,6 +3587,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ]
         }
         self.node['target_raid_config'] = raid_config
+        mocked_execute.return_value = (hws.RAID_BLK_DEVICE_TEMPLATE, '')
         self.assertRaises(errors.SoftwareRAIDError,
                           self.hardware.create_configuration,
                           self.node, [])
@@ -4236,6 +4246,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 },
             ]
         }
+        mocked_execute.return_value = (hws.RAID_BLK_DEVICE_TEMPLATE, '')
         self.assertIsNone(self.hardware.validate_configuration(raid_config,
                                                                self.node))
 
@@ -4255,6 +4266,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 },
             ]
         }
+        mocked_execute.return_value = (hws.RAID_BLK_DEVICE_TEMPLATE, '')
         self.assertRaises(errors.SoftwareRAIDError,
                           self.hardware.validate_configuration,
                           raid_config, self.node)
@@ -4275,6 +4287,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 },
             ]
         }
+        mocked_execute.return_value = (hws.RAID_BLK_DEVICE_TEMPLATE, '')
         self.assertRaises(errors.SoftwareRAIDError,
                           self.hardware.validate_configuration,
                           raid_config, self.node)
@@ -4598,8 +4611,9 @@ class TestModuleFunctions(base.IronicAgentTest):
         ]
         result = hardware.list_all_block_devices()
         expected_calls = [
-            mock.call('lsblk', '-Pbia',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+                      check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sdb')
         ]
@@ -4644,8 +4658,9 @@ class TestModuleFunctions(base.IronicAgentTest):
                 stderr='the -c option requires a path to check'),  # md1
         ]
         expected_calls = [
-            mock.call('lsblk', '-Pbia',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+                      check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sda1'),
             mock.call('multipath', '-c', '/dev/sdb'),
@@ -4682,8 +4697,9 @@ class TestModuleFunctions(base.IronicAgentTest):
         ]
         result = hardware.list_all_block_devices(block_type='part')
         expected_calls = [
-            mock.call('lsblk', '-Pbia',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+                      check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sda1'),
         ]
@@ -4700,10 +4716,13 @@ class TestModuleFunctions(base.IronicAgentTest):
                                                      mock_mpath_enabled,
                                                      mocked_execute):
         mock_mpath_enabled.return_value = False
-        mocked_execute.return_value = ('TYPE="foo" MODEL="model"', '')
+        mocked_execute.return_value = (
+            '{"blockdevices": [{"type":"foo", "model":"model"}]}', '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID')
+            'lsblk', '-bia', '--json',
+            '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+            check_exit_code=[0])
         self.assertEqual([], result)
         mocked_udev.assert_called_once_with()
 
@@ -4714,22 +4733,17 @@ class TestModuleFunctions(base.IronicAgentTest):
                                             mocked_execute):
         """Test for missing values returned from lsblk"""
         mocked_mpath.return_value = False
-        mocked_execute.side_effect = [
-            ('TYPE="disk" MODEL="model"', ''),
-            ('', ''),
-            ('', ''),
-            ('', ''),
-            ('', ''),
-        ]
         expected_calls = [
-            mock.call('lsblk', '-Pbia',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID',
+                      check_exit_code=[0]),
         ]
-
+        mocked_execute.return_value = (
+            '{"blockdevices": [{"type":"disk", "model":"model"}]}', '')
         self.assertRaisesRegex(
             errors.BlockDeviceError,
-            r'^Block device caused unknown error: KNAME, PARTUUID, ROTA, '
-            r'SIZE, UUID must be returned by lsblk.$',
+            r'^Block device caused unknown error: kname, partuuid, rota, '
+            r'size, uuid must be returned by lsblk.$',
             hardware.list_all_block_devices)
         mocked_udev.assert_called_once_with()
         mocked_execute.assert_has_calls(expected_calls)
