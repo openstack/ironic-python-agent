@@ -27,6 +27,7 @@ from ironic_lib import disk_utils
 from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 from oslo_serialization import base64
+import requests
 import testtools
 
 from ironic_python_agent import errors
@@ -1132,3 +1133,33 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
             mock.call(mock.ANY, '/etc/ironic-python-agent/ironic.crt'),
             mock.call(mock.ANY, '/etc/ironic-python-agent.d/ironic.conf'),
         ], any_order=True)
+
+
+@mock.patch.object(requests, 'get', autospec=True)
+class TestStreamingClient(ironic_agent_base.IronicAgentTest):
+
+    def test_ok(self, mock_get):
+        client = utils.StreamingClient()
+        self.assertTrue(client.verify)
+        self.assertIsNone(client.cert)
+
+        with client("http://url") as result:
+            response = mock_get.return_value.__enter__.return_value
+            self.assertIs(result, response.iter_content.return_value)
+
+        mock_get.assert_called_once_with("http://url", verify=True, cert=None,
+                                         stream=True, timeout=60)
+        response.iter_content.assert_called_once_with(1024 * 1024)
+
+    def test_retries(self, mock_get):
+        self.config(image_download_connection_retries=1,
+                    image_download_connection_retry_interval=1)
+        mock_get.side_effect = requests.ConnectionError
+
+        client = utils.StreamingClient()
+        self.assertRaises(errors.CommandExecutionError,
+                          client("http://url").__enter__)
+
+        mock_get.assert_called_with("http://url", verify=True, cert=None,
+                                    stream=True, timeout=60)
+        self.assertEqual(2, mock_get.call_count)

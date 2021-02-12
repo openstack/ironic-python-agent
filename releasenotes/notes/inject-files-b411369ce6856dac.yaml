@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Adds a new deploy step ``deploy.inject_files`` to inject arbitrary files
+    into the instance. See `the hardware managers documentation
+    <https://docs.openstack.org/ironic-python-agent/latest/admin/hardware_managers.html>`_
+    for details.
