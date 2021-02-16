@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    IPA now properly checks if the root partition is already mounted.
+    See `Story 2008631
+    <https://storyboard.openstack.org/#!/story/2008631>`_
+    for details.

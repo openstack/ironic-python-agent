@@ -586,7 +586,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                           'ramdisk was unable to complete the setup. '
                           'falling back to bootloader installation from'
                           'deployed image.')
-                if not os.path.ismount(root_partition):
+                if not os.path.ismount(path):
                     LOG.debug('Re-mounting the root partition.')
                     utils.execute('mount', root_partition, path)
 
