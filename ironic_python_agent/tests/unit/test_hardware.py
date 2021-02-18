@@ -29,6 +29,7 @@ from stevedore import extension
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import netutils
+from ironic_python_agent import raid_utils
 from ironic_python_agent.tests.unit import base
 from ironic_python_agent.tests.unit.samples import hardware_samples as hws
 from ironic_python_agent import utils
@@ -2400,7 +2401,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_create.assert_called_once_with(self.hardware, self.node, [],
                                               raid_config)
 
-    @mock.patch.object(hardware, '_get_actual_component_devices',
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
@@ -2484,7 +2485,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call(x) for x in ['/dev/sda', '/dev/sdb']
         ])
 
-    @mock.patch.object(hardware, '_get_actual_component_devices',
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
@@ -2574,7 +2575,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2', '/dev/sdc2')])
         self.assertEqual(raid_config, result)
 
-    @mock.patch.object(hardware, '_get_actual_component_devices',
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
@@ -2678,7 +2679,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2', '/dev/sdc2', '/dev/sdd2')])
         self.assertEqual(raid_config, result)
 
-    @mock.patch.object(hardware, '_get_actual_component_devices',
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
@@ -2751,7 +2752,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
 
-    @mock.patch.object(hardware, '_get_actual_component_devices',
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
@@ -2830,7 +2831,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
 
-    @mock.patch.object(hardware, '_get_actual_component_devices',
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
@@ -2904,7 +2905,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
 
-    @mock.patch.object(hardware, '_get_actual_component_devices',
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
@@ -2980,7 +2981,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       '/dev/sda2', '/dev/sdb2')])
         self.assertEqual(raid_config, result)
 
-    @mock.patch.object(hardware, '_get_actual_component_devices',
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
@@ -3334,7 +3335,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         result = self.hardware.create_configuration(self.node, [])
         self.assertEqual(result, {})
 
-    @mock.patch.object(hardware, '_get_actual_component_devices',
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
@@ -3474,21 +3475,6 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
                                self.hardware.create_configuration,
                                self.node, [])
-
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_actual_component_devices(self, mocked_execute):
-        mocked_execute.side_effect = [(hws.MDADM_DETAIL_OUTPUT, '')]
-        component_devices = hardware._get_actual_component_devices(
-            '/dev/md0')
-        self.assertEqual(['/dev/vde1', '/dev/vdf1'], component_devices)
-
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_actual_component_devices_broken_raid0(self, mocked_execute):
-        mocked_execute.side_effect = [(hws.MDADM_DETAIL_OUTPUT_BROKEN_RAID0,
-                                       '')]
-        component_devices = hardware._get_actual_component_devices(
-            '/dev/md126')
-        self.assertEqual(['/dev/sda2'], component_devices)
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_md_uuid(self, mocked_execute):

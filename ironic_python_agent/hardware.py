@@ -209,35 +209,6 @@ def _get_component_devices(raid_device):
     return component_devices
 
 
-def _get_actual_component_devices(raid_device):
-    """Get the component devices of a Software RAID device.
-
-    Examine an md device and return its constituent devices.
-
-    :param raid_device: A Software RAID block device name.
-    :returns: A list of the component devices.
-    """
-    if not raid_device:
-        return []
-
-    try:
-        out, _ = utils.execute('mdadm', '--detail', raid_device,
-                               use_standard_locale=True)
-    except processutils.ProcessExecutionError as e:
-        LOG.warning('Could not get component devices of %(dev)s: %(err)s',
-                    {'dev': raid_device, 'err': e})
-        return []
-
-    component_devices = []
-    lines = out.splitlines()
-    # the first line contains the md device itself
-    for line in lines[1:]:
-        device = re.findall(r'/dev/\w+', line)
-        component_devices += device
-
-    return component_devices
-
-
 def _calc_memory(sys_dict):
     physical = 0
     for sys_child in sys_dict['children']:
@@ -1834,12 +1805,6 @@ class GenericHardwareManager(HardwareManager):
         return self._do_create_configuration(node, ports, raid_config)
 
     def _do_create_configuration(self, node, ports, raid_config):
-        # incr starts to 1
-        # It means md0 is on the partition 1, md1 on 2...
-        # incr could be incremented if we ever decide, for example to create
-        # some additional partitions here (boot partitions)
-        incr = 1
-
         # No 'software' controller: do nothing. If 'controller' is
         # set to 'software' on only one of the drives, the validation
         # code will catch it.
@@ -1948,45 +1913,7 @@ class GenericHardwareManager(HardwareManager):
 
         # Create the RAID devices.
         for index, logical_disk in enumerate(logical_disks):
-            md_device = '/dev/md%d' % index
-            component_devices = []
-            for device in logical_disk['block_devices']:
-                # The partition delimiter for all common harddrives (sd[a-z]+)
-                part_delimiter = ''
-                if 'nvme' in device:
-                    part_delimiter = 'p'
-                component_devices.append(
-                    device + part_delimiter + str(index + incr))
-            raid_level = logical_disk['raid_level']
-            # The schema check allows '1+0', but mdadm knows it as '10'.
-            if raid_level == '1+0':
-                raid_level = '10'
-            try:
-                LOG.debug("Creating md device %(dev)s on %(comp)s",
-                          {'dev': md_device, 'comp': component_devices})
-                utils.execute('mdadm', '--create', md_device, '--force',
-                              '--run', '--metadata=1', '--level', raid_level,
-                              '--raid-devices', len(component_devices),
-                              *component_devices)
-            except processutils.ProcessExecutionError as e:
-                msg = "Failed to create md device {} on {}: {}".format(
-                    md_device, ' '.join(component_devices), e)
-                raise errors.SoftwareRAIDError(msg)
-
-            # check for missing devices and re-add them
-            actual_components = _get_actual_component_devices(md_device)
-            missing = set(component_devices) - set(actual_components)
-            for dev in missing:
-                try:
-                    LOG.warning('Found %(device)s to be missing from %(md)s '
-                                '... re-adding!',
-                                {'device': dev, 'md': md_device})
-                    utils.execute('mdadm', '--add', md_device, dev,
-                                  attempts=3, delay_on_retry=True)
-                except processutils.ProcessExecutionError as e:
-                    msg = "Failed re-add {} to {}: {}".format(
-                        dev, md_device, e)
-                    raise errors.SoftwareRAIDError(msg)
+            raid_utils.create_raid_device(index, logical_disk)
 
         LOG.info("Successfully created Software RAID")
 
@@ -2380,7 +2307,7 @@ def dispatch_to_managers(method, *args, **kwargs):
         if getattr(manager, method, None):
             try:
                 return getattr(manager, method)(*args, **kwargs)
-            except(errors.IncompatibleHardwareMethodError):
+            except errors.IncompatibleHardwareMethodError:
                 LOG.debug('HardwareManager %(manager)s does not '
                           'support %(method)s',
                           {'manager': manager, 'method': method})
@@ -2424,10 +2351,6 @@ def cache_node(node):
     expected root device to appear.
 
     :param node: Ironic node object
-    :param wait_for_disks: Default True switch to wait for disk setup to be
-                           completed so the node information can be aligned
-                           with the physical storage devices of the host.
-                           This is likely to be used in unit testing.
     """
     global NODE
     new_node = NODE is None or NODE['uuid'] != node['uuid']

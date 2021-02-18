@@ -11,8 +11,10 @@
 # limitations under the License.
 
 import copy
+import re
 
 from ironic_lib import utils as il_utils
+from oslo_concurrency import processutils
 from oslo_log import log as logging
 
 from ironic_python_agent import errors
@@ -25,6 +27,12 @@ LOG = logging.getLogger(__name__)
 # NOTE(dtantsur): 550 MiB is used by DIB and seems a common guidance:
 # https://www.rodsbooks.com/efi-bootloaders/principles.html
 ESP_SIZE_MIB = 550
+
+# NOTE(rpittau) The partition number used to create a raid device.
+# Could be changed to variable if we ever decide, for example to create
+# some additional partitions (e.g. boot partitions), so md0 is on the
+# partition 1, md1 on the partition 2, and so on.
+RAID_PARTITION = 1
 
 
 def get_block_devices_for_raid(block_devices, logical_disks):
@@ -161,3 +169,82 @@ def create_raid_partition_tables(block_devices, partition_table_type,
         parted_start_dict[dev_name] = calculate_raid_start(
             target_boot_mode, partition_table_type, dev_name)
     return parted_start_dict
+
+
+def _get_actual_component_devices(raid_device):
+    """Get the component devices of a Software RAID device.
+
+    Examine an md device and return its constituent devices.
+
+    :param raid_device: A Software RAID block device name.
+    :returns: A list of the component devices.
+    """
+    if not raid_device:
+        return []
+
+    try:
+        out, _ = utils.execute('mdadm', '--detail', raid_device,
+                               use_standard_locale=True)
+    except processutils.ProcessExecutionError as e:
+        LOG.warning('Could not get component devices of %(dev)s: %(err)s',
+                    {'dev': raid_device, 'err': e})
+        return []
+
+    component_devices = []
+    lines = out.splitlines()
+    # the first line contains the md device itself
+    for line in lines[1:]:
+        device = re.findall(r'/dev/\w+', line)
+        component_devices += device
+
+    return component_devices
+
+
+def create_raid_device(index, logical_disk):
+    """Create a raid device.
+
+    :param index: the index of the resulting md device.
+    :param logical_disk: the logical disk containing the devices used to
+        crete the raid.
+    :raise: errors.SoftwareRAIDError if not able to create the raid device
+        or fails to re-add a device to a raid.
+    """
+    md_device = '/dev/md%d' % index
+    component_devices = []
+    for device in logical_disk['block_devices']:
+        # The partition delimiter for all common harddrives (sd[a-z]+)
+        part_delimiter = ''
+        if 'nvme' in device:
+            part_delimiter = 'p'
+        component_devices.append(
+            device + part_delimiter + str(index + RAID_PARTITION))
+    raid_level = logical_disk['raid_level']
+    # The schema check allows '1+0', but mdadm knows it as '10'.
+    if raid_level == '1+0':
+        raid_level = '10'
+    try:
+        LOG.debug("Creating md device %(dev)s on %(comp)s",
+                  {'dev': md_device, 'comp': component_devices})
+        utils.execute('mdadm', '--create', md_device, '--force',
+                      '--run', '--metadata=1', '--level', raid_level,
+                      '--raid-devices', len(component_devices),
+                      *component_devices)
+    except processutils.ProcessExecutionError as e:
+        msg = "Failed to create md device {} on {}: {}".format(
+            md_device, ' '.join(component_devices), e)
+        raise errors.SoftwareRAIDError(msg)
+
+    # check for missing devices and re-add them
+    actual_components = _get_actual_component_devices(md_device)
+    missing = set(component_devices) - set(actual_components)
+    for dev in missing:
+        try:
+            LOG.warning('Found %(device)s to be missing from %(md)s '
+                        '... re-adding!',
+                        {'device': dev, 'md': md_device})
+            utils.execute('mdadm', '--add', md_device, dev,
+                          attempts=3, delay_on_retry=True)
+        except processutils.ProcessExecutionError as e:
+            msg = "Failed re-add {} to {}: {}".format(
+                dev, md_device, e)
+            raise errors.SoftwareRAIDError(msg)
