@@ -59,6 +59,8 @@ API_CLIENT = None
 API_LOOKUP_TIMEOUT = None
 API_LOOKUP_INTERVAL = None
 SUPPORTED_SOFTWARE_RAID_LEVELS = frozenset(['0', '1', '1+0', '5', '6'])
+NVME_CLI_FORMAT_SUPPORTED_FLAG = 0b10
+NVME_CLI_CRYPTO_FORMAT_SUPPORTED_FLAG = 0b100
 
 RAID_APPLY_CONFIGURATION_ARGSINFO = {
     "raid_config": {
@@ -1256,18 +1258,42 @@ class GenericHardwareManager(HardwareManager):
         # Note(TheJulia) Use try/except to capture and log the failure
         # and then revert to attempting to shred the volume if enabled.
         try:
-            execute_secure_erase = info.get(
-                'agent_enable_ata_secure_erase', True)
-            if execute_secure_erase and self._ata_erase(block_device):
-                return
+            if self._is_nvme(block_device):
+
+                execute_nvme_erase = info.get(
+                    'agent_enable_nvme_secure_erase', True)
+                if execute_nvme_erase and self._nvme_erase(block_device):
+                    return
+            else:
+                execute_secure_erase = info.get(
+                    'agent_enable_ata_secure_erase', True)
+                if execute_secure_erase and self._ata_erase(block_device):
+                    return
         except errors.BlockDeviceEraseError as e:
-            execute_shred = info.get(
-                'agent_continue_if_ata_erase_failed', False)
+            execute_shred = info.get('agent_continue_if_secure_erase_failed')
+
+            # NOTE(janders) While we are deprecating
+            # ``driver_internal_info['agent_continue_if_ata_erase_failed']``
+            # names check for both ``agent_continue_if_secure_erase_failed``
+            # and ``agent_continue_if_ata_erase_failed``.
+            # This is to ensure interoperability between newer Ironic Python
+            # Agent images and older Ironic API services.
+            # In future releases, 'False' default value needs to be added to
+            # the info.get call above and the code below can be removed.
+            # If we're dealing with new-IPA and old-API scenario, NVMe secure
+            # erase should not be attempted due to absence of
+            # ``[deploy]/enable_nvme_secure_erase`` config option so
+            # ``agent_continue_if_ata_erase_failed`` is not misleading here
+            # as it will only apply to ATA Secure Erase.
+            if execute_shred is None:
+                execute_shred = info.get('agent_continue_if_ata_erase_failed',
+                                         False)
+
             if execute_shred:
-                LOG.warning('Failed to invoke ata_erase, '
+                LOG.warning('Failed to invoke secure erase, '
                             'falling back to shred: %s', e)
             else:
-                msg = ('Failed to invoke ata_erase, '
+                msg = ('Failed to invoke secure erase, '
                        'fallback to shred is not enabled: %s' % e)
                 LOG.error(msg)
                 raise errors.IncompatibleHardwareMethodError(msg)
@@ -1587,6 +1613,83 @@ class GenericHardwareManager(HardwareManager):
 
         # In SEC1 security state
         return True
+
+    def _is_nvme(self, block_device):
+        """Check if a block device is a NVMe.
+
+        Checks if the device name indicates that it is an NVMe drive.
+
+        :param block_device: a BlockDevice object
+        :returns: True if the device is an NVMe, False if it is not.
+        """
+
+        return block_device.name.startswith("/dev/nvme")
+
+    def _nvme_erase(self, block_device):
+        """Attempt to clean the NVMe using the most secure supported method
+
+        :param block_device: a BlockDevice object
+        :return: True if cleaning operation succeeded, False if it failed
+        :raises: BlockDeviceEraseError
+        """
+
+        # check if crypto format is supported
+        try:
+            LOG.debug("Attempting to fetch NVMe capabilities for device %s",
+                      block_device.name)
+            nvme_info, _e = utils.execute('nvme', 'id-ctrl',
+                                          block_device.name, '-o', 'json')
+            nvme_info = json.loads(nvme_info)
+
+        except processutils.ProcessExecutionError as e:
+            msg = (("Failed to fetch NVMe capabilities for device {}: {}")
+                   .format(block_device, e))
+            LOG.error(msg)
+            raise errors.BlockDeviceEraseError(msg)
+
+        # execute format with crypto option (ses=2) if supported
+        # if crypto is unsupported use user-data erase (ses=1)
+        if nvme_info:
+            # Check if the device supports NVMe format at all. This info
+            # is in "oacs" section of nvme-cli id-ctrl output. If it does,
+            # set format mode to 1 (this is passed as -s <mode> parameter
+            # to nvme-cli later)
+            fmt_caps = nvme_info['oacs']
+            if fmt_caps & NVME_CLI_FORMAT_SUPPORTED_FLAG:
+                # Given the device supports format, check if crypto
+                # erase format mode is supported and pass it to nvme-cli
+                # instead
+                crypto_caps = nvme_info['fna']
+                if crypto_caps & NVME_CLI_CRYPTO_FORMAT_SUPPORTED_FLAG:
+                    format_mode = 2     # crypto erase
+                else:
+                    format_mode = 1     # user-data erase
+            else:
+                msg = ('nvme-cli did not return any supported format modes '
+                       'for device: {device}').format(
+                    device=block_device.name)
+                LOG.error(msg)
+                raise errors.BlockDeviceEraseError(msg)
+        else:
+            # If nvme-cli output is empty, raise an exception
+            msg = ('nvme-cli did not return any information '
+                   'for device: {device}').format(device=block_device.name)
+            LOG.error(msg)
+            raise errors.BlockDeviceEraseError(msg)
+
+        try:
+            LOG.debug("Attempting to nvme-format %s using secure format mode "
+                      "(ses) %s", block_device.name, format_mode)
+            utils.execute('nvme', 'format', block_device.name, '-s',
+                          format_mode)
+            LOG.info("nvme-cli format for device %s (ses= %s ) completed "
+                     "successfully.", block_device.name, format_mode)
+            return True
+
+        except processutils.ProcessExecutionError as e:
+            msg = (("Failed to nvme format device {}: {}"
+                    ).format(block_device, e))
+            raise errors.BlockDeviceEraseError(msg)
 
     def get_bmc_address(self):
         """Attempt to detect BMC IP address

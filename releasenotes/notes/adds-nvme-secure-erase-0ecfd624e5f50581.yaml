@@ -1,0 +1,8 @@
+---
+features:
+  - Adds support for NVMe-specific storage cleaning to IPA. Currently this is
+    implemented by using nvme-cli format functionality. Crypto Erase is used
+    if supported by the device, otherwise the code falls back to User Data
+    Erase. The operators can control NVMe cleaning by using
+    deploy.enable_nvme_erase config option which controls
+    ``agent_enable_nvme_erase`` internal setting in driver_internal_info.
