@@ -25,6 +25,52 @@ Deploy steps
     and must be used through the :ironic-doc:`ironic RAID feature
     <admin/raid.html>`.
 
+Injecting files
+~~~~~~~~~~~~~~~
+
+``deploy.inject_files(node, ports, files, verify_ca=True)``
+
+This optional deploy step (introduced in the Wallaby release series) allows
+injecting arbitrary files into the node. The list of files is built from the
+optional ``inject_files`` property of the node concatenated with the explicit
+``files`` argument. Each item in the list is a dictionary with the following
+fields:
+
+``path`` (required)
+    An absolute path to the file on the target partition. All missing
+    directories will be created.
+``partition``
+    Specifies the target partition in one of 3 ways:
+
+    * A number is treated as a partition index (starting with 1) on the root
+      device.
+    * A path is treated as a block device path (e.g. ``/dev/sda1`` or
+      ``/dev/disk/by-partlabel/<something>``.
+    * If missing, the agent will try to find a partition containing the first
+      component of the ``path`` on the root device. E.g. for
+      ``/etc/sysctl.d/my.conf``, look for a partition containing ``/etc``.
+``deleted``
+    If ``True``, the file is deleted, not created.
+    Incompatible with ``content``.
+``content``
+    Data to write. Incompatible with ``deleted``. Can take two forms:
+
+    * A URL of the content. Can use Python-style formatting to build a node
+      specific URL, e.g. ``http://server/{node[uuid]}/{ports[0][address]}``.
+    * Base64 encoded binary contents.
+``mode``, ``owner``, ``group``
+    Numeric mode, owner ID and group ID of the file.
+``dirmode``
+    Numeric mode of the leaf directory if it has to be created.
+
+This deploy step is disabled by default and can be enabled via a deploy
+template or via the ``ipa-inject-files-priority`` kernel parameter.
+
+Known limitations:
+
+* Names are not supported for ``owner`` and ``group``.
+* LVM is not supported.
+
 Clean steps
 -----------
 

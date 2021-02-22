@@ -316,6 +316,11 @@ cli_opts = [
                      'used if you are absolutely sure of what you are '
                      'doing and that your hardware supports '
                      'such functionality. Hint: Most hardware does not.'),
+    cfg.IntOpt('inject_files_priority',
+               default=APARAMS.get('ipa-inject-files-priority', 0),
+               min=0, max=99,  # 100 is when IPA is booted
+               help='Priority of the inject_files deploy step (disabled '
+                    'by default), an integer between 1 and .'),
 ]
 
 CONF.register_cli_opts(cli_opts)

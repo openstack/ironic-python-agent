@@ -39,6 +39,7 @@ import yaml
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base as ext_base
+from ironic_python_agent import inject_files
 from ironic_python_agent import netutils
 from ironic_python_agent import raid_utils
 from ironic_python_agent import tls_utils
@@ -1868,6 +1869,13 @@ class GenericHardwareManager(HardwareManager):
                 'interface': 'deploy',
                 'reboot_requested': False,
             },
+            {
+                'step': 'inject_files',
+                'priority': CONF.inject_files_priority,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'argsinfo': inject_files.ARGSINFO,
+            },
         ]
 
     def apply_configuration(self, node, ports, raid_config,
@@ -2295,6 +2303,17 @@ class GenericHardwareManager(HardwareManager):
     def generate_tls_certificate(self, ip_address):
         """Generate a TLS certificate for the IP address."""
         return tls_utils.generate_tls_certificate(ip_address)
+
+    def inject_files(self, node, ports, files=None, verify_ca=True):
+        """A deploy step to inject arbitrary files.
+
+        :param node: A dictionary of the node object
+        :param ports: A list of dictionaries containing information
+                      of ports for the node (unused)
+        :param files: See :py:mod:`inject_files`
+        :param verify_ca: Whether to verify TLS certificate.
+        """
+        return inject_files.inject_files(node, ports, files, verify_ca)
 
 
 def _compare_extensions(ext1, ext2):

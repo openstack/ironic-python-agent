@@ -35,6 +35,8 @@ from oslo_log import log as logging
 from oslo_serialization import base64
 from oslo_serialization import jsonutils
 from oslo_utils import units
+import requests
+import tenacity
 
 from ironic_python_agent import errors
 
@@ -811,3 +813,42 @@ def create_partition_table(dev_name, partition_table_type):
         msg = "Failed to create partition table on {}: {}".format(
             dev_name, e)
         raise errors.CommandExecutionError(msg)
+
+
+class StreamingClient:
+    """A wrapper around HTTP client with TLS, streaming and error handling."""
+
+    _CHUNK_SIZE = 1 * units.Mi
+
+    def __init__(self, verify_ca=True):
+        if verify_ca:
+            self.verify, self.cert = get_ssl_client_options(CONF)
+        else:
+            self.verify, self.cert = False, None
+
+    @contextlib.contextmanager
+    def __call__(self, url):
+        """Execute a GET request and start streaming.
+
+        :param url: Target URL.
+        :return: A generator yielding chunks of data.
+        """
+        @tenacity.retry(
+            retry=tenacity.retry_if_exception_type(requests.ConnectionError),
+            stop=tenacity.stop_after_attempt(
+                CONF.image_download_connection_retries + 1),
+            wait=tenacity.wait_fixed(
+                CONF.image_download_connection_retry_interval),
+            reraise=True)
+        def _get_with_retries():
+            return requests.get(url, verify=self.verify, cert=self.cert,
+                                stream=True,
+                                timeout=CONF.image_download_connection_timeout)
+
+        try:
+            with _get_with_retries() as resp:
+                resp.raise_for_status()
+                yield resp.iter_content(self._CHUNK_SIZE)
+        except requests.RequestException as exc:
+            raise errors.CommandExecutionError(
+                "Unable to read data from %s: %s" % (url, exc))
