@@ -1119,7 +1119,7 @@ class GenericHardwareManager(HardwareManager):
         freq = cpu_info.get('cpu max mhz', cpu_info.get('cpu mhz'))
 
         flags = []
-        out = utils.try_execute('grep', '-Em1', '^flags', '/proc/cpuinfo')
+        out = il_utils.try_execute('grep', '-Em1', '^flags', '/proc/cpuinfo')
         if out:
             try:
                 # Example output (much longer for a real system):
@@ -1699,9 +1699,9 @@ class GenericHardwareManager(HardwareManager):
                  configured properly
         """
         # These modules are rarely loaded automatically
-        utils.try_execute('modprobe', 'ipmi_msghandler')
-        utils.try_execute('modprobe', 'ipmi_devintf')
-        utils.try_execute('modprobe', 'ipmi_si')
+        il_utils.try_execute('modprobe', 'ipmi_msghandler')
+        il_utils.try_execute('modprobe', 'ipmi_devintf')
+        il_utils.try_execute('modprobe', 'ipmi_si')
 
         try:
             # From all the channels 0-15, only 1-11 can be assigned to
@@ -1742,9 +1742,9 @@ class GenericHardwareManager(HardwareManager):
                  interract with system tools or critical error occurs.
         """
         # These modules are rarely loaded automatically
-        utils.try_execute('modprobe', 'ipmi_msghandler')
-        utils.try_execute('modprobe', 'ipmi_devintf')
-        utils.try_execute('modprobe', 'ipmi_si')
+        il_utils.try_execute('modprobe', 'ipmi_msghandler')
+        il_utils.try_execute('modprobe', 'ipmi_devintf')
+        il_utils.try_execute('modprobe', 'ipmi_si')
 
         null_address_re = re.compile(r'^::(/\d{1,3})*$')
 
