@@ -15,6 +15,7 @@
 import binascii
 import os
 import shutil
+import stat
 import time
 from unittest import mock
 
@@ -3522,6 +3523,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks(self, mocked_execute):
         mocked_execute.side_effect = [(hws.MDADM_DETAIL_OUTPUT, '')]
+        holder_disks = hardware.get_holder_disks('/dev/md0')
+        self.assertEqual(['/dev/vde', '/dev/vdf'], holder_disks)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(os.path, 'exists', autospec=True)
+    @mock.patch.object(os, 'stat', autospec=True)
+    def test_get_holder_disks_with_whole_device(self, mocked_stat,
+                                                mocked_exists,
+                                                mocked_execute):
+        mocked_execute.side_effect = [(hws.MDADM_DETAIL_OUTPUT_WHOLE_DEVICE,
+                                       '')]
+        mocked_exists.return_value = True
+        mocked_stat.return_value.st_mode = stat.S_IFBLK
         holder_disks = hardware.get_holder_disks('/dev/md0')
         self.assertEqual(['/dev/vde', '/dev/vdf'], holder_disks)
 

@@ -1,0 +1,5 @@
+---
+fixes:
+  - IPA will now successfully clean configuration when it encounters a software
+    RAID array that was previously created using entire devices instead of
+    partitions.
