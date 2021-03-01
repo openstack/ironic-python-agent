@@ -135,7 +135,6 @@ Where can I find the IPA logs
 
 Retrieving the IPA logs will differ depending on which base image was used.
 
-
 * Operating system that do not use ``systemd`` (ie Ubuntu 14.04)
 
   - logs will be found in the /var/log/ folder.
@@ -146,6 +145,9 @@ Retrieving the IPA logs will differ depending on which base image was used.
   - if using a diskimage-builder ramdisk, it may be configured to output all
     contents of the journal, including ironic-python-agent logs, by enabling
     the `journal-to-console element <https://docs.openstack.org/diskimage-builder/latest/elements/journal-to-console/README.html>`_.
+
+In addition, Ironic is configured to retrieve IPA logs upon failures by default,
+you can learn more about this feature in the `Ironic troubleshooting guide <https://docs.openstack.org/ironic/latest/admin/troubleshooting.html#retrieving-logs-from-the-deploy-ramdisk>`_.
 
 Manually restart IPA
 ====================
