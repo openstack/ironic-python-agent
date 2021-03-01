@@ -43,5 +43,5 @@
         - ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa
     post:
       jobs:
-        - ironic-python-agent-build-image-tinyipa
+        - ironic-python-agent-build-image-tinyipa-ussuri
         - ironic-python-agent-build-image-dib-centos8
