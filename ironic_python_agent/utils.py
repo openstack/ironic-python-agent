@@ -88,26 +88,6 @@ def execute(*cmd, **kwargs):
     return ironic_utils.execute(*cmd, **kwargs)
 
 
-def try_execute(*cmd, **kwargs):
-    """The same as execute but returns None on error.
-
-    Executes and logs results from a system command. See docs for
-    oslo_concurrency.processutils.execute for usage.
-
-    Instead of raising an exception on failure, this method simply
-    returns None in case of failure.
-
-    :param cmd: positional arguments to pass to processutils.execute()
-    :param kwargs: keyword arguments to pass to processutils.execute()
-    :raises: UnknownArgumentError on receiving unknown arguments
-    :returns: tuple of (stdout, stderr) or None in some error cases
-    """
-    try:
-        return execute(*cmd, **kwargs)
-    except (processutils.ProcessExecutionError, OSError) as e:
-        LOG.debug('Command failed: %s', e)
-
-
 def _read_params_from_file(filepath):
     """Extract key=value pairs from a file.
 

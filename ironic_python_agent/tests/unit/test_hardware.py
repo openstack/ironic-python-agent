@@ -20,6 +20,7 @@ import time
 from unittest import mock
 
 from ironic_lib import disk_utils
+from ironic_lib import utils as il_utils
 import netifaces
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -969,12 +970,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 '/sys/class/block/sdfake/device/vendor', 'r')
             self.assertEqual('fake-vendor', vendor)
 
+    @mock.patch.object(il_utils, 'execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_cpus(self, mocked_execute):
-        mocked_execute.side_effect = [
-            (hws.LSCPU_OUTPUT, ''),
-            (hws.CPUINFO_FLAGS_OUTPUT, '')
-        ]
+    def test_get_cpus(self, mocked_execute, mte):
+        mocked_execute.return_value = (hws.LSCPU_OUTPUT, '')
+        mte.return_value = (hws.CPUINFO_FLAGS_OUTPUT, '')
 
         cpus = self.hardware.get_cpus()
         self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
@@ -984,12 +984,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual(['fpu', 'vme', 'de', 'pse'], cpus.flags)
 
+    @mock.patch.object(il_utils, 'execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_cpus2(self, mocked_execute):
-        mocked_execute.side_effect = [
-            (hws.LSCPU_OUTPUT_NO_MAX_MHZ, ''),
-            (hws.CPUINFO_FLAGS_OUTPUT, '')
-        ]
+    def test_get_cpus2(self, mocked_execute, mte):
+        mocked_execute.return_value = (hws.LSCPU_OUTPUT_NO_MAX_MHZ, '')
+        mte.return_value = (hws.CPUINFO_FLAGS_OUTPUT, '')
 
         cpus = self.hardware.get_cpus()
         self.assertEqual('Intel(R) Xeon(R) CPU E5-1650 v3 @ 3.50GHz',
@@ -999,12 +998,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual(['fpu', 'vme', 'de', 'pse'], cpus.flags)
 
+    @mock.patch.object(il_utils, 'execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_cpus_no_flags(self, mocked_execute):
-        mocked_execute.side_effect = [
-            (hws.LSCPU_OUTPUT, ''),
-            processutils.ProcessExecutionError()
-        ]
+    def test_get_cpus_no_flags(self, mocked_execute, mte):
+        mocked_execute.return_value = (hws.LSCPU_OUTPUT, '')
+        mte.side_effect = processutils.ProcessExecutionError()
 
         cpus = self.hardware.get_cpus()
         self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
@@ -1014,12 +1012,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual([], cpus.flags)
 
+    @mock.patch.object(il_utils, 'execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_cpus_illegal_flags(self, mocked_execute):
-        mocked_execute.side_effect = [
-            (hws.LSCPU_OUTPUT, ''),
-            ('I am not a flag', '')
-        ]
+    def test_get_cpus_illegal_flags(self, mocked_execute, mte):
+        mocked_execute.return_value = (hws.LSCPU_OUTPUT, '')
+        mte.return_value = ('I am not a flag', '')
 
         cpus = self.hardware.get_cpus()
         self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
@@ -2190,35 +2187,41 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock_open.assert_called_once_with(
                 '/sys/block/sdfake/ro', 'r')
 
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address(self, mocked_execute):
+    def test_get_bmc_address(self, mocked_execute, mte):
         mocked_execute.return_value = '192.1.2.3\n', ''
         self.assertEqual('192.1.2.3', self.hardware.get_bmc_address())
 
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_virt(self, mocked_execute):
+    def test_get_bmc_address_virt(self, mocked_execute, mte):
         mocked_execute.side_effect = processutils.ProcessExecutionError()
         self.assertIsNone(self.hardware.get_bmc_address())
 
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_zeroed(self, mocked_execute):
+    def test_get_bmc_address_zeroed(self, mocked_execute, mte):
         mocked_execute.return_value = '0.0.0.0\n', ''
         self.assertEqual('0.0.0.0', self.hardware.get_bmc_address())
 
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_invalid(self, mocked_execute):
+    def test_get_bmc_address_invalid(self, mocked_execute, mte):
         # In case of invalid lan channel, stdout is empty and the error
         # on stderr is "Invalid channel"
         mocked_execute.return_value = '\n', 'Invalid channel: 55'
         self.assertEqual('0.0.0.0', self.hardware.get_bmc_address())
 
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_random_error(self, mocked_execute):
+    def test_get_bmc_address_random_error(self, mocked_execute, mte):
         mocked_execute.return_value = '192.1.2.3\n', 'Random error message'
         self.assertEqual('192.1.2.3', self.hardware.get_bmc_address())
 
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_iterate_channels(self, mocked_execute):
+    def test_get_bmc_address_iterate_channels(self, mocked_execute, mte):
         # For channel 1 we simulate unconfigured IP
         # and for any other we return a correct IP address
         def side_effect(*args, **kwargs):
@@ -2233,18 +2236,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = side_effect
         self.assertEqual('192.1.2.3', self.hardware.get_bmc_address())
 
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_not_available(self, mocked_execute):
+    def test_get_bmc_address_not_available(self, mocked_execute, mte):
         mocked_execute.return_value = '', ''
         self.assertEqual('0.0.0.0', self.hardware.get_bmc_address())
 
-    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_not_enabled(self, mocked_execute, mte):
         mocked_execute.side_effect = [('ipv4\n', '')] * 11
         self.assertEqual('::/0', self.hardware.get_bmc_v6address())
 
-    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_dynamic_address(self, mocked_execute, mte):
         mocked_execute.side_effect = [
@@ -2254,7 +2258,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('2001:1234:1234:1234:1234:1234:1234:1234',
                          self.hardware.get_bmc_v6address())
 
-    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_static_address_both(self, mocked_execute, mte):
         dynamic_disabled = \
@@ -2267,12 +2271,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('2001:5678:5678:5678:5678:5678:5678:5678',
                          self.hardware.get_bmc_v6address())
 
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_v6address_virt(self, mocked_execute):
+    def test_get_bmc_v6address_virt(self, mocked_execute, mte):
         mocked_execute.side_effect = processutils.ProcessExecutionError()
         self.assertIsNone(self.hardware.get_bmc_v6address())
 
-    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_invalid_enables(self, mocked_execute, mte):
         def side_effect(*args, **kwargs):
@@ -2282,7 +2287,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = side_effect
         self.assertEqual('::/0', self.hardware.get_bmc_v6address())
 
-    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_invalid_get_address(self, mocked_execute, mte):
         def side_effect(*args, **kwargs):
@@ -2296,7 +2301,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('::/0', self.hardware.get_bmc_v6address())
 
     @mock.patch.object(hardware, 'LOG', autospec=True)
-    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_ipmitool_invalid_stdout_format(
             self, mocked_execute, mte, mocked_log):
@@ -2313,7 +2318,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                              'command: %(e)s', mock.ANY)
         mocked_log.warning.assert_has_calls([one_call] * 14)
 
-    @mock.patch.object(utils, 'try_execute', autospec=True)
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_channel_7(self, mocked_execute, mte):
         def side_effect(*args, **kwargs):
