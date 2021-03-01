@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Increase memory usage limit for ``qemu-img convert`` command to 2 GiB.
+    See `Story 2008667
+    <https://storyboard.openstack.org/#!/story/2008667>`_
+    for details.
