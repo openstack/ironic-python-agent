@@ -15,7 +15,7 @@
         - metalsmith-integration-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
-        - ironic-python-agent-check-image-tinyipa:
+        - ironic-python-agent-check-image-tinyipa-ussuri:
             voting: false
         - ironic-python-agent-check-image-dib-centos8:
             voting: false

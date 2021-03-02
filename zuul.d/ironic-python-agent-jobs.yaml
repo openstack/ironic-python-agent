@@ -182,8 +182,6 @@
     parent: ironic-ipa-base
     required-projects:
       - openstack/diskimage-builder
-      - name: openstack/ironic-python-agent-builder
-        override-checkout: 2.2.0
     timeout: 9600
     vars:
       tempest_test_timeout: 2400
@@ -230,6 +228,15 @@
 - job:
     name: ironic-python-agent-build-image-tinyipa-ussuri
     parent: ironic-python-agent-build-image-tinyipa
+    nodeset: ubuntu-bionic
     required-projects:
       - name: openstack/ironic-python-agent-builder
         override-checkout: 2.2.0
+
+- job:
+    name: ironic-python-agent-check-image-tinyipa-ussuri
+    parent: ironic-python-agent-check-image-tinyipa
+    nodeset: ubuntu-bionic
+    required-projects:
+        - name: openstack/ironic-python-agent-builder
+          override-checkout: 2.2.0
