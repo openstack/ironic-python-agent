@@ -411,8 +411,8 @@ def list_all_block_devices(block_type='disk',
                     "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
 
     columns = utils.LSBLK_COLUMNS
-    report = utils.execute('lsblk', '-Pbia', '-o{}'.format(','.join(columns)),
-                           check_exit_code=[0])[0]
+    report = utils.execute('lsblk', '-Pbia',
+                           '-o{}'.format(','.join(columns)))[0]
     lines = report.splitlines()
     context = pyudev.Context()
 

@@ -206,7 +206,7 @@ def _write_whole_disk_image(image, image_info, device):
     command = ['/bin/bash', script, image, device]
     LOG.info('Writing image with command: {}'.format(' '.join(command)))
     try:
-        stdout, stderr = utils.execute(*command, check_exit_code=[0])
+        stdout, stderr = utils.execute(*command)
     except processutils.ProcessExecutionError as e:
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
 
@@ -745,8 +745,7 @@ class StandbyExtension(base.BaseAgentExtension):
         except errors.CommandExecutionError as e:
             LOG.warning('Failed to sync file system buffers: % s', e)
         try:
-            _, stderr = utils.execute(command, use_standard_locale=True,
-                                      check_exit_code=[0])
+            _, stderr = utils.execute(command, use_standard_locale=True)
             if 'ignoring request.' in stderr:
                 LOG.debug('%s command failed with error %s, '
                           'falling back to sysrq-trigger.', command, stderr)
