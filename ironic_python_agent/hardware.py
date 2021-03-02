@@ -1690,7 +1690,7 @@ class GenericHardwareManager(HardwareManager):
             LOG.debug("Attempting to nvme-format %s using secure format mode "
                       "(ses) %s", block_device.name, format_mode)
             utils.execute('nvme', 'format', block_device.name, '-s',
-                          format_mode)
+                          format_mode, '-f')
             LOG.info("nvme-cli format for device %s (ses= %s ) completed "
                      "successfully.", block_device.name, format_mode)
             return True
