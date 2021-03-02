@@ -3886,7 +3886,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         retval = self.hardware._nvme_erase(block_device)
         mocked_execute.assert_has_calls([
             mock.call('nvme', 'id-ctrl', '/dev/nvme0n1', '-o', 'json'),
-            mock.call('nvme', 'format', '/dev/nvme0n1', '-s', 2),
+            mock.call('nvme', 'format', '/dev/nvme0n1', '-s', 2, '-f'),
         ])
 
         self.assertTrue(retval)
@@ -3910,7 +3910,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         retval = self.hardware._nvme_erase(block_device)
         mocked_execute.assert_has_calls([
             mock.call('nvme', 'id-ctrl', '/dev/nvme0n1', '-o', 'json'),
-            mock.call('nvme', 'format', '/dev/nvme0n1', '-s', 1),
+            mock.call('nvme', 'format', '/dev/nvme0n1', '-s', 1, '-f'),
         ])
 
         self.assertTrue(retval)
