@@ -178,7 +178,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         execute_mock.return_value = ('', '')
 
         standby._write_image(image_info, device)
-        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
+        execute_mock.assert_called_once_with(*command)
         fix_gpt_mock.assert_called_once_with(device, node_uuid=None)
 
         fix_gpt_mock.side_effect = exception.InstanceDeployFailure
@@ -193,7 +193,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                           image_info,
                           device)
 
-        execute_mock.assert_called_once_with(*command, check_exit_code=[0])
+        execute_mock.assert_called_once_with(*command)
 
     @mock.patch.object(utils, 'get_node_boot_mode', lambda self: 'bios')
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
@@ -1044,8 +1044,7 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         self.agent_extension._run_shutdown_command('poweroff')
         calls = [mock.call('sync'),
-                 mock.call('poweroff', use_standard_locale=True,
-                           check_exit_code=[0])]
+                 mock.call('poweroff', use_standard_locale=True)]
         execute_mock.assert_has_calls(calls)
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
@@ -1057,8 +1056,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.agent_extension._run_shutdown_command('poweroff')
         calls = [mock.call('hwclock', '-v', '--systohc'),
                  mock.call('sync'),
-                 mock.call('poweroff', use_standard_locale=True,
-                           check_exit_code=[0]),
+                 mock.call('poweroff', use_standard_locale=True),
                  mock.call("echo o > /proc/sysrq-trigger", shell=True)]
         execute_mock.assert_has_calls(calls)
 
@@ -1070,8 +1068,7 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         self.agent_extension._run_shutdown_command('reboot')
         calls = [mock.call('sync'),
-                 mock.call('reboot', use_standard_locale=True,
-                           check_exit_code=[0]),
+                 mock.call('reboot', use_standard_locale=True),
                  mock.call("echo b > /proc/sysrq-trigger", shell=True)]
         execute_mock.assert_has_calls(calls)
 
@@ -1082,8 +1079,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         success_result = self.agent_extension.run_image()
         success_result.join()
         calls = [mock.call('sync'),
-                 mock.call('reboot', use_standard_locale=True,
-                           check_exit_code=[0])]
+                 mock.call('reboot', use_standard_locale=True)]
         execute_mock.assert_has_calls(calls)
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
@@ -1105,8 +1101,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         success_result.join()
 
         calls = [mock.call('sync'),
-                 mock.call('poweroff', use_standard_locale=True,
-                           check_exit_code=[0])]
+                 mock.call('poweroff', use_standard_locale=True)]
         execute_mock.assert_has_calls(calls)
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
@@ -1135,8 +1130,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         calls = [mock.call('ntpdate', '192.168.1.1'),
                  mock.call('hwclock', '-v', '--systohc'),
                  mock.call('sync'),
-                 mock.call('poweroff', use_standard_locale=True,
-                           check_exit_code=[0])]
+                 mock.call('poweroff', use_standard_locale=True)]
         execute_mock.assert_has_calls(calls)
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
