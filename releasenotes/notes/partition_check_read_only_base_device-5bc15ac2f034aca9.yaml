@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes an issue where metadata erasure cleaning fails for partitions
+    because the read-only file isn't found, while it is available at the
+    base device.  Adds a check for the base device file on failure. See
+    `story 2008696 <https://storyboard.openstack.org/#!/story/2008696>`_.
