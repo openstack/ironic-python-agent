@@ -2184,6 +2184,26 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock_open.assert_called_once_with(
                 '/sys/block/sdfake/ro', 'r')
 
+    def test__is_read_only_device_partition_error(self):
+        device = hardware.BlockDevice('/dev/sdfake1', 'fake', 1024, False)
+        with mock.patch(
+                'builtins.open', side_effect=IOError,
+                autospec=True) as mock_open:
+            self.assertFalse(self.hardware._is_read_only_device(device))
+            mock_open.assert_has_calls([
+                mock.call('/sys/block/sdfake1/ro', 'r'),
+                mock.call('/sys/block/sdfake/ro', 'r')])
+
+    def test__is_read_only_device_partition_ok(self):
+        fileobj = mock.mock_open(read_data='1\n')
+        device = hardware.BlockDevice('/dev/sdfake1', 'fake', 1024, False)
+        reads = [IOError, '1']
+        with mock.patch(
+                'builtins.open', fileobj, create=True) as mock_open:
+            mock_dev_file = mock_open.return_value.read
+            mock_dev_file.side_effect = reads
+            self.assertTrue(self.hardware._is_read_only_device(device))
+
     @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address(self, mocked_execute, mte):

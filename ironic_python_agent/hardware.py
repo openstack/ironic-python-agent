@@ -24,6 +24,7 @@ import re
 import shlex
 import shutil
 import stat
+import string
 import time
 
 from ironic_lib import disk_utils
@@ -1447,23 +1448,32 @@ class GenericHardwareManager(HardwareManager):
 
         return 'linux_raid_member' in out
 
-    def _is_read_only_device(self, block_device):
+    def _is_read_only_device(self, block_device, partition=False):
         """Check if a block device is read-only.
 
         Checks the device read-only flag in order to identify virtual
         and firmware driven devices that block write device access.
 
         :param block_device: a BlockDevice object
+        :param partition: if True, this device is a partition
         :returns: True if the device is read-only.
         """
         try:
-            dev_name = str(block_device.name)[5:]
+            dev_name = os.path.basename(block_device.name)
+            if partition:
+                # Check the base device
+                dev_name = dev_name.rstrip(string.digits)
 
             with open('/sys/block/%s/ro' % dev_name, 'r') as f:
                 flag = f.read().strip()
                 if flag == '1':
                     return True
         except IOError as e:
+            # Check underlying device as the file may exist there
+            if (not partition and dev_name[-1].isdigit()
+                and 'nvme' not in dev_name):
+                return self._is_read_only_device(block_device, partition=True)
+
             LOG.warning("Could not determine if %(name)s is a"
                         "read-only device. Error: %(err)s",
                         {'name': block_device.name, 'err': e})
