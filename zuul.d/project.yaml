@@ -13,10 +13,13 @@
         - ipa-tempest-bios-ipmi-iscsi-tinyipa-src
         - ironic-standalone-ipa-src
         - metalsmith-integration-ipa-src
+        # NOTE(rpittau) temporarily commenting this out until
+        # https://review.opendev.org/c/openstack/ironic-python-agent-builder/+/780556
+        # merges
+        #- ironic-python-agent-check-image-tinyipa-ussuri:
+        #    voting: false
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
-        - ironic-python-agent-check-image-tinyipa-ussuri:
-            voting: false
         - ironic-python-agent-check-image-dib-centos8:
             voting: false
         # Non-voting jobs
@@ -43,5 +46,8 @@
         - ipa-tempest-dsvm-partition-ipmi-iscsi-tinyipa
     post:
       jobs:
-        - ironic-python-agent-build-image-tinyipa-ussuri
+        # NOTE(rpittau) temporarily commenting this out until
+        # https://review.opendev.org/c/openstack/ironic-python-agent-builder/+/780556
+        # merges
+        #- ironic-python-agent-build-image-tinyipa-ussuri
         - ironic-python-agent-build-image-dib-centos8

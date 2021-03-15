@@ -224,19 +224,3 @@
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
     parent: ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src
-
-- job:
-    name: ironic-python-agent-build-image-tinyipa-ussuri
-    parent: ironic-python-agent-build-image-tinyipa
-    nodeset: ubuntu-bionic
-    required-projects:
-      - name: openstack/ironic-python-agent-builder
-        override-checkout: 2.2.0
-
-- job:
-    name: ironic-python-agent-check-image-tinyipa-ussuri
-    parent: ironic-python-agent-check-image-tinyipa
-    nodeset: ubuntu-bionic
-    required-projects:
-        - name: openstack/ironic-python-agent-builder
-          override-checkout: 2.2.0
