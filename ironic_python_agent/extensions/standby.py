@@ -600,6 +600,10 @@ class StandbyExtension(base.BaseAgentExtension):
         except exception.InstanceDeployFailure:
             # Note: the catch internal to the helper method logs any errors.
             pass
+        # Fix the root partition UUID
+        root_uuid = disk_utils.block_uuid(device)
+        LOG.info("{} UUID is now {}".format(device, root_uuid))
+        self.partition_uuids['root uuid'] = root_uuid
 
     def _fix_up_partition_uuids(self, image_info, device):
         if self.partition_uuids is None:

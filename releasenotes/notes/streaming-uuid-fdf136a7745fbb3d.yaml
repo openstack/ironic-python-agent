@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes incorrect root partition UUID after streaming a raw partition
+    image.
