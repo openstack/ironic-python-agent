@@ -1175,12 +1175,14 @@ class TestStandbyExtension(base.IronicAgentTest):
         download_mock.assert_called_once_with(image_info)
         write_mock.assert_called_once_with(image_info, device)
 
+    @mock.patch('ironic_lib.disk_utils.block_uuid', autospec=True)
     @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
     @mock.patch('hashlib.md5', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device(self, requests_mock, open_mock,
-                                          md5_mock, fix_gpt_mock):
+                                          md5_mock, fix_gpt_mock,
+                                          block_uuid_mock):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
@@ -1190,6 +1192,9 @@ class TestStandbyExtension(base.IronicAgentTest):
         file_mock.read.return_value = None
         hexdigest_mock = md5_mock.return_value.hexdigest
         hexdigest_mock.return_value = image_info['checksum']
+        self.agent_extension.partition_uuids = {}
+
+        block_uuid_mock.return_value = 'aaaabbbb'
 
         self.agent_extension._stream_raw_image_onto_device(image_info,
                                                            '/dev/foo')
@@ -1200,6 +1205,11 @@ class TestStandbyExtension(base.IronicAgentTest):
         expected_calls = [mock.call('some'), mock.call('content')]
         file_mock.write.assert_has_calls(expected_calls)
         fix_gpt_mock.assert_called_once_with('/dev/foo', node_uuid=None)
+        block_uuid_mock.assert_called_once_with('/dev/foo')
+        self.assertEqual(
+            'aaaabbbb',
+            self.agent_extension.partition_uuids['root uuid']
+        )
 
     @mock.patch('hashlib.md5', autospec=True)
     @mock.patch('builtins.open', autospec=True)
