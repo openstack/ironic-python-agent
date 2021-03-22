@@ -184,60 +184,37 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
         ])
 
     @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
-    @mock.patch.object(shutil, 'rmtree', autospec=True)
-    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
     @mock.patch.object(utils, '_read_params_from_file', autospec=True)
-    @mock.patch.object(os, 'mkdir', autospec=True)
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_vmedia_params(
-            self, execute_mock, mkdir_mock, read_params_mock,
-            mkdtemp_mock, rmtree_mock, find_mock):
-        mkdtemp_mock.return_value = "/tempdir"
+    @mock.patch.object(ironic_utils, 'mounted', autospec=True)
+    def test__get_vmedia_params(self, mount_mock, read_params_mock, find_mock):
         find_mock.return_value = '/dev/fake'
-
-        null_output = ["", ""]
+        mount_mock.return_value.__enter__.return_value = '/tempdir'
         expected_params = {'a': 'b'}
         read_params_mock.return_value = expected_params
-        execute_mock.side_effect = [null_output, null_output]
 
         returned_params = utils._get_vmedia_params()
 
-        execute_mock.assert_any_call('mount', "/dev/fake", "/tempdir")
+        mount_mock.assert_called_once_with('/dev/fake')
         read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
-        execute_mock.assert_any_call('umount', "/tempdir")
         self.assertEqual(expected_params, returned_params)
-        mkdtemp_mock.assert_called_once_with()
-        rmtree_mock.assert_called_once_with("/tempdir")
 
     @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
-    @mock.patch.object(shutil, 'rmtree', autospec=True)
-    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
     @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
     @mock.patch.object(utils, '_read_params_from_file', autospec=True)
-    @mock.patch.object(os, 'mkdir', autospec=True)
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_vmedia_params_by_device(self, execute_mock, mkdir_mock,
-                                          read_params_mock, get_device_mock,
-                                          mkdtemp_mock, rmtree_mock,
-                                          find_mock):
-        mkdtemp_mock.return_value = "/tempdir"
+    @mock.patch.object(ironic_utils, 'mounted', autospec=True)
+    def test__get_vmedia_params_by_device(self, mount_mock, read_params_mock,
+                                          get_device_mock, find_mock):
         find_mock.return_value = None
-
-        null_output = ["", ""]
+        mount_mock.return_value.__enter__.return_value = '/tempdir'
         expected_params = {'a': 'b'}
         read_params_mock.return_value = expected_params
-        execute_mock.side_effect = [null_output, null_output]
         get_device_mock.return_value = "sda"
 
         returned_params = utils._get_vmedia_params()
 
-        execute_mock.assert_any_call('mount', "/dev/sda",
-                                     "/tempdir")
+        mount_mock.assert_called_once_with('/dev/sda')
         read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
-        execute_mock.assert_any_call('umount', "/tempdir")
         self.assertEqual(expected_params, returned_params)
-        mkdtemp_mock.assert_called_once_with()
-        rmtree_mock.assert_called_once_with("/tempdir")
 
     @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
     @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
@@ -247,87 +224,6 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
         get_device_mock.return_value = None
         self.assertRaises(errors.VirtualMediaBootError,
                           utils._get_vmedia_params)
-
-    @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
-    @mock.patch.object(shutil, 'rmtree', autospec=True)
-    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
-    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
-    @mock.patch.object(os, 'mkdir', autospec=True)
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_vmedia_params_mount_fails(self, execute_mock,
-                                            mkdir_mock, read_params_mock,
-                                            mkdtemp_mock, rmtree_mock,
-                                            find_mock):
-        find_mock.return_value = '/dev/fake'
-        mkdtemp_mock.return_value = "/tempdir"
-
-        expected_params = {'a': 'b'}
-        read_params_mock.return_value = expected_params
-
-        execute_mock.side_effect = processutils.ProcessExecutionError()
-
-        self.assertRaises(errors.VirtualMediaBootError,
-                          utils._get_vmedia_params)
-
-        execute_mock.assert_any_call('mount', "/dev/fake", "/tempdir")
-        mkdtemp_mock.assert_called_once_with()
-        rmtree_mock.assert_called_once_with("/tempdir")
-
-    @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
-    @mock.patch.object(shutil, 'rmtree', autospec=True)
-    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
-    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
-    @mock.patch.object(os, 'mkdir', autospec=True)
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_vmedia_params_umount_fails(self, execute_mock, mkdir_mock,
-                                             read_params_mock, mkdtemp_mock,
-                                             rmtree_mock, find_mock):
-        find_mock.return_value = '/dev/fake'
-        mkdtemp_mock.return_value = "/tempdir"
-
-        null_output = ["", ""]
-        expected_params = {'a': 'b'}
-        read_params_mock.return_value = expected_params
-
-        execute_mock.side_effect = [null_output,
-                                    processutils.ProcessExecutionError()]
-
-        returned_params = utils._get_vmedia_params()
-
-        execute_mock.assert_any_call('mount', "/dev/fake", "/tempdir")
-        read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
-        execute_mock.assert_any_call('umount', "/tempdir")
-        self.assertEqual(expected_params, returned_params)
-        mkdtemp_mock.assert_called_once_with()
-        rmtree_mock.assert_called_once_with("/tempdir")
-
-    @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
-    @mock.patch.object(shutil, 'rmtree', autospec=True)
-    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
-    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
-    @mock.patch.object(os, 'mkdir', autospec=True)
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_vmedia_params_rmtree_fails(self, execute_mock, mkdir_mock,
-                                             read_params_mock, mkdtemp_mock,
-                                             rmtree_mock, find_mock):
-        find_mock.return_value = '/dev/fake'
-        mkdtemp_mock.return_value = "/tempdir"
-        rmtree_mock.side_effect = Exception
-
-        null_output = ["", ""]
-        expected_params = {'a': 'b'}
-        read_params_mock.return_value = expected_params
-
-        execute_mock.return_value = null_output
-
-        returned_params = utils._get_vmedia_params()
-
-        execute_mock.assert_any_call('mount', "/dev/fake", "/tempdir")
-        read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
-        execute_mock.assert_any_call('umount', "/tempdir")
-        self.assertEqual(expected_params, returned_params)
-        mkdtemp_mock.assert_called_once_with()
-        rmtree_mock.assert_called_once_with("/tempdir")
 
 
 class TestFailures(testtools.TestCase):
@@ -1019,68 +915,68 @@ class TestGetEfiPart(testtools.TestCase):
 
 @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
 @mock.patch.object(shutil, 'copy', autospec=True)
+@mock.patch.object(ironic_utils, 'mounted', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestCopyConfigFromVmedia(testtools.TestCase):
 
-    def test_no_vmedia(self, mock_execute, mock_copy, mock_find_device):
+    def test_no_vmedia(self, mock_execute, mock_mount, mock_copy,
+                       mock_find_device):
         mock_find_device.return_value = None
         utils.copy_config_from_vmedia()
+        mock_mount.assert_not_called()
         mock_execute.assert_not_called()
         mock_copy.assert_not_called()
 
-    def test_no_files(self, mock_execute, mock_copy, mock_find_device):
-        mock_execute.side_effect = [
-            processutils.ProcessExecutionError,
-            ('', ''),
-            ('', ''),
-        ]
+    def test_no_files(self, mock_execute, mock_mount, mock_copy,
+                      mock_find_device):
+        temp_path = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(temp_path))
+
+        mock_execute.side_effect = processutils.ProcessExecutionError
         mock_find_device.return_value = '/dev/something'
+        mock_mount.return_value.__enter__.return_value = temp_path
         utils.copy_config_from_vmedia()
-        mock_execute.assert_has_calls([
-            mock.call('findmnt', '-n', '-oTARGET', '/dev/something'),
-            mock.call('mount', '/dev/something', mock.ANY),
-            mock.call('umount', mock.ANY),
-        ])
+        mock_mount.assert_called_once_with('/dev/something')
+        mock_execute.assert_called_once_with('findmnt', '-n', '-oTARGET',
+                                             '/dev/something')
         mock_copy.assert_not_called()
 
-    def test_mounted_no_files(self, mock_execute, mock_copy, mock_find_device):
+    def test_mounted_no_files(self, mock_execute, mock_mount, mock_copy,
+                              mock_find_device):
         mock_execute.return_value = '/some/path', ''
         mock_find_device.return_value = '/dev/something'
         utils.copy_config_from_vmedia()
         mock_execute.assert_called_once_with(
             'findmnt', '-n', '-oTARGET', '/dev/something')
         mock_copy.assert_not_called()
+        mock_mount.assert_not_called()
 
     @mock.patch.object(os, 'makedirs', autospec=True)
-    def test_copy(self, mock_makedirs, mock_execute, mock_copy,
+    def test_copy(self, mock_makedirs, mock_execute, mock_mount, mock_copy,
                   mock_find_device):
         mock_find_device.return_value = '/dev/something'
-        path = None
+        mock_execute.side_effect = processutils.ProcessExecutionError("")
+        path = tempfile.mkdtemp()
+        self.addCleanup(lambda: shutil.rmtree(path))
 
-        def _fake_exec(command, arg1, arg2=None, *args):
-            nonlocal path
-            if command == 'mount':
-                path = arg2
-                self.assertTrue(os.path.isdir(path))
-                # NOTE(dtantsur): makedirs is mocked
-                os.mkdir(os.path.join(path, 'etc'))
-                os.mkdir(os.path.join(path, 'etc', 'ironic-python-agent'))
-                os.mkdir(os.path.join(path, 'etc', 'ironic-python-agent.d'))
-                with open(os.path.join(path, 'not copied'), 'wt') as fp:
-                    fp.write('not copied')
-                with open(os.path.join(path, 'etc', 'ironic-python-agent',
-                                       'ironic.crt'), 'wt') as fp:
-                    fp.write('I am a cert')
-                with open(os.path.join(path, 'etc', 'ironic-python-agent.d',
-                                       'ironic.conf'), 'wt') as fp:
-                    fp.write('I am a config')
-            elif command == 'findmnt':
-                raise processutils.ProcessExecutionError("")
-            else:
-                self.assertEqual('umount', command)
+        def _fake_mount(dev):
+            self.assertEqual('/dev/something', dev)
+            # NOTE(dtantsur): makedirs is mocked
+            os.mkdir(os.path.join(path, 'etc'))
+            os.mkdir(os.path.join(path, 'etc', 'ironic-python-agent'))
+            os.mkdir(os.path.join(path, 'etc', 'ironic-python-agent.d'))
+            with open(os.path.join(path, 'not copied'), 'wt') as fp:
+                fp.write('not copied')
+            with open(os.path.join(path, 'etc', 'ironic-python-agent',
+                                   'ironic.crt'), 'wt') as fp:
+                fp.write('I am a cert')
+            with open(os.path.join(path, 'etc', 'ironic-python-agent.d',
+                                   'ironic.conf'), 'wt') as fp:
+                fp.write('I am a config')
+            return mock.MagicMock(**{'__enter__.return_value': path})
 
         mock_find_device.return_value = '/dev/something'
-        mock_execute.side_effect = _fake_exec
+        mock_mount.side_effect = _fake_mount
 
         utils.copy_config_from_vmedia()
 
@@ -1088,19 +984,15 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
             mock.call('/etc/ironic-python-agent', exist_ok=True),
             mock.call('/etc/ironic-python-agent.d', exist_ok=True),
         ], any_order=True)
-        mock_execute.assert_has_calls([
-            mock.call('mount', '/dev/something', mock.ANY),
-            mock.call('umount', mock.ANY),
-        ])
+        mock_mount.assert_called_once_with('/dev/something')
         mock_copy.assert_has_calls([
             mock.call(mock.ANY, '/etc/ironic-python-agent/ironic.crt'),
             mock.call(mock.ANY, '/etc/ironic-python-agent.d/ironic.conf'),
         ], any_order=True)
-        self.assertFalse(os.path.exists(path))
 
     @mock.patch.object(os, 'makedirs', autospec=True)
-    def test_copy_mounted(self, mock_makedirs, mock_execute, mock_copy,
-                          mock_find_device):
+    def test_copy_mounted(self, mock_makedirs, mock_execute, mock_mount,
+                          mock_copy, mock_find_device):
         mock_find_device.return_value = '/dev/something'
         path = tempfile.mkdtemp()
         self.addCleanup(lambda: shutil.rmtree(path))
@@ -1133,6 +1025,7 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
             mock.call(mock.ANY, '/etc/ironic-python-agent/ironic.crt'),
             mock.call(mock.ANY, '/etc/ironic-python-agent.d/ironic.conf'),
         ], any_order=True)
+        mock_mount.assert_not_called()
 
 
 @mock.patch.object(requests, 'get', autospec=True)

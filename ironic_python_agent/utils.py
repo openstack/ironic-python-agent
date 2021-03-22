@@ -24,7 +24,6 @@ import shutil
 import subprocess
 import sys
 import tarfile
-import tempfile
 import time
 
 from ironic_lib import disk_utils
@@ -126,31 +125,6 @@ def _get_vmedia_device():
             pass
 
 
-@contextlib.contextmanager
-def _mounted(source):
-    """A context manager for a temporary mount."""
-    dest = tempfile.mkdtemp()
-    try:
-        try:
-            execute("mount", source, dest)
-        except processutils.ProcessExecutionError as e:
-            msg = ("Unable to mount virtual media device %(device)s: "
-                   "%(error)s" % {'device': source, 'error': e})
-            raise errors.VirtualMediaBootError(msg)
-
-        yield dest
-    finally:
-        try:
-            execute("umount", dest)
-        except processutils.ProcessExecutionError:
-            pass
-
-        try:
-            shutil.rmtree(dest)
-        except Exception:
-            pass
-
-
 def _find_device_by_labels(labels):
     """Find device matching any of the provided labels."""
     for label in labels + [lbl.upper() for lbl in labels]:
@@ -181,7 +155,7 @@ def _get_vmedia_params():
 
         vmedia_device_file = os.path.join("/dev", vmedia_device)
 
-    with _mounted(vmedia_device_file) as vmedia_mount_point:
+    with ironic_utils.mounted(vmedia_device_file) as vmedia_mount_point:
         parameters_file_path = os.path.join(vmedia_mount_point,
                                             parameters_file)
         params = _read_params_from_file(parameters_file_path)
@@ -242,7 +216,7 @@ def copy_config_from_vmedia():
     if mounted:
         _copy_config_from(mounted)
     else:
-        with _mounted(vmedia_device_file) as vmedia_mount_point:
+        with ironic_utils.mounted(vmedia_device_file) as vmedia_mount_point:
             _copy_config_from(vmedia_mount_point)
 
 
