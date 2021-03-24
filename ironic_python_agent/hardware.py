@@ -549,7 +549,7 @@ def update_cached_node():
     cached_node = get_cached_node()
     if API_CLIENT:
         LOG.info('Agent is requesting to perform an explicit node cache '
-                 'update. This is to pickup any chanages in the cache '
+                 'update. This is to pickup any changes in the cache '
                  'before deployment.')
         try:
             if cached_node is None:
