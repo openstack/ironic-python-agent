@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    It is no longer possible to enable the so called *standalone mode*, in
+    which the agent does not communicate with ironic. This mode is only
+    useful for local testing, enabling it on production is always wrong.
+    The ironic team does not support using ironic-python-agent as a standalone
+    application outside of the normal workflow.

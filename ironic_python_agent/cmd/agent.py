@@ -57,7 +57,7 @@ def run():
                             CONF.network_interface,
                             CONF.lookup_timeout,
                             CONF.lookup_interval,
-                            CONF.standalone,
+                            False,
                             CONF.agent_token,
                             CONF.hardware_initialization_delay,
                             CONF.advertise_protocol).run()

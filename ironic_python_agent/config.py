@@ -151,12 +151,6 @@ cli_opts = [
                      'Can be supplied as "ipa-collect-lldp" '
                      'kernel parameter.'),
 
-    cfg.BoolOpt('standalone',
-                default=APARAMS.get('ipa-standalone', False),
-                help='Start the Agent but suppress any calls to Ironic API, '
-                     'the agent runs on this mode for poll mode deployment. '
-                     'Can be supplied as "ipa-standalone" kernel parameter.'),
-
     cfg.StrOpt('inspection_callback_url',
                default=APARAMS.get('ipa-inspection-callback-url'),
                help='Endpoint of ironic-inspector. If set, hardware inventory '
