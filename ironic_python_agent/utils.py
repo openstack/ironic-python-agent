@@ -125,15 +125,33 @@ def _get_vmedia_device():
             pass
 
 
-def _find_device_by_labels(labels):
-    """Find device matching any of the provided labels."""
-    for label in labels + [lbl.upper() for lbl in labels]:
-        try:
-            path, _e = execute('blkid', '-L', label)
-        except processutils.ProcessExecutionError:
-            pass
+def _find_vmedia_device_by_labels(labels):
+    """Find device matching any of the provided labels for virtual media"""
+    candidates = []
+    try:
+        lsblk_output, _e = execute('lsblk', '-P', '-oPATH,LABEL')
+    except processutils.ProcessExecutionError as e:
+        _early_log('Was unable to execute the lsblk command. %s', e)
+        return
+
+    for device in ironic_utils.parse_device_tags(lsblk_output):
+        for label in labels:
+            if label.upper() == device['LABEL'].upper():
+                candidates.append(device['PATH'])
+
+    for candidate in candidates:
+        # We explicitly take the device and run it past _check_vmedia_device
+        # as there *can* be candidate entries, and we only want to return
+        # one that seems most likely to be the actual device, and the vmedia
+        # check code also evaluates the device overall, instead of just the
+        # block device with a label of some sort.
+        if _check_vmedia_device(candidate):
+            return candidate
         else:
-            return path.strip()
+            _early_log('Found possible vmedia candidate %s, however '
+                       'the device failed vmedia validity checking.',
+                       candidate)
+    _early_log('Did not identify any virtual media candidates devices.')
 
 
 def _get_vmedia_params():
@@ -143,17 +161,21 @@ def _get_vmedia_params():
     :raises: VirtualMediaBootError when it cannot find the virtual media device
     """
     parameters_file = "parameters.txt"
-    vmedia_device_file = _find_device_by_labels(['ir-vfd-dev'])
+    vmedia_device_file = _find_vmedia_device_by_labels(['ir-vfd-dev'])
     if not vmedia_device_file:
-        # TODO(rameshg87): This block of code is there only for compatibility
-        # reasons (so that newer agent can work with older Ironic). Remove
-        # this after Liberty release.
+        # This falls back to trying to find a matching device by name/type.
+        # if not found, it is likely okay to just fail out and treat it as
+        # No device found as there are multiple ways to launch IPA, and all
+        # vmedia styles should be treated consistently.
         vmedia_device = _get_vmedia_device()
         if not vmedia_device:
-            msg = "Unable to find virtual media device"
-            raise errors.VirtualMediaBootError(msg)
+            return {}
 
         vmedia_device_file = os.path.join("/dev", vmedia_device)
+
+        if not _check_vmedia_device(vmedia_device_file):
+            # If the device is not valid, return an empty dictionary.
+            return {}
 
     with ironic_utils.mounted(vmedia_device_file) as vmedia_mount_point:
         parameters_file_path = os.path.join(vmedia_mount_point,
@@ -201,17 +223,102 @@ def _find_mount_point(device):
         return path.strip()
 
 
+def _check_vmedia_device(vmedia_device_file):
+    """Check if a virtual media device appears valid.
+
+    Explicitly ignores partitions, actual disks, and other itmes that
+    seem unlikely to be virtual media based items being provided
+    into the running operating system via a BMC.
+
+    :param vmedia_device_file: Path to the device to examine.
+    :returns: False by default, True if the device appears to be
+              valid.
+    """
+    try:
+        output, _e = execute('lsblk', '-n', '-s', '-P', '-b',
+                             '-oKNAME,TRAN,TYPE,SIZE',
+                             vmedia_device_file)
+    except processutils.ProcessExecutionError as e:
+        _early_log('Failed to execute lsblk. lsblk is required for '
+                   'virtual media identification. %s', e)
+        return False
+    try:
+        for device in ironic_utils.parse_device_tags(output):
+            if device['TYPE'] == 'part':
+                _early_log('Excluding device %s from virtual media'
+                           'consideration as it is a partition.',
+                           device['KNAME'])
+                return False
+            if device['TYPE'] == 'rom':
+                # Media is a something like /dev/sr0, a Read only media type.
+                # The kernel decides this by consulting the underlying type
+                # registered for the scsi transport and thus type used.
+                # This will most likely be a qemu driven testing VM,
+                # or an older machine where SCSI transport is directly
+                # used to convey in a virtual
+                return True
+            if device['TYPE'] == 'disk' and device['TRAN'] == 'usb':
+                # We know from experience on HPE machines, with ilo4/5, we see
+                # and redfish with edgeline gear, return attachment from
+                # pci device 0c-03.
+                # https://linux-hardware.org/?probe=4d2526e9f4
+                # https://linux-hardware.org/?id=pci:103c-22f6-1590-00e4
+                #
+                # Dell hardware takes a similar approach, using an Aten usb hub
+                # which provides the standing connection for the BMC attached
+                # virtual kvm.
+                # https://linux-hardware.org/?id=usb:0557-8021
+                #
+                # Supermicro also uses Aten on X11, X10, X8
+                # https://linux-hardware.org/?probe=4d0ed95e02
+                #
+                # Lenovo appears in some hardware to use an Emulux Pilot4
+                # integrated hub to proivide device access on some hardware.
+                # https://linux-hardware.org/index.php?id=usb:2a4b-0400
+                #
+                # ??? but the virtual devices appear to be American Megatrends
+                # https://linux-hardware.org/?probe=076bcef32e
+                #
+                # Fujitsu hardware is more uncertian, but appears to be similar
+                # in use of a USB pass-through
+                # http://linux-hardware.org/index.php?probe=cca9eab7fe&log=dmesg
+                if device['SIZE'] != "" and int(device['SIZE']) < 4294967296:
+                    # Device is a usb backed block device which is smaller
+                    # than 4 GiB
+                    return True
+                else:
+                    _early_log('Device %s appears to not qualify as virtual '
+                               'due to the device size. Size: %s',
+                               device['KNAME'], device['SIZE'])
+            _early_log('Device %s was disqualified as virtual media. '
+                       'Type: %s, Transport: %s',
+                       device['KNAME'], device['TYPE'], device['TRAN'])
+        return False
+    except KeyError:
+        return False
+
+
+def _booted_from_vmedia():
+    """Indicates if the machine was booted via vmedia."""
+    params = _read_params_from_file('/proc/cmdline')
+    return params.get('boot_method') == 'vmedia'
+
+
 def copy_config_from_vmedia():
     """Copies any configuration from a virtual media device.
 
     Copies files under /etc/ironic-python-agent and /etc/ironic-python-agent.d.
     """
-    vmedia_device_file = _find_device_by_labels(
+    vmedia_device_file = _find_vmedia_device_by_labels(
         ['config-2', 'vmedia_boot_iso'])
     if not vmedia_device_file:
         _early_log('No virtual media device detected')
         return
-
+    if not _booted_from_vmedia():
+        _early_log('Cannot use configuration from virtual media as the '
+                   'agent was not booted from virtual media.')
+        return
+    # Determine the device
     mounted = _find_mount_point(vmedia_device_file)
     if mounted:
         _copy_config_from(mounted)

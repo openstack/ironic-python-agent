@@ -148,45 +148,59 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
         self.assertEqual('sdc', vmedia_device_returned)
 
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test__find_device_by_labels(self, execute_mock):
-        execute_mock.side_effect = [
-            processutils.ProcessExecutionError,
-            ('/dev/fake', ''),
-        ]
-        self.assertEqual('/dev/fake',
-                         utils._find_device_by_labels(['l1', 'l2']))
-        execute_mock.assert_has_calls([
-            mock.call('blkid', '-L', item)
-            for item in ('l1', 'l2')
-        ])
-
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test__find_device_by_labels_upper(self, execute_mock):
-        execute_mock.side_effect = [
-            processutils.ProcessExecutionError,
-            processutils.ProcessExecutionError,
-            ('/dev/fake', ''),
-        ]
-        self.assertEqual('/dev/fake',
-                         utils._find_device_by_labels(['l1', 'l2']))
-        execute_mock.assert_has_calls([
-            mock.call('blkid', '-L', item)
-            for item in ('l1', 'l2', 'L1')
-        ])
-
-    @mock.patch.object(utils, 'execute', autospec=True)
-    def test__find_device_by_labels_not_found(self, execute_mock):
+    def test__find_vmedia_device_by_labels_handles_exec_error(self,
+                                                              execute_mock):
         execute_mock.side_effect = processutils.ProcessExecutionError
-        self.assertIsNone(utils._find_device_by_labels(['l1', 'l2']))
+        self.assertIsNone(utils._find_vmedia_device_by_labels(['l1', 'l2']))
+        execute_mock.assert_called_once_with('lsblk', '-P', '-oPATH,LABEL')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test__find_vmedia_device_by_labels(self, execute_mock):
+        # NOTE(TheJulia): Case is intentionally mixed here to ensure
+        # proper matching occurs
+        disk_list = ('PATH="/dev/sda" LABEL=""\n'
+                     'PATH="/dev/sda2" LABEL="Meow"\n'
+                     'PATH="/dev/sda3" LABEL="Recovery HD"\n'
+                     'PATH="/dev/sda1" LABEL="EFI"\n'
+                     'PATH="/dev/sdb" LABEL=""\n'
+                     'PATH="/dev/sdb1" LABEL=""\n'
+                     'PATH="/dev/sdb2" LABEL=""\n'
+                     'PATH="/dev/sdc" LABEL="meow"\n')
+        invalid_disk = ('KNAME="sda1" SIZE="1610612736" TYPE="part" TRAN=""\n'
+                        'KNAME="sda" SIZE="1610612736" TYPE="disk" '
+                        'TRAN="sata"\n')
+        valid_disk = ('KNAME="sdc" SIZE="1610612736" TYPE="disk" TRAN="usb"\n')
+        execute_mock.side_effect = [
+            (disk_list, ''),
+            (invalid_disk, ''),
+            (valid_disk, ''),
+        ]
+        self.assertEqual('/dev/sdc',
+                         utils._find_vmedia_device_by_labels(['cat', 'meOw']))
         execute_mock.assert_has_calls([
-            mock.call('blkid', '-L', item)
-            for item in ('l1', 'l2', 'L1', 'L2')
+            mock.call('lsblk', '-P', '-oPATH,LABEL'),
+            mock.call('lsblk', '-n', '-s', '-P', '-b',
+                      '-oKNAME,TRAN,TYPE,SIZE', '/dev/sda2'),
+            mock.call('lsblk', '-n', '-s', '-P', '-b',
+                      '-oKNAME,TRAN,TYPE,SIZE', '/dev/sdc'),
         ])
 
-    @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test__find_vmedia_device_by_labels_not_found(self, execute_mock):
+        disk_list = ('PATH="/dev/sdb" LABEL="evil"\n'
+                     'PATH="/dev/sdb1" LABEL="banana"\n'
+                     'PATH="/dev/sdb2" LABEL=""\n')
+        execute_mock.return_value = (disk_list, '')
+        self.assertIsNone(utils._find_vmedia_device_by_labels(['l1', 'l2']))
+        execute_mock.assert_called_once_with('lsblk', '-P', '-oPATH,LABEL')
+
+    @mock.patch.object(utils, '_check_vmedia_device', autospec=True)
+    @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
     @mock.patch.object(utils, '_read_params_from_file', autospec=True)
     @mock.patch.object(ironic_utils, 'mounted', autospec=True)
-    def test__get_vmedia_params(self, mount_mock, read_params_mock, find_mock):
+    def test__get_vmedia_params(self, mount_mock, read_params_mock, find_mock,
+                                check_vmedia_mock):
+        check_vmedia_mock.return_value = True
         find_mock.return_value = '/dev/fake'
         mount_mock.return_value.__enter__.return_value = '/tempdir'
         expected_params = {'a': 'b'}
@@ -198,12 +212,15 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
         read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
         self.assertEqual(expected_params, returned_params)
 
-    @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
+    @mock.patch.object(utils, '_check_vmedia_device', autospec=True)
+    @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
     @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
     @mock.patch.object(utils, '_read_params_from_file', autospec=True)
     @mock.patch.object(ironic_utils, 'mounted', autospec=True)
     def test__get_vmedia_params_by_device(self, mount_mock, read_params_mock,
-                                          get_device_mock, find_mock):
+                                          get_device_mock, find_mock,
+                                          check_vmedia_mock):
+        check_vmedia_mock.return_value = True
         find_mock.return_value = None
         mount_mock.return_value.__enter__.return_value = '/tempdir'
         expected_params = {'a': 'b'}
@@ -215,15 +232,37 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
         mount_mock.assert_called_once_with('/dev/sda')
         read_params_mock.assert_called_once_with("/tempdir/parameters.txt")
         self.assertEqual(expected_params, returned_params)
+        check_vmedia_mock.assert_called_with('/dev/sda')
 
-    @mock.patch.object(utils, '_find_device_by_labels', autospec=True)
+    @mock.patch.object(utils, '_check_vmedia_device', autospec=True)
+    @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
+    @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
+    @mock.patch.object(utils, '_read_params_from_file', autospec=True)
+    @mock.patch.object(ironic_utils, 'mounted', autospec=True)
+    def test__get_vmedia_params_by_device_device_invalid(
+            self, mount_mock, read_params_mock,
+            get_device_mock, find_mock,
+            check_vmedia_mock):
+        check_vmedia_mock.return_value = False
+        find_mock.return_value = None
+        expected_params = {}
+        read_params_mock.return_value = expected_params
+        get_device_mock.return_value = "sda"
+
+        returned_params = utils._get_vmedia_params()
+
+        mount_mock.assert_not_called()
+        read_params_mock.assert_not_called
+        self.assertEqual(expected_params, returned_params)
+        check_vmedia_mock.assert_called_with('/dev/sda')
+
+    @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
     @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
     def test__get_vmedia_params_cannot_find_dev(self, get_device_mock,
                                                 find_mock):
         find_mock.return_value = None
         get_device_mock.return_value = None
-        self.assertRaises(errors.VirtualMediaBootError,
-                          utils._get_vmedia_params)
+        self.assertEqual({}, utils._get_vmedia_params())
 
 
 class TestFailures(testtools.TestCase):
@@ -913,22 +952,42 @@ class TestGetEfiPart(testtools.TestCase):
         self.assertIsNone(utils.get_efi_part_on_device('/dev/sda'))
 
 
-@mock.patch.object(utils, '_find_device_by_labels', autospec=True)
+@mock.patch.object(utils, '_booted_from_vmedia', autospec=True)
+@mock.patch.object(utils, '_check_vmedia_device', autospec=True)
+@mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
 @mock.patch.object(shutil, 'copy', autospec=True)
 @mock.patch.object(ironic_utils, 'mounted', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestCopyConfigFromVmedia(testtools.TestCase):
 
-    def test_no_vmedia(self, mock_execute, mock_mount, mock_copy,
-                       mock_find_device):
+    def test_vmedia_found_not_booted_from_vmedia(
+            self, mock_execute, mock_mount, mock_copy,
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+        mock_booted_from_vmedia.return_value = False
+        mock_find_device.return_value = '/dev/fake'
+        utils.copy_config_from_vmedia()
+        mock_mount.assert_not_called()
+        mock_execute.assert_not_called()
+        mock_copy.assert_not_called()
+        mock_check_vmedia.assert_not_called()
+        self.assertTrue(mock_booted_from_vmedia.called)
+
+    def test_no_vmedia(
+            self, mock_execute, mock_mount, mock_copy,
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+        mock_booted_from_vmedia.return_value = True
         mock_find_device.return_value = None
         utils.copy_config_from_vmedia()
         mock_mount.assert_not_called()
         mock_execute.assert_not_called()
         mock_copy.assert_not_called()
+        mock_check_vmedia.assert_not_called()
+        self.assertFalse(mock_booted_from_vmedia.called)
 
-    def test_no_files(self, mock_execute, mock_mount, mock_copy,
-                      mock_find_device):
+    def test_no_files(
+            self, mock_execute, mock_mount, mock_copy,
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+        mock_booted_from_vmedia.return_value = True
         temp_path = tempfile.mkdtemp()
         self.addCleanup(lambda: shutil.rmtree(temp_path))
 
@@ -940,9 +999,13 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
         mock_execute.assert_called_once_with('findmnt', '-n', '-oTARGET',
                                              '/dev/something')
         mock_copy.assert_not_called()
+        self.assertTrue(mock_booted_from_vmedia.called)
 
-    def test_mounted_no_files(self, mock_execute, mock_mount, mock_copy,
-                              mock_find_device):
+    def test_mounted_no_files(
+            self, mock_execute, mock_mount, mock_copy,
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+
+        mock_booted_from_vmedia.return_value = True
         mock_execute.return_value = '/some/path', ''
         mock_find_device.return_value = '/dev/something'
         utils.copy_config_from_vmedia()
@@ -950,10 +1013,14 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
             'findmnt', '-n', '-oTARGET', '/dev/something')
         mock_copy.assert_not_called()
         mock_mount.assert_not_called()
+        self.assertTrue(mock_booted_from_vmedia.called)
 
     @mock.patch.object(os, 'makedirs', autospec=True)
-    def test_copy(self, mock_makedirs, mock_execute, mock_mount, mock_copy,
-                  mock_find_device):
+    def test_copy(
+            self, mock_makedirs, mock_execute, mock_mount, mock_copy,
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+
+        mock_booted_from_vmedia.return_value = True
         mock_find_device.return_value = '/dev/something'
         mock_execute.side_effect = processutils.ProcessExecutionError("")
         path = tempfile.mkdtemp()
@@ -989,10 +1056,14 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
             mock.call(mock.ANY, '/etc/ironic-python-agent/ironic.crt'),
             mock.call(mock.ANY, '/etc/ironic-python-agent.d/ironic.conf'),
         ], any_order=True)
+        self.assertTrue(mock_booted_from_vmedia.called)
 
     @mock.patch.object(os, 'makedirs', autospec=True)
-    def test_copy_mounted(self, mock_makedirs, mock_execute, mock_mount,
-                          mock_copy, mock_find_device):
+    def test_copy_mounted(
+            self, mock_makedirs, mock_execute, mock_mount,
+            mock_copy, mock_find_device, mock_check_vmedia,
+            mock_booted_from_vmedia):
+        mock_booted_from_vmedia.return_value = True
         mock_find_device.return_value = '/dev/something'
         path = tempfile.mkdtemp()
         self.addCleanup(lambda: shutil.rmtree(path))
@@ -1026,6 +1097,7 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
             mock.call(mock.ANY, '/etc/ironic-python-agent.d/ironic.conf'),
         ], any_order=True)
         mock_mount.assert_not_called()
+        self.assertTrue(mock_booted_from_vmedia.called)
 
 
 @mock.patch.object(requests, 'get', autospec=True)
@@ -1056,3 +1128,70 @@ class TestStreamingClient(ironic_agent_base.IronicAgentTest):
         mock_get.assert_called_with("http://url", verify=True, cert=None,
                                     stream=True, timeout=60)
         self.assertEqual(2, mock_get.call_count)
+
+
+class TestCheckVirtualMedia(ironic_agent_base.IronicAgentTest):
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_check_vmedia_device(self, mock_execute):
+        lsblk = 'KNAME="sdh" SIZE="1610612736" TYPE="disk" TRAN="usb"\n'
+        mock_execute.return_value = (lsblk, '')
+        self.assertTrue(utils._check_vmedia_device('/dev/sdh'))
+        mock_execute.assert_called_with('lsblk', '-n', '-s', '-P', '-b',
+                                        '-oKNAME,TRAN,TYPE,SIZE',
+                                        '/dev/sdh')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_check_vmedia_device_rom(self, mock_execute):
+        lsblk = 'KNAME="sr0" SIZE="1610612736" TYPE="rom" TRAN="usb"\n'
+        mock_execute.return_value = (lsblk, '')
+        self.assertTrue(utils._check_vmedia_device('/dev/sr0'))
+        mock_execute.assert_called_with('lsblk', '-n', '-s', '-P', '-b',
+                                        '-oKNAME,TRAN,TYPE,SIZE',
+                                        '/dev/sr0')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_check_vmedia_device_too_large(self, mock_execute):
+        lsblk = 'KNAME="sdh" SIZE="1610612736000" TYPE="disk" TRAN="usb"\n'
+        mock_execute.return_value = (lsblk, '')
+        self.assertFalse(utils._check_vmedia_device('/dev/sdh'))
+        mock_execute.assert_called_with('lsblk', '-n', '-s', '-P', '-b',
+                                        '-oKNAME,TRAN,TYPE,SIZE',
+                                        '/dev/sdh')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_check_vmedia_device_part(self, mock_execute):
+        lsblk = ('KNAME="sdh1" SIZE="1610612736" TYPE="part" TRAN=""\n'
+                 'KNAME="sdh" SIZE="1610612736" TYPE="disk" TRAN="sata"\n')
+        mock_execute.return_value = (lsblk, '')
+        self.assertFalse(utils._check_vmedia_device('/dev/sdh1'))
+        mock_execute.assert_called_with('lsblk', '-n', '-s', '-P', '-b',
+                                        '-oKNAME,TRAN,TYPE,SIZE',
+                                        '/dev/sdh1')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_check_vmedia_device_other(self, mock_execute):
+        lsblk = 'KNAME="sdh" SIZE="1610612736" TYPE="other" TRAN="usb"\n'
+        mock_execute.return_value = (lsblk, '')
+        self.assertFalse(utils._check_vmedia_device('/dev/sdh'))
+        mock_execute.assert_called_with('lsblk', '-n', '-s', '-P', '-b',
+                                        '-oKNAME,TRAN,TYPE,SIZE',
+                                        '/dev/sdh')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_check_vmedia_device_sata(self, mock_execute):
+        lsblk = 'KNAME="sdh" SIZE="1610612736" TYPE="disk" TRAN="sata"\n'
+        mock_execute.return_value = (lsblk, '')
+        self.assertFalse(utils._check_vmedia_device('/dev/sdh'))
+        mock_execute.assert_called_with('lsblk', '-n', '-s', '-P', '-b',
+                                        '-oKNAME,TRAN,TYPE,SIZE',
+                                        '/dev/sdh')
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_check_vmedia_device_scsi(self, mock_execute):
+        lsblk = 'KNAME="sdh" SIZE="1610612736" TYPE="other" TRAN="scsi"\n'
+        mock_execute.return_value = (lsblk, '')
+        self.assertFalse(utils._check_vmedia_device('/dev/sdh'))
+        mock_execute.assert_called_with('lsblk', '-n', '-s', '-P', '-b',
+                                        '-oKNAME,TRAN,TYPE,SIZE',
+                                        '/dev/sdh')
