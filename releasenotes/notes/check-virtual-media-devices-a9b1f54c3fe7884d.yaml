@@ -1,0 +1,30 @@
+---
+security:
+  - |
+    Addresses a potential vector in which an system authenticated malicious
+    actor could leveraged data left on disk in some limited cases to make the
+    API of the ``ironic-python-agent`` attackable, or possibly break cleaning
+    processes to prevent the machine from being able to be returned to the
+    available pool. Please see `story 2008749 <https://storyboard.openstack.org/#!/story/2008749>`_
+    for more information.
+fixes:
+  - |
+    Adds validation of Virtual Media devices in order to prevent existing
+    partitions on the system from being considered as potential sources of IPA
+    configuration data.
+  - |
+    Adds check into the configuration load from virtual media, to ensure it
+    only occurs when the machine booted from virtual media.
+issues:
+  - |
+    Logic around virtual media device validation is now much more strict,
+    and may not work in all cases. Should you discover a case, please provide
+    the output from ``lsblk -P -O`` with a virtual media device attached to the
+    Ironic development community via
+    `Storyboard <https://storyboard.openstack.org/#!/project/947>`_.
+  - |
+    Internal logic to copy configuration data from virtual media now requires
+    the ``boot_method=vmedia`` flag to be set on the kernel command line of
+    the bootloader for the virtual media. Operators crafting custom boot
+    ISOs, should ensure that the appropriate command line is being added in
+    any custom build processes.
