@@ -576,6 +576,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                 device, path, efi_system_part_uuid,
                 efi_partitions, efi_partition_mount_point)
             if efi_preserved:
+                _append_uefi_to_fstab(path, efi_system_part_uuid)
                 # Success preserving efi assets
                 return
             else:
@@ -677,6 +678,9 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         # this point, then we've manually installed grub which is not the
         # recommended path.
         _configure_grub(device, path)
+
+        if efi_mounted:
+            _append_uefi_to_fstab(path, efi_system_part_uuid)
 
         LOG.info("GRUB2 successfully installed on %s", device)
 
@@ -823,6 +827,27 @@ def _try_preserve_efi_assets(device, path,
                 LOG.debug('Exception encountered while attempting to '
                           'setup the EFI loader from a root '
                           'filesystem. Error: %s', e)
+
+
+def _append_uefi_to_fstab(fs_path, efi_system_part_uuid):
+    """Append the efi partition id to the filesystem table.
+
+    :param fs_path:
+    :param efi_system_part_uuid:
+    """
+    fstab_file = os.path.join(fs_path, 'etc/fstab')
+    if not os.path.exists(fstab_file):
+        return
+    try:
+        fstab_string = ("UUID=%s\t/boot/efi\tvfat\tumask=0077\t"
+                        "0\t1\n") % efi_system_part_uuid
+        with open(fstab_file, "r+") as fstab:
+            if efi_system_part_uuid not in fstab.read():
+                fstab.writelines(fstab_string)
+    except (OSError, EnvironmentError, IOError) as exc:
+        LOG.debug('Failed to add entry to /etc/fstab. Error %s', exc)
+    LOG.debug('Added entry to /etc/fstab for EFI partition auto-mount '
+              'with uuid %s', efi_system_part_uuid)
 
 
 def _efi_boot_setup(device, efi_system_part_uuid=None, target_boot_mode=None):
