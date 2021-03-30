@@ -129,7 +129,7 @@ def _find_vmedia_device_by_labels(labels):
     """Find device matching any of the provided labels for virtual media"""
     candidates = []
     try:
-        lsblk_output, _e = execute('lsblk', '-P', '-oPATH,LABEL')
+        lsblk_output, _e = execute('lsblk', '-p', '-P', '-oKNAME,LABEL')
     except processutils.ProcessExecutionError as e:
         _early_log('Was unable to execute the lsblk command. %s', e)
         return
@@ -137,7 +137,7 @@ def _find_vmedia_device_by_labels(labels):
     for device in ironic_utils.parse_device_tags(lsblk_output):
         for label in labels:
             if label.upper() == device['LABEL'].upper():
-                candidates.append(device['PATH'])
+                candidates.append(device['KNAME'])
 
     for candidate in candidates:
         # We explicitly take the device and run it past _check_vmedia_device

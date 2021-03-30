@@ -152,20 +152,21 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
                                                               execute_mock):
         execute_mock.side_effect = processutils.ProcessExecutionError
         self.assertIsNone(utils._find_vmedia_device_by_labels(['l1', 'l2']))
-        execute_mock.assert_called_once_with('lsblk', '-P', '-oPATH,LABEL')
+        execute_mock.assert_called_once_with('lsblk', '-p', '-P',
+                                             '-oKNAME,LABEL')
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test__find_vmedia_device_by_labels(self, execute_mock):
         # NOTE(TheJulia): Case is intentionally mixed here to ensure
         # proper matching occurs
-        disk_list = ('PATH="/dev/sda" LABEL=""\n'
-                     'PATH="/dev/sda2" LABEL="Meow"\n'
-                     'PATH="/dev/sda3" LABEL="Recovery HD"\n'
-                     'PATH="/dev/sda1" LABEL="EFI"\n'
-                     'PATH="/dev/sdb" LABEL=""\n'
-                     'PATH="/dev/sdb1" LABEL=""\n'
-                     'PATH="/dev/sdb2" LABEL=""\n'
-                     'PATH="/dev/sdc" LABEL="meow"\n')
+        disk_list = ('KNAME="/dev/sda" LABEL=""\n'
+                     'KNAME="/dev/sda2" LABEL="Meow"\n'
+                     'KNAME="/dev/sda3" LABEL="Recovery HD"\n'
+                     'KNAME="/dev/sda1" LABEL="EFI"\n'
+                     'KNAME="/dev/sdb" LABEL=""\n'
+                     'KNAME="/dev/sdb1" LABEL=""\n'
+                     'KNAME="/dev/sdb2" LABEL=""\n'
+                     'KNAME="/dev/sdc" LABEL="meow"\n')
         invalid_disk = ('KNAME="sda1" SIZE="1610612736" TYPE="part" TRAN=""\n'
                         'KNAME="sda" SIZE="1610612736" TYPE="disk" '
                         'TRAN="sata"\n')
@@ -178,7 +179,7 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
         self.assertEqual('/dev/sdc',
                          utils._find_vmedia_device_by_labels(['cat', 'meOw']))
         execute_mock.assert_has_calls([
-            mock.call('lsblk', '-P', '-oPATH,LABEL'),
+            mock.call('lsblk', '-p', '-P', '-oKNAME,LABEL'),
             mock.call('lsblk', '-n', '-s', '-P', '-b',
                       '-oKNAME,TRAN,TYPE,SIZE', '/dev/sda2'),
             mock.call('lsblk', '-n', '-s', '-P', '-b',
@@ -187,12 +188,13 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test__find_vmedia_device_by_labels_not_found(self, execute_mock):
-        disk_list = ('PATH="/dev/sdb" LABEL="evil"\n'
-                     'PATH="/dev/sdb1" LABEL="banana"\n'
-                     'PATH="/dev/sdb2" LABEL=""\n')
+        disk_list = ('KNAME="/dev/sdb" LABEL="evil"\n'
+                     'KNAME="/dev/sdb1" LABEL="banana"\n'
+                     'KNAME="/dev/sdb2" LABEL=""\n')
         execute_mock.return_value = (disk_list, '')
         self.assertIsNone(utils._find_vmedia_device_by_labels(['l1', 'l2']))
-        execute_mock.assert_called_once_with('lsblk', '-P', '-oPATH,LABEL')
+        execute_mock.assert_called_once_with('lsblk', '-p', '-P',
+                                             '-oKNAME,LABEL')
 
     @mock.patch.object(utils, '_check_vmedia_device', autospec=True)
     @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)

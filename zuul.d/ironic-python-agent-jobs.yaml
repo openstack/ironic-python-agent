@@ -57,6 +57,33 @@
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
 
+- job:
+    name: ipa-tempest-uefi-redfish-vmedia-src
+    parent: ironic-ipa-base
+    required-projects:
+      - opendev.org/openstack/sushy-tools
+    vars:
+      devstack_services:
+        s-account: True
+        s-container: True
+        s-object: True
+        s-proxy: True
+      devstack_localrc:
+        IRONIC_BOOT_MODE: uefi
+        IRONIC_DEPLOY_DRIVER: redfish
+        IRONIC_ENABLED_BOOT_INTERFACES: redfish-virtual-media
+        IRONIC_ENABLED_HARDWARE_TYPES: redfish
+        IRONIC_ENABLED_POWER_INTERFACES: redfish
+        IRONIC_ENABLED_MANAGEMENT_INTERFACES: redfish
+        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
+        IRONIC_VM_EPHEMERAL_DISK: 0
+        # Ironic has to master a new image, and this CAN take longer as a
+        # result and makes this job VERY sensitive to heavy disk IO of the
+        # underlying hypervisor/cloud.
+        IRONIC_CALLBACK_TIMEOUT: 800
+        SWIFT_ENABLE_TEMPURLS: True
+        SWIFT_TEMPURL_KEY: secretkey
+
 # used by diskimage-builder
 - job:
     name: ipa-tempest-bios-ipmi-iscsi-src
