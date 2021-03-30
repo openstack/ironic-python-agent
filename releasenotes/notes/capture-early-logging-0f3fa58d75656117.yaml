@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes initial logging before configuration is loaded to re-log anything
+    recorded for the purposes of troubleshooting. This is necessary as systemd
+    does not report stdout from a process launch as part of the process's
+    logging. Now messages will be re-logged once the configuration has been
+    loaded.
