@@ -46,7 +46,7 @@ def run():
     logger = log.getLogger(__name__)
     logger.debug("Configuration:")
     CONF.log_opt_values(logger, log.DEBUG)
-
+    utils.log_early_log_to_logger()
     agent.IronicPythonAgent(CONF.api_url,
                             agent.Host(hostname=CONF.advertise_host,
                                        port=CONF.advertise_port),

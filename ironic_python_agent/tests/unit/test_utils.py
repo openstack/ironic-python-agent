@@ -1197,3 +1197,26 @@ class TestCheckVirtualMedia(ironic_agent_base.IronicAgentTest):
         mock_execute.assert_called_with('lsblk', '-n', '-s', '-P', '-b',
                                         '-oKNAME,TRAN,TYPE,SIZE',
                                         '/dev/sdh')
+
+
+class TestCheckEarlyLogging(ironic_agent_base.IronicAgentTest):
+
+    @mock.patch.object(utils, 'LOG', autospec=True)
+    def test_early_logging_goes_to_logger(self, mock_log):
+        info = mock.Mock()
+        mock_log.info.side_effect = info
+        # Reset the buffer to be empty.
+        utils._EARLY_LOG_BUFFER = []
+        # Store some data via _early_log
+        utils._early_log('line 1.')
+        utils._early_log('line 2 %s', 'message')
+        expected_messages = ['line 1.',
+                             'line 2 message']
+        self.assertEqual(expected_messages, utils._EARLY_LOG_BUFFER)
+        # Test we've got data in the buffer.
+        info.assert_not_called()
+        # Test the other half of this.
+        utils.log_early_log_to_logger()
+        expected_calls = [mock.call('Early logging: %s', 'line 1.'),
+                          mock.call('Early logging: %s', 'line 2 message')]
+        info.assert_has_calls(expected_calls)
