@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    No longer crashes if MAC address cannot be determined for one of the
+    network interfaces.

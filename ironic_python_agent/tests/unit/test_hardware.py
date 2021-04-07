@@ -238,8 +238,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                      mocked_ifaddresses,
                                      mockedget_managers):
         mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, True]
+        mocked_listdir.return_value = ['lo', 'eth0', 'foobar']
+        mocked_exists.side_effect = [False, True, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -249,8 +249,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             netifaces.AF_INET6: [{'addr': 'fd00::101'}]
         }
         mocked_execute.return_value = ('em0\n', '')
-        mock_get_mac.mock_has_carrier = True
-        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
+        mock_has_carrier.return_value = True
+        mock_get_mac.side_effect = [
+            '00:0c:29:8c:11:b1',
+            None,
+        ]
         interfaces = self.hardware.list_network_interfaces()
         self.assertEqual(1, len(interfaces))
         self.assertEqual('eth0', interfaces[0].name)
