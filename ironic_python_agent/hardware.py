@@ -1086,8 +1086,13 @@ class GenericHardwareManager(HardwareManager):
                                                   interface_names=iface_names)
 
         for iface_name in iface_names:
-            result = dispatch_to_managers(
-                'get_interface_info', interface_name=iface_name)
+            try:
+                result = dispatch_to_managers(
+                    'get_interface_info', interface_name=iface_name)
+            except errors.HardwareManagerMethodNotFound:
+                LOG.warning('No hardware manager was able to handle '
+                            'interface %s', iface_name)
+                continue
             result.lldp = self._get_lldp_data(iface_name)
             network_interfaces_list.append(result)
 
