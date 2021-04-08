@@ -78,6 +78,8 @@ DEVICE_EXTRACTOR = re.compile(r'^(?:(.*\d)p|(.*\D))(?:\d+)$')
 PARTED_TABLE_TYPE_REGEX = re.compile(r'^.*partition\s+table\s*:\s*(gpt|msdos)',
                                      re.IGNORECASE)
 
+_EARLY_LOG_BUFFER = []
+
 
 def execute(*cmd, **kwargs):
     """Convenience wrapper around ironic_lib's execute() method.
@@ -187,7 +189,16 @@ def _get_vmedia_params():
 
 def _early_log(msg, *args):
     """Log via printing (before oslo.log is configured)."""
-    print('ironic-python-agent:', msg % args, file=sys.stderr)
+    log_entry = msg % args
+    _EARLY_LOG_BUFFER.append(log_entry)
+    print('ironic-python-agent:', log_entry, file=sys.stderr)
+
+
+def log_early_log_to_logger():
+    """Logs early logging events to the configured logger."""
+
+    for entry in _EARLY_LOG_BUFFER:
+        LOG.info("Early logging: %s", entry)
 
 
 def _copy_config_from(path):
