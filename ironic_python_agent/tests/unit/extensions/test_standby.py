@@ -1049,9 +1049,10 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_run_shutdown_command_valid_poweroff_sysrq(self, execute_mock):
-        execute_mock.side_effect = [('', ''), ('', ''), ('',
-                                    'Running in chroot, ignoring request.'),
-                                    ('', '')]
+        execute_mock.side_effect = [
+            ('', ''), ('', ''),
+            processutils.ProcessExecutionError(''),
+            ('', '')]
 
         self.agent_extension._run_shutdown_command('poweroff')
         calls = [mock.call('hwclock', '-v', '--systohc'),
