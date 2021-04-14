@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Mirrors the previously disconnected EFI system partitions (ESPs) in UEFI
+    software RAID setups. Disconnected ESPs can lead to nodes booting with
+    outdated kernel parameters or the UEFI firmware not finding bootable
+    kernels at all.
