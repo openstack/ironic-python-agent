@@ -367,8 +367,9 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
                                           target_boot_mode):
     """Prepare boot partitions when relevant.
 
-    Create either efi partitions or bios boot partitions for softraid,
-    according to both target boot mode and disk holders partition table types.
+    Create either a RAIDed EFI partition or bios boot partitions for software
+    RAID, according to both target boot mode and disk holders partition table
+    types.
 
     :param device: the softraid device path
     :param holders: the softraid drive members
@@ -377,11 +378,9 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
     :param target_boot_mode: target boot mode can be bios/uefi/None
      or anything else for unspecified
 
-    :returns: the efi partition paths on softraid disk holders when target
-     boot mode is uefi, empty list otherwise.
+    :returns: the path to the ESP md device when target boot mode is uefi,
+     nothing otherwise.
     """
-    efi_partitions = []
-
     # Actually any fat partition could be a candidate. Let's assume the
     # partition also has the esp flag
     if target_boot_mode == 'uefi':
@@ -406,6 +405,7 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
         # We could also directly get the EFI partition size.
         partsize_mib = raid_utils.ESP_SIZE_MIB
         partlabel_prefix = 'uefi-holder-'
+        efi_partitions = []
         for number, holder in enumerate(holders):
             # NOTE: see utils.get_partition_table_type_from_specs
             # for uefi we know that we have setup a gpt partition table,
@@ -427,26 +427,31 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
                 "blkid", "-l", "-t", "PARTLABEL={}".format(partlabel), holder)
 
             target_part = target_part.splitlines()[-1].split(':', 1)[0]
+            efi_partitions.append(target_part)
 
             LOG.debug("EFI partition %s created on holder disk %s",
                       target_part, holder)
 
-            if efi_part:
-                LOG.debug("Relocating EFI %s to holder part %s", efi_part,
-                          target_part)
-                # Blockdev copy
-                utils.execute("cp", efi_part, target_part)
-            else:
-                # Creating a label is just to make life easier
-                if number == 0:
-                    fslabel = 'efi-part'
-                else:
-                    # bak, label is limited to 11 chars
-                    fslabel = 'efi-part-b'
-                ilib_utils.mkfs(fs='vfat', path=target_part, label=fslabel)
-            efi_partitions.append(target_part)
-            # TBD: Would not hurt to destroy source efi part when defined,
-            # for clarity.
+        # RAID the ESPs, metadata=1.0 is mandatory to be able to boot
+        md_device = '/dev/md/esp'
+        LOG.debug("Creating md device {} for the ESPs on {}".format(
+                  md_device, efi_partitions))
+        utils.execute('mdadm', '--create', md_device, '--force',
+                      '--run', '--metadata=1.0', '--level', '1',
+                      '--raid-devices', len(efi_partitions),
+                      *efi_partitions)
+
+        if efi_part:
+            # Blockdev copy the source ESP and erase it
+            LOG.debug("Relocating EFI %s to %s", efi_part, md_device)
+            utils.execute('cp', efi_part, md_device)
+            LOG.debug("Erasing EFI partition %s", efi_part)
+            utils.execute('wipefs', '-a', efi_part)
+        else:
+            fslabel = 'efi-part'
+            ilib_utils.mkfs(fs='vfat', path=md_device, label=fslabel)
+
+        return md_device
 
     elif target_boot_mode == 'bios':
         partlabel_prefix = 'bios-boot-part-'
@@ -469,9 +474,6 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
             # disk, as in virtual disk, where to load the data from.
             # Since there is a structural difference, this means it will
             # fail.
-
-    # Just an empty list if not uefi boot mode, nvm, not used anyway
-    return efi_partitions
 
 
 def _umount_all_partitions(path, path_variable, umount_warn_msg):
@@ -502,7 +504,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
     """Install GRUB2 bootloader on a given device."""
     LOG.debug("Installing GRUB2 bootloader on device %s", device)
 
-    efi_partitions = None
+    efi_partition = None
     efi_part = None
     efi_partition_mount_point = None
     efi_mounted = False
@@ -539,15 +541,14 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         path = tempfile.mkdtemp()
         if efi_system_part_uuid:
             efi_part = _get_partition(device, uuid=efi_system_part_uuid)
-            efi_partitions = [efi_part]
-
+            efi_partition = efi_part
         if hardware.is_md_device(device):
             holders = hardware.get_holder_disks(device)
-            efi_partitions = _prepare_boot_partitions_for_softraid(
+            efi_partition = _prepare_boot_partitions_for_softraid(
                 device, holders, efi_part, target_boot_mode
             )
 
-        if efi_partitions:
+        if efi_partition:
             efi_partition_mount_point = os.path.join(path, "boot/efi")
 
         # For power we want to install grub directly onto the PreP partition
@@ -574,7 +575,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
             # point if we have no efi partitions at all.
             efi_preserved = _try_preserve_efi_assets(
                 device, path, efi_system_part_uuid,
-                efi_partitions, efi_partition_mount_point)
+                efi_partition, efi_partition_mount_point)
             if efi_preserved:
                 _append_uefi_to_fstab(path, efi_system_part_uuid)
                 # Success preserving efi assets
@@ -603,50 +604,48 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                       {'path': path}, shell=True,
                       env_variables={'PATH': path_variable})
 
-        if efi_partitions:
+        if efi_partition:
             if not os.path.exists(efi_partition_mount_point):
                 os.makedirs(efi_partition_mount_point)
-            LOG.warning("GRUB2 will be installed for UEFI on efi partitions "
+            LOG.warning("GRUB2 will be installed for UEFI on efi partition "
                         "%s using the install command which does not place "
-                        "Secure Boot signed binaries.", efi_partitions)
-            for efi_partition in efi_partitions:
-                utils.execute(
-                    'mount', efi_partition, efi_partition_mount_point)
-                efi_mounted = True
-                # FIXME(rg): does not work in cross boot mode case (target
-                # boot mode differs from ramdisk one)
-                # Probe for the correct target (depends on the arch, example
-                # --target=x86_64-efi)
-                utils.execute('chroot %(path)s /bin/sh -c '
-                              '"%(bin)s-install"' %
-                              {'path': path, 'bin': binary_name},
-                              shell=True,
-                              env_variables={
-                                  'PATH': path_variable
-                              })
-                # Also run grub-install with --removable, this installs grub to
-                # the EFI fallback path. Useful if the NVRAM wasn't written
-                # correctly, was reset or if testing with virt as libvirt
-                # resets the NVRAM on instance start.
-                # This operation is essentially a copy operation. Use of the
-                # --removable flag, per the grub-install source code changes
-                # the default file to be copied, destination file name, and
-                # prevents NVRAM from being updated.
-                # We only run grub2_install for uefi if we can't verify the
-                # uefi bits
-                utils.execute('chroot %(path)s /bin/sh -c '
-                              '"%(bin)s-install --removable"' %
-                              {'path': path, 'bin': binary_name},
-                              shell=True,
-                              env_variables={
-                                  'PATH': path_variable
-                              })
-                utils.execute('umount', efi_partition_mount_point, attempts=3,
-                              delay_on_retry=True)
-                efi_mounted = False
+                        "Secure Boot signed binaries.", efi_partition)
+            utils.execute('mount', efi_partition, efi_partition_mount_point)
+            efi_mounted = True
+            # FIXME(rg): does not work in cross boot mode case (target
+            # boot mode differs from ramdisk one)
+            # Probe for the correct target (depends on the arch, example
+            # --target=x86_64-efi)
+            utils.execute('chroot %(path)s /bin/sh -c '
+                          '"%(bin)s-install"' %
+                          {'path': path, 'bin': binary_name},
+                          shell=True,
+                          env_variables={
+                              'PATH': path_variable
+                          })
+            # Also run grub-install with --removable, this installs grub to
+            # the EFI fallback path. Useful if the NVRAM wasn't written
+            # correctly, was reset or if testing with virt as libvirt
+            # resets the NVRAM on instance start.
+            # This operation is essentially a copy operation. Use of the
+            # --removable flag, per the grub-install source code changes
+            # the default file to be copied, destination file name, and
+            # prevents NVRAM from being updated.
+            # We only run grub2_install for uefi if we can't verify the
+            # uefi bits
+            utils.execute('chroot %(path)s /bin/sh -c '
+                          '"%(bin)s-install --removable"' %
+                          {'path': path, 'bin': binary_name},
+                          shell=True,
+                          env_variables={
+                              'PATH': path_variable
+                          })
+            utils.execute('umount', efi_partition_mount_point, attempts=3,
+                          delay_on_retry=True)
+            efi_mounted = False
             # NOTE: probably never needed for grub-mkconfig, does not hurt in
             # case of doubt, cleaned in the finally clause anyway
-            utils.execute('mount', efi_partitions[0],
+            utils.execute('mount', efi_partition,
                           efi_partition_mount_point)
             efi_mounted = True
         else:
@@ -778,7 +777,7 @@ def _mount_for_chroot(path):
 
 def _try_preserve_efi_assets(device, path,
                              efi_system_part_uuid,
-                             efi_partitions,
+                             efi_partition,
                              efi_partition_mount_point):
     """Attempt to preserve UEFI boot assets.
 
@@ -788,8 +787,8 @@ def _try_preserve_efi_assets(device, path,
                  which we should examine to preserve assets from.
     :param efi_system_part_uuid: The partition ID representing the
                                  created EFI system partition.
-    :param efi_partitions: The list of partitions upon wich to
-                           write the preserved assets to.
+    :param efi_partition: The partitions upon wich to write the preserved
+                          assets to.
     :param efi_partition_mount_point: The folder at which to mount
                                       the assets for the process of
                                       preservation.
@@ -812,7 +811,7 @@ def _try_preserve_efi_assets(device, path,
         # But first, if we have grub, we should try to build a grub config!
         LOG.debug('EFI asset folder detected, attempting to preserve assets.')
         if _preserve_efi_assets(path, efi_assets_folder,
-                                efi_partitions,
+                                efi_partition,
                                 efi_partition_mount_point):
             try:
                 # Since we have preserved the assets, we should be able
@@ -892,21 +891,21 @@ def _efi_boot_setup(device, efi_system_part_uuid=None, target_boot_mode=None):
         return False
 
 
-def _preserve_efi_assets(path, efi_assets_folder, efi_partitions,
+def _preserve_efi_assets(path, efi_assets_folder, efi_partition,
                          efi_partition_mount_point):
     """Preserve the EFI assets in a partition image.
 
     :param path: The path used for the mounted image filesystem.
     :param efi_assets_folder: The folder where we can find the
                               UEFI assets required for booting.
-    :param efi_partitions: The list of partitions upon which to
-                           write the perserved assets to.
+    :param efi_partition: The partition upon which to write the
+                          perserved assets to.
     :param efi_partition_mount_point: The folder at which to mount
                                       the assets for the process of
                                       preservation.
     :returns: True if EFI assets were able to be located and preserved
               to their appropriate locations based upon the supplied
-              efi_partitions list.
+              efi_partition.
               False if any error is encountered in this process.
     """
     try:
@@ -955,18 +954,16 @@ def _preserve_efi_assets(path, efi_assets_folder, efi_partitions,
                     except (IOError, OSError, shutil.SameFileError) as e:
                         LOG.warning('Failed to copy grubenv file. '
                                     'Error: %s', e)
-        # Loop through partitions because software RAID.
-        for efi_part in efi_partitions:
-            utils.execute('mount', '-t', 'vfat', efi_part,
-                          efi_partition_mount_point)
-            shutil.copytree(save_efi, efi_assets_folder)
-            LOG.debug('Files preserved to %(disk)s for %(part)s. '
-                      'Files: %(filelist)s From: %(from)s',
-                      {'disk': efi_part,
-                       'part': efi_partition_mount_point,
-                       'filelist': os.listdir(efi_assets_folder),
-                       'from': save_efi})
-            utils.execute('umount', efi_partition_mount_point)
+        utils.execute('mount', '-t', 'vfat', efi_partition,
+                      efi_partition_mount_point)
+        shutil.copytree(save_efi, efi_assets_folder)
+        LOG.debug('Files preserved to %(disk)s for %(part)s. '
+                  'Files: %(filelist)s From: %(from)s',
+                  {'disk': efi_partition,
+                   'part': efi_partition_mount_point,
+                   'filelist': os.listdir(efi_assets_folder),
+                   'from': save_efi})
+        utils.execute('umount', efi_partition_mount_point)
         return True
     except Exception as e:
         LOG.debug('Failed to preserve EFI assets. Error %s', e)
