@@ -43,6 +43,7 @@ DEVICE_SECTORS_COUNT=`blockdev --getsz $DEVICE`
 dd bs=512 if=/dev/zero of=$DEVICE count=33
 dd bs=512 if=/dev/zero of=$DEVICE count=33 seek=$((${DEVICE_SECTORS_COUNT} - 33))
 sgdisk -Z $DEVICE
+udevadm settle
 
 log "Imaging $IMAGEFILE to $DEVICE"
 
