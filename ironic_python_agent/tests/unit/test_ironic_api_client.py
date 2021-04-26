@@ -148,7 +148,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
         self.assertEqual(API_URL + heartbeat_path, request_args[1])
         expected_data = {
             'callback_url': 'http://192.0.2.1:9999',
-            'agent_version': version.version_info.release_string()}
+            'agent_version': version.__version__}
         self.assertEqual(jsonutils.dumps(expected_data), data)
 
     def test_successful_heartbeat_ip6(self):
@@ -171,7 +171,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
         self.assertEqual(API_URL + heartbeat_path, request_args[1])
         expected_data = {
             'callback_url': 'http://[fc00:1111::4]:9999',
-            'agent_version': version.version_info.release_string()}
+            'agent_version': version.__version__}
         self.assertEqual(jsonutils.dumps(expected_data), data)
 
     def test_successful_heartbeat_with_token(self):
@@ -196,7 +196,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
         expected_data = {
             'callback_url': 'http://192.0.2.1:9999',
             'agent_token': 'magical',
-            'agent_version': version.version_info.release_string()}
+            'agent_version': version.__version__}
         self.assertEqual(jsonutils.dumps(expected_data), data)
 
     def test_heartbeat_agent_version_unsupported(self):
@@ -244,7 +244,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
         expected_data = {
             'callback_url': 'https://192.0.2.1:9999',
             'agent_token': 'magical',
-            'agent_version': version.version_info.release_string(),
+            'agent_version': version.__version__,
             'agent_verify_ca': 'I am a cert'}
         self.assertEqual(jsonutils.dumps(expected_data), data)
         headers = self.api_client.session.request.call_args[1]['headers']

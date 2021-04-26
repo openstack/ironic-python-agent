@@ -150,7 +150,7 @@ class APIClient(object):
             data['agent_token'] = self.agent_token
 
         if api_ver >= AGENT_VERSION_IRONIC_VERSION:
-            data['agent_version'] = version.version_info.release_string()
+            data['agent_version'] = version.__version__
 
         if api_ver >= AGENT_VERIFY_CA_IRONIC_VERSION and generated_cert:
             data['agent_verify_ca'] = generated_cert
