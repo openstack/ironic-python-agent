@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Adds a burn-in cleaning step 'burnin_cpu' to stress test CPUs for a
+    configurable amount of time with stress-ng. To use this step,
+    stress-ng needs to be installed on the RAM disk.
+
