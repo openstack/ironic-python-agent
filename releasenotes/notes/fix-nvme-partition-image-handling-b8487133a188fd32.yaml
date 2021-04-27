@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes an error with UEFI based deployments where using a partition image
+    a NVMe device was previously failing due to the different device name
+    pattern.
