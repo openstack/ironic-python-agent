@@ -2119,6 +2119,45 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
     @mock.patch.object(image, '_get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
+    def test__manage_uefi_nvme_device(self, mkdir_mock, mock_utils_efi_part,
+                                      mock_get_part_uuid, mock_efi_bl,
+                                      mock_execute, mock_dispatch):
+        mock_utils_efi_part.return_value = '1'
+        mock_get_part_uuid.return_value = '/dev/fakenvme0p1'
+
+        mock_efi_bl.return_value = ['\\EFI\\BOOT\\BOOTX64.EFI']
+
+        mock_execute.side_effect = iter([('', ''), ('', ''),
+                                         ('', ''), ('', ''),
+                                         ('', ''), ('', ''),
+                                         ('', '')])
+
+        expected = [mock.call('partx', '-u', '/dev/fakenvme0', attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('mount', '/dev/fakenvme0p1',
+                              self.fake_dir + '/boot/efi'),
+                    mock.call('efibootmgr'),
+                    mock.call('efibootmgr', '-c', '-d', '/dev/fakenvme0',
+                              '-p', '1', '-w',
+                              '-L', 'ironic1', '-l',
+                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                    mock.call('umount', self.fake_dir + '/boot/efi',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('sync')]
+
+        result = image._manage_uefi('/dev/fakenvme0', self.fake_root_uuid)
+        self.assertTrue(result)
+        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_execute.assert_has_calls(expected)
+        self.assertEqual(7, mock_execute.call_count)
+
+    @mock.patch.object(os.path, 'exists', lambda *_: False)
+    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
     def test__manage_uefi_wholedisk(
             self, mkdir_mock, mock_utils_efi_part,
             mock_get_part_uuid, mock_efi_bl, mock_execute,
