@@ -289,7 +289,12 @@ def _manage_uefi(device, efi_system_part_uuid=None):
             # _get_partition returns <device>+<partition> and we only need the
             # partition number
             partition = _get_partition(device, uuid=efi_system_part_uuid)
-            efi_partition = int(partition.replace(device, ""))
+            try:
+                efi_partition = int(partition.replace(device, ""))
+            except ValueError:
+                # NVMe Devices get a partitioning scheme that is different from
+                # traditional block devices like SCSI/SATA
+                efi_partition = int(partition.replace(device + 'p', ""))
 
         if efi_partition:
             efi_partition_mount_point = os.path.join(local_path, "boot/efi")
