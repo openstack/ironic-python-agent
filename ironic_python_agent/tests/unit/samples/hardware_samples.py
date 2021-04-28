@@ -543,6 +543,190 @@ LSHW_JSON_OUTPUT_V2 = ("""
 }
 """, "")
 
+LSHW_JSON_OUTPUT_NO_MEMORY_BANK_SIZE = ("""
+{
+  "id" : "bumblebee",
+  "class" : "system",
+  "claimed" : true,
+  "handle" : "DMI:0001",
+  "description" : "Rack Mount Chassis",
+  "product" : "ABCD",
+  "vendor" : "ABCD",
+  "version" : "1234",
+  "serial" : "1234",
+  "width" : 64,
+  "configuration" : {
+    "boot" : "normal",
+    "chassis" : "rackmount",
+    "family" : "Intel Grantley EP",
+    "sku" : "NULL",
+    "uuid" : "00010002-0003-0004-0005-000600070008"
+  },
+  "capabilities" : {
+    "smbios-2.8" : "SMBIOS version 2.8",
+    "dmi-2.7" : "DMI version 2.7",
+    "vsyscall32" : "32-bit processes"
+  },
+  "children" : [
+    {
+      "id" : "core",
+      "class" : "bus",
+      "claimed" : true,
+      "handle" : "DMI:0002",
+      "description" : "Motherboard",
+      "product" : "ABCD",
+      "vendor" : "ABCD",
+      "physid" : "0",
+      "version" : "1234",
+      "serial" : "1234",
+      "slot" : "NULL",
+      "children" : [
+        {
+          "id" : "memory:0",
+          "class" : "memory",
+          "claimed" : true,
+          "handle" : "DMI:004A",
+          "description" : "System Memory",
+          "physid" : "4a",
+          "slot" : "System board or motherboard",
+          "units" : "bytes",
+          "size" : 34359738368,
+          "children" : [
+            {
+              "id" : "bank:0",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:004C",
+              "description" : "DIMM Synchronous 2133 MHz (0.5 ns)",
+              "product" : "36ASF2G72PZ-2G1A2",
+              "vendor" : "Micron",
+              "physid" : "0",
+              "serial" : "101B6543",
+              "slot" : "DIMM_A0",
+              "width" : 64,
+              "clock" : 2133000000
+            },
+            {
+              "id" : "bank:1",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:004E",
+              "description" : "DIMM Synchronous [empty]",
+              "product" : "NO DIMM",
+              "vendor" : "NO DIMM",
+              "physid" : "1",
+              "serial" : "NO DIMM",
+              "slot" : "DIMM_A1"
+            },
+            {
+              "id" : "bank:2",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:004F",
+              "description" : "DIMM Synchronous 2133 MHz (0.5 ns)",
+              "product" : "36ASF2G72PZ-2G1A2",
+              "vendor" : "Micron",
+              "physid" : "2",
+              "serial" : "101B654E",
+              "slot" : "DIMM_A2",
+              "width" : 64,
+              "clock" : 2133000000
+            },
+            {
+              "id" : "bank:3",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0051",
+              "description" : "DIMM Synchronous [empty]",
+              "product" : "NO DIMM",
+              "vendor" : "NO DIMM",
+              "physid" : "3",
+              "serial" : "NO DIMM",
+              "slot" : "DIMM_A3"
+            }
+          ]
+        },
+        {
+          "id" : "memory:1",
+          "class" : "memory",
+          "claimed" : true,
+          "handle" : "DMI:0052",
+          "description" : "System Memory",
+          "physid" : "52",
+          "slot" : "System board or motherboard",
+          "units" : "bytes",
+          "size" : 34359738368,
+          "children" : [
+            {
+              "id" : "bank:0",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0054",
+              "description" : "DIMM Synchronous 2133 MHz (0.5 ns)",
+              "product" : "36ASF2G72PZ-2G1A2",
+              "vendor" : "Micron",
+              "physid" : "0",
+              "serial" : "101B6545",
+              "slot" : "DIMM_A4",
+              "width" : 64,
+              "clock" : 2133000000
+            },
+            {
+              "id" : "bank:1",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0056",
+              "description" : "DIMM Synchronous [empty]",
+              "product" : "NO DIMM",
+              "vendor" : "NO DIMM",
+              "physid" : "1",
+              "serial" : "NO DIMM",
+              "slot" : "DIMM_A5"
+            },
+            {
+              "id" : "bank:2",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0057",
+              "description" : "DIMM Synchronous 2133 MHz (0.5 ns)",
+              "product" : "36ASF2G72PZ-2G1A2",
+              "vendor" : "Micron",
+              "physid" : "2",
+              "serial" : "101B6540",
+              "slot" : "DIMM_A6",
+              "width" : 64,
+              "clock" : 2133000000
+            },
+            {
+              "id" : "bank:3",
+              "class" : "memory",
+              "claimed" : true,
+              "handle" : "DMI:0059",
+              "description" : "DIMM Synchronous [empty]",
+              "product" : "NO DIMM",
+              "vendor" : "NO DIMM",
+              "physid" : "3",
+              "serial" : "NO DIMM",
+              "slot" : "DIMM_A7"
+            }
+          ]
+        },
+        {
+          "id" : "memory:4",
+          "class" : "memory",
+          "physid" : "1"
+        },
+        {
+          "id" : "memory:5",
+          "class" : "memory",
+          "physid" : "2"
+        }
+      ]
+    }
+  ]
+}
+""", "")
+
 LSHW_JSON_OUTPUT_ARM64 = ("""
 {
   "id" : "debian",
