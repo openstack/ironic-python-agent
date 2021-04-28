@@ -204,7 +204,7 @@ def _get_component_devices(raid_device):
             if md_uuid in line:
                 component_devices.append(bdev.name)
 
-    LOG.info('Found component devices for %s:',
+    LOG.info('Found component devices for %s: %s',
              raid_device, component_devices)
     return component_devices
 
@@ -2079,7 +2079,7 @@ class GenericHardwareManager(HardwareManager):
             try:
                 utils.execute('wipefs', '-af', holder_disk)
             except processutils.ProcessExecutionError as e:
-                LOG.warning('Failed to remove partitions on %s',
+                LOG.warning('Failed to remove partitions on %s: %s',
                             holder_disk, e)
 
         LOG.debug("Finished deleting Software RAID(s)")
