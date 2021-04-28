@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    The lshw package version B.02.19.2-5 on CentOS 8.4 and 8.5 contains a `bug
+    <https://bugzilla.redhat.com/show_bug.cgi?id=1955250>`_ that prevents the
+    size of individual memory banks from being reported, with the result that
+    the total memory size would be reported as 0 in some places. The total
+    memory size is now taken from lshw's total memory size output (which does
+    not suffer from the same problem) when available.
