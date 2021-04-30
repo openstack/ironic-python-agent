@@ -28,6 +28,7 @@ import requests
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
+from ironic_python_agent import partition_utils
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
@@ -175,17 +176,17 @@ def _write_partition_image(image, image_info, device):
             raise errors.InvalidCommandParamsError(msg)
 
     try:
-        return disk_utils.work_on_disk(device, root_mb,
-                                       image_info['swap_mb'],
-                                       image_info['ephemeral_mb'],
-                                       image_info['ephemeral_format'],
-                                       image, node_uuid,
-                                       preserve_ephemeral=preserve_ep,
-                                       configdrive=configdrive,
-                                       boot_option=boot_option,
-                                       boot_mode=boot_mode,
-                                       disk_label=disk_label,
-                                       cpu_arch=cpu_arch)
+        return partition_utils.work_on_disk(device, root_mb,
+                                            image_info['swap_mb'],
+                                            image_info['ephemeral_mb'],
+                                            image_info['ephemeral_format'],
+                                            image, node_uuid,
+                                            preserve_ephemeral=preserve_ep,
+                                            configdrive=configdrive,
+                                            boot_option=boot_option,
+                                            boot_mode=boot_mode,
+                                            disk_label=disk_label,
+                                            cpu_arch=cpu_arch)
     except processutils.ProcessExecutionError as e:
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
 
@@ -715,9 +716,9 @@ class StandbyExtension(base.BaseAgentExtension):
                 # wherein new IPA is being used with older version
                 # of Ironic that did not pass 'node_uuid' in 'image_info'
                 node_uuid = image_info.get('node_uuid', 'local')
-                disk_utils.create_config_drive_partition(node_uuid,
-                                                         device,
-                                                         configdrive)
+                partition_utils.create_config_drive_partition(node_uuid,
+                                                              device,
+                                                              configdrive)
 
         self._fix_up_partition_uuids(image_info, device)
         msg = 'image ({}) written to device {} '
