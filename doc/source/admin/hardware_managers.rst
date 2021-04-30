@@ -77,6 +77,9 @@ Clean steps
 ``deploy.burnin_cpu``
     Stress-test the CPUs of a node via stress-ng for a configurable
     amount of time. Disabled by default.
+``deploy.burnin_memory``
+    Stress-test the memory of a node via stress-ng for a configurable
+    amount of time. Disabled by default.
 ``deploy.erase_devices``
     Securely erases all information from all recognized disk devices.
     Relatively fast when secure ATA erase is available, otherwise can take

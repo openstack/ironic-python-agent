@@ -46,3 +46,35 @@ def stress_ng_cpu(node):
                      {'err': e})
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
+
+
+def stress_ng_vm(node):
+    """Burn-in the memory with the vm stressor in stress-ng
+
+    Run stress-ng with a configurable number of workers on
+    a configurable amount of the available memory for
+    a configurable amount of time. Without config use
+    as many workers as CPUs, 98% of the memory and stress
+    it for 24 hours.
+
+    :param node: Ironic node object
+    :raises: CommandExecutionError if the execution of stress-ng fails.
+    """
+    info = node.get('driver_info', {})
+    vm = info.get('agent_burnin_vm_vm', 0)
+    vm_bytes = info.get('agent_burnin_vm_vm-bytes', '98%')
+    timeout = info.get('agent_burnin_vm_timeout', 86400)
+
+    args = ('stress-ng', '--vm', vm, '--vm-bytes', vm_bytes,
+            '--timeout', timeout, '--metrics-brief')
+    LOG.debug('Burn-in stress_ng_vm command: %s', args)
+
+    try:
+        _, err = utils.execute(*args)
+        # stress-ng reports on stderr only
+        LOG.info(err)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        error_msg = ("stress-ng (vm) failed with error %(err)s",
+                     {'err': e})
+        LOG.error(error_msg)
+        raise errors.CommandExecutionError(error_msg)
