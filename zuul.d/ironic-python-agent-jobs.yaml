@@ -25,23 +25,7 @@
       devstack_services:
         dstat: false
 
-# used by diskimage-builder
-- job:
-    name: ipa-tempest-wholedisk-bios-ipmi-direct-dib-src
-    parent: ironic-ipa-base
-    vars:
-      devstack_services:
-        s-account: True
-        s-container: True
-        s-object: True
-        s-proxy: True
-      devstack_localrc:
-        IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
-        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
-        IRONIC_VM_EPHEMERAL_DISK: 0
-        SWIFT_ENABLE_TEMPURLS: True
-        SWIFT_TEMPURL_KEY: secretkey
-
+# used by diskimage-builder and IPA-builder
 - job:
     name: ipa-tempest-bios-ipmi-direct-src
     parent: ironic-ipa-base
@@ -83,14 +67,6 @@
         IRONIC_CALLBACK_TIMEOUT: 800
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
-
-# used by diskimage-builder
-- job:
-    name: ipa-tempest-bios-ipmi-iscsi-src
-    parent: ironic-ipa-base
-    vars:
-      devstack_localrc:
-        IRONIC_DEFAULT_BOOT_OPTION: netboot
 
 # used by ironic-python-agent-builder
 - job:
@@ -157,7 +133,7 @@
         IRONIC_BUILD_DEPLOY_RAMDISK: True
         # NOTE(dtantsur): the ansible deploy doesn't depend on IPA code,
         # excluding it from the enabled list to save gate time.
-        IRONIC_ENABLED_DEPLOY_INTERFACES: "iscsi,direct"
+        IRONIC_ENABLED_DEPLOY_INTERFACES: "direct"
 
 - job:
     name: metalsmith-integration-ipa-src
@@ -190,15 +166,6 @@
 - job:
     name: ipa-tempest-bios-ipmi-direct-tinyipa-src
     parent: ipa-tempest-bios-ipmi-direct-src
-    vars:
-      devstack_localrc:
-        IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 1024
-
-# used by ironic-python-agent-builder
-- job:
-    name: ipa-tempest-bios-ipmi-iscsi-tinyipa-src
-    parent: ipa-tempest-bios-ipmi-iscsi-src
     vars:
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
