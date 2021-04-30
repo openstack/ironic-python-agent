@@ -1048,6 +1048,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch('psutil.virtual_memory', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_memory_psutil_bank_size(self, mocked_execute, mocked_psutil):
+        mocked_psutil.return_value.total = 3952 * 1024 * 1024
+        mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_NO_MEMORY_BANK_SIZE
+        mem = self.hardware.get_memory()
+
+        self.assertEqual(3952 * 1024 * 1024, mem.total)
+        self.assertEqual(65536, mem.physical_mb)
+
+    @mock.patch('psutil.virtual_memory', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_psutil_exception_v1(self, mocked_execute,
                                             mocked_psutil):
         mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_V1
