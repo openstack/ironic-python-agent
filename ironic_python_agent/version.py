@@ -13,6 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import pbr.version
+try:
+    # For Python 3.8 and later
+    import importlib.metadata as importlib_metadata
+except ImportError:
+    # For everyone else
+    import importlib_metadata
 
-version_info = pbr.version.VersionInfo('ironic_python_agent')
+__version__ = importlib_metadata.version("ironic_python_agent")
