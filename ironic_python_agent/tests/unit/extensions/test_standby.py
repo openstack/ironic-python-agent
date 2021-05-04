@@ -24,6 +24,7 @@ import requests
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import standby
 from ironic_python_agent import hardware
+from ironic_python_agent import partition_utils
 from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
@@ -200,7 +201,7 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
-    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
+    @mock.patch.object(partition_utils, 'work_on_disk', autospec=True)
     def test_write_partition_image_exception(self, work_on_disk_mock,
                                              image_mb_mock,
                                              execute_mock, open_mock,
@@ -247,7 +248,7 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
-    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
+    @mock.patch.object(partition_utils, 'work_on_disk', autospec=True)
     def test_write_partition_image_no_node_uuid(self, work_on_disk_mock,
                                                 image_mb_mock,
                                                 execute_mock, open_mock,
@@ -297,7 +298,7 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
-    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
+    @mock.patch.object(partition_utils, 'work_on_disk', autospec=True)
     def test_write_partition_image_exception_image_mb(self,
                                                       work_on_disk_mock,
                                                       image_mb_mock,
@@ -322,7 +323,7 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
+    @mock.patch.object(partition_utils, 'work_on_disk', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
     def test_write_partition_image(self, image_mb_mock, work_on_disk_mock,
                                    execute_mock, open_mock, dispatch_mock):
@@ -682,8 +683,8 @@ class TestStandbyExtension(base.IronicAgentTest):
                 autospec=True)
     @mock.patch('ironic_lib.disk_utils.list_partitions',
                 autospec=True)
-    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
-                autospec=True)
+    @mock.patch.object(partition_utils, 'create_config_drive_partition',
+                       autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._write_image',
@@ -733,8 +734,8 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.list_partitions',
                 autospec=True)
-    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
-                autospec=True)
+    @mock.patch.object(partition_utils, 'create_config_drive_partition',
+                       autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._write_image',
@@ -804,8 +805,8 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
-                autospec=True)
+    @mock.patch.object(partition_utils, 'create_config_drive_partition',
+                       autospec=True)
     @mock.patch('ironic_lib.disk_utils.list_partitions',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
@@ -848,9 +849,9 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
-    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
-    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
-                autospec=True)
+    @mock.patch.object(partition_utils, 'work_on_disk', autospec=True)
+    @mock.patch.object(partition_utils, 'create_config_drive_partition',
+                       autospec=True)
     @mock.patch('ironic_lib.disk_utils.list_partitions',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
@@ -899,8 +900,8 @@ class TestStandbyExtension(base.IronicAgentTest):
                 autospec=True)
     @mock.patch('ironic_lib.disk_utils.list_partitions',
                 autospec=True)
-    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
-                autospec=True)
+    @mock.patch.object(partition_utils, 'create_config_drive_partition',
+                       autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby._write_image',
@@ -952,9 +953,9 @@ class TestStandbyExtension(base.IronicAgentTest):
                 lambda _dev: [mock.Mock()])
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
-    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
-    @mock.patch('ironic_lib.disk_utils.create_config_drive_partition',
-                autospec=True)
+    @mock.patch.object(partition_utils, 'work_on_disk', autospec=True)
+    @mock.patch.object(partition_utils, 'create_config_drive_partition',
+                       autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
                 autospec=True)
     @mock.patch('ironic_python_agent.extensions.standby.StandbyExtension'
@@ -1379,7 +1380,7 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_lib.disk_utils.get_image_mb', autospec=True)
-    @mock.patch('ironic_lib.disk_utils.work_on_disk', autospec=True)
+    @mock.patch.object(partition_utils, 'work_on_disk', autospec=True)
     def test_write_partition_image_no_node_uuid_uefi(
             self, work_on_disk_mock,
             image_mb_mock,
