@@ -139,7 +139,7 @@ def _fetch_checksum(checksum, image_info):
         checksum, "Checksum file does not contain name %s" % expected_fname)
 
 
-def _write_partition_image(image, image_info, device):
+def _write_partition_image(image, image_info, device, configdrive=None):
     """Call disk_util to create partition and write the partition image.
 
     :param image: Local path to image file to be written to the partition.
@@ -147,6 +147,9 @@ def _write_partition_image(image, image_info, device):
     :param image_info: Image information dictionary.
     :param device: The device name, as a string, on which to store the image.
                    Example: '/dev/sda'
+    :param configdrive: A string containing the location of the config
+                        drive as a URL OR the contents (as gzip/base64)
+                        of the configdrive. Optional, defaults to None.
 
     :raises: InvalidCommandParamsError if the partition is too small for the
              provided image.
@@ -159,7 +162,6 @@ def _write_partition_image(image, image_info, device):
 
     node_uuid = image_info.get('node_uuid')
     preserve_ep = image_info['preserve_ephemeral']
-    configdrive = image_info['configdrive']
     boot_option = image_info.get('boot_option', 'local')
     boot_mode = utils.get_node_boot_mode(cached_node)
     disk_label = utils.get_partition_table_type_from_specs(cached_node)
@@ -212,12 +214,15 @@ def _write_whole_disk_image(image, image_info, device):
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
 
 
-def _write_image(image_info, device):
+def _write_image(image_info, device, configdrive=None):
     """Writes an image to the specified device.
 
     :param image_info: Image information dictionary.
     :param device: The disk name, as a string, on which to store the image.
                    Example: '/dev/sda'
+    :param configdrive: A string containing the location of the config
+                        drive as a URL OR the contents (as gzip/base64)
+                        of the configdrive. Optional, defaults to None.
     :raises: ImageWriteError if the command to write the image encounters an
              error.
     """
@@ -225,7 +230,7 @@ def _write_image(image_info, device):
     image = _image_location(image_info)
     uuids = {}
     if image_info.get('image_type') == 'partition':
-        uuids = _write_partition_image(image, image_info, device)
+        uuids = _write_partition_image(image, image_info, device, configdrive)
     else:
         _write_whole_disk_image(image, image_info, device)
     totaltime = time.time() - starttime
@@ -536,12 +541,15 @@ class StandbyExtension(base.BaseAgentExtension):
         self.cached_image_id = None
         self.partition_uuids = None
 
-    def _cache_and_write_image(self, image_info, device):
+    def _cache_and_write_image(self, image_info, device, configdrive=None):
         """Cache an image and write it to a local device.
 
         :param image_info: Image information dictionary.
         :param device: The disk name, as a string, on which to store the
                        image.  Example: '/dev/sda'
+        :param configdrive: A string containing the location of the config
+                            drive as a URL OR the contents (as gzip/base64)
+                            of the configdrive. Optional, defaults to None.
 
         :raises: ImageDownloadError if the image download fails for any reason.
         :raises: ImageChecksumError if the downloaded image's checksum does not
@@ -549,7 +557,7 @@ class StandbyExtension(base.BaseAgentExtension):
         :raises: ImageWriteError if writing the image fails.
         """
         _download_image(image_info)
-        self.partition_uuids = _write_image(image_info, device)
+        self.partition_uuids = _write_image(image_info, device, configdrive)
         self.cached_image_id = image_info['id']
 
     def _stream_raw_image_onto_device(self, image_info, device):
@@ -623,13 +631,16 @@ class StandbyExtension(base.BaseAgentExtension):
             self.partition_uuids['root uuid'] = root_uuid
 
     @base.async_command('cache_image', _validate_image_info)
-    def cache_image(self, image_info=None, force=False):
+    def cache_image(self, image_info, force=False, configdrive=None):
         """Asynchronously caches specified image to the local OS device.
 
         :param image_info: Image information dictionary.
         :param force: Optional. If True forces cache_image to download and
                       cache image, even if the same image already exists on
                       the local OS install device. Defaults to False.
+        :param configdrive: A string containing the location of the config
+                            drive as a URL OR the contents (as gzip/base64)
+                            of the configdrive. Optional, defaults to None.
 
         :raises: ImageDownloadError if the image download fails for any reason.
         :raises: ImageChecksumError if the downloaded image's checksum does not
@@ -645,7 +656,10 @@ class StandbyExtension(base.BaseAgentExtension):
         if self.cached_image_id != image_info['id'] or force:
             LOG.debug('Already had %s cached, overwriting',
                       self.cached_image_id)
-            self._cache_and_write_image(image_info, device)
+            # NOTE(dtantsur): backward compatibility
+            if configdrive is None:
+                configdrive = image_info.pop('configdrive', None)
+            self._cache_and_write_image(image_info, device, configdrive)
             msg = 'image ({}) cached to device {} '
 
         self._fix_up_partition_uuids(image_info, device)
@@ -656,9 +670,7 @@ class StandbyExtension(base.BaseAgentExtension):
         return result_msg
 
     @base.async_command('prepare_image', _validate_image_info)
-    def prepare_image(self,
-                      image_info=None,
-                      configdrive=None):
+    def prepare_image(self, image_info, configdrive=None):
         """Asynchronously prepares specified image on local OS install device.
 
         In this case, 'prepare' means make local machine completely ready to
@@ -680,6 +692,9 @@ class StandbyExtension(base.BaseAgentExtension):
              large to store on the given device.
         """
         LOG.debug('Preparing image %s', image_info['id'])
+        # NOTE(dtantsur): backward compatibility
+        if configdrive is None:
+            configdrive = image_info.pop('configdrive', None)
         device = hardware.dispatch_to_managers('get_os_install_device',
                                                permit_refresh=True)
 
@@ -695,7 +710,8 @@ class StandbyExtension(base.BaseAgentExtension):
                 if image_info.get('image_type') == 'partition':
                     self.partition_uuids = _write_partition_image(None,
                                                                   image_info,
-                                                                  device)
+                                                                  device,
+                                                                  configdrive)
                     stream_to = self.partition_uuids['partitions']['root']
                 else:
                     self.partition_uuids = {}
@@ -703,12 +719,14 @@ class StandbyExtension(base.BaseAgentExtension):
 
                 self._stream_raw_image_onto_device(image_info, stream_to)
             else:
-                self._cache_and_write_image(image_info, device)
+                self._cache_and_write_image(image_info, device, configdrive)
 
         _validate_partitioning(device)
 
-        # the configdrive creation is taken care by ironic-lib's
-        # work_on_disk().
+        # For partition images the configdrive creation is taken care by
+        # partition_utils.work_on_disk(), invoked from either
+        # _write_partition_image or _cache_and_write_image above.
+        # Handle whole disk images explicitly now.
         if image_info.get('image_type') != 'partition':
             if configdrive is not None:
                 # Will use dummy value of 'local' for 'node_uuid',

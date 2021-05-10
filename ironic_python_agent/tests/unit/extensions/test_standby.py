@@ -52,7 +52,6 @@ def _build_fake_partition_image_info():
         'ephemeral_mb': '10',
         'ephemeral_format': 'abc',
         'preserve_ephemeral': 'False',
-        'configdrive': 'configdrive',
         'image_type': 'partition',
         'boot_option': 'netboot',
         'disk_label': 'msdos',
@@ -214,7 +213,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         ephemeral_format = image_info['ephemeral_format']
         node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
-        configdrive = image_info['configdrive']
         boot_mode = image_info['deploy_boot_mode']
         boot_option = image_info['boot_option']
         disk_label = image_info['disk_label']
@@ -229,14 +227,14 @@ class TestStandbyExtension(base.IronicAgentTest):
         work_on_disk_mock.side_effect = Exception_returned
 
         self.assertRaises(exc, standby._write_image, image_info,
-                          device)
+                          device, 'configdrive')
         image_mb_mock.assert_called_once_with(image_path)
         work_on_disk_mock.assert_called_once_with(device, root_mb, swap_mb,
                                                   ephemeral_mb,
                                                   ephemeral_format,
                                                   image_path,
                                                   node_uuid,
-                                                  configdrive=configdrive,
+                                                  configdrive='configdrive',
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
                                                   boot_option=boot_option,
@@ -262,7 +260,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         ephemeral_format = image_info['ephemeral_format']
         node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
-        configdrive = image_info['configdrive']
         boot_mode = image_info['deploy_boot_mode']
         boot_option = image_info['boot_option']
         disk_label = image_info['disk_label']
@@ -277,14 +274,14 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_mb_mock.return_value = 1
         work_on_disk_mock.return_value = uuids
 
-        standby._write_image(image_info, device)
+        standby._write_image(image_info, device, 'configdrive')
         image_mb_mock.assert_called_once_with(image_path)
         work_on_disk_mock.assert_called_once_with(device, root_mb, swap_mb,
                                                   ephemeral_mb,
                                                   ephemeral_format,
                                                   image_path,
                                                   node_uuid,
-                                                  configdrive=configdrive,
+                                                  configdrive='configdrive',
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
                                                   boot_option=boot_option,
@@ -335,7 +332,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         ephemeral_format = image_info['ephemeral_format']
         node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
-        configdrive = image_info['configdrive']
         boot_mode = image_info['deploy_boot_mode']
         boot_option = image_info['boot_option']
         disk_label = image_info['disk_label']
@@ -348,14 +344,14 @@ class TestStandbyExtension(base.IronicAgentTest):
         dispatch_mock.return_value = self.fake_cpu
         work_on_disk_mock.return_value = uuids
 
-        standby._write_image(image_info, device)
+        standby._write_image(image_info, device, 'configdrive')
         image_mb_mock.assert_called_once_with(image_path)
         work_on_disk_mock.assert_called_once_with(device, root_mb, swap_mb,
                                                   ephemeral_mb,
                                                   ephemeral_format,
                                                   image_path,
                                                   node_uuid,
-                                                  configdrive=configdrive,
+                                                  configdrive='configdrive',
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
                                                   boot_option=boot_option,
@@ -578,7 +574,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result = self.agent_extension.cache_image(image_info=image_info)
         async_result.join()
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager')
+        write_mock.assert_called_once_with(image_info, 'manager', None)
         dispatch_mock.assert_called_once_with('get_os_install_device',
                                               permit_refresh=True)
         self.assertEqual(image_info['id'],
@@ -602,10 +598,12 @@ class TestStandbyExtension(base.IronicAgentTest):
         download_mock.return_value = None
         write_mock.return_value = {'root uuid': 'root_uuid'}
         dispatch_mock.return_value = 'manager'
-        async_result = self.agent_extension.cache_image(image_info=image_info)
+        async_result = self.agent_extension.cache_image(
+            image_info=image_info, configdrive='configdrive_data')
         async_result.join()
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager')
+        write_mock.assert_called_once_with(image_info, 'manager',
+                                           'configdrive_data')
         dispatch_mock.assert_called_once_with('get_os_install_device',
                                               permit_refresh=True)
         self.assertEqual(image_info['id'],
@@ -637,7 +635,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         )
         async_result.join()
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager')
+        write_mock.assert_called_once_with(image_info, 'manager', None)
         dispatch_mock.assert_called_once_with('get_os_install_device',
                                               permit_refresh=True)
         self.assertEqual(image_info['id'],
@@ -712,7 +710,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result.join()
 
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager')
+        write_mock.assert_called_once_with(image_info, 'manager',
+                                           'configdrive_data')
         dispatch_mock.assert_called_once_with('get_os_install_device',
                                               permit_refresh=True)
         configdrive_copy_mock.assert_called_once_with(image_info['node_uuid'],
@@ -763,7 +762,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result.join()
 
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager')
+        write_mock.assert_called_once_with(image_info, 'manager',
+                                           'configdrive_data')
         dispatch_mock.assert_called_once_with('get_os_install_device',
                                               permit_refresh=True)
         self.assertFalse(configdrive_copy_mock.called)
@@ -836,7 +836,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result.join()
 
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager')
+        write_mock.assert_called_once_with(image_info, 'manager', None)
         dispatch_mock.assert_called_once_with('get_os_install_device',
                                               permit_refresh=True)
 
@@ -887,7 +887,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result.join()
 
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager')
+        write_mock.assert_called_once_with(image_info, 'manager', None)
         dispatch_mock.assert_called_once_with('get_os_install_device',
                                               permit_refresh=True)
 
@@ -930,7 +930,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         async_result.join()
 
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager')
+        write_mock.assert_called_once_with(image_info, 'manager',
+                                           'configdrive_data')
         dispatch_mock.assert_called_once_with('get_os_install_device',
                                               permit_refresh=True)
         configdrive_copy_mock.assert_called_once_with(image_info['node_uuid'],
@@ -998,7 +999,7 @@ class TestStandbyExtension(base.IronicAgentTest):
             self.assertIs(partition, work_on_disk_mock.called)
         else:
             cache_write_mock.assert_called_once_with(mock.ANY, image_info,
-                                                     '/dev/foo')
+                                                     '/dev/foo', None)
             self.assertFalse(stream_mock.called)
 
     def test_prepare_image_raw_stream_true(self):
@@ -1169,7 +1170,21 @@ class TestStandbyExtension(base.IronicAgentTest):
         device = '/dev/foo'
         self.agent_extension._cache_and_write_image(image_info, device)
         download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, device)
+        write_mock.assert_called_once_with(image_info, device, None)
+
+    @mock.patch('ironic_python_agent.extensions.standby._write_image',
+                autospec=True)
+    @mock.patch('ironic_python_agent.extensions.standby._download_image',
+                autospec=True)
+    def test_cache_and_write_image_configdirve(self, download_mock,
+                                               write_mock):
+        image_info = _build_fake_image_info()
+        device = '/dev/foo'
+        self.agent_extension._cache_and_write_image(image_info, device,
+                                                    'configdrive_data')
+        download_mock.assert_called_once_with(image_info)
+        write_mock.assert_called_once_with(image_info, device,
+                                           'configdrive_data')
 
     @mock.patch('ironic_lib.disk_utils.block_uuid', autospec=True)
     @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
@@ -1395,7 +1410,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         ephemeral_format = image_info['ephemeral_format']
         node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
-        configdrive = image_info['configdrive']
         boot_option = image_info['boot_option']
         cpu_arch = self.fake_cpu.architecture
 
@@ -1408,14 +1422,14 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_mb_mock.return_value = 1
         work_on_disk_mock.return_value = uuids
 
-        standby._write_image(image_info, device)
+        standby._write_image(image_info, device, 'configdrive')
         image_mb_mock.assert_called_once_with(image_path)
         work_on_disk_mock.assert_called_once_with(device, root_mb, swap_mb,
                                                   ephemeral_mb,
                                                   ephemeral_format,
                                                   image_path,
                                                   node_uuid,
-                                                  configdrive=configdrive,
+                                                  configdrive='configdrive',
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode='uefi',
                                                   boot_option=boot_option,
