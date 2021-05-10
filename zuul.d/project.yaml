@@ -13,6 +13,8 @@
         # wholedisk + partition on tempest
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-bios-ipmi-iscsi-src
+        - metalsmith-integration-ipa-src
+        # Non-voting jobs
         # NOTE(TheJulia): The cleaning tests run in standalone job has a
         # high failure rate due to possible race during long running steps
         # like deployment with raid setup. While we're working on a fix,
@@ -20,14 +22,18 @@
         # temporary.
         - ironic-standalone-ipa-src:
             voting: false
-        - metalsmith-integration-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
         - ironic-python-agent-check-image-tinyipa:
             voting: false
+            required-projects:
+              - name: openstack/ironic-python-agent-builder
+                override-checkout: stable/wallaby
         - ironic-python-agent-check-image-dib-centos8:
             voting: false
-        # Non-voting jobs
+            required-projects:
+              - name: openstack/ironic-python-agent-builder
+                override-checkout: stable/wallaby
         - ipa-tempest-ironic-inspector-src:
             voting: false
         - ipa-tox-bandit:
@@ -41,5 +47,11 @@
         - metalsmith-integration-ipa-src
     post:
       jobs:
-        - ironic-python-agent-build-image-tinyipa
-        - ironic-python-agent-build-image-dib-centos8
+        - ironic-python-agent-build-image-tinyipa:
+            required-projects:
+            - name: openstack/ironic-python-agent-builder
+              override-checkout: stable/wallaby
+        - ironic-python-agent-build-image-dib-centos8:
+            required-projects:
+            - name: openstack/ironic-python-agent-builder
+              override-checkout: stable/wallaby

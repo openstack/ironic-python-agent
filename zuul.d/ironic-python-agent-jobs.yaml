@@ -139,7 +139,8 @@
     parent: metalsmith-integration-glance-localboot-centos7
     required-projects:
       - openstack/ironic-python-agent
-      - openstack/ironic-python-agent-builder
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: stable/wallaby
       - openstack/ironic-lib
     vars:
       devstack_localrc:
