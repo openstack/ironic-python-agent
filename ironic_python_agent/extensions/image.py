@@ -27,7 +27,6 @@ from oslo_log import log
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
-from ironic_python_agent.extensions import iscsi
 from ironic_python_agent import hardware
 from ironic_python_agent import raid_utils
 from ironic_python_agent import utils
@@ -289,8 +288,7 @@ def _manage_uefi(device, efi_system_part_uuid=None):
     efi_mounted = False
 
     try:
-        # Force UEFI to rescan the device. Required if the deployment
-        # was over iscsi.
+        # Force UEFI to rescan the device.
         _rescan_device(device)
 
         local_path = tempfile.mkdtemp()
@@ -1009,8 +1007,6 @@ class ImageExtension(base.BaseAgentExtension):
 
         """
         device = hardware.dispatch_to_managers('get_os_install_device')
-        if self.agent.iscsi_started:
-            iscsi.clean_up(device)
 
         # Always allow the API client to be the final word on if this is
         # overridden or not.
