@@ -38,6 +38,7 @@ import pyudev
 import stevedore
 import yaml
 
+from ironic_python_agent import burnin
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base as ext_base
@@ -1393,6 +1394,14 @@ class GenericHardwareManager(HardwareManager):
             except OSError:
                 os.remove(filepath)
 
+    def burnin_cpu(self, node, ports):
+        """Burn-in the CPU
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        """
+        burnin.stress_ng_cpu(node)
+
     def _shred_block_device(self, node, block_device):
         """Erase a block device using shred.
 
@@ -1865,7 +1874,14 @@ class GenericHardwareManager(HardwareManager):
                 'interface': 'raid',
                 'reboot_requested': False,
                 'abortable': True
-            }
+            },
+            {
+                'step': 'burnin_cpu',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
         ]
 
     def get_deploy_steps(self, node, ports):

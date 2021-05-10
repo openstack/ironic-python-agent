@@ -149,6 +149,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 'interface': 'raid',
                 'reboot_requested': False,
                 'abortable': True
+            },
+            {
+                'step': 'burnin_cpu',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
             }
         ]
         clean_steps = self.hardware.get_clean_steps(self.node, [])
