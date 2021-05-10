@@ -1038,3 +1038,85 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
         mock_fix_gpt_partition.assert_called_with(self.dev, self.node_uuid)
         mock_table_type.assert_called_with(self.dev)
         mock_count.assert_called_once_with(self.dev)
+
+
+# NOTE(TheJulia): trigger_device_rescan is systemwide thus pointless
+# to execute in the file test case. Also, CI unit test jobs lack sgdisk.
+@mock.patch.object(disk_utils, 'trigger_device_rescan', lambda *_: None)
+@mock.patch.object(utils, 'wait_for_disk_to_become_available', lambda *_: None)
+@mock.patch.object(disk_utils, 'is_block_device', lambda d: True)
+@mock.patch.object(disk_utils, 'block_uuid', lambda p: 'uuid')
+@mock.patch.object(disk_utils, 'dd', lambda *_: None)
+@mock.patch.object(disk_utils, 'convert_image', lambda *_: None)
+@mock.patch.object(utils, 'mkfs', lambda fs, path, label=None: None)
+# NOTE(dtantsur): destroy_disk_metadata resets file size, disabling it
+@mock.patch.object(disk_utils, 'destroy_disk_metadata', lambda *_: None)
+class RealFilePartitioningTestCase(base.IronicAgentTest):
+    """This test applies some real-world partitioning scenario to a file.
+
+    This test covers the whole partitioning, mocking everything not possible
+    on a file. That helps us assure, that we do all partitioning math properly
+    and also conducts integration testing of DiskPartitioner.
+    """
+
+    # Allow calls to utils.execute() and related functions
+    block_execute = False
+
+    def setUp(self):
+        super(RealFilePartitioningTestCase, self).setUp()
+        try:
+            utils.execute('parted', '--version')
+        except OSError as exc:
+            self.skipTest('parted utility was not found: %s' % exc)
+        self.file = tempfile.NamedTemporaryFile(delete=False)
+        # NOTE(ifarkas): the file needs to be closed, so fuser won't report
+        #                any usage
+        self.file.close()
+        # NOTE(dtantsur): 20 MiB file with zeros
+        utils.execute('dd', 'if=/dev/zero', 'of=%s' % self.file.name,
+                      'bs=1', 'count=0', 'seek=20MiB')
+
+    @staticmethod
+    def _run_without_root(func, *args, **kwargs):
+        """Make sure root is not required when using utils.execute."""
+        real_execute = utils.execute
+
+        def fake_execute(*cmd, **kwargs):
+            kwargs['run_as_root'] = False
+            return real_execute(*cmd, **kwargs)
+
+        with mock.patch.object(utils, 'execute', fake_execute):
+            return func(*args, **kwargs)
+
+    def test_different_sizes(self):
+        # NOTE(dtantsur): Keep this list in order with expected partitioning
+        fields = ['ephemeral_mb', 'swap_mb', 'root_mb']
+        variants = ((0, 0, 12), (4, 2, 8), (0, 4, 10), (5, 0, 10))
+        for variant in variants:
+            kwargs = dict(zip(fields, variant))
+            self._run_without_root(partition_utils.work_on_disk,
+                                   self.file.name, ephemeral_format='ext4',
+                                   node_uuid='', image_path='path', **kwargs)
+            part_table = self._run_without_root(
+                disk_utils.list_partitions, self.file.name)
+            for part, expected_size in zip(part_table, filter(None, variant)):
+                self.assertEqual(expected_size, part['size'],
+                                 "comparison failed for %s" % list(variant))
+
+    def test_whole_disk(self):
+        # 6 MiB ephemeral + 3 MiB swap + 9 MiB root + 1 MiB for MBR
+        # + 1 MiB MAGIC == 20 MiB whole disk
+        # TODO(dtantsur): figure out why we need 'magic' 1 more MiB
+        # and why the is different on Ubuntu and Fedora (see below)
+        self._run_without_root(partition_utils.work_on_disk, self.file.name,
+                               root_mb=9, ephemeral_mb=6, swap_mb=3,
+                               ephemeral_format='ext4', node_uuid='',
+                               image_path='path')
+        part_table = self._run_without_root(
+            disk_utils.list_partitions, self.file.name)
+        sizes = [part['size'] for part in part_table]
+        # NOTE(dtantsur): parted in Ubuntu 12.04 will occupy the last MiB,
+        # parted in Fedora 20 won't - thus two possible variants for last part
+        self.assertEqual([6, 3], sizes[:2],
+                         "unexpected partitioning %s" % part_table)
+        self.assertIn(sizes[2], (9, 10))
