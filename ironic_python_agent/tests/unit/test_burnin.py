@@ -54,3 +54,38 @@ class TestBurnin(base.IronicAgentTest):
 
         self.assertRaises(errors.CommandExecutionError,
                           burnin.stress_ng_cpu, node)
+
+    def test_stress_ng_vm_default(self, mock_execute):
+
+        node = {'driver_info': {}}
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.stress_ng_vm(node)
+
+        mock_execute.assert_called_once_with(
+            'stress-ng', '--vm', 0, '--vm-bytes', '98%',
+            '--timeout', 86400, '--metrics-brief')
+
+    def test_stress_ng_vm_non_default(self, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_vm_vm': 2,
+                                'agent_burnin_vm_vm-bytes': '25%',
+                                'agent_burnin_vm_timeout': 120}}
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.stress_ng_vm(node)
+
+        mock_execute.assert_called_once_with(
+            'stress-ng', '--vm', 2, '--vm-bytes', '25%',
+            '--timeout', 120, '--metrics-brief')
+
+    def test_stress_ng_vm_no_stress_ng(self, mock_execute):
+
+        node = {'driver_info': {}}
+        mock_execute.side_effect = (['out', 'err'],
+                                    processutils.ProcessExecutionError())
+
+        burnin.stress_ng_vm(node)
+
+        self.assertRaises(errors.CommandExecutionError,
+                          burnin.stress_ng_vm, node)
