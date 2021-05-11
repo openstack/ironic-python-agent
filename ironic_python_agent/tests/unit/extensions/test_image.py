@@ -1200,7 +1200,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_preserve_efi_assets.assert_called_with(
             self.fake_dir,
             self.fake_dir + '/boot/efi/EFI',
-            ['/dev/fake1'],
+            '/dev/fake1',
             self.fake_dir + '/boot/efi')
         mock_append_to_fstab.assert_called_with(self.fake_dir,
                                                 self.fake_efi_system_part_uuid)
@@ -1526,16 +1526,17 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             (None, None),  # partprobe
             (None, None),  # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
-            (None, None),  # cp
             ('452', None),  # sgdisk -F
             (None, None),  # sgdisk create part
             (None, None),  # partprobe
             (None, None),  # blkid
             ('/dev/sdb14: whatever', None),  # blkid
+            (None, None),  # mdadm
             (None, None),  # cp
+            (None, None),  # wipefs
         ]
 
-        efi_parts = image._prepare_boot_partitions_for_softraid(
+        efi_part = image._prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
             target_boot_mode='uefi')
 
@@ -1548,7 +1549,6 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
-            mock.call('cp', '/dev/md0p12', '/dev/sda12'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
             mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-1', '/dev/sdb'),
@@ -1556,10 +1556,14 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
                       '/dev/sdb'),
-            mock.call('cp', '/dev/md0p12', '/dev/sdb14')
+            mock.call('mdadm', '--create', '/dev/md/esp', '--force', '--run',
+                      '--metadata=1.0', '--level', '1', '--raid-devices', 2,
+                      '/dev/sda12', '/dev/sdb14'),
+            mock.call('cp', '/dev/md0p12', '/dev/md/esp'),
+            mock.call('wipefs', '-a', '/dev/md0p12')
         ]
         mock_execute.assert_has_calls(expected, any_order=False)
-        self.assertEqual(efi_parts, ['/dev/sda12', '/dev/sdb14'])
+        self.assertEqual(efi_part, '/dev/md/esp')
 
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(ilib_utils, 'mkfs', autospec=True)
@@ -1577,9 +1581,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             (None, None),  # partprobe
             (None, None),  # blkid
             ('/dev/sdb14: whatever', None),  # blkid
+            (None, None),  # mdadm
         ]
 
-        efi_parts = image._prepare_boot_partitions_for_softraid(
+        efi_part = image._prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
             target_boot_mode='uefi')
 
@@ -1602,10 +1607,9 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         ]
         mock_execute.assert_has_calls(expected, any_order=False)
         mock_mkfs.assert_has_calls([
-            mock.call(path='/dev/sda12', label='efi-part', fs='vfat'),
-            mock.call(path='/dev/sdb14', label='efi-part-b', fs='vfat'),
+            mock.call(path='/dev/md/esp', label='efi-part', fs='vfat'),
         ], any_order=False)
-        self.assertEqual(efi_parts, ['/dev/sda12', '/dev/sdb14'])
+        self.assertEqual(efi_part, '/dev/md/esp')
 
     def test__prepare_boot_partitions_for_softraid_uefi_gpt_efi_provided(
             self, mock_execute, mock_dispatch):
@@ -1615,16 +1619,17 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             (None, None),  # partprobe
             (None, None),  # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
-            (None, None),  # cp
             ('452', None),  # sgdisk -F
             (None, None),  # sgdisk create part
             (None, None),  # partprobe
             (None, None),  # blkid
             ('/dev/sdb14: whatever', None),  # blkid
+            (None, None),  # mdadm create
             (None, None),  # cp
+            (None, None),  # wipefs
         ]
 
-        efi_parts = image._prepare_boot_partitions_for_softraid(
+        efi_part = image._prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], '/dev/md0p15',
             target_boot_mode='uefi')
 
@@ -1636,7 +1641,6 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
-            mock.call('cp', '/dev/md0p15', '/dev/sda12'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
             mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-1', '/dev/sdb'),
@@ -1644,17 +1648,21 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
                       '/dev/sdb'),
-            mock.call('cp', '/dev/md0p15', '/dev/sdb14')
+            mock.call('mdadm', '--create', '/dev/md/esp', '--force', '--run',
+                      '--metadata=1.0', '--level', '1', '--raid-devices', 2,
+                      '/dev/sda12', '/dev/sdb14'),
+            mock.call('cp', '/dev/md0p15', '/dev/md/esp'),
+            mock.call('wipefs', '-a', '/dev/md0p15')
         ]
         mock_execute.assert_has_calls(expected, any_order=False)
-        self.assertEqual(efi_parts, ['/dev/sda12', '/dev/sdb14'])
+        self.assertEqual(efi_part, '/dev/md/esp')
 
     @mock.patch.object(utils, 'scan_partition_table_type', autospec=True,
                        return_value='msdos')
     def test__prepare_boot_partitions_for_softraid_bios_msdos(
             self, mock_label_scan, mock_execute, mock_dispatch):
 
-        efi_parts = image._prepare_boot_partitions_for_softraid(
+        efi_part = image._prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], 'notusedanyway',
             target_boot_mode='bios')
 
@@ -1663,7 +1671,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             mock.call('/dev/sdb'),
         ]
         mock_label_scan.assert_has_calls(expected, any_order=False)
-        self.assertEqual(efi_parts, [])
+        self.assertIsNone(efi_part)
 
     @mock.patch.object(utils, 'scan_partition_table_type', autospec=True,
                        return_value='gpt')
@@ -1677,7 +1685,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             (None, None),  # bios boot grub
         ]
 
-        efi_parts = image._prepare_boot_partitions_for_softraid(
+        efi_part = image._prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], 'notusedanyway',
             target_boot_mode='bios')
 
@@ -1698,7 +1706,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         ]
 
         mock_execute.assert_has_calls(expected_exec, any_order=False)
-        self.assertEqual(efi_parts, [])
+        self.assertIsNone(efi_part)
 
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: True)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
@@ -1711,7 +1719,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
     @mock.patch.object(image, '_get_partition', autospec=True)
     @mock.patch.object(image, '_prepare_boot_partitions_for_softraid',
                        autospec=True,
-                       return_value=['/dev/sda1', '/dev/sdb2'])
+                       return_value='/dev/md/esp')
     @mock.patch.object(image, '_has_dracut',
                        autospec=True,
                        return_value=False)
@@ -1746,7 +1754,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               (self.fake_dir)), shell=True,
                               env_variables={
                                   'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
-                    mock.call('mount', '/dev/sda1',
+                    mock.call('mount', '/dev/md/esp',
                               self.fake_dir + '/boot/efi'),
                     mock.call(('chroot %s /bin/sh -c "grub-install"' %
                                self.fake_dir), shell=True,
@@ -1760,21 +1768,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                     mock.call(
                         'umount', self.fake_dir + '/boot/efi',
                         attempts=3, delay_on_retry=True),
-                    mock.call('mount', '/dev/sdb2',
-                              self.fake_dir + '/boot/efi'),
-                    mock.call(('chroot %s /bin/sh -c "grub-install"' %
-                               self.fake_dir), shell=True,
-                              env_variables={
-                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
-                    mock.call(('chroot %s /bin/sh -c '
-                               '"grub-install --removable"' %
-                               self.fake_dir), shell=True,
-                              env_variables={
-                                  'PATH': '/sbin:/bin:/usr/sbin:/sbin'}),
-                    mock.call(
-                        'umount', self.fake_dir + '/boot/efi',
-                        attempts=3, delay_on_retry=True),
-                    mock.call('mount', '/dev/sda1',
+                    mock.call('mount', '/dev/md/esp',
                               '/tmp/fake-dir/boot/efi'),
                     mock.call(('chroot %s /bin/sh -c '
                                '"grub-mkconfig -o '
