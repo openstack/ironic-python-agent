@@ -187,7 +187,6 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         # in the event of long running ramdisks where the conductor
         # got upgraded somewhere along the way.
         self.agent_token_required = cfg.CONF.agent_token_required
-        self.iscsi_started = False
         self.generated_cert = None
 
     def get_status(self):

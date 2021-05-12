@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Removes support for the ``iscsi`` deploy interface. Please use a ramdisk
+    from the Wallaby cycle if you need it.

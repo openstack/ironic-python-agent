@@ -312,29 +312,10 @@ class DeploymentError(RESTError):
         super(DeploymentError, self).__init__(details)
 
 
-class ISCSIError(RESTError):
-    """Error raised when an image cannot be written to a device."""
-
-    message = 'Error starting iSCSI target'
-
-    def __init__(self, error_msg):
-        details = 'Error starting iSCSI target: {}'.format(error_msg)
-        super(ISCSIError, self).__init__(details)
-
-
 class IncompatibleNumaFormatError(RESTError):
     """Error raised when unexpected format data in NUMA node."""
 
     message = 'Error in NUMA node data format'
-
-
-class ISCSICommandError(ISCSIError):
-    """Error executing TGT command."""
-
-    def __init__(self, error_msg, exit_code, stdout, stderr):
-        details = ('{}. Failed with exit code {}. stdout: {}. stderr: {}')
-        details = details.format(error_msg, exit_code, stdout, stderr)
-        super(ISCSICommandError, self).__init__(details)
 
 
 class DeviceNotFound(NotFound):

@@ -15,7 +15,6 @@ Pint>=0.5 # BSD
 psutil>=3.2.2 # BSD
 pyudev>=0.18 # LGPLv2.1+
 requests>=2.14.2 # Apache-2.0
-rtslib-fb>=2.1.65 # Apache-2.0
 stevedore>=1.20.0 # Apache-2.0
 tenacity>=6.2.0 # Apache-2.0
 ironic-lib>=4.5.0 # Apache-2.0

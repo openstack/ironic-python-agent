@@ -23,7 +23,6 @@ from oslo_concurrency import processutils
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import image
-from ironic_python_agent.extensions import iscsi
 from ironic_python_agent import hardware
 from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
@@ -46,12 +45,9 @@ class TestImageExtension(base.IronicAgentTest):
         self.fake_efi_system_part_uuid = '45AB-2312'
         self.fake_prep_boot_part_uuid = '76937797-3253-8843-999999999999'
         self.fake_dir = '/tmp/fake-dir'
-        self.agent_extension.agent = mock.Mock()
-        self.agent_extension.agent.iscsi_started = True
 
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
-    def test__install_bootloader_bios(self, mock_grub2, mock_iscsi_clean,
+    def test__install_bootloader_bios(self, mock_grub2,
                                       mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='bios')
@@ -66,13 +62,10 @@ class TestImageExtension(base.IronicAgentTest):
             efi_system_part_uuid=None, prep_boot_part_uuid=None,
             target_boot_mode='bios'
         )
-        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi(self, mock_grub2, mock_uefi,
-                                      mock_iscsi_clean,
                                       mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
@@ -93,14 +86,11 @@ class TestImageExtension(base.IronicAgentTest):
             prep_boot_part_uuid=None,
             target_boot_mode='uefi'
         )
-        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi_ignores_manage_failure(
             self, mock_grub2, mock_uefi,
-            mock_iscsi_clean,
             mock_execute, mock_dispatch):
         self.config(ignore_bootloader_failure=True)
         mock_uefi.side_effect = OSError('meow')
@@ -123,14 +113,11 @@ class TestImageExtension(base.IronicAgentTest):
             prep_boot_part_uuid=None,
             target_boot_mode='uefi'
         )
-        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi_ignores_grub_failure(
             self, mock_grub2, mock_uefi,
-            mock_iscsi_clean,
             mock_execute, mock_dispatch):
         self.config(ignore_bootloader_failure=True)
         mock_grub2.side_effect = OSError('meow')
@@ -153,14 +140,11 @@ class TestImageExtension(base.IronicAgentTest):
             prep_boot_part_uuid=None,
             target_boot_mode='uefi'
         )
-        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi_ignores_grub_failure_api_override(
             self, mock_grub2, mock_uefi,
-            mock_iscsi_clean,
             mock_execute, mock_dispatch):
         self.config(ignore_bootloader_failure=False)
         mock_grub2.side_effect = OSError('meow')
@@ -183,14 +167,11 @@ class TestImageExtension(base.IronicAgentTest):
             prep_boot_part_uuid=None,
             target_boot_mode='uefi'
         )
-        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi_grub_failure_api_override(
             self, mock_grub2, mock_uefi,
-            mock_iscsi_clean,
             mock_execute, mock_dispatch):
         self.config(ignore_bootloader_failure=True)
         mock_grub2.side_effect = OSError('meow')
@@ -214,11 +195,9 @@ class TestImageExtension(base.IronicAgentTest):
             prep_boot_part_uuid=None,
             target_boot_mode='uefi'
         )
-        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
-    def test__install_bootloader_no_root(self, mock_grub2, mock_iscsi_clean,
+    def test__install_bootloader_no_root(self, mock_grub2,
                                          mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='bios')
@@ -229,18 +208,16 @@ class TestImageExtension(base.IronicAgentTest):
         mock_dispatch.assert_any_call('get_boot_info')
         self.assertEqual(2, mock_dispatch.call_count)
         self.assertFalse(mock_grub2.called)
-        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
     @mock.patch.object(image, '_get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=False)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_given_partition(
             self, mkdir_mock, mock_utils_efi_part, mock_partition,
-            mock_efi_bl, mock_iscsi_clean, mock_execute, mock_dispatch):
+            mock_efi_bl, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
@@ -282,14 +259,13 @@ class TestImageExtension(base.IronicAgentTest):
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
     @mock.patch.object(image, '_get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_find_partition(
             self, mkdir_mock, mock_utils_efi_part, mock_partition,
-            mock_efi_bl, mock_iscsi_clean, mock_execute, mock_dispatch):
+            mock_efi_bl, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
@@ -330,14 +306,13 @@ class TestImageExtension(base.IronicAgentTest):
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
     @mock.patch.object(image, '_get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_with_entry_removal(
             self, mkdir_mock, mock_utils_efi_part, mock_partition,
-            mock_efi_bl, mock_iscsi_clean, mock_execute, mock_dispatch):
+            mock_efi_bl, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
@@ -385,14 +360,13 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
     @mock.patch.object(image, '_get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__add_multi_bootloaders(
             self, mkdir_mock, mock_utils_efi_part, mock_partition,
-            mock_efi_bl, mock_iscsi_clean, mock_execute, mock_dispatch):
+            mock_efi_bl, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
@@ -438,9 +412,8 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_utils_efi_part.assert_called_once_with(self.fake_dev)
         self.assertEqual(9, mock_execute.call_count)
 
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
-    def test__install_bootloader_prep(self, mock_grub2, mock_iscsi_clean,
+    def test__install_bootloader_prep(self, mock_grub2,
                                       mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='bios')
@@ -459,38 +432,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             prep_boot_part_uuid=self.fake_prep_boot_part_uuid,
             target_boot_mode='bios'
         )
-        mock_iscsi_clean.assert_called_once_with(self.fake_dev)
-
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
-    @mock.patch.object(image, '_install_grub2', autospec=True)
-    def test__install_bootloader_prep_no_iscsi(
-            self, mock_grub2, mock_iscsi_clean,
-            mock_execute, mock_dispatch):
-        self.agent_extension.agent.iscsi_started = False
-        mock_dispatch.side_effect = [
-            self.fake_dev, hardware.BootInfo(current_boot_mode='bios')
-        ]
-        self.agent_extension.install_bootloader(
-            root_uuid=self.fake_root_uuid,
-            efi_system_part_uuid=None,
-            prep_boot_part_uuid=self.fake_prep_boot_part_uuid).join()
-        mock_dispatch.assert_any_call('get_os_install_device')
-        mock_dispatch.assert_any_call('get_boot_info')
-        self.assertEqual(2, mock_dispatch.call_count)
-        mock_grub2.assert_called_once_with(
-            self.fake_dev,
-            root_uuid=self.fake_root_uuid,
-            efi_system_part_uuid=None,
-            prep_boot_part_uuid=self.fake_prep_boot_part_uuid,
-            target_boot_mode='bios'
-        )
-        mock_iscsi_clean.assert_not_called()
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(iscsi, 'clean_up', autospec=True)
-    def test_install_bootloader_failure(self, mock_iscsi_clean, mock_execute,
-                                        mock_dispatch):
+    def test_install_bootloader_failure(self, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
