@@ -10,6 +10,7 @@ libffi-devel [platform:rpm test]
 
 # these are needed for functional tests
 mdadm [test]
+parted [test]
 
 # this is needed for compiling translations
 gettext [test]
