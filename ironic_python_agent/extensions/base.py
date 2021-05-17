@@ -42,7 +42,7 @@ class AgentCommandStatus(object):
 class BaseCommandResult(encoding.SerializableComparable):
     """Base class for command result."""
 
-    serializable_fields = ('id', 'command_name', 'command_params',
+    serializable_fields = ('id', 'command_name',
                            'command_status', 'command_error', 'command_result')
 
     def __init__(self, command_name, command_params):

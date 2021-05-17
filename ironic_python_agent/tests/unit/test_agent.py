@@ -742,9 +742,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         expected_result = {
             'id': result.id,
             'command_name': 'foo_command',
-            'command_params': {
-                'fail': False,
-            },
             'command_status': 'RUNNING',
             'command_result': None,
             'command_error': None,
@@ -766,9 +763,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         expected_result = {
             'id': result.id,
             'command_name': 'foo_command',
-            'command_params': {
-                'fail': True,
-            },
             'command_status': 'RUNNING',
             'command_result': None,
             'command_error': None,
