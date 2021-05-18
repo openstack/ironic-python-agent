@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Permits out-of-order writes when converting a whole disk images to improve
+    performance.
