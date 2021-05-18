@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The command params no longer appear in the command results. See `story
+    2008904 <https://storyboard.openstack.org/#!/story/2008904>`_ for details.
