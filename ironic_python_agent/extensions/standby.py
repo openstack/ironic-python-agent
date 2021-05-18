@@ -23,6 +23,7 @@ from ironic_lib import exception
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import units
 import requests
 
 from ironic_python_agent import errors
@@ -44,16 +45,6 @@ def _image_location(image_info):
     :returns: The full, absolute path to the image as a string.
     """
     return os.path.join(tempfile.gettempdir(), image_info['id'])
-
-
-def _path_to_script(script):
-    """Get the location of a script which ships with ironic-python-agent.
-
-    :param script: The script name as a string.
-    :returns: The relative path to the script.
-    """
-    cwd = os.path.dirname(os.path.realpath(__file__))
-    return os.path.join(cwd, '..', script)
 
 
 def _download_with_proxy(image_info, url, image_id):
@@ -203,13 +194,23 @@ def _write_whole_disk_image(image, image_info, device):
     :raises: ImageWriteError if the command to write the image encounters an
              error.
     """
-    script = _path_to_script('shell/write_image.sh')
-    command = ['/bin/bash', script, image, device]
+    # FIXME(dtantsur): pass the real node UUID for logging
+    disk_utils.destroy_disk_metadata(device, '')
+    disk_utils.udev_settle()
+
+    command = ['qemu-img', 'convert',
+               '-t', 'directsync', '-O', 'host_device', '-W',
+               image, device]
     LOG.info('Writing image with command: {}'.format(' '.join(command)))
     try:
-        stdout, stderr = utils.execute(*command)
+        # TODO(dtantsur): switch to disk_utils.convert_image when it supports
+        # -t and -W flags and defaults to 2 GiB memory limit.
+        limits = processutils.ProcessLimits(address_space=2048 * units.Mi)
+        utils.execute(*command, prlimit=limits)
     except processutils.ProcessExecutionError as e:
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
+
+    disk_utils.trigger_device_rescan(device)
 
 
 def _write_image(image_info, device):
