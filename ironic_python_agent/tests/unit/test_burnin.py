@@ -17,6 +17,7 @@ from oslo_concurrency import processutils
 
 from ironic_python_agent import burnin
 from ironic_python_agent import errors
+from ironic_python_agent import hardware
 from ironic_python_agent.tests.unit import base
 
 
@@ -63,6 +64,7 @@ class TestBurnin(base.IronicAgentTest):
         burnin.stress_ng_vm(node)
 
         mock_execute.assert_called_once_with(
+
             'stress-ng', '--vm', 0, '--vm-bytes', '98%',
             '--timeout', 86400, '--metrics-brief')
 
@@ -89,3 +91,56 @@ class TestBurnin(base.IronicAgentTest):
 
         self.assertRaises(errors.CommandExecutionError,
                           burnin.stress_ng_vm, node)
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    def test_fio_disk_default(self, mock_list, mock_execute):
+
+        node = {'driver_info': {}}
+
+        mock_list.return_value = [
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
+        ]
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.fio_disk(node)
+
+        mock_execute.assert_called_once_with(
+            'fio', '--rw', 'readwrite', '--bs', '4k', '--direct', 1,
+            '--ioengine', 'libaio', '--iodepth', '32', '--verify',
+            'crc32c', '--verify_dump', 1, '--continue_on_error', 'verify',
+            '--loops', 4, '--runtime', 0, '--time_based', '--name',
+            '/dev/sdj', '--name', '/dev/hdaa')
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    def test_fio_disk_no_default(self, mock_list, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_fio_disk_runtime': 600,
+                                'agent_burnin_fio_disk_loops': 5}}
+
+        mock_list.return_value = [
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
+        ]
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.fio_disk(node)
+
+        mock_execute.assert_called_once_with(
+            'fio', '--rw', 'readwrite', '--bs', '4k', '--direct', 1,
+            '--ioengine', 'libaio', '--iodepth', '32', '--verify',
+            'crc32c', '--verify_dump', 1, '--continue_on_error', 'verify',
+            '--loops', 5, '--runtime', 600, '--time_based', '--name',
+            '/dev/sdj', '--name', '/dev/hdaa')
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    def test_fio_disk_no_fio(self, mock_list, mock_execute):
+
+        node = {'driver_info': {}}
+        mock_execute.side_effect = (['out', 'err'],
+                                    processutils.ProcessExecutionError())
+
+        burnin.fio_disk(node)
+
+        self.assertRaises(errors.CommandExecutionError,
+                          burnin.fio_disk, node)

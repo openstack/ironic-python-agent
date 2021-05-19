@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Adds a burn-in cleaning step 'burnin_disk' to stress test disks for a
+    configurable number of iterations or a configurable amount of time with
+    fio. To use this step, stress-ng needs to be installed on the RAM disk.
