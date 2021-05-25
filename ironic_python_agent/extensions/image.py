@@ -36,7 +36,18 @@ CONF = cfg.CONF
 
 BIND_MOUNTS = ('/dev', '/proc', '/run')
 
-BOOTLOADERS_EFI = ['bootx64.efi', 'grubaa64.efi', 'winload.efi']
+BOOTLOADERS_EFI = [
+    'bootia32.efi',
+    'bootx64.efi',
+    'bootia64.efi',
+    'bootarm.efi',
+    'bootaa64.efi',
+    'bootriscv32.efi',
+    'bootriscv64.efi',
+    'bootriscv128.efi',
+    'grubaa64.efi',
+    'winload.efi'
+]
 
 
 def _rescan_device(device):
@@ -206,9 +217,8 @@ def _get_efi_bootloaders(location):
 
     :param location: the location where it should  start looking for the
                      efi files.
-    :return: a list of valid efi bootloaders
+    :return: a list of relative paths to valid efi bootloaders
     """
-
     # Let's find all files with .efi or .EFI extension
     LOG.debug('Looking for all efi files on %s', location)
     valid_bootloaders = []
@@ -220,7 +230,7 @@ def _get_efi_bootloaders(location):
             efi_f = os.path.join(root, name)
             LOG.debug('Checking if %s is executable', efi_f)
             if os.access(efi_f, os.X_OK):
-                v_bl = efi_f.split('/boot/efi')[-1].replace('/', '\\')
+                v_bl = efi_f.split(location)[-1][1:]
                 LOG.debug('%s is a valid bootloader', v_bl)
                 valid_bootloaders.append(v_bl)
     return valid_bootloaders
@@ -243,7 +253,8 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition):
     duplicated_label = re.compile(r'^.*:\s\*\*.*\*\*\s:\s.*'
                                   r'Boot([0-9a-f-A-F]+)\s.*$')
     label_id = 1
-    for v_efi_bl_path in valid_efi_bootloaders:
+    for v_bl in valid_efi_bootloaders:
+        v_efi_bl_path = '\\' + v_bl.replace('/', '\\')
         # Update the nvram using efibootmgr
         # https://linux.die.net/man/8/efibootmgr
         label = 'ironic' + str(label_id)
