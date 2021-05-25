@@ -245,7 +245,7 @@ class TestImageExtension(base.IronicAgentTest):
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
         mock_partition.side_effect = [self.fake_dev, self.fake_efi_system_part]
-        mock_efi_bl.return_value = ['\\EFI\\BOOT\\BOOTX64.EFI']
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         mock_utils_efi_part.return_value = '1'
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
@@ -295,7 +295,7 @@ class TestImageExtension(base.IronicAgentTest):
         ]
         mock_partition.return_value = self.fake_dev
         mock_utils_efi_part.return_value = '1'
-        mock_efi_bl.return_value = ['\\EFI\\BOOT\\BOOTX64.EFI']
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
                                          ('', ''), ('', ''),
@@ -343,7 +343,7 @@ class TestImageExtension(base.IronicAgentTest):
         ]
         mock_partition.return_value = self.fake_dev
         mock_utils_efi_part.return_value = '1'
-        mock_efi_bl.return_value = ['\\EFI\\BOOT\\BOOTX64.EFI']
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         stdeer_msg = """
 efibootmgr: ** Warning ** : Boot0004 has same label ironic1\n
 efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
@@ -398,8 +398,8 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         ]
         mock_partition.return_value = self.fake_dev
         mock_utils_efi_part.return_value = '1'
-        mock_efi_bl.return_value = ['\\EFI\\BOOT\\BOOTX64.EFI',
-                                    '\\WINDOWS\\system32\\winload.efi']
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI',
+                                    'WINDOWS/system32/winload.efi']
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
@@ -2105,7 +2105,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_utils_efi_part.return_value = '1'
         mock_get_part_uuid.return_value = self.fake_dev
 
-        mock_efi_bl.return_value = ['\\EFI\\BOOT\\BOOTX64.EFI']
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
@@ -2144,7 +2144,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_utils_efi_part.return_value = '1'
         mock_get_part_uuid.return_value = '/dev/fakenvme0p1'
 
-        mock_efi_bl.return_value = ['\\EFI\\BOOT\\BOOTX64.EFI']
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
@@ -2184,7 +2184,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_utils_efi_part.return_value = '1'
         mock_get_part_uuid.side_effect = Exception
 
-        mock_efi_bl.return_value = ['\\EFI\\BOOT\\BOOTX64.EFI']
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
@@ -2253,7 +2253,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         ]
         mock_access.return_value = True
         result = image._get_efi_bootloaders("/boot/efi")
-        self.assertEqual(result[0], '\\EFI\\BOOT\\BOOTX64.EFI')
+        self.assertEqual(result[0], 'EFI/BOOT/BOOTX64.EFI')
 
     @mock.patch.object(os, 'walk', autospec=True)
     @mock.patch.object(os, 'access', autospec=True)
@@ -2267,7 +2267,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         ]
         mock_access.return_value = True
         result = image._get_efi_bootloaders("/boot/efi")
-        self.assertEqual(result[0], '\\WINDOWS\\system32\\winload.efi')
+        self.assertEqual(result[0], 'WINDOWS/system32/winload.efi')
 
     def test__run_efibootmgr_no_bootloaders(self, mock_execute, mock_dispatch):
         result = image._run_efibootmgr([], self.fake_dev,
@@ -2277,7 +2277,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_execute.assert_has_calls(expected)
 
     def test__run_efibootmgr(self, mock_execute, mock_dispatch):
-        result = image._run_efibootmgr(['\\EFI\\BOOT\\BOOTX64.EFI'],
+        result = image._run_efibootmgr(['EFI/BOOT/BOOTX64.EFI'],
                                        self.fake_dev,
                                        self.fake_efi_system_part)
         expected = [mock.call('efibootmgr'),
