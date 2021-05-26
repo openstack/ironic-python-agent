@@ -49,6 +49,15 @@ log "Imaging $IMAGEFILE to $DEVICE"
 
 # limit the memory usage for qemu-img to 2 GiB
 ulimit -v 2097152
+# NOTE(TheJulia): qemu-img uses multiple threads by default and in
+# cross-thread memory allocation lock conflicts, glibc will ultimately
+# attempt to provide it with an additional arena to allocate from, however
+# the running default, when not overridden is 8 * ncpu * the footprint, which
+# very quickly exceeds the ulimit. This is most observable on CI systems where
+# cross-vcpu thread locking can result in a conflict that wouldn't normally be
+# as likely on physical hardware.
+# See discussion on https://bugzilla.redhat.com/show_bug.cgi?id=1892773
+export MALLOC_ARENA_MAX=3
 qemu-img convert -t directsync -O host_device $IMAGEFILE $DEVICE
 sync
 

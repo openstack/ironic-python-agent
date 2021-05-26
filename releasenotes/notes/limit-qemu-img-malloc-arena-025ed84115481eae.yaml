@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes failures with disk image conversions which result in memory
+    allocation or input/output errors due to memory limitations by limiting
+    the number of available memory allocation pools to a non-dynamic
+    reasonable number which should not exceed the available system memory.
