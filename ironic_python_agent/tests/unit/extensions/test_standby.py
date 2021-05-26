@@ -182,7 +182,9 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         standby._write_image(image_info, device)
 
-        execute_mock.assert_called_once_with(*command, prlimit=mock.ANY)
+        execute_mock.assert_called_once_with(
+            *command, prlimit=mock.ANY,
+            env_variables={'MALLOC_ARENA_MAX': '3'})
         wipe_mock.assert_called_once_with(device, '')
         udev_mock.assert_called_once_with()
         rescan_mock.assert_called_once_with(device)
