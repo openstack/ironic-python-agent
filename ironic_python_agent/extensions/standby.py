@@ -23,7 +23,6 @@ from ironic_lib import exception
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
-from oslo_utils import units
 import requests
 
 from ironic_python_agent import errors
@@ -203,20 +202,8 @@ def _write_whole_disk_image(image, image_info, device):
                image, device]
     LOG.info('Writing image with command: {}'.format(' '.join(command)))
     try:
-        # TODO(dtantsur): switch to disk_utils.convert_image when it supports
-        # -t and -W flags and defaults to 2 GiB memory limit.
-        limits = processutils.ProcessLimits(address_space=2048 * units.Mi)
-        # TODO(TheJulia): qemu-img uses a default of 8 * nCPU to determine
-        # how many chunks of memory to allocate based upon the discussion in
-        # https://bugzilla.redhat.com/show_bug.cgi?id=1892773.
-        # Setting MALLOC_AREA_MAX=1 results in a process memory footprint of
-        # ~250mb. Setting it to 3 will allow for multiple areas, but won't
-        # greatly exceed the footprint.
-        env_vars = {'MALLOC_ARENA_MAX': '3'}
-        # Entirely disabling threading results in the same memory footprint
-        # as 1 areana, but multiple threads are useful for performance
-        # as the file could be fragmented/compressed.
-        utils.execute(*command, prlimit=limits, env_variables=env_vars)
+        disk_utils.convert_image(image, device, out_format='host_device',
+                                 cache='directsync', out_of_order=True)
     except processutils.ProcessExecutionError as e:
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
 
