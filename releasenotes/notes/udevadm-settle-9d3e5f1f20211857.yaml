@@ -3,5 +3,5 @@ fixes:
   - |
     Adds a call to "udevadm settle" in write_image.sh.
     After GPT and MBR are destroyed systemd-udevd gets triggered
-    which may hold /dev/sda open preventing qemu-img from writting
+    which may hold /dev/sda open preventing qemu-img from writing
     its image.
