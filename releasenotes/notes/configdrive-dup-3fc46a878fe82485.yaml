@@ -1,0 +1,6 @@
+---
+other:
+  - |
+    The API call ``prepare_image`` and the deploy step ``write_image``
+    will now expect configdrive to be passed as an explicit argument
+    rather than through ``image_info``.
