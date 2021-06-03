@@ -631,34 +631,38 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
                         "Secure Boot signed binaries.", efi_partition)
             utils.execute('mount', efi_partition, efi_partition_mount_point)
             efi_mounted = True
-            # FIXME(rg): does not work in cross boot mode case (target
-            # boot mode differs from ramdisk one)
-            # Probe for the correct target (depends on the arch, example
-            # --target=x86_64-efi)
-            utils.execute('chroot %(path)s /bin/sh -c '
-                          '"%(bin)s-install"' %
-                          {'path': path, 'bin': binary_name},
-                          shell=True,
-                          env_variables={
-                              'PATH': path_variable
-                          })
-            # Also run grub-install with --removable, this installs grub to
-            # the EFI fallback path. Useful if the NVRAM wasn't written
-            # correctly, was reset or if testing with virt as libvirt
-            # resets the NVRAM on instance start.
-            # This operation is essentially a copy operation. Use of the
-            # --removable flag, per the grub-install source code changes
-            # the default file to be copied, destination file name, and
-            # prevents NVRAM from being updated.
-            # We only run grub2_install for uefi if we can't verify the
-            # uefi bits
-            utils.execute('chroot %(path)s /bin/sh -c '
-                          '"%(bin)s-install --removable"' %
-                          {'path': path, 'bin': binary_name},
-                          shell=True,
-                          env_variables={
-                              'PATH': path_variable
-                          })
+            try:
+                utils.execute('chroot %(path)s /bin/sh -c '
+                              '"%(bin)s-install"' %
+                              {'path': path, 'bin': binary_name},
+                              shell=True,
+                              env_variables={
+                                  'PATH': path_variable
+                              })
+            except processutils.ProcessExecutionError as e:
+                LOG.warning('Ignoring GRUB2 boot loader installation failure: '
+                            '%s.', e)
+            try:
+                # Also run grub-install with --removable, this installs grub to
+                # the EFI fallback path. Useful if the NVRAM wasn't written
+                # correctly, was reset or if testing with virt as libvirt
+                # resets the NVRAM on instance start.
+                # This operation is essentially a copy operation. Use of the
+                # --removable flag, per the grub-install source code changes
+                # the default file to be copied, destination file name, and
+                # prevents NVRAM from being updated.
+                # We only run grub2_install for uefi if we can't verify the
+                # uefi bits
+                utils.execute('chroot %(path)s /bin/sh -c '
+                              '"%(bin)s-install --removable"' %
+                              {'path': path, 'bin': binary_name},
+                              shell=True,
+                              env_variables={
+                                  'PATH': path_variable
+                              })
+            except processutils.ProcessExecutionError as e:
+                LOG.warning('Ignoring GRUB2 boot loader installation failure: '
+                            '%s.', e)
             utils.execute('umount', efi_partition_mount_point, attempts=3,
                           delay_on_retry=True)
             efi_mounted = False
