@@ -168,22 +168,21 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
     @mock.patch('ironic_lib.disk_utils.trigger_device_rescan', autospec=True)
-    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch('ironic_lib.disk_utils.convert_image', autospec=True)
     @mock.patch('ironic_lib.disk_utils.udev_settle', autospec=True)
     @mock.patch('ironic_lib.disk_utils.destroy_disk_metadata', autospec=True)
-    def test_write_image(self, wipe_mock, udev_mock, execute_mock,
+    def test_write_image(self, wipe_mock, udev_mock, convert_mock,
                          rescan_mock, fix_gpt_mock):
         image_info = _build_fake_image_info()
         device = '/dev/sda'
         location = standby._image_location(image_info)
-        command = ['qemu-img', 'convert', '-t', 'directsync',
-                   '-O', 'host_device', '-W', location, device]
 
         standby._write_image(image_info, device)
 
-        execute_mock.assert_called_once_with(
-            *command, prlimit=mock.ANY,
-            env_variables={'MALLOC_ARENA_MAX': '3'})
+        convert_mock.assert_called_once_with(location, device,
+                                             out_format='host_device',
+                                             cache='directsync',
+                                             out_of_order=True)
         wipe_mock.assert_called_once_with(device, '')
         udev_mock.assert_called_once_with()
         rescan_mock.assert_called_once_with(device)
@@ -191,10 +190,10 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
     @mock.patch('ironic_lib.disk_utils.trigger_device_rescan', autospec=True)
-    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch('ironic_lib.disk_utils.convert_image', autospec=True)
     @mock.patch('ironic_lib.disk_utils.udev_settle', autospec=True)
     @mock.patch('ironic_lib.disk_utils.destroy_disk_metadata', autospec=True)
-    def test_write_image_gpt_fails(self, wipe_mock, udev_mock, execute_mock,
+    def test_write_image_gpt_fails(self, wipe_mock, udev_mock, convert_mock,
                                    rescan_mock, fix_gpt_mock):
         image_info = _build_fake_image_info()
         device = '/dev/sda'
@@ -202,13 +201,13 @@ class TestStandbyExtension(base.IronicAgentTest):
         fix_gpt_mock.side_effect = exception.InstanceDeployFailure
         standby._write_image(image_info, device)
 
-    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch('ironic_lib.disk_utils.convert_image', autospec=True)
     @mock.patch('ironic_lib.disk_utils.udev_settle', autospec=True)
     @mock.patch('ironic_lib.disk_utils.destroy_disk_metadata', autospec=True)
-    def test_write_image_fails(self, wipe_mock, udev_mock, execute_mock):
+    def test_write_image_fails(self, wipe_mock, udev_mock, convert_mock):
         image_info = _build_fake_image_info()
         device = '/dev/sda'
-        execute_mock.side_effect = processutils.ProcessExecutionError
+        convert_mock.side_effect = processutils.ProcessExecutionError
 
         self.assertRaises(errors.ImageWriteError,
                           standby._write_image,
