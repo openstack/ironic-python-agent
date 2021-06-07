@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Recent releases of redhat grub2 will always fail when installing to EFI
+    paths, to encourage a transition to the signed shim bootloader.  Partition
+    image deploys avoid calling grub2-install with the preserve-efi-assets
+    functions. Deploying whole disk images doesn't require grub2-install. This
+    leaves whole disk images installed onto softraid devices, which still calls
+    grub2-install.  Running grub2-install is still attempted in this one
+    remaining case, but any failures are now ignored.
