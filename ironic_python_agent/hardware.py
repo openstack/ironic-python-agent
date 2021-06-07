@@ -1402,6 +1402,14 @@ class GenericHardwareManager(HardwareManager):
         """
         burnin.stress_ng_cpu(node)
 
+    def burnin_disk(self, node, ports):
+        """Burn-in the disk
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        """
+        burnin.fio_disk(node)
+
     def burnin_memory(self, node, ports):
         """Burn-in the memory
 
@@ -1885,6 +1893,13 @@ class GenericHardwareManager(HardwareManager):
             },
             {
                 'step': 'burnin_cpu',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'burnin_disk',
                 'priority': 0,
                 'interface': 'deploy',
                 'reboot_requested': False,

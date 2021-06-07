@@ -15,6 +15,7 @@ from oslo_concurrency import processutils
 from oslo_log import log
 
 from ironic_python_agent import errors
+from ironic_python_agent import hardware
 
 LOG = log.getLogger(__name__)
 
@@ -75,6 +76,42 @@ def stress_ng_vm(node):
         LOG.info(err)
     except (processutils.ProcessExecutionError, OSError) as e:
         error_msg = ("stress-ng (vm) failed with error %(err)s",
+                     {'err': e})
+        LOG.error(error_msg)
+        raise errors.CommandExecutionError(error_msg)
+
+
+def fio_disk(node):
+    """Burn-in the disks with fio
+
+    Run an fio randrw job for a configurable number of iterations
+    or a given amount of time.
+
+    :param node: Ironic node object
+    :raises: CommandExecutionError if the execution of fio fails.
+    """
+    info = node.get('driver_info', {})
+    # 4 iterations, same as badblock's default
+    loops = info.get('agent_burnin_fio_disk_loops', 4)
+    runtime = info.get('agent_burnin_fio_disk_runtime', 0)
+
+    args = ['fio', '--rw', 'readwrite', '--bs', '4k', '--direct', 1,
+            '--ioengine', 'libaio', '--iodepth', '32', '--verify',
+            'crc32c', '--verify_dump', 1, '--continue_on_error', 'verify',
+            '--loops', loops, '--runtime', runtime, '--time_based']
+
+    devices = hardware.list_all_block_devices()
+    for device in devices:
+        args.extend(['--name', device.name])
+
+    LOG.debug('Burn-in fio disk command: %s', ' '.join(map(str, args)))
+
+    try:
+        out, _ = utils.execute(*args)
+        # fio reports on stdout
+        LOG.info(out)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        error_msg = ("fio (disk) failed with error %(err)s",
                      {'err': e})
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
