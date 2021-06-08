@@ -754,7 +754,7 @@ def _efi_boot_setup(device, efi_system_part_uuid=None, target_boot_mode=None):
             and not hardware.is_md_device(device)):
         try:
             utils.execute('efibootmgr', '--version')
-        except FileNotFoundError:
+        except OSError:
             LOG.warning("efibootmgr is not available in the ramdisk")
         else:
             if _manage_uefi(device,
@@ -801,7 +801,7 @@ def _preserve_efi_assets(path, efi_assets_folder, efi_partitions,
                               grub_dest, grub2_file)
                     try:
                         shutil.copy2(grub2_file, grub_dest)
-                    except (IOError, OSError, shutil.SameFileError) as e:
+                    except (IOError, OSError, shutil.Error) as e:
                         LOG.warning('Failed to copy grub.cfg file for '
                                     'EFI boot operation. Error %s', e)
         grub2_env_file = os.path.join(path, 'boot/grub2/grubenv')
@@ -823,7 +823,7 @@ def _preserve_efi_assets(path, efi_assets_folder, efi_partitions,
                               grub2env_dest)
                     try:
                         shutil.copy2(grub2_env_file, grub2env_dest)
-                    except (IOError, OSError, shutil.SameFileError) as e:
+                    except (IOError, OSError, shutil.Error) as e:
                         LOG.warning('Failed to copy grubenv file. '
                                     'Error: %s', e)
         # Loop through partitions because software RAID.

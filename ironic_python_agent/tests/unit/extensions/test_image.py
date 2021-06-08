@@ -18,7 +18,6 @@ import shutil
 import tempfile
 
 import mock
-from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 
 from ironic_python_agent import errors
@@ -687,19 +686,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_is_md_device.return_value = False
         mock_md_get_raid_devices.return_value = {}
         mock_exists.side_effect = iter([False, True, False, True, True])
-        with mock.patch('builtins.open', mock.mock_open()) as mock_open:
+        with mock.patch('builtins.open', mock.mock_open()):
             image._install_grub2(
                 self.fake_dev, root_uuid=self.fake_root_uuid,
                 efi_system_part_uuid=self.fake_efi_system_part_uuid)
-            write_calls = [
-                mock.call(self.fake_dir + '/etc/fstab', 'r+'),
-                mock.call().__enter__(),
-                mock.call().read(),
-                mock.call().writelines('UUID=%s\t/boot/efi\tvfat\t'
-                                       'umask=0077\t0\t1'
-                                       '\n' % self.fake_efi_system_part_uuid),
-                mock.call().__exit__(None, None, None)]
-            mock_open.assert_has_calls(write_calls)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
                     mock.call('mount', '-o', 'bind', '/dev',
@@ -788,16 +778,10 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_exists.side_effect = [True, False, True, True, True, False,
                                    True, True]
         with mock.patch('builtins.open',
-                        mock.mock_open(read_data=fstab_data)) as mock_open:
+                        mock.mock_open(read_data=fstab_data)):
             image._install_grub2(
                 self.fake_dev, root_uuid=self.fake_root_uuid,
                 efi_system_part_uuid=self.fake_efi_system_part_uuid)
-            write_calls = [
-                mock.call(self.fake_dir + '/etc/fstab', 'r+'),
-                mock.call().__enter__(),
-                mock.call().read(),
-                mock.call().__exit__(None, None, None)]
-            mock_open.assert_has_calls(write_calls)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
                     mock.call('mount', '-o', 'bind', '/dev',
