@@ -36,12 +36,16 @@ CONF = cfg.CONF
 
 BIND_MOUNTS = ('/dev', '/proc', '/run')
 
+# NOTE(TheJulia): Do not add bootia32.csv to this list. That is 32bit
+# EFI booting and never really became popular.
 BOOTLOADERS_EFI = [
+    'bootx64.csv',  # Used by GRUB2 shim loader (Ubuntu, Red Hat)
+    'boot.csv',  # Used by rEFInd, Centos7 Grub2
     'bootia32.efi',
-    'bootx64.efi',
+    'bootx64.efi',  # x86_64 Default
     'bootia64.efi',
     'bootarm.efi',
-    'bootaa64.efi',
+    'bootaa64.efi',  # Arm64 Default
     'bootriscv32.efi',
     'bootriscv64.efi',
     'bootriscv128.efi',
@@ -215,9 +219,10 @@ def _is_bootloader_loaded(dev):
 def _get_efi_bootloaders(location):
     """Get all valid efi bootloaders in a given location
 
-    :param location: the location where it should  start looking for the
+    :param location: the location where it should start looking for the
                      efi files.
-    :return: a list of relative paths to valid efi bootloaders
+    :return: a list of relative paths to valid efi bootloaders or reference
+             files.
     """
     # Let's find all files with .efi or .EFI extension
     LOG.debug('Looking for all efi files on %s', location)
@@ -233,15 +238,30 @@ def _get_efi_bootloaders(location):
                 v_bl = efi_f.split(location)[-1][1:]
                 LOG.debug('%s is a valid bootloader', v_bl)
                 valid_bootloaders.append(v_bl)
+            if 'csv' in efi_f.lower():
+                v_bl = efi_f.split(location)[-1][1:]
+                LOG.debug('%s is a pointer to a bootloader', v_bl)
+                # The CSV files are intended to be authortative as
+                # to the bootloader and the label to be used. Since
+                # we found one, we're going to point directly to it.
+                # centos7 did ship with 2, but with the same contents.
+                # TODO(TheJulia): Perhaps we extend this to make a list
+                # of CSVs instead and only return those?! But then the
+                # question is which is right/first/preferred.
+                return [v_bl]
     return valid_bootloaders
 
 
-def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition):
+def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
+                    mount_point):
     """Executes efibootmgr and removes duplicate entries.
 
     :param valid_efi_bootloaders: the list of valid efi bootloaders
     :param device: the device to be used
     :param efi_partition: the efi partition on the device
+    :param mount_point: The mountpoint for the EFI partition so we can
+                        read contents of files if necessary to perform
+                        proper bootloader injection operations.
     """
 
     # Before updating let's get information about the bootorder
@@ -254,13 +274,25 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition):
                                   r'Boot([0-9a-f-A-F]+)\s.*$')
     label_id = 1
     for v_bl in valid_efi_bootloaders:
-        v_efi_bl_path = '\\' + v_bl.replace('/', '\\')
-        # Update the nvram using efibootmgr
-        # https://linux.die.net/man/8/efibootmgr
-        label = 'ironic' + str(label_id)
+        if 'csv' in v_bl.lower():
+            # These files are always UTF-16 encoded, sometimes have a header.
+            # Positive bonus is python silently drops the FEFF header.
+            with open(mount_point + '/' + v_bl, 'rt') as csv:
+                contents = str(csv.read())
+            csv_contents = contents.split(',')
+            csv_filename = v_bl.split('/')[-1]
+            v_efi_bl_path = v_bl.replace(csv_filename, str(csv_contents[0]))
+            v_efi_bl_path = '\\' + v_efi_bl_path.replace('/', '\\')
+            label = csv_contents[1]
+        else:
+            v_efi_bl_path = '\\' + v_bl.replace('/', '\\')
+            label = 'ironic' + str(label_id)
+
         LOG.debug("Adding loader %(path)s on partition %(part)s of device "
                   " %(dev)s", {'path': v_efi_bl_path, 'part': efi_partition,
                                'dev': device})
+        # Update the nvram using efibootmgr
+        # https://linux.die.net/man/8/efibootmgr
         cmd = utils.execute('efibootmgr', '-c', '-d', device,
                             '-p', efi_partition, '-w', '-L', label,
                             '-l', v_efi_bl_path)
@@ -330,7 +362,8 @@ def _manage_uefi(device, efi_system_part_uuid=None):
             return False
         valid_efi_bootloaders = _get_efi_bootloaders(efi_partition_mount_point)
         if valid_efi_bootloaders:
-            _run_efibootmgr(valid_efi_bootloaders, device, efi_partition)
+            _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
+                            efi_partition_mount_point)
             return True
         else:
             return False
