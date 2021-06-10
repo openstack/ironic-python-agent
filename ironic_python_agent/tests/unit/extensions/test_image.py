@@ -2119,6 +2119,51 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
     @mock.patch.object(image, '_get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
+    def test__manage_uefi_found_csv(self, mkdir_mock, mock_utils_efi_part,
+                                    mock_get_part_uuid, mock_efi_bl,
+                                    mock_execute, mock_dispatch):
+        mock_utils_efi_part.return_value = '1'
+        mock_get_part_uuid.return_value = self.fake_dev
+        mock_efi_bl.return_value = ['EFI/vendor/BOOTX64.CSV']
+
+        # Format is <file>,<entry_name>,<options>,humanfriendlytextnotused
+        # https://www.rodsbooks.com/efi-bootloaders/fallback.html
+        # Mild difference, Ubuntu ships a file without a 0xFEFF delimiter
+        # at the start of the file, where as Red Hat *does*
+        csv_file_data = u'shimx64.efi,Vendor String,,Grub2MadeUSDoThis\n'
+
+        mock_execute.side_effect = iter([('', ''), ('', ''),
+                                         ('', ''), ('', ''),
+                                         ('', ''), ('', ''),
+                                         ('', '')])
+
+        expected = [mock.call('partx', '-u', '/dev/fake', attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('mount', self.fake_efi_system_part,
+                              self.fake_dir + '/boot/efi'),
+                    mock.call('efibootmgr'),
+                    mock.call('efibootmgr', '-c', '-d', self.fake_dev,
+                              '-p', '1', '-w',
+                              '-L', 'Vendor String', '-l',
+                              '\\EFI\\vendor\\shimx64.efi'),
+                    mock.call('umount', self.fake_dir + '/boot/efi',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('sync')]
+        with mock.patch('builtins.open',
+                        mock.mock_open(read_data=csv_file_data)):
+            result = image._manage_uefi(self.fake_dev, self.fake_root_uuid)
+        self.assertTrue(result)
+        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_execute.assert_has_calls(expected)
+        self.assertEqual(7, mock_execute.call_count)
+
+    @mock.patch.object(os.path, 'exists', lambda *_: False)
+    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
     def test__manage_uefi_nvme_device(self, mkdir_mock, mock_utils_efi_part,
                                       mock_get_part_uuid, mock_efi_bl,
                                       mock_execute, mock_dispatch):
@@ -2202,7 +2247,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             ('/boot/efi', ['EFI'], []),
             ('/boot/efi/EFI', ['centos', 'BOOT'], []),
             ('/boot/efi/EFI/centos', ['fw', 'fonts'],
-             ['shimx64-centos.efi', 'BOOT.CSV', 'BOOTX64.CSV',
+             ['shimx64-centos.efi',
               'MokManager.efi', 'mmx64.efi', 'shim.efi', 'fwupia32.efi',
               'fwupx64.efi', 'shimx64.efi', 'grubenv', 'grubx64.efi',
               'grub.cfg']),
@@ -2223,7 +2268,28 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
             ('/boot/efi', ['EFI'], []),
             ('/boot/efi/EFI', ['centos', 'BOOT'], []),
             ('/boot/efi/EFI/centos', ['fw', 'fonts'],
-             ['shimx64-centos.efi', 'BOOT.CSV', 'BOOTX64.CSV',
+             ['shimx64-centos.efi', 'BOOTX64.CSV',
+              'MokManager.efi', 'mmx64.efi', 'shim.efi', 'fwupia32.efi',
+              'fwupx64.efi', 'shimx64.efi', 'grubenv', 'grubx64.efi',
+              'grub.cfg']),
+            ('/boot/efi/EFI/centos/fw', [], []),
+            ('/boot/efi/EFI/centos/fonts', [], ['unicode.pf2']),
+            ('/boot/efi/EFI/BOOT', [],
+             ['BOOTX64.EFI', 'fallback.efi', 'fbx64.efi'])
+        ]
+        mock_access.return_value = True
+        result = image._get_efi_bootloaders("/boot/efi")
+        self.assertEqual(result[0], 'EFI/centos/BOOTX64.CSV')
+
+    @mock.patch.object(os, 'walk', autospec=True)
+    @mock.patch.object(os, 'access', autospec=True)
+    def test__get_efi_bootloaders_no_csv(
+            self, mock_access, mock_walk, mock_execute, mock_dispatch):
+        mock_walk.return_value = [
+            ('/boot/efi', ['EFI'], []),
+            ('/boot/efi/EFI', ['centos', 'BOOT'], []),
+            ('/boot/efi/EFI/centos', ['fw', 'fonts'],
+             ['shimx64-centos.efi',
               'MokManager.efi', 'mmx64.efi', 'shim.efi', 'fwupia32.efi',
               'fwupx64.efi', 'shimx64.efi', 'grubenv', 'grubx64.efi',
               'grub.cfg']),
@@ -2252,7 +2318,8 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
     def test__run_efibootmgr_no_bootloaders(self, mock_execute, mock_dispatch):
         result = image._run_efibootmgr([], self.fake_dev,
-                                       self.fake_efi_system_part)
+                                       self.fake_efi_system_part,
+                                       self.fake_dir)
         expected = []
         self.assertIsNone(result)
         mock_execute.assert_has_calls(expected)
@@ -2260,7 +2327,8 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
     def test__run_efibootmgr(self, mock_execute, mock_dispatch):
         result = image._run_efibootmgr(['EFI/BOOT/BOOTX64.EFI'],
                                        self.fake_dev,
-                                       self.fake_efi_system_part)
+                                       self.fake_efi_system_part,
+                                       self.fake_dir)
         expected = [mock.call('efibootmgr'),
                     mock.call('efibootmgr', '-c', '-d', self.fake_dev,
                               '-p', self.fake_efi_system_part, '-w',
