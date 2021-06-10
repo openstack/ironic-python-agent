@@ -1,0 +1,22 @@
+---
+features:
+  - |
+    Adds the capability into the agent to read and act upon bootloader CSV
+    files which serve as authoritative indicators of what bootloader to load
+    instead of leaning towards utilizing the default.
+fixes:
+  - |
+    Fixes nodes failing after deployment completes due to issues in the Grub2
+    EFI loader entry addition where a ``BOOT.CSV`` file provides the
+    authoritative pointer to the bootloader to be used for booting the OS. The
+    base issue with Grub2 is that it would update the UEFI bootloader NVRAM
+    entries with whatever is present in a vendor specific ``BOOT.CSV`` or
+    ``BOOTX64.CSV`` file. In some cases, a baremetal machine *can* crash when
+    this occurs. More information can be found at
+    `story 2008962 <https://storyboard.openstack.org/#!/story/2008962>`_.
+issues:
+  - |
+    If multiple bootloader CSV files are present on the EFI filesystem, the
+    first CSV file discovered will be utilized. The Ironic team considers
+    multiple files to be a defect in the image being deployed. This may be
+    changed in the future.
