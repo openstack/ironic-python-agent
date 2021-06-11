@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes an issue with bootloader installation on a software RAID by
+    checking if the ESP is already mounted.
+    
+
