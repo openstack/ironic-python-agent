@@ -664,7 +664,9 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
             LOG.warning("GRUB2 will be installed for UEFI on efi partition "
                         "%s using the install command which does not place "
                         "Secure Boot signed binaries.", efi_partition)
-            utils.execute('mount', efi_partition, efi_partition_mount_point)
+            if not os.path.ismount(efi_partition_mount_point):
+                utils.execute('mount', efi_partition,
+                              efi_partition_mount_point)
             efi_mounted = True
             # FIXME(rg): does not work in cross boot mode case (target
             # boot mode differs from ramdisk one)
