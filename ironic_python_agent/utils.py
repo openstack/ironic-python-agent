@@ -478,7 +478,6 @@ def get_command_output(command):
     except (processutils.ProcessExecutionError, OSError) as e:
         error_msg = ('Failed to get the output of the command "%(command)s". '
                      'Error: %(error)s' % {'command': command, 'error': e})
-        LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
     return io.BytesIO(out)
 
@@ -547,7 +546,7 @@ def collect_system_logs(journald_max_lines=None):
         try:
             io_dict[file_name] = get_command_output(command)
         except errors.CommandExecutionError:
-            pass
+            LOG.debug('Collecting logs from command %s has failed', command)
 
     io_dict = {}
     file_list = []
