@@ -83,8 +83,7 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
         time_responses.append(50)
 
         # SECOND RUN:
-        # 50 * .5 = 25
-        expected_stop_calls.append(mock.call(25.0))
+        expected_stop_calls.append(mock.call(5))
         wait_responses.append(False)
         # next heartbeat due at t=180
         heartbeat_responses.append(180)
@@ -92,10 +91,11 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
         uniform_responses.append(0.4)
         # time is now 80
         time_responses.append(80)
+        # add one response for _time in _heartbeat_expected
+        time_responses.append(80)
 
         # THIRD RUN:
-        # 50 * .4 = 20
-        expected_stop_calls.append(mock.call(20.0))
+        expected_stop_calls.append(mock.call(5))
         wait_responses.append(False)
         # this heartbeat attempt fails
         heartbeat_responses.append(Exception('uh oh!'))
@@ -107,8 +107,7 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
         time_responses.append(125.5)
 
         # FOURTH RUN:
-        # 50 * .5 = 20
-        expected_stop_calls.append(mock.call(25.0))
+        expected_stop_calls.append(mock.call(5))
         # Stop now
         wait_responses.append(True)
 
@@ -123,6 +122,39 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
         # Validate expectations
         self.assertEqual(expected_stop_calls,
                          self.heartbeater.stop_event.wait.call_args_list)
+        self.assertEqual(self.heartbeater.api.heartbeat.call_count, 2)
+        self.assertEqual(mock_time.call_count, 5)
+
+    @mock.patch('ironic_python_agent.agent._time', autospec=True)
+    def test__heartbeat_expected(self, mock_time):
+
+        # initial setting
+        self.heartbeater.previous_heartbeat = 0
+        self.heartbeater.interval = 0
+        self.heartbeater.heartbeat_forced = False
+        mock_time.return_value = 0
+        self.assertFalse(self.heartbeater._heartbeat_expected())
+
+        # 1st cadence
+        self.heartbeater.previous_heartbeat = 0
+        self.heartbeater.interval = 100
+        self.heartbeater.heartbeat_forced = False
+        mock_time.return_value = 5
+        self.assertFalse(self.heartbeater._heartbeat_expected())
+
+        # 2nd cadence with a forced heartbeat
+        self.heartbeater.previous_heartbeat = 0
+        self.heartbeater.interval = 100
+        self.heartbeater.heartbeat_forced = True
+        mock_time.return_value = 10
+        self.assertTrue(self.heartbeater._heartbeat_expected())
+
+        # 11th cadence with a scheduled heartbeat
+        self.heartbeater.previous_heartbeat = 0
+        self.heartbeater.interval = 100
+        self.heartbeater.heartbeat_forced = False
+        mock_time.return_value = 110
+        self.assertTrue(self.heartbeater._heartbeat_expected())
 
 
 @mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
