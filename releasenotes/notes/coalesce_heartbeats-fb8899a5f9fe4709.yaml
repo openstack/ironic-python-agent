@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Heartbeats to the conductor are grouped when they are scheduled or
+    requested within a time interval of five seconds to avoid sending
+    them in quick succession.
+fixes:
+  - |
+    Fixes an issue where a quick succession of heartbeats exposes a race
+    condition in the conductor's RPC handling.
