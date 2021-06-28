@@ -144,3 +144,77 @@ class TestBurnin(base.IronicAgentTest):
 
         self.assertRaises(errors.CommandExecutionError,
                           burnin.fio_disk, node)
+
+    def test_fio_network_reader(self, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_fio_network_runtime': 600,
+                                'agent_burnin_fio_network_config':
+                                    {'partner': 'host-002',
+                                     'role': 'reader'}}}
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.fio_network(node)
+
+        expected_calls = [
+            mock.call('fio', '--ioengine', 'net', '--port', '9000',
+                      '--fill_device', 1, '--group_reporting',
+                      '--gtod_reduce', 1, '--numjobs', 16, '--name',
+                      'reader', '--rw', 'read', '--hostname', 'host-002'),
+            mock.call('fio', '--ioengine', 'net', '--port', '9000',
+                      '--fill_device', 1, '--group_reporting',
+                      '--gtod_reduce', 1, '--numjobs', 16, '--name', 'writer',
+                      '--rw', 'write', '--runtime', 600, '--time_based',
+                      '--listen')]
+        mock_execute.assert_has_calls(expected_calls)
+
+    def test_fio_network_writer(self, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_fio_network_runtime': 600,
+                                'agent_burnin_fio_network_config':
+                                    {'partner': 'host-001',
+                                     'role': 'writer'}}}
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.fio_network(node)
+
+        expected_calls = [
+            mock.call('fio', '--ioengine', 'net', '--port', '9000',
+                      '--fill_device', 1, '--group_reporting',
+                      '--gtod_reduce', 1, '--numjobs', 16, '--name', 'writer',
+                      '--rw', 'write', '--runtime', 600, '--time_based',
+                      '--listen'),
+            mock.call('fio', '--ioengine', 'net', '--port', '9000',
+                      '--fill_device', 1, '--group_reporting',
+                      '--gtod_reduce', 1, '--numjobs', 16, '--name',
+                      'reader', '--rw', 'read', '--hostname', 'host-001')]
+        mock_execute.assert_has_calls(expected_calls)
+
+    def test_fio_network_no_fio(self, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_fio_network_config':
+                                {'partner': 'host-003', 'role': 'reader'}}}
+        mock_execute.side_effect = processutils.ProcessExecutionError('boom')
+
+        self.assertRaises(errors.CommandExecutionError,
+                          burnin.fio_network, node)
+
+    @mock.patch('time.sleep', autospec=True)
+    def test_fio_network_reader_loop(self, mock_time, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_fio_network_config':
+                                {'partner': 'host-004', 'role': 'reader'}}}
+        # mock the infinite loop
+        mock_execute.side_effect = (processutils.ProcessExecutionError(
+                                    'Connection timeout'),
+                                    processutils.ProcessExecutionError(
+                                    'Connection timeout'),
+                                    processutils.ProcessExecutionError(
+                                    'Connection refused'),
+                                    ['out', 'err'],  # connected!
+                                    ['out', 'err'])  # reversed roles
+
+        burnin.fio_network(node)
+
+        # we loop 3 times, then do the 2 fio calls
+        self.assertEqual(5, mock_execute.call_count)
+        self.assertEqual(3, mock_time.call_count)

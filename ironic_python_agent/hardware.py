@@ -1418,6 +1418,14 @@ class GenericHardwareManager(HardwareManager):
         """
         burnin.stress_ng_vm(node)
 
+    def burnin_network(self, node, ports):
+        """Burn-in the network
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        """
+        burnin.fio_network(node)
+
     def _shred_block_device(self, node, block_device):
         """Erase a block device using shred.
 
@@ -1907,6 +1915,13 @@ class GenericHardwareManager(HardwareManager):
             },
             {
                 'step': 'burnin_memory',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'burnin_network',
                 'priority': 0,
                 'interface': 'deploy',
                 'reboot_requested': False,

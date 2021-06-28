@@ -10,6 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_log import log
@@ -18,6 +20,9 @@ from ironic_python_agent import errors
 from ironic_python_agent import hardware
 
 LOG = log.getLogger(__name__)
+
+NETWORK_BURNIN_ROLES = frozenset(['writer', 'reader'])
+NETWORK_READER_CYCLE = 30
 
 
 def stress_ng_cpu(node):
@@ -115,3 +120,72 @@ def fio_disk(node):
                      {'err': e})
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
+
+
+def _do_fio_network(writer, runtime, partner):
+
+    args = ['fio', '--ioengine', 'net', '--port', '9000', '--fill_device', 1,
+            '--group_reporting', '--gtod_reduce', 1, '--numjobs', 16]
+    if writer:
+        xargs = ['--name', 'writer', '--rw', 'write', '--runtime', runtime,
+                 '--time_based', '--listen']
+    else:
+        xargs = ['--name', 'reader', '--rw', 'read', '--hostname', partner]
+    args.extend(xargs)
+
+    while True:
+        LOG.info('Burn-in fio network command: %s', ' '.join(map(str, args)))
+        try:
+            out, err = utils.execute(*args)
+            # fio reports on stdout
+            LOG.info(out)
+            break
+        except (processutils.ProcessExecutionError, OSError) as e:
+            error_msg = ("fio (network) failed with error %(err)s",
+                         {'err': e})
+            LOG.error(error_msg)
+            # while the writer blocks in fio, the reader fails with
+            # 'Connection {refused, timeout}' errors if the partner
+            # is not ready, so we need to wait explicitly
+            if not writer and 'Connection' in str(e):
+                LOG.info("fio (network): reader retrying in %s seconds ...",
+                         NETWORK_READER_CYCLE)
+                time.sleep(NETWORK_READER_CYCLE)
+            else:
+                raise errors.CommandExecutionError(error_msg)
+
+
+def fio_network(node):
+    """Burn-in the network with fio
+
+    Run an fio network job for a pair of nodes for a configurable
+    amount of time. The pair is statically defined in driver_info
+    via 'agent_burnin_fio_network_config'.
+    The writer will wait for the reader to connect, then write to the
+    network. Upon completion, the roles are swapped.
+
+    Note (arne_wiebalck): Initial version. The plan is to make the
+                          match making dynamic by posting availability
+                          on a distributed backend, e.g. via tooz.
+
+    :param node: Ironic node object
+    :raises: CommandExecutionError if the execution of fio fails.
+    :raises: CleaningError if the configuration is incomplete.
+    """
+
+    info = node.get('driver_info', {})
+    runtime = info.get('agent_burnin_fio_network_runtime', 21600)
+
+    # get our role and identify our partner
+    config = info.get('agent_burnin_fio_network_config')
+    if not config:
+        error_msg = ("fio (network) failed to find "
+                     "'agent_burnin_fio_network_config' in driver_info")
+        raise errors.CleaningError(error_msg)
+    LOG.debug("agent_burnin_fio_network_config is %s", str(config))
+    role = config.get('role')
+    partner = config.get('partner')
+
+    _do_fio_network(role == 'writer', runtime, partner)
+    LOG.debug("fio (network): first direction done, swapping roles ...")
+    _do_fio_network(not role == 'writer', runtime, partner)

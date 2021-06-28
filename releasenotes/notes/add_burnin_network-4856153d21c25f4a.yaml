@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Adds a burn-in cleaning step 'burnin_network' to stress test the
+    network interface for a configurable amount of time with fio. To
+    use this step, fio needs to be installed on the RAM disk.

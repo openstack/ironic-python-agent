@@ -170,6 +170,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 'interface': 'deploy',
                 'reboot_requested': False,
                 'abortable': True
+            },
+            {
+                'step': 'burnin_network',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
             }
         ]
         clean_steps = self.hardware.get_clean_steps(self.node, [])
