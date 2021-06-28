@@ -631,7 +631,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                            uuid=self.fake_prep_boot_part_uuid)
         self.assertFalse(mock_dispatch.called)
 
-    @mock.patch.object(os.path, 'ismount', lambda *_: True)
+    @mock.patch.object(os.path, 'ismount', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: True)
     @mock.patch.object(image, '_append_uefi_to_fstab', autospec=True)
@@ -664,6 +664,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
                               self.fake_dir + '/sys'),
+                    mock.call('mount', '/dev/fake2', self.fake_dir),
                     mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
                               (self.fake_dir)), shell=True,
                               env_variables={
@@ -719,7 +720,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_append_to_fstab.assert_called_with(self.fake_dir,
                                                 self.fake_efi_system_part_uuid)
 
-    @mock.patch.object(os.path, 'ismount', lambda *_: True)
+    @mock.patch.object(os.path, 'ismount', lambda *_: False)
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: True)
     @mock.patch.object(os.path, 'exists', autospec=True)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
@@ -761,6 +762,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
                               self.fake_dir + '/sys'),
+                    mock.call('mount', '/dev/fake2', self.fake_dir),
                     mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
                               (self.fake_dir)), shell=True,
                               env_variables={
@@ -815,7 +817,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         self.assertFalse(mock_dispatch.called)
 
     @mock.patch.object(image, '_efi_boot_setup', lambda *_: False)
-    @mock.patch.object(os.path, 'ismount', lambda *_: True)
+    @mock.patch.object(os.path, 'ismount', lambda *_: False)
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: True)
     @mock.patch.object(os.path, 'exists', autospec=True)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
@@ -870,6 +872,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                   'GRUB_SAVEDEFAULT': 'true'},
                               use_standard_locale=True),
                     mock.call('umount', self.fake_dir + '/boot/efi'),
+                    mock.call('mount', '/dev/fake2', self.fake_dir),
                     # NOTE(TheJulia): chroot mount is for whole disk images
                     mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
                               (self.fake_dir)), shell=True,
@@ -1092,7 +1095,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                            uuid=self.fake_efi_system_part_uuid)
         self.assertFalse(mock_dispatch.called)
 
-    @mock.patch.object(os.path, 'ismount', lambda *_: True)
+    @mock.patch.object(os.path, 'ismount', lambda *_: False)
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
     @mock.patch.object(image, '_append_uefi_to_fstab', autospec=True)
     @mock.patch.object(image, '_preserve_efi_assets', autospec=True)
@@ -1144,6 +1147,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                   'GRUB_DISABLE_OS_PROBER': 'true',
                                   'GRUB_SAVEDEFAULT': 'true'},
                               use_standard_locale=True),
+                    mock.call('mount', '/dev/fake2', self.fake_dir),
                     mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
                               (self.fake_dir)), shell=True,
                               env_variables={
@@ -1294,7 +1298,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         self.assertFalse(mock_dispatch.called)
         self.assertEqual(2, mock_oslistdir.call_count)
 
-    @mock.patch.object(os.path, 'ismount', lambda *_: True)
+    @mock.patch.object(os.path, 'ismount', lambda *_: False)
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(image, '_append_uefi_to_fstab', autospec=True)
@@ -1339,7 +1343,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                     mock.call('mount', '-t', 'vfat', '/dev/fake1',
                               self.fake_dir + '/boot/efi'),
                     mock.call('umount', self.fake_dir + '/boot/efi'),
-
+                    mock.call('mount', '/dev/fake2', self.fake_dir),
                     mock.call(('chroot %s /bin/sh -c "mount -a -t vfat"' %
                               (self.fake_dir)), shell=True,
                               env_variables={
