@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import io
 import os
 import re
 import shlex
@@ -23,6 +24,7 @@ import tempfile
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
+import six
 
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
@@ -277,7 +279,12 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
         if 'csv' in v_bl.lower():
             # These files are always UTF-16 encoded, sometimes have a header.
             # Positive bonus is python silently drops the FEFF header.
-            with open(mount_point + '/' + v_bl, 'rt') as csv:
+            if six.PY2:
+                open_call = io.open
+            else:
+                open_call = open
+            with open_call(mount_point + '/' + v_bl, 'r',
+                           encoding='utf-16') as csv:
                 contents = str(csv.read())
             csv_contents = contents.split(',')
             csv_filename = v_bl.split('/')[-1]

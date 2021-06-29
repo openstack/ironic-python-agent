@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import io
 import os
 import shutil
 import sys
@@ -1707,7 +1708,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                             mock.mock_open(read_data=csv_file_data)):
                 result = image._manage_uefi(self.fake_dev, self.fake_root_uuid)
         else:
-            with mock.patch.object(image, 'open',
+            with mock.patch.object(io, 'open',
                                    mock.mock_open(read_data=csv_file_data)):
                 result = image._manage_uefi(self.fake_dev, self.fake_root_uuid)
         self.assertTrue(result)

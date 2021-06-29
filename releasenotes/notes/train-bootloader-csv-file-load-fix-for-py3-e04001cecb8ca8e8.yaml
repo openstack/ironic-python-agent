@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes Python3 based support for loading files as file loading of bootloader
+    configuration files requires an explicit open operation with an unicode
+    indicator, which was inadvertently broken in backporting for Python2 support.
