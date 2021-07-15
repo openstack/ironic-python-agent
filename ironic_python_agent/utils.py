@@ -699,21 +699,11 @@ def sync_clock(ignore_errors=False):
                 raise errors.CommandExecutionError(msg)
     elif method == 'chronyd':
         try:
-            # 0 should be if chronyd started
-            # 1 if already running
-            execute('chronyd', check_exit_code=[0, 1])
-            # NOTE(TheJulia): Once started, chronyd forks and stays in the
-            # background as a server service, it will continue to keep the
-            # clock in sync.
-            try:
-                execute('chronyc', 'add', 'server', CONF.ntp_server)
-            except processutils.ProcessExecutionError as e:
-                if 'Source already present' not in str(e):
-                    msg = 'Error occured adding ntp server: %s' % e
-                    LOG.error(msg)
-                    raise errors.CommandExecutionError(msg)
-            # Force the clock to sync now.
-            execute('chronyc', 'makestep')
+            # stop chronyd, ignore if it ran before or not
+            execute('chronyc', 'shutdown', check_exit_code=[0, 1])
+            # force a time sync now
+            query = "server " + CONF.ntp_server + " iburst"
+            execute("chronyd -q \'%s\'" % query, shell=True)
             LOG.debug('Set software clock using chrony')
         except (processutils.ProcessExecutionError,
                 errors.CommandExecutionError) as e:

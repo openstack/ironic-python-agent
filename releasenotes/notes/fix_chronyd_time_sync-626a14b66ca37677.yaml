@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes an issue where the NTP time sync at the IPA startup via chronyd is
+    not immediate (which can break time sensitive components such as the
+    generation of a TLS certificate).
