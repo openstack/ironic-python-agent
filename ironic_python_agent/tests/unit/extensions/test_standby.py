@@ -1385,15 +1385,15 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         self.agent_extension._sync_clock()
 
-        calls = [mock.call('chronyd', check_exit_code=[0, 1]),
-                 mock.call('chronyc', 'add', 'server', '192.168.1.1'),
-                 mock.call('chronyc', 'makestep'),
+        calls = [mock.call('chronyc', 'shutdown', check_exit_code=[0, 1]),
+                 mock.call("chronyd -q 'server 192.168.1.1 iburst'",
+                           shell=True),
                  mock.call('hwclock', '-v', '--systohc')]
         execute_mock.assert_has_calls(calls)
 
         execute_mock.reset_mock()
         execute_mock.side_effect = [
-            ('', ''), ('', ''), ('', ''),
+            ('', ''), ('', ''),
             processutils.ProcessExecutionError('boop')
         ]
 

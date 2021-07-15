@@ -856,27 +856,8 @@ class TestClockSyncUtils(ironic_agent_base.IronicAgentTest):
         mock_time_method.return_value = 'chronyd'
         utils.sync_clock()
         mock_execute.assert_has_calls([
-            mock.call('chronyd', check_exit_code=[0, 1]),
-            mock.call('chronyc', 'add', 'server', '192.168.1.1'),
-            mock.call('chronyc', 'makestep'),
-        ])
-
-    @mock.patch.object(utils, 'determine_time_method', autospec=True)
-    def test_sync_clock_chrony_already_present(self, mock_time_method,
-                                               mock_execute):
-        self.config(ntp_server='192.168.1.1')
-        mock_time_method.return_value = 'chronyd'
-        mock_execute.side_effect = [
-            ('', ''),
-            processutils.ProcessExecutionError(
-                stderr='Source already present'),
-            ('', ''),
-        ]
-        utils.sync_clock()
-        mock_execute.assert_has_calls([
-            mock.call('chronyd', check_exit_code=[0, 1]),
-            mock.call('chronyc', 'add', 'server', '192.168.1.1'),
-            mock.call('chronyc', 'makestep'),
+            mock.call('chronyc', 'shutdown', check_exit_code=[0, 1]),
+            mock.call("chronyd -q 'server 192.168.1.1 iburst'", shell=True),
         ])
 
     @mock.patch.object(utils, 'determine_time_method', autospec=True)
@@ -889,12 +870,8 @@ class TestClockSyncUtils(ironic_agent_base.IronicAgentTest):
             processutils.ProcessExecutionError(stderr='time verboten'),
         ]
         self.assertRaisesRegex(errors.CommandExecutionError,
-                               'Error occured adding ntp',
-                               utils.sync_clock)
-        mock_execute.assert_has_calls([
-            mock.call('chronyd', check_exit_code=[0, 1]),
-            mock.call('chronyc', 'add', 'server', '192.168.1.1'),
-        ])
+                               'Failed to sync time using chrony to ntp '
+                               'server:', utils.sync_clock)
 
     @mock.patch.object(utils, 'determine_time_method', autospec=True)
     def test_sync_clock_none(self, mock_time_method, mock_execute):
