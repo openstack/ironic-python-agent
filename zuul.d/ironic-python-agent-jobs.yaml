@@ -14,6 +14,10 @@
       - ^tools/.*$
       - ^tox.ini$
     required-projects:
+      - name: openstack/devstack
+        override-checkout: master
+      - name: openstack/ironic
+        override-checkout: bugfix/18.1
       - openstack/ironic-lib
     vars:
       # The default is 1GB, we need a little more to prevent OOMs killing the jobs
@@ -74,7 +78,8 @@
     parent: ironic-ipa-base
     required-projects:
       # These are in addition to what is in ironic-ipa-base
-      - openstack/ironic-inspector
+      - name: openstack/ironic-inspector
+        override-checkout: bugfix/10.7
       - openstack/python-ironic-inspector-client
     vars:
       devstack_localrc:
@@ -127,6 +132,12 @@
     name: ironic-standalone-ipa-src
     parent: ironic-standalone
     description: Test ironic standalone with IPA from source
+    required-projects:
+      - name: openstack/devstack
+        override-checkout: master
+      - name: openstack/ironic
+        override-checkout: bugfix/18.1
+      - openstack/ironic-lib
     vars:
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
@@ -139,6 +150,10 @@
     name: metalsmith-integration-ipa-src
     parent: metalsmith-integration-glance-localboot-centos7
     required-projects:
+      - name: openstack/devstack
+        override-checkout: master
+      - name: openstack/metalsmith
+        override-checkout: master
       - openstack/ironic-python-agent
       - openstack/ironic-python-agent-builder
       - openstack/ironic-lib
@@ -153,6 +168,10 @@
     name: metalsmith-integration-ipa-src-uefi
     parent: metalsmith-integration-glance-localboot-centos8-uefi
     required-projects:
+      - name: openstack/devstack
+        override-checkout: master
+      - name: openstack/metalsmith
+        override-checkout: master
       - openstack/ironic-python-agent
       - openstack/ironic-python-agent-builder
       - openstack/ironic-lib
