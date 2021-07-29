@@ -125,17 +125,16 @@ class IronicPythonAgentHeartbeater(threading.Thread):
             self.heartbeat_forced = False
             self.previous_heartbeat = _time()
         except errors.HeartbeatConflictError:
-            LOG.warning('conflict error sending heartbeat to {}'.format(
-                self.agent.api_url))
+            LOG.warning('conflict error sending heartbeat to %s',
+                        self.agent.api_url)
         except Exception:
-            LOG.exception('error sending heartbeat to {}'.format(
-                self.agent.api_url))
+            LOG.exception('error sending heartbeat to %s', self.agent.api_url)
         finally:
             interval_multiplier = random.uniform(self.min_jitter_multiplier,
                                                  self.max_jitter_multiplier)
             self.interval = self.agent.heartbeat_timeout * interval_multiplier
-            log_msg = 'sleeping before next heartbeat, interval: {0}'
-            LOG.info(log_msg.format(self.interval))
+            LOG.info('sleeping before next heartbeat, interval: %s',
+                     self.interval)
 
     def force_heartbeat(self):
         self.heartbeat_forced = True

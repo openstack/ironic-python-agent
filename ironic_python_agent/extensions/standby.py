@@ -202,7 +202,7 @@ def _write_whole_disk_image(image, image_info, device):
     command = ['qemu-img', 'convert',
                '-t', 'directsync', '-O', 'host_device', '-W',
                image, device]
-    LOG.info('Writing image with command: {}'.format(' '.join(command)))
+    LOG.info('Writing image with command: %s', ' '.join(command))
     try:
         disk_utils.convert_image(image, device, out_format='host_device',
                                  cache='directsync', out_of_order=True)
@@ -232,8 +232,9 @@ def _write_image(image_info, device, configdrive=None):
     else:
         _write_whole_disk_image(image, image_info, device)
     totaltime = time.time() - starttime
-    LOG.info('Image {} written to device {} in {} seconds'.format(
-             image, device, totaltime))
+    LOG.info('Image %(image)s written to device %(device)s in %(totaltime)s '
+             'seconds', {'image': image, 'device': device,
+                         'totaltime': totaltime})
     try:
         disk_utils.fix_gpt_partition(device, node_uuid=None)
     except exception.InstanceDeployFailure:
@@ -329,7 +330,7 @@ class ImageDownload(object):
         details = []
         for url in image_info['urls']:
             try:
-                LOG.info("Attempting to download image from {}".format(url))
+                LOG.info("Attempting to download image from %s", url)
                 self._request = _download_with_proxy(image_info, url,
                                                      image_info['id'])
             except errors.ImageDownloadError as e:
@@ -386,12 +387,16 @@ class ImageDownload(object):
                  not match the checksum as reported by glance in image_info.
         """
         checksum = self._hash_algo.hexdigest()
-        LOG.debug('Verifying image at {} against {} checksum '
-                  '{}'.format(image_location, self._hash_algo.name, checksum))
+        LOG.debug('Verifying image at %(image_location)s against '
+                  '%(algo_name)s checksum %(checksum)s',
+                  {'image_location': image_location,
+                   'algo_name': self._hash_algo.name,
+                   'checksum': checksum})
         if checksum != self._expected_hash_value:
-            LOG.error(errors.ImageChecksumError.details_str.format(
+            error_msg = errors.ImageChecksumError.details_str.format(
                 image_location, self._image_info['id'],
-                self._expected_hash_value, checksum))
+                self._expected_hash_value, checksum)
+            LOG.error(error_msg)
             raise errors.ImageChecksumError(image_location,
                                             self._image_info['id'],
                                             self._expected_hash_value,
@@ -434,8 +439,10 @@ def _download_image(image_info):
             break
 
     totaltime = time.time() - starttime
-    LOG.info("Image downloaded from {} in {} seconds".format(image_location,
-                                                             totaltime))
+    LOG.info("Image downloaded from %(image_location)s "
+             "in %(totaltime)s seconds",
+             {'image_location': image_location,
+              'totaltime': totaltime})
     image_download.verify_image(image_location)
 
 
@@ -597,8 +604,8 @@ class StandbyExtension(base.BaseAgentExtension):
                 break
 
         totaltime = time.time() - starttime
-        LOG.info("Image streamed onto device {} in {} "
-                 "seconds".format(device, totaltime))
+        LOG.info("Image streamed onto device %(device)s in %(totaltime)s "
+                 "seconds", {'device': device, 'totaltime': totaltime})
         # Verify if the checksum of the streamed image is correct
         image_download.verify_image(device)
         # Fix any gpt partition
@@ -609,7 +616,8 @@ class StandbyExtension(base.BaseAgentExtension):
             pass
         # Fix the root partition UUID
         root_uuid = disk_utils.block_uuid(device)
-        LOG.info("{} UUID is now {}".format(device, root_uuid))
+        LOG.info("%(device)s UUID is now %(root_uuid)s",
+                 {'device': device, 'root_uuid': root_uuid})
         self.partition_uuids['root uuid'] = root_uuid
 
     def _fix_up_partition_uuids(self, image_info, device):

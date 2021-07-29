@@ -489,8 +489,9 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
 
         # RAID the ESPs, metadata=1.0 is mandatory to be able to boot
         md_device = '/dev/md/esp'
-        LOG.debug("Creating md device {} for the ESPs on {}".format(
-                  md_device, efi_partitions))
+        LOG.debug("Creating md device %(md_device)s for the ESPs "
+                  "on %(efi_partitions)s",
+                  {'md_device': md_device, 'efi_partitions': efi_partitions})
         utils.execute('mdadm', '--create', md_device, '--force',
                       '--run', '--metadata=1.0', '--level', '1',
                       '--raid-devices', len(efi_partitions),
