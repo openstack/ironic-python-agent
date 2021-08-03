@@ -267,8 +267,8 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
     """
 
     # Before updating let's get information about the bootorder
-    LOG.debug("Getting information about boot order")
-    utils.execute('efibootmgr')
+    LOG.debug("Getting information about boot order.")
+    utils.execute('efibootmgr', '-v')
     # NOTE(iurygregory): regex used to identify the Warning in the stderr after
     # we add the new entry. Example:
     # "efibootmgr: ** Warning ** : Boot0004 has same label ironic"
@@ -300,7 +300,7 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
                                'dev': device})
         # Update the nvram using efibootmgr
         # https://linux.die.net/man/8/efibootmgr
-        cmd = utils.execute('efibootmgr', '-c', '-d', device,
+        cmd = utils.execute('efibootmgr', '-v', '-c', '-d', device,
                             '-p', efi_partition, '-w', '-L', label,
                             '-l', v_efi_bl_path)
         for line in cmd[1].split('\n'):
