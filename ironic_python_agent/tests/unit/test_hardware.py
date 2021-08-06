@@ -2246,41 +2246,35 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock_dev_file.side_effect = reads
             self.assertTrue(self.hardware._is_read_only_device(device))
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address(self, mocked_execute, mte):
+    def test_get_bmc_address(self, mocked_execute):
         mocked_execute.return_value = '192.1.2.3\n', ''
         self.assertEqual('192.1.2.3', self.hardware.get_bmc_address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_virt(self, mocked_execute, mte):
+    def test_get_bmc_address_virt(self, mocked_execute):
         mocked_execute.side_effect = processutils.ProcessExecutionError()
         self.assertIsNone(self.hardware.get_bmc_address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_zeroed(self, mocked_execute, mte):
+    def test_get_bmc_address_zeroed(self, mocked_execute):
         mocked_execute.return_value = '0.0.0.0\n', ''
         self.assertEqual('0.0.0.0', self.hardware.get_bmc_address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_invalid(self, mocked_execute, mte):
+    def test_get_bmc_address_invalid(self, mocked_execute):
         # In case of invalid lan channel, stdout is empty and the error
         # on stderr is "Invalid channel"
         mocked_execute.return_value = '\n', 'Invalid channel: 55'
         self.assertEqual('0.0.0.0', self.hardware.get_bmc_address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_random_error(self, mocked_execute, mte):
+    def test_get_bmc_address_random_error(self, mocked_execute):
         mocked_execute.return_value = '192.1.2.3\n', 'Random error message'
         self.assertEqual('192.1.2.3', self.hardware.get_bmc_address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_iterate_channels(self, mocked_execute, mte):
+    def test_get_bmc_address_iterate_channels(self, mocked_execute):
         # For channel 1 we simulate unconfigured IP
         # and for any other we return a correct IP address
         def side_effect(*args, **kwargs):
@@ -2295,57 +2289,49 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = side_effect
         self.assertEqual('192.1.2.3', self.hardware.get_bmc_address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_address_not_available(self, mocked_execute, mte):
+    def test_get_bmc_address_not_available(self, mocked_execute):
         mocked_execute.return_value = '', ''
         self.assertEqual('0.0.0.0', self.hardware.get_bmc_address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_mac_not_available(self, mocked_execute, mte):
+    def test_get_bmc_mac_not_available(self, mocked_execute):
         mocked_execute.return_value = '', ''
         self.assertRaises(errors.IncompatibleHardwareMethodError,
                           self.hardware.get_bmc_mac)
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_mac(self, mocked_execute, mte):
+    def test_get_bmc_mac(self, mocked_execute):
         mocked_execute.return_value = '192.1.2.3\n01:02:03:04:05:06', ''
         self.assertEqual('01:02:03:04:05:06', self.hardware.get_bmc_mac())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_mac_virt(self, mocked_execute, mte):
+    def test_get_bmc_mac_virt(self, mocked_execute):
         mocked_execute.side_effect = processutils.ProcessExecutionError()
         self.assertIsNone(self.hardware.get_bmc_mac())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_mac_zeroed(self, mocked_execute, mte):
+    def test_get_bmc_mac_zeroed(self, mocked_execute):
         mocked_execute.return_value = '0.0.0.0\n00:00:00:00:00:00', ''
         self.assertRaises(errors.IncompatibleHardwareMethodError,
                           self.hardware.get_bmc_mac)
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_mac_invalid(self, mocked_execute, mte):
+    def test_get_bmc_mac_invalid(self, mocked_execute):
         # In case of invalid lan channel, stdout is empty and the error
         # on stderr is "Invalid channel"
         mocked_execute.return_value = '\n', 'Invalid channel: 55'
         self.assertRaises(errors.IncompatibleHardwareMethodError,
                           self.hardware.get_bmc_mac)
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_mac_random_error(self, mocked_execute, mte):
+    def test_get_bmc_mac_random_error(self, mocked_execute):
         mocked_execute.return_value = ('192.1.2.3\n00:00:00:00:00:02',
                                        'Random error message')
         self.assertEqual('00:00:00:00:00:02', self.hardware.get_bmc_mac())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_mac_iterate_channels(self, mocked_execute, mte):
+    def test_get_bmc_mac_iterate_channels(self, mocked_execute):
         # For channel 1 we simulate unconfigured IP
         # and for any other we return a correct IP address
         def side_effect(*args, **kwargs):
@@ -2363,15 +2349,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = side_effect
         self.assertEqual('01:02:03:04:05:06', self.hardware.get_bmc_mac())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_v6address_not_enabled(self, mocked_execute, mte):
+    def test_get_bmc_v6address_not_enabled(self, mocked_execute):
         mocked_execute.side_effect = [('ipv4\n', '')] * 11
         self.assertEqual('::/0', self.hardware.get_bmc_v6address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_v6address_dynamic_address(self, mocked_execute, mte):
+    def test_get_bmc_v6address_dynamic_address(self, mocked_execute):
         mocked_execute.side_effect = [
             ('ipv6\n', ''),
             (hws.IPMITOOL_LAN6_PRINT_DYNAMIC_ADDR, '')
@@ -2379,9 +2363,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('2001:1234:1234:1234:1234:1234:1234:1234',
                          self.hardware.get_bmc_v6address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_v6address_static_address_both(self, mocked_execute, mte):
+    def test_get_bmc_v6address_static_address_both(self, mocked_execute):
         dynamic_disabled = \
             hws.IPMITOOL_LAN6_PRINT_DYNAMIC_ADDR.replace('active', 'disabled')
         mocked_execute.side_effect = [
@@ -2392,15 +2375,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('2001:5678:5678:5678:5678:5678:5678:5678',
                          self.hardware.get_bmc_v6address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_v6address_virt(self, mocked_execute, mte):
+    def test_get_bmc_v6address_virt(self, mocked_execute):
         mocked_execute.side_effect = processutils.ProcessExecutionError()
         self.assertIsNone(self.hardware.get_bmc_v6address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_v6address_invalid_enables(self, mocked_execute, mte):
+    def test_get_bmc_v6address_invalid_enables(self, mocked_execute):
         def side_effect(*args, **kwargs):
             if args[0].startswith('ipmitool lan6 print'):
                 return '', 'Failed to get IPv6/IPv4 Addressing Enables'
@@ -2408,9 +2389,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = side_effect
         self.assertEqual('::/0', self.hardware.get_bmc_v6address())
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_v6address_invalid_get_address(self, mocked_execute, mte):
+    def test_get_bmc_v6address_invalid_get_address(self, mocked_execute):
         def side_effect(*args, **kwargs):
             if args[0].startswith('ipmitool lan6 print'):
                 if args[0].endswith('dynamic_addr') \
@@ -2422,10 +2402,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('::/0', self.hardware.get_bmc_v6address())
 
     @mock.patch.object(hardware, 'LOG', autospec=True)
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_ipmitool_invalid_stdout_format(
-            self, mocked_execute, mte, mocked_log):
+            self, mocked_execute, mocked_log):
         def side_effect(*args, **kwargs):
             if args[0].startswith('ipmitool lan6 print'):
                 if args[0].endswith('dynamic_addr') \
@@ -2439,9 +2418,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                              'command: %(e)s', mock.ANY)
         mocked_log.warning.assert_has_calls([one_call] * 14)
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test_get_bmc_v6address_channel_7(self, mocked_execute, mte):
+    def test_get_bmc_v6address_channel_7(self, mocked_execute):
         def side_effect(*args, **kwargs):
             if not args[0].startswith('ipmitool lan6 print 7'):
                 # ipv6 is not enabled for channels 1-6
@@ -4072,6 +4050,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware._nvme_erase, block_device)
 
 
+@mock.patch.object(hardware, '_load_ipmi_modules', autospec=True)
 @mock.patch.object(hardware.GenericHardwareManager,
                    'get_os_install_device', autospec=True)
 @mock.patch.object(hardware, '_md_scan_and_assemble', autospec=True)
@@ -4084,7 +4063,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
 
     def test_evaluate_hw_waits_for_disks(
             self, mocked_sleep, mocked_check_for_iscsi,
-            mocked_md_assemble, mocked_get_inst_dev):
+            mocked_md_assemble, mocked_get_inst_dev,
+            mocked_load_ipmi_modules):
         mocked_get_inst_dev.side_effect = [
             errors.DeviceNotFound('boom'),
             None
@@ -4092,6 +4072,7 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
 
         result = self.hardware.evaluate_hardware_support()
 
+        self.assertTrue(mocked_load_ipmi_modules.called)
         self.assertTrue(mocked_check_for_iscsi.called)
         self.assertTrue(mocked_md_assemble.called)
         self.assertEqual(hardware.HardwareSupport.GENERIC, result)
@@ -4102,7 +4083,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
     @mock.patch.object(hardware, 'LOG', autospec=True)
     def test_evaluate_hw_no_wait_for_disks(
             self, mocked_log, mocked_sleep, mocked_check_for_iscsi,
-            mocked_md_assemble, mocked_get_inst_dev):
+            mocked_md_assemble, mocked_get_inst_dev,
+            mocked_load_ipmi_modules):
         CONF.set_override('disk_wait_attempts', '0')
 
         result = self.hardware.evaluate_hardware_support()
@@ -4116,7 +4098,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
     @mock.patch.object(hardware, 'LOG', autospec=True)
     def test_evaluate_hw_waits_for_disks_nonconfigured(
             self, mocked_log, mocked_sleep, mocked_check_for_iscsi,
-            mocked_md_assemble, mocked_get_inst_dev):
+            mocked_md_assemble, mocked_get_inst_dev,
+            mocked_load_ipmi_modules):
         mocked_get_inst_dev.side_effect = [
             errors.DeviceNotFound('boom'),
             errors.DeviceNotFound('boom'),
@@ -4147,7 +4130,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
                                                     mocked_sleep,
                                                     mocked_check_for_iscsi,
                                                     mocked_md_assemble,
-                                                    mocked_get_inst_dev):
+                                                    mocked_get_inst_dev,
+                                                    mocked_load_ipmi_modules):
         CONF.set_override('disk_wait_attempts', '1')
 
         mocked_get_inst_dev.side_effect = [
@@ -4167,7 +4151,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
     def test_evaluate_hw_disks_timeout_unconfigured(self, mocked_sleep,
                                                     mocked_check_for_iscsi,
                                                     mocked_md_assemble,
-                                                    mocked_get_inst_dev):
+                                                    mocked_get_inst_dev,
+                                                    mocked_load_ipmi_modules):
         mocked_get_inst_dev.side_effect = errors.DeviceNotFound('boom')
         self.hardware.evaluate_hardware_support()
         mocked_sleep.assert_called_with(3)
@@ -4175,7 +4160,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
     def test_evaluate_hw_disks_timeout_configured(self, mocked_sleep,
                                                   mocked_check_for_iscsi,
                                                   mocked_md_assemble,
-                                                  mocked_root_dev):
+                                                  mocked_root_dev,
+                                                  mocked_load_ipmi_modules):
         CONF.set_override('disk_wait_delay', '5')
         mocked_root_dev.side_effect = errors.DeviceNotFound('boom')
 
@@ -4184,7 +4170,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
 
     def test_evaluate_hw_disks_timeout(
             self, mocked_sleep, mocked_check_for_iscsi,
-            mocked_md_assemble, mocked_get_inst_dev):
+            mocked_md_assemble, mocked_get_inst_dev,
+            mocked_load_ipmi_modules):
         mocked_get_inst_dev.side_effect = errors.DeviceNotFound('boom')
         result = self.hardware.evaluate_hardware_support()
         self.assertEqual(hardware.HardwareSupport.GENERIC, result)
@@ -4273,6 +4260,14 @@ class TestModuleFunctions(base.IronicAgentTest):
         hardware._check_for_iscsi()
         mocked_execute.assert_has_calls([
             mock.call('iscsistart', '-f')])
+
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    def test__load_ipmi_modules(self, mocked_try_execute, me):
+        hardware._load_ipmi_modules()
+        mocked_try_execute.assert_has_calls([
+            mock.call('modprobe', 'ipmi_msghandler'),
+            mock.call('modprobe', 'ipmi_devintf'),
+            mock.call('modprobe', 'ipmi_si')])
 
 
 def create_hdparm_info(supported=False, enabled=False, locked=False,

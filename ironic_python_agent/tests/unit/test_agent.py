@@ -159,6 +159,7 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
 
 @mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
+@mock.patch.object(hardware, '_load_ipmi_modules', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 class TestBaseAgent(ironic_agent_base.IronicAgentTest):
@@ -959,6 +960,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 
 @mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
+@mock.patch.object(hardware, '_load_ipmi_modules', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 @mock.patch.object(socket, 'gethostbyname', autospec=True)
