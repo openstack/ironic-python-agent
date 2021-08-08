@@ -1165,6 +1165,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             current_boot_mode='bios', pxe_interface='boot:if')
 
         self.hardware.get_bmc_address = mock.Mock()
+        self.hardware.get_bmc_mac = mock.Mock()
         self.hardware.get_bmc_v6address = mock.Mock()
         self.hardware.get_system_vendor_info = mock.Mock()
 
@@ -2299,6 +2300,68 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     def test_get_bmc_address_not_available(self, mocked_execute, mte):
         mocked_execute.return_value = '', ''
         self.assertEqual('0.0.0.0', self.hardware.get_bmc_address())
+
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_mac_not_available(self, mocked_execute, mte):
+        mocked_execute.return_value = '', ''
+        self.assertRaises(errors.IncompatibleHardwareMethodError,
+                          self.hardware.get_bmc_mac)
+
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_mac(self, mocked_execute, mte):
+        mocked_execute.return_value = '192.1.2.3\n01:02:03:04:05:06', ''
+        self.assertEqual('01:02:03:04:05:06', self.hardware.get_bmc_mac())
+
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_mac_virt(self, mocked_execute, mte):
+        mocked_execute.side_effect = processutils.ProcessExecutionError()
+        self.assertIsNone(self.hardware.get_bmc_mac())
+
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_mac_zeroed(self, mocked_execute, mte):
+        mocked_execute.return_value = '0.0.0.0\n00:00:00:00:00:00', ''
+        self.assertRaises(errors.IncompatibleHardwareMethodError,
+                          self.hardware.get_bmc_mac)
+
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_mac_invalid(self, mocked_execute, mte):
+        # In case of invalid lan channel, stdout is empty and the error
+        # on stderr is "Invalid channel"
+        mocked_execute.return_value = '\n', 'Invalid channel: 55'
+        self.assertRaises(errors.IncompatibleHardwareMethodError,
+                          self.hardware.get_bmc_mac)
+
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_mac_random_error(self, mocked_execute, mte):
+        mocked_execute.return_value = ('192.1.2.3\n00:00:00:00:00:02',
+                                       'Random error message')
+        self.assertEqual('00:00:00:00:00:02', self.hardware.get_bmc_mac())
+
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_bmc_mac_iterate_channels(self, mocked_execute, mte):
+        # For channel 1 we simulate unconfigured IP
+        # and for any other we return a correct IP address
+        def side_effect(*args, **kwargs):
+            if args[0].startswith("ipmitool lan print 1"):
+                return '', 'Invalid channel 1\n'
+            elif args[0].startswith("ipmitool lan print 2"):
+                return '0.0.0.0\n00:00:00:00:23:42', ''
+            elif args[0].startswith("ipmitool lan print 3"):
+                return 'meow', ''
+            elif args[0].startswith("ipmitool lan print 4"):
+                return '192.1.2.3\n01:02:03:04:05:06', ''
+            else:
+                # this should never happen because the previous one was good
+                raise AssertionError
+        mocked_execute.side_effect = side_effect
+        self.assertEqual('01:02:03:04:05:06', self.hardware.get_bmc_mac())
 
     @mock.patch.object(il_utils, 'try_execute', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)

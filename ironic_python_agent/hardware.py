@@ -704,6 +704,9 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
     def get_bmc_address(self):
         raise errors.IncompatibleHardwareMethodError()
 
+    def get_bmc_mac(self):
+        raise errors.IncompatibleHardwareMethodError()
+
     def get_bmc_v6address(self):
         raise errors.IncompatibleHardwareMethodError()
 
@@ -829,6 +832,14 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         hardware_info['system_vendor'] = self.get_system_vendor_info()
         hardware_info['boot'] = self.get_boot_info()
         hardware_info['hostname'] = netutils.get_hostname()
+
+        try:
+            hardware_info['bmc_mac'] = self.get_bmc_mac()
+        except errors.IncompatibleHardwareMethodError:
+            # if the hardware manager does not support obtaining the BMC MAC,
+            # we simply don't expose it.
+            pass
+
         LOG.info('Inventory collected in %.2f second(s)', time.time() - start)
         return hardware_info
 
@@ -1789,6 +1800,57 @@ class GenericHardwareManager(HardwareManager):
             return
 
         return '0.0.0.0'
+
+    def get_bmc_mac(self):
+        """Attempt to detect BMC MAC address
+
+        :return: MAC address of the first LAN channel or 00:00:00:00:00:00 in
+                 case none of them has one or is configured properly
+        """
+        # These modules are rarely loaded automatically
+        il_utils.try_execute('modprobe', 'ipmi_msghandler')
+        il_utils.try_execute('modprobe', 'ipmi_devintf')
+        il_utils.try_execute('modprobe', 'ipmi_si')
+
+        try:
+            # From all the channels 0-15, only 1-11 can be assigned to
+            # different types of communication media and protocols and
+            # effectively used
+            for channel in range(1, 12):
+                out, e = utils.execute(
+                    "ipmitool lan print {} | awk '/(IP|MAC) Address[ \\t]*:/"
+                    " {{print $4}}'".format(channel), shell=True)
+                if e.startswith("Invalid channel"):
+                    continue
+
+                try:
+                    ip, mac = out.strip().split("\n")
+                except ValueError:
+                    LOG.warning('Invalid ipmitool output %(output)s',
+                                {'output': out})
+                    continue
+
+                if ip == "0.0.0.0":
+                    # disabled, ignore
+                    continue
+
+                if not re.match("^[0-9a-f]{2}(:[0-9a-f]{2}){5}$", mac, re.I):
+                    LOG.warning('Invalid MAC address %(output)s',
+                                {'output': mac})
+                    continue
+
+                # In case we get 00:00:00:00:00:00 on a valid channel, we need
+                # to keep querying
+                if mac != '00:00:00:00:00:00':
+                    return mac
+
+        except (processutils.ProcessExecutionError, OSError) as e:
+            # Not error, because it's normal in virtual environment
+            LOG.warning("Cannot get BMC MAC address: %s", e)
+            return
+
+        # no valid mac found, signal this clearly
+        raise errors.IncompatibleHardwareMethodError()
 
     def get_bmc_v6address(self):
         """Attempt to detect BMC v6 address

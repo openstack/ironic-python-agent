@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The introspection now includes the MAC address of the IPMI LAN channel
+    which has a valid IP address and MAC address assigned in the hardware
+    inventory data as ``bmc_mac``.
