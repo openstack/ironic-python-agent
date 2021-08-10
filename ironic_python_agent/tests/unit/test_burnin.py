@@ -198,6 +198,27 @@ class TestBurnin(base.IronicAgentTest):
         self.assertRaises(errors.CommandExecutionError,
                           burnin.fio_network, node)
 
+    def test_fio_network_unknown_role(self, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_fio_network_config':
+                                {'partner': 'host-003', 'role': 'read'}}}
+
+        self.assertRaises(errors.CleaningError, burnin.fio_network, node)
+
+    def test_fio_network_no_role(self, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_fio_network_config':
+                                {'partner': 'host-003'}}}
+
+        self.assertRaises(errors.CleaningError, burnin.fio_network, node)
+
+    def test_fio_network_no_partner(self, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_fio_network_config':
+                                {'role': 'reader'}}}
+
+        self.assertRaises(errors.CleaningError, burnin.fio_network, node)
+
     @mock.patch('time.sleep', autospec=True)
     def test_fio_network_reader_loop(self, mock_time, mock_execute):
 
