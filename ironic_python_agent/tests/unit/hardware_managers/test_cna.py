@@ -112,8 +112,8 @@ class TestIntelCnaHardwareManager(base.IronicAgentTest):
             cna._disable_embedded_lldp_agent_in_cna_card()
             expected_log_message = ('Failed to disable the embedded LLDP on '
                                     'Intel CNA network card. Addresses of '
-                                    'failed pci devices: {}'
-                                    .format(str(listdir_dict).strip('[]')))
+                                    'failed pci devices: %s',
+                                    str(listdir_dict).strip('[]'))
             mock_log.warning.assert_called_once_with(expected_log_message)
 
     @mock.patch.object(cna, 'LOG', autospec=True)

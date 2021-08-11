@@ -190,5 +190,8 @@ class ExampleBusinessLogicHardwareManager(hardware.HardwareManager):
     # Make sure to provide default values for optional arguments.
     def companyx_apply_something(self, node, ports, required_value,
                                  optional_value=None):
-        LOG.info('apply_something called with required_value={} and '
-                 'optional_value={}'.format(required_value, optional_value))
+        LOG.info('apply_something called with '
+                 'required_value=%(required_value)s and '
+                 'optional_value=%(optional_value)s',
+                 {'required_value': required_value,
+                  'optional_value': optional_value})

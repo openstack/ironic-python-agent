@@ -64,9 +64,10 @@ def _disable_embedded_lldp_agent_in_cna_card():
             failed_dirs.append(inner_dir)
             continue
     if failed_dirs:
-        LOG.warning('Failed to disable the embedded LLDP on Intel CNA network '
-                    'card. Addresses of failed pci devices: {}'
-                    .format(str(failed_dirs).strip('[]')))
+        warning_msg = ('Failed to disable the embedded LLDP on Intel '
+                       'CNA network card. Addresses of failed pci '
+                       'devices: %s', str(failed_dirs).strip('[]'))
+        LOG.warning(warning_msg)
 
 
 class IntelCnaHardwareManager(hardware.HardwareManager):

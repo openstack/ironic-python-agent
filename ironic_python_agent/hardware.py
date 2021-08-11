@@ -445,13 +445,13 @@ def list_all_block_devices(block_type='disk',
         #   lvm, part, rom, loop
         if devtype != block_type:
             if devtype is None or ignore_raid:
-                LOG.debug("Skipping: {!r}".format(line))
+                LOG.debug("Skipping: %s", line)
                 continue
             elif ('raid' in devtype
                   and block_type in ['raid', 'disk']):
                 LOG.debug(
                     "TYPE detected to contain 'raid', signifying a "
-                    "RAID volume. Found: {!r}".format(line))
+                    "RAID volume. Found: %s", line)
             elif (devtype == 'md'
                   and (block_type == 'part'
                        or block_type == 'md')):
@@ -461,11 +461,11 @@ def list_all_block_devices(block_type='disk',
                 # more detail.
                 LOG.debug(
                     "TYPE detected to contain 'md', signifying a "
-                    "RAID partition. Found: {!r}".format(line))
+                    "RAID partition. Found: %s", line)
             else:
                 LOG.debug(
-                    "TYPE did not match. Wanted: {!r} but found: {!r}".format(
-                        block_type, line))
+                    "TYPE did not match. Wanted: %(block_type)s but found: "
+                    "%(line)s", {'block_type': block_type, 'line': line})
                 continue
 
         # Ensure all required columns are at least present, even if blank

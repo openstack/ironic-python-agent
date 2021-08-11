@@ -865,8 +865,7 @@ def create_partition_table(dev_name, partition_table_type):
     :raises: CommandExecutionError if an error is encountered while
              attempting to create the partition table.
     """
-    LOG.info("Creating partition table on {}".format(
-        dev_name))
+    LOG.info("Creating partition table on %s", dev_name)
     try:
         execute('parted', dev_name, '-s', '--',
                 'mklabel', partition_table_type)
