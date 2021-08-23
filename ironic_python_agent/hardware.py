@@ -127,6 +127,17 @@ def _udev_settle():
         return
 
 
+def _load_ipmi_modules():
+    """Load kernel modules required for IPMI interaction.
+
+    This is required to be called at least once before attempting to use
+    ipmitool or related tools.
+    """
+    il_utils.try_execute('modprobe', 'ipmi_msghandler')
+    il_utils.try_execute('modprobe', 'ipmi_devintf')
+    il_utils.try_execute('modprobe', 'ipmi_si')
+
+
 def _check_for_iscsi():
     """Connect iSCSI shared connected via iBFT or OF.
 
@@ -984,6 +995,7 @@ class GenericHardwareManager(HardwareManager):
         # Do some initialization before we declare ourself ready
         _check_for_iscsi()
         _md_scan_and_assemble()
+        _load_ipmi_modules()
         self.wait_for_disks()
         return HardwareSupport.GENERIC
 
@@ -1765,11 +1777,6 @@ class GenericHardwareManager(HardwareManager):
         :return: IP address of lan channel or 0.0.0.0 in case none of them is
                  configured properly
         """
-        # These modules are rarely loaded automatically
-        il_utils.try_execute('modprobe', 'ipmi_msghandler')
-        il_utils.try_execute('modprobe', 'ipmi_devintf')
-        il_utils.try_execute('modprobe', 'ipmi_si')
-
         try:
             # From all the channels 0-15, only 1-11 can be assigned to
             # different types of communication media and protocols and
@@ -1807,11 +1814,6 @@ class GenericHardwareManager(HardwareManager):
         :return: MAC address of the first LAN channel or 00:00:00:00:00:00 in
                  case none of them has one or is configured properly
         """
-        # These modules are rarely loaded automatically
-        il_utils.try_execute('modprobe', 'ipmi_msghandler')
-        il_utils.try_execute('modprobe', 'ipmi_devintf')
-        il_utils.try_execute('modprobe', 'ipmi_si')
-
         try:
             # From all the channels 0-15, only 1-11 can be assigned to
             # different types of communication media and protocols and
@@ -1859,11 +1861,6 @@ class GenericHardwareManager(HardwareManager):
                  configured properly. May return None value if it cannot
                  interract with system tools or critical error occurs.
         """
-        # These modules are rarely loaded automatically
-        il_utils.try_execute('modprobe', 'ipmi_msghandler')
-        il_utils.try_execute('modprobe', 'ipmi_devintf')
-        il_utils.try_execute('modprobe', 'ipmi_si')
-
         null_address_re = re.compile(r'^::(/\d{1,3})*$')
 
         def get_addr(channel, dynamic=False):
