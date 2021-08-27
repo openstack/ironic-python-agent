@@ -26,7 +26,6 @@ import sys
 import tarfile
 import time
 
-from ironic_lib import disk_utils
 from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -75,8 +74,6 @@ COLLECT_LOGS_COMMANDS = {
 
 DEVICE_EXTRACTOR = re.compile(r'^(?:(.*\d)p|(.*\D))(?:\d+)$')
 
-PARTED_TABLE_TYPE_REGEX = re.compile(r'^.*partition\s+table\s*:\s*(gpt|msdos)',
-                                     re.IGNORECASE)
 
 _EARLY_LOG_BUFFER = []
 
@@ -731,44 +728,6 @@ def get_partition_table_type_from_specs(node):
         node_caps.get('disk_label', 'msdos')
     )
     return 'gpt' if disk_label == 'gpt' else 'msdos'
-
-
-def scan_partition_table_type(device):
-    """Get partition table type, msdos or gpt.
-
-    :param device_name: the name of the device
-    :return: msdos, gpt or unknown
-    """
-    out, _u = execute('parted', '-s', device, '--', 'print')
-    out = out.splitlines()
-
-    for line in out:
-        m = PARTED_TABLE_TYPE_REGEX.match(line)
-        if m:
-            return m.group(1)
-
-    LOG.warning("Unable to get partition table type for device %s.",
-                device)
-
-    return 'unknown'
-
-
-def get_efi_part_on_device(device):
-    """Looks for the efi partition on a given device.
-
-    A boot partition on a GPT disk is assumed to be an EFI partition as well.
-
-    :param device: lock device upon which to check for the efi partition
-    :return: the efi partition or None
-    """
-    is_gpt = scan_partition_table_type(device) == 'gpt'
-    for part in disk_utils.list_partitions(device):
-        flags = {x.strip() for x in part['flags'].split(',')}
-        if 'esp' in flags or ('boot' in flags and is_gpt):
-            LOG.debug("Found EFI partition %s on device %s.", part, device)
-            return part['number']
-    else:
-        LOG.debug("No efi partition found on device %s", device)
 
 
 _LARGE_KEYS = frozenset(['configdrive', 'system_logs'])

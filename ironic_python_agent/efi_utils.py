@@ -15,6 +15,7 @@ import re
 import shutil
 import tempfile
 
+from ironic_lib import disk_utils
 from oslo_concurrency import processutils
 from oslo_log import log
 
@@ -48,7 +49,7 @@ def manage_uefi(device, efi_system_part_uuid=None):
 
         local_path = tempfile.mkdtemp()
         # Trust the contents on the disk in the event of a whole disk image.
-        efi_partition = utils.get_efi_part_on_device(device)
+        efi_partition = disk_utils.find_efi_partition(device)
         if not efi_partition and efi_system_part_uuid:
             # _get_partition returns <device>+<partition> and we only need the
             # partition number

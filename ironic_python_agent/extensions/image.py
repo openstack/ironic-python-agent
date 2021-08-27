@@ -18,6 +18,7 @@ import re
 import shutil
 import tempfile
 
+from ironic_lib import disk_utils
 from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -136,7 +137,7 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
             # Let's try to scan for esp on the root softraid device. If not
             # found, it's fine in most cases to just create an empty esp and
             # let grub handle the magic.
-            efi_part = utils.get_efi_part_on_device(device)
+            efi_part = disk_utils.find_efi_partition(device)
             if efi_part:
                 efi_part = '{}p{}'.format(device, efi_part)
 
@@ -198,7 +199,7 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
     elif target_boot_mode == 'bios':
         partlabel_prefix = 'bios-boot-part-'
         for number, holder in enumerate(holders):
-            label = utils.scan_partition_table_type(holder)
+            label = disk_utils.get_partition_table_type(holder)
             if label == 'gpt':
                 LOG.debug("Creating bios boot partition on disk holder %s",
                           holder)

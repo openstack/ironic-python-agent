@@ -18,6 +18,7 @@ import shutil
 import tempfile
 from unittest import mock
 
+from ironic_lib import disk_utils
 from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 
@@ -27,7 +28,6 @@ from ironic_python_agent.extensions import image
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
 from ironic_python_agent.tests.unit import base
-from ironic_python_agent import utils
 
 
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
@@ -215,7 +215,7 @@ class TestImageExtension(base.IronicAgentTest):
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
     @mock.patch.object(partition_utils, 'get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=False)
+    @mock.patch.object(disk_utils, 'find_efi_partition', autospec=False)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_given_partition(
             self, mkdir_mock, mock_utils_efi_part, mock_partition,
@@ -263,7 +263,7 @@ class TestImageExtension(base.IronicAgentTest):
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
     @mock.patch.object(partition_utils, 'get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_find_partition(
             self, mkdir_mock, mock_utils_efi_part, mock_partition,
@@ -310,7 +310,7 @@ class TestImageExtension(base.IronicAgentTest):
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
     @mock.patch.object(partition_utils, 'get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_with_entry_removal(
             self, mkdir_mock, mock_utils_efi_part, mock_partition,
@@ -367,7 +367,7 @@ Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
     @mock.patch.object(partition_utils, 'get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_with_entry_removal_lenovo(
             self, mkdir_mock, mock_utils_efi_part, mock_partition,
@@ -429,7 +429,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
     @mock.patch.object(partition_utils, 'get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__add_multi_bootloaders(
             self, mkdir_mock, mock_utils_efi_part, mock_partition,
@@ -1653,7 +1653,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                                    uuid=self.fake_root_uuid)
         self.assertFalse(mock_dispatch.called)
 
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     def test__prepare_boot_partitions_for_softraid_uefi_gpt(
             self, mock_efi_part, mock_execute, mock_dispatch):
         mock_efi_part.return_value = '12'
@@ -1702,7 +1702,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         mock_execute.assert_has_calls(expected, any_order=False)
         self.assertEqual(efi_part, '/dev/md/esp')
 
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     @mock.patch.object(ilib_utils, 'mkfs', autospec=True)
     def test__prepare_boot_partitions_for_softraid_uefi_gpt_esp_not_found(
             self, mock_mkfs, mock_efi_part, mock_execute, mock_dispatch):
@@ -1794,7 +1794,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         mock_execute.assert_has_calls(expected, any_order=False)
         self.assertEqual(efi_part, '/dev/md/esp')
 
-    @mock.patch.object(utils, 'scan_partition_table_type', autospec=True,
+    @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True,
                        return_value='msdos')
     def test__prepare_boot_partitions_for_softraid_bios_msdos(
             self, mock_label_scan, mock_execute, mock_dispatch):
@@ -1810,7 +1810,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         mock_label_scan.assert_has_calls(expected, any_order=False)
         self.assertIsNone(efi_part)
 
-    @mock.patch.object(utils, 'scan_partition_table_type', autospec=True,
+    @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True,
                        return_value='gpt')
     def test__prepare_boot_partitions_for_softraid_bios_gpt(
             self, mock_label_scan, mock_execute, mock_dispatch):

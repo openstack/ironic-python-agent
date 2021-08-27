@@ -15,6 +15,8 @@ import shutil
 import tempfile
 from unittest import mock
 
+from ironic_lib import disk_utils
+
 from ironic_python_agent import efi_utils
 from ironic_python_agent import errors
 from ironic_python_agent import partition_utils
@@ -128,7 +130,7 @@ class TestRunEfiBootmgr(base.IronicAgentTest):
 @mock.patch.object(utils, 'rescan_device', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
 @mock.patch.object(partition_utils, 'get_partition', autospec=True)
-@mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+@mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
 class TestManageUefi(base.IronicAgentTest):
 
     fake_dev = '/dev/fake'
