@@ -447,7 +447,7 @@ def list_all_block_devices(block_type='disk',
         # media, however USB devices are also flagged as removable media.
         # we have to explicitly do this as floppy disks are type disk.
         if ignore_floppy and str(device.get('KNAME')).startswith('fd'):
-            LOG.debug('Ignoring floppy disk device %s', device)
+            LOG.debug('Ignoring floppy disk device: %s', line)
             continue
 
         # Search for raid in the reply type, as RAID is a
@@ -456,7 +456,10 @@ def list_all_block_devices(block_type='disk',
         #   lvm, part, rom, loop
         if devtype != block_type:
             if devtype is None or ignore_raid:
-                LOG.debug("Skipping: %s", line)
+                LOG.debug(
+                    "TYPE did not match. Wanted: %(block_type)s but found: "
+                    "%(line)s (RAID devices are ignored)",
+                    {'block_type': block_type, 'line': line})
                 continue
             elif ('raid' in devtype
                   and block_type in ['raid', 'disk']):
