@@ -183,8 +183,16 @@ def fio_network(node):
                      "'agent_burnin_fio_network_config' in driver_info")
         raise errors.CleaningError(error_msg)
     LOG.debug("agent_burnin_fio_network_config is %s", str(config))
+
     role = config.get('role')
+    if role not in NETWORK_BURNIN_ROLES:
+        error_msg = ("fio (network) found an unknown role: %s", role)
+        raise errors.CleaningError(error_msg)
+
     partner = config.get('partner')
+    if not partner:
+        error_msg = ("fio (network) failed to find partner")
+        raise errors.CleaningError(error_msg)
 
     _do_fio_network(role == 'writer', runtime, partner)
     LOG.debug("fio (network): first direction done, swapping roles ...")
