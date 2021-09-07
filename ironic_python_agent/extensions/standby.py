@@ -523,7 +523,7 @@ def _validate_partitioning(device):
     except (processutils.UnknownArgumentError,
             processutils.ProcessExecutionError, OSError) as e:
         msg = ("Unable to find a valid partition table on the disk after "
-               "writing the image. Error {}".format(e))
+               f"writing the image. The image may be corrupted. Error: {e}")
         raise exception.InstanceDeployFailure(msg)
 
     # Check if there is at least one partition in the partition table after

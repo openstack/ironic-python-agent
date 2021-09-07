@@ -74,7 +74,7 @@ class CleanExtension(base.BaseAgentExtension):
         try:
             result = hardware.dispatch_to_managers(step['step'], node, ports)
         except Exception as e:
-            msg = ('Error performing clean_step %(step)s: %(err)s' %
+            msg = ('Error performing clean step %(step)s: %(err)s' %
                    {'step': step['step'], 'err': e})
             LOG.exception(msg)
             raise errors.CleaningError(msg)

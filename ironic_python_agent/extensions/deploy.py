@@ -76,7 +76,7 @@ class DeployExtension(base.BaseAgentExtension):
             result = hardware.dispatch_to_managers(step['step'], node, ports,
                                                    **kwargs)
         except Exception as e:
-            msg = ('Error performing deploy_step %(step)s: %(err)s' %
+            msg = ('Error performing deploy step %(step)s: %(err)s' %
                    {'step': step['step'], 'err': e})
             LOG.exception(msg)
             raise errors.DeploymentError(msg)
