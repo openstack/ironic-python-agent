@@ -2152,6 +2152,13 @@ class GenericHardwareManager(HardwareManager):
                     utils.execute('parted', device, '-s', '-a',
                                   'optimal', '--', 'mkpart', 'primary',
                                   start_str, end_str)
+
+                    # Parted/udev partition creation is asynchronous.
+                    # Wait for udev events to be processed before going to
+                    # next step. This avoids getting errors at mdadm
+                    # create because a device is not ready yet.
+                    _udev_settle()
+
                     # Necessary, if we want to avoid hitting
                     # an error when creating the mdadm array below
                     # 'mdadm: cannot open /dev/nvme1n1p1: No such file
