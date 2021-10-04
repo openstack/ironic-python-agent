@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes a race on software RAID creation: since the creation of
+    partitions is asynchronous, we need to wait for all udev events
+    to be processed before we can use the partitions to create an
+    md device.
