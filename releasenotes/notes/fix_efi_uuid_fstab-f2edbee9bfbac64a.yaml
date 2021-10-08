@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes an issue when the EFI partition UUID is not set and an attempt
+    to edit /etc/fstab is made.
+
