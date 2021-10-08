@@ -759,7 +759,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         # recommended path.
         _configure_grub(device, path)
 
-        if efi_mounted:
+        if efi_system_part_uuid and efi_mounted:
             _append_uefi_to_fstab(path, efi_system_part_uuid)
 
         LOG.info("GRUB2 successfully installed on %s", device)
