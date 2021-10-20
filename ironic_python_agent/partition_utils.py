@@ -29,13 +29,17 @@ from ironic_lib import disk_utils
 from ironic_lib import exception
 from ironic_lib import utils
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 from oslo_utils import units
 import requests
 
+from ironic_python_agent import utils as ipa_utils
+
 
 LOG = log.getLogger()
+CONF = cfg.CONF
 
 MAX_CONFIG_DRIVE_SIZE_MB = 64
 
@@ -59,13 +63,27 @@ def get_configdrive(configdrive, node_uuid, tempdir=None):
     # Check if the configdrive option is a HTTP URL or the content directly
     is_url = utils.is_http_url(configdrive)
     if is_url:
+        verify, cert = ipa_utils.get_ssl_client_options(CONF)
+        timeout = CONF.image_download_connection_timeout
+        # TODO(dtantsur): support proxy parameters from instance_info
         try:
-            data = requests.get(configdrive).content
+            resp = requests.get(configdrive, verify=verify, cert=cert,
+                                timeout=timeout)
         except requests.exceptions.RequestException as e:
             raise exception.InstanceDeployFailure(
                 "Can't download the configdrive content for node %(node)s "
                 "from '%(url)s'. Reason: %(reason)s" %
                 {'node': node_uuid, 'url': configdrive, 'reason': e})
+
+        if resp.status_code >= 400:
+            raise exception.InstanceDeployFailure(
+                "Can't download the configdrive content for node %(node)s "
+                "from '%(url)s'. Got status code %(code)s, response "
+                "body %(body)s" %
+                {'node': node_uuid, 'url': configdrive,
+                 'code': resp.status_code, 'body': resp.text})
+
+        data = resp.content
     else:
         data = configdrive
 
