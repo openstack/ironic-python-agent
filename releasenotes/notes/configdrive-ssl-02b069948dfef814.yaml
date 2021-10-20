@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    No longer ignores global TLS configuration options (``ipa-insecure``, etc)
+    when downloading a configdrive via a URL.
+  - |
+    No longer ignores error status codes from the server when downloading
+    a configdrive via a URL.
+  - |
+    The configdrive downloading code now respects the
+    ``ipa-image-download-connection-timeout`` option and will no longer hang
+    for a long time if the server does not respond.
