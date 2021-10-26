@@ -48,8 +48,7 @@ def stress_ng_cpu(node):
         # stress-ng reports on stderr only
         LOG.info(err)
     except (processutils.ProcessExecutionError, OSError) as e:
-        error_msg = ("stress-ng (cpu) failed with error %(err)s",
-                     {'err': e})
+        error_msg = "stress-ng (cpu) failed with error %s" % e
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
 
@@ -80,8 +79,7 @@ def stress_ng_vm(node):
         # stress-ng reports on stderr only
         LOG.info(err)
     except (processutils.ProcessExecutionError, OSError) as e:
-        error_msg = ("stress-ng (vm) failed with error %(err)s",
-                     {'err': e})
+        error_msg = "stress-ng (vm) failed with error %s" % e
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
 
@@ -116,8 +114,7 @@ def fio_disk(node):
         # fio reports on stdout
         LOG.info(out)
     except (processutils.ProcessExecutionError, OSError) as e:
-        error_msg = ("fio (disk) failed with error %(err)s",
-                     {'err': e})
+        error_msg = "fio (disk) failed with error %s" % e
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
 
@@ -141,8 +138,7 @@ def _do_fio_network(writer, runtime, partner):
             LOG.info(out)
             break
         except (processutils.ProcessExecutionError, OSError) as e:
-            error_msg = ("fio (network) failed with error %(err)s",
-                         {'err': e})
+            error_msg = "fio (network) failed with error %s" % e
             LOG.error(error_msg)
             # while the writer blocks in fio, the reader fails with
             # 'Connection {refused, timeout}' errors if the partner
@@ -186,7 +182,7 @@ def fio_network(node):
 
     role = config.get('role')
     if role not in NETWORK_BURNIN_ROLES:
-        error_msg = ("fio (network) found an unknown role: %s", role)
+        error_msg = "fio (network) found an unknown role: %s" % role
         raise errors.CleaningError(error_msg)
 
     partner = config.get('partner')
