@@ -50,21 +50,6 @@ class BlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
         utils.execute("echo")
         self.assertEqual(2, mock_exec.call_count)
 
-    @mock.patch.object(ironic_lib.utils, "execute", autospec=True)
-    def test_exception_raised_for_execute_parent_mocked(self, mock_exec):
-        # Make sure that even if we mock the parent execute function, that we
-        # still get an exception for a child. So in this case utils.execute()
-        # calls ironic_lib.utils.execute(). Make sure an exception is raised
-        # even though we mocked ironic_lib.utils.execute()
-        exc = self.assertRaises(Exception, utils.execute, "ls")  # noqa
-        # Have to use 'noqa' as we are raising plain Exception and we will get
-        # H202 error in 'pep8' check.
-
-        self.assertEqual(
-            "Don't call ironic_lib.utils.execute() / "
-            "processutils.execute() or similar functions in tests!",
-            "%s" % exc)
-
 
 class DontBlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
     """Ensure we can turn off blocking access to 'execute' type functions"""

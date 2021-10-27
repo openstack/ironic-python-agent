@@ -25,7 +25,6 @@ from oslotest import base as test_base
 
 from ironic_python_agent.extensions import base as ext_base
 from ironic_python_agent import hardware
-from ironic_python_agent import utils
 
 CONF = cfg.CONF
 
@@ -58,7 +57,7 @@ class IronicAgentTest(test_base.BaseTestCase):
             self.patch(subprocess, 'call', do_not_call)
             self.patch(subprocess, 'check_call', do_not_call)
             self.patch(subprocess, 'check_output', do_not_call)
-            self.patch(utils, 'execute', do_not_call)
+            # ironic_python_agent.utils.execute is an alias of ironic_lib one
 
         ext_base._EXT_MANAGER = None
         hardware._CACHED_HW_INFO = None
