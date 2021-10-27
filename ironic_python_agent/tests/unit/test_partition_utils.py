@@ -22,6 +22,8 @@ from ironic_lib import utils
 from oslo_concurrency import processutils
 import requests
 
+from ironic_python_agent import errors
+from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
 from ironic_python_agent.tests.unit import base
 
@@ -1173,3 +1175,122 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
         self.assertEqual([6, 3], sizes[:2],
                          "unexpected partitioning %s" % part_table)
         self.assertIn(sizes[2], (9, 10))
+
+
+@mock.patch.object(utils, 'execute', autospec=True)
+@mock.patch.object(hardware, 'is_md_device', autospec=True)
+class TestGetPartition(base.IronicAgentTest):
+
+    fake_dev = '/dev/fake'
+    fake_root_uuid = '11111111-2222-3333-4444-555555555555'
+
+    def test(self, mock_is_md_device, mock_execute):
+        mock_is_md_device.side_effect = [False]
+        mock_is_md_device.side_effect = [False, False]
+        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
+        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
+        KNAME="test2" UUID="%s" TYPE="part"''' % self.fake_root_uuid)
+        mock_execute.side_effect = (None, None, [lsblk_output])
+
+        root_part = partition_utils.get_partition(
+            self.fake_dev, self.fake_root_uuid)
+        self.assertEqual('/dev/test2', root_part)
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
+                              self.fake_dev)]
+        mock_execute.assert_has_calls(expected)
+
+    def test_no_device_found(self, mock_is_md_device, mock_execute):
+        mock_is_md_device.side_effect = [False, False]
+        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
+        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
+        KNAME="test2" UUID="" TYPE="part"''')
+        mock_execute.side_effect = (
+            None, None, [lsblk_output],
+            processutils.ProcessExecutionError('boom'),
+            processutils.ProcessExecutionError('kaboom'))
+
+        self.assertRaises(errors.DeviceNotFound,
+                          partition_utils.get_partition, self.fake_dev,
+                          self.fake_root_uuid)
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
+                              self.fake_dev)]
+        mock_execute.assert_has_calls(expected)
+
+    def test_fallback_partuuid(self, mock_is_md_device, mock_execute):
+        mock_is_md_device.side_effect = [False]
+        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
+        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
+        KNAME="test2" UUID="" TYPE="part"''')
+        findfs_output = ('/dev/loop0\n', None)
+        mock_execute.side_effect = (
+            None, None, [lsblk_output],
+            processutils.ProcessExecutionError('boom'),
+            findfs_output)
+
+        result = partition_utils.get_partition(
+            self.fake_dev, self.fake_root_uuid)
+        self.assertEqual('/dev/loop0', result)
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
+                              self.fake_dev),
+                    mock.call('findfs', 'UUID=%s' % self.fake_root_uuid),
+                    mock.call('findfs', 'PARTUUID=%s' % self.fake_root_uuid)]
+        mock_execute.assert_has_calls(expected)
+
+    def test_command_fail(self, mock_is_md_device, mock_execute):
+        mock_is_md_device.side_effect = [False, False]
+        mock_execute.side_effect = (None, None,
+                                    processutils.ProcessExecutionError('boom'))
+        self.assertRaises(errors.CommandExecutionError,
+                          partition_utils.get_partition, self.fake_dev,
+                          self.fake_root_uuid)
+
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
+                              self.fake_dev)]
+        mock_execute.assert_has_calls(expected)
+
+    def test_partuuid(self, mock_is_md_device, mock_execute):
+        mock_is_md_device.side_effect = [False, False]
+        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
+        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
+        KNAME="test2" UUID="903e7bf9-8a13-4f7f-811b-25dc16faf6f7" TYPE="part" \
+                      LABEL="%s"''' % self.fake_root_uuid)
+        mock_execute.side_effect = (None, None, [lsblk_output])
+
+        root_part = partition_utils.get_partition(
+            self.fake_dev, self.fake_root_uuid)
+        self.assertEqual('/dev/test2', root_part)
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
+                              self.fake_dev)]
+        mock_execute.assert_has_calls(expected)
+
+    def test_label(self, mock_is_md_device, mock_execute):
+        mock_is_md_device.side_effect = [False, False]
+        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
+        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
+        KNAME="test2" PARTUUID="%s" TYPE="part"''' % self.fake_root_uuid)
+        mock_execute.side_effect = (None, None, [lsblk_output])
+
+        root_part = partition_utils.get_partition(
+            self.fake_dev, self.fake_root_uuid)
+        self.assertEqual('/dev/test2', root_part)
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
+                              self.fake_dev)]
+        mock_execute.assert_has_calls(expected)

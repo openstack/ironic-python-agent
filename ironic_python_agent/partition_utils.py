@@ -22,7 +22,9 @@ import gzip
 import io
 import math
 import os
+import shlex
 import shutil
+import stat
 import tempfile
 
 from ironic_lib import disk_utils
@@ -35,6 +37,8 @@ from oslo_utils import excutils
 from oslo_utils import units
 import requests
 
+from ironic_python_agent import errors
+from ironic_python_agent import hardware
 from ironic_python_agent import utils as ipa_utils
 
 
@@ -487,3 +491,92 @@ def _is_disk_larger_than_max_size(device, node_uuid):
     disksize_mb = int(disksize_bytes.strip()) // 1024 // 1024
 
     return disksize_mb > MAX_DISK_SIZE_MB_SUPPORTED_BY_MBR
+
+
+def get_partition(device, uuid):
+    """Find the partition of a given device."""
+    LOG.debug("Find the partition %(uuid)s on device %(dev)s",
+              {'dev': device, 'uuid': uuid})
+
+    try:
+        ipa_utils.rescan_device(device)
+        lsblk = utils.execute(
+            'lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL', device)
+        report = lsblk[0]
+        for line in report.split('\n'):
+            part = {}
+            # Split into KEY=VAL pairs
+            vals = shlex.split(line)
+            for key, val in (v.split('=', 1) for v in vals):
+                part[key] = val.strip()
+            # Ignore non partition
+            if part.get('TYPE') not in ['md', 'part']:
+                # NOTE(TheJulia): This technically creates an edge failure
+                # case where a filesystem on a whole block device sans
+                # partitioning would behave differently.
+                continue
+
+            if part.get('UUID') == uuid:
+                LOG.debug("Partition %(uuid)s found on device "
+                          "%(dev)s", {'uuid': uuid, 'dev': device})
+                return '/dev/' + part.get('KNAME')
+            if part.get('PARTUUID') == uuid:
+                LOG.debug("Partition %(uuid)s found on device "
+                          "%(dev)s", {'uuid': uuid, 'dev': device})
+                return '/dev/' + part.get('KNAME')
+            if part.get('LABEL') == uuid:
+                LOG.debug("Partition %(uuid)s found on device "
+                          "%(dev)s", {'uuid': uuid, 'dev': device})
+                return '/dev/' + part.get('KNAME')
+        else:
+            # NOTE(TheJulia): We may want to consider moving towards using
+            # findfs in the future, if we're comfortable with the execution
+            # and interaction. There is value in either way though.
+            # NOTE(rg): alternative: blkid -l -t UUID=/PARTUUID=
+            try:
+                findfs, stderr = utils.execute('findfs', 'UUID=%s' % uuid)
+                return findfs.strip()
+            except processutils.ProcessExecutionError as e:
+                LOG.debug('First fallback detection attempt for locating '
+                          'partition via UUID %(uuid)s failed. '
+                          'Error: %(err)s',
+                          {'uuid': uuid,
+                           'err': e})
+                try:
+                    findfs, stderr = utils.execute(
+                        'findfs', 'PARTUUID=%s' % uuid)
+                    return findfs.strip()
+                except processutils.ProcessExecutionError as e:
+                    LOG.debug('Secondary fallback detection attempt for '
+                              'locating partition via UUID %(uuid)s failed. '
+                              'Error: %(err)s',
+                              {'uuid': uuid,
+                               'err': e})
+
+            # Last fallback: In case we cannot find the partition by UUID
+            # and the deploy device is an md device, we check if the md
+            # device has a partition (which we assume to contain the root fs).
+            if hardware.is_md_device(device):
+                md_partition = device + 'p1'
+                if (os.path.exists(md_partition)
+                        and stat.S_ISBLK(os.stat(md_partition).st_mode)):
+                    LOG.debug("Found md device with partition %s",
+                              md_partition)
+                    return md_partition
+                else:
+                    LOG.debug('Could not find partition %(part)s on md '
+                              'device %(dev)s',
+                              {'part': md_partition,
+                               'dev': device})
+
+            # Partition not found, time to escalate.
+            error_msg = ("No partition with UUID %(uuid)s found on "
+                         "device %(dev)s" % {'uuid': uuid, 'dev': device})
+            LOG.error(error_msg)
+            raise errors.DeviceNotFound(error_msg)
+    except processutils.ProcessExecutionError as e:
+        error_msg = ('Finding the partition with UUID %(uuid)s on '
+                     'device %(dev)s failed with %(err)s' %
+                     {'uuid': uuid, 'dev': device, 'err': e})
+        LOG.error(error_msg)
+        raise errors.CommandExecutionError(error_msg)

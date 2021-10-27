@@ -15,9 +15,7 @@
 
 import os
 import re
-import shlex
 import shutil
-import stat
 import tempfile
 
 from ironic_lib import utils as ilib_utils
@@ -25,9 +23,11 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 
+from ironic_python_agent import efi_utils
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
+from ironic_python_agent import partition_utils
 from ironic_python_agent import raid_utils
 from ironic_python_agent import utils
 
@@ -36,112 +36,6 @@ LOG = log.getLogger(__name__)
 CONF = cfg.CONF
 
 BIND_MOUNTS = ('/dev', '/proc', '/run')
-
-# NOTE(TheJulia): Do not add bootia32.csv to this list. That is 32bit
-# EFI booting and never really became popular.
-BOOTLOADERS_EFI = [
-    'bootx64.csv',  # Used by GRUB2 shim loader (Ubuntu, Red Hat)
-    'boot.csv',  # Used by rEFInd, Centos7 Grub2
-    'bootia32.efi',
-    'bootx64.efi',  # x86_64 Default
-    'bootia64.efi',
-    'bootarm.efi',
-    'bootaa64.efi',  # Arm64 Default
-    'bootriscv32.efi',
-    'bootriscv64.efi',
-    'bootriscv128.efi',
-    'grubaa64.efi',
-    'winload.efi'
-]
-
-
-def _get_partition(device, uuid):
-    """Find the partition of a given device."""
-    LOG.debug("Find the partition %(uuid)s on device %(dev)s",
-              {'dev': device, 'uuid': uuid})
-
-    try:
-        utils.rescan_device(device)
-        lsblk = utils.execute(
-            'lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL', device)
-        report = lsblk[0]
-        for line in report.split('\n'):
-            part = {}
-            # Split into KEY=VAL pairs
-            vals = shlex.split(line)
-            for key, val in (v.split('=', 1) for v in vals):
-                part[key] = val.strip()
-            # Ignore non partition
-            if part.get('TYPE') not in ['md', 'part']:
-                # NOTE(TheJulia): This technically creates an edge failure
-                # case where a filesystem on a whole block device sans
-                # partitioning would behave differently.
-                continue
-
-            if part.get('UUID') == uuid:
-                LOG.debug("Partition %(uuid)s found on device "
-                          "%(dev)s", {'uuid': uuid, 'dev': device})
-                return '/dev/' + part.get('KNAME')
-            if part.get('PARTUUID') == uuid:
-                LOG.debug("Partition %(uuid)s found on device "
-                          "%(dev)s", {'uuid': uuid, 'dev': device})
-                return '/dev/' + part.get('KNAME')
-            if part.get('LABEL') == uuid:
-                LOG.debug("Partition %(uuid)s found on device "
-                          "%(dev)s", {'uuid': uuid, 'dev': device})
-                return '/dev/' + part.get('KNAME')
-        else:
-            # NOTE(TheJulia): We may want to consider moving towards using
-            # findfs in the future, if we're comfortable with the execution
-            # and interaction. There is value in either way though.
-            # NOTE(rg): alternative: blkid -l -t UUID=/PARTUUID=
-            try:
-                findfs, stderr = utils.execute('findfs', 'UUID=%s' % uuid)
-                return findfs.strip()
-            except processutils.ProcessExecutionError as e:
-                LOG.debug('First fallback detection attempt for locating '
-                          'partition via UUID %(uuid)s failed. '
-                          'Error: %(err)s',
-                          {'uuid': uuid,
-                           'err': e})
-                try:
-                    findfs, stderr = utils.execute(
-                        'findfs', 'PARTUUID=%s' % uuid)
-                    return findfs.strip()
-                except processutils.ProcessExecutionError as e:
-                    LOG.debug('Secondary fallback detection attempt for '
-                              'locating partition via UUID %(uuid)s failed. '
-                              'Error: %(err)s',
-                              {'uuid': uuid,
-                               'err': e})
-
-            # Last fallback: In case we cannot find the partition by UUID
-            # and the deploy device is an md device, we check if the md
-            # device has a partition (which we assume to contain the root fs).
-            if hardware.is_md_device(device):
-                md_partition = device + 'p1'
-                if (os.path.exists(md_partition)
-                        and stat.S_ISBLK(os.stat(md_partition).st_mode)):
-                    LOG.debug("Found md device with partition %s",
-                              md_partition)
-                    return md_partition
-                else:
-                    LOG.debug('Could not find partition %(part)s on md '
-                              'device %(dev)s',
-                              {'part': md_partition,
-                               'dev': device})
-
-            # Partition not found, time to escalate.
-            error_msg = ("No partition with UUID %(uuid)s found on "
-                         "device %(dev)s" % {'uuid': uuid, 'dev': device})
-            LOG.error(error_msg)
-            raise errors.DeviceNotFound(error_msg)
-    except processutils.ProcessExecutionError as e:
-        error_msg = ('Finding the partition with UUID %(uuid)s on '
-                     'device %(dev)s failed with %(err)s' %
-                     {'uuid': uuid, 'dev': device, 'err': e})
-        LOG.error(error_msg)
-        raise errors.CommandExecutionError(error_msg)
 
 
 def _has_dracut(root):
@@ -207,203 +101,6 @@ def _is_bootloader_loaded(dev):
         return False
 
     return _find_bootable_device(stdout, dev)
-
-
-def _get_efi_bootloaders(location):
-    """Get all valid efi bootloaders in a given location
-
-    :param location: the location where it should start looking for the
-                     efi files.
-    :return: a list of relative paths to valid efi bootloaders or reference
-             files.
-    """
-    # Let's find all files with .efi or .EFI extension
-    LOG.debug('Looking for all efi files on %s', location)
-    valid_bootloaders = []
-    for root, dirs, files in os.walk(location):
-        efi_files = [f for f in files if f.lower() in BOOTLOADERS_EFI]
-        LOG.debug('efi files found in %(location)s : %(efi_files)s',
-                  {'location': location, 'efi_files': str(efi_files)})
-        for name in efi_files:
-            efi_f = os.path.join(root, name)
-            LOG.debug('Checking if %s is executable', efi_f)
-            if os.access(efi_f, os.X_OK):
-                v_bl = efi_f.split(location)[-1][1:]
-                LOG.debug('%s is a valid bootloader', v_bl)
-                valid_bootloaders.append(v_bl)
-            if 'csv' in efi_f.lower():
-                v_bl = efi_f.split(location)[-1][1:]
-                LOG.debug('%s is a pointer to a bootloader', v_bl)
-                # The CSV files are intended to be authortative as
-                # to the bootloader and the label to be used. Since
-                # we found one, we're going to point directly to it.
-                # centos7 did ship with 2, but with the same contents.
-                # TODO(TheJulia): Perhaps we extend this to make a list
-                # of CSVs instead and only return those?! But then the
-                # question is which is right/first/preferred.
-                return [v_bl]
-    return valid_bootloaders
-
-
-def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
-                    mount_point):
-    """Executes efibootmgr and removes duplicate entries.
-
-    :param valid_efi_bootloaders: the list of valid efi bootloaders
-    :param device: the device to be used
-    :param efi_partition: the efi partition on the device
-    :param mount_point: The mountpoint for the EFI partition so we can
-                        read contents of files if necessary to perform
-                        proper bootloader injection operations.
-    """
-
-    # Before updating let's get information about the bootorder
-    LOG.debug("Getting information about boot order.")
-    original_efi_output = utils.execute('efibootmgr', '-v')
-    # NOTE(TheJulia): regex used to identify entries in the efibootmgr
-    # output on stdout.
-    entry_label = re.compile(r'Boot([0-9a-f-A-F]+)\*?\s(.*).*$')
-    label_id = 1
-    for v_bl in valid_efi_bootloaders:
-        if 'csv' in v_bl.lower():
-            LOG.debug('A CSV file has been identified as a bootloader hint. '
-                      'File: %s', v_bl)
-            # These files are always UTF-16 encoded, sometimes have a header.
-            # Positive bonus is python silently drops the FEFF header.
-            with open(mount_point + '/' + v_bl, 'r', encoding='utf-16') as csv:
-                contents = str(csv.read())
-            csv_contents = contents.split(',', maxsplit=3)
-            csv_filename = v_bl.split('/')[-1]
-            v_efi_bl_path = v_bl.replace(csv_filename, str(csv_contents[0]))
-            v_efi_bl_path = '\\' + v_efi_bl_path.replace('/', '\\')
-            label = csv_contents[1]
-        else:
-            v_efi_bl_path = '\\' + v_bl.replace('/', '\\')
-            label = 'ironic' + str(label_id)
-
-        # Iterate through standard out, and look for duplicates
-        for line in original_efi_output[0].split('\n'):
-            match = entry_label.match(line)
-            # Look for the base label in the string if a line match
-            # occurs, so we can identify if we need to eliminate the
-            # entry.
-            if match and label in match.group(2):
-                boot_num = match.group(1)
-                LOG.debug("Found bootnum %s matching label", boot_num)
-                utils.execute('efibootmgr', '-b', boot_num, '-B')
-
-        LOG.debug("Adding loader %(path)s on partition %(part)s of device "
-                  " %(dev)s", {'path': v_efi_bl_path, 'part': efi_partition,
-                               'dev': device})
-        # Update the nvram using efibootmgr
-        # https://linux.die.net/man/8/efibootmgr
-        utils.execute('efibootmgr', '-v', '-c', '-d', device,
-                      '-p', efi_partition, '-w', '-L', label,
-                      '-l', v_efi_bl_path)
-        # Increment the ID in case the loop runs again.
-        label_id += 1
-
-
-def _manage_uefi(device, efi_system_part_uuid=None):
-    """Manage the device looking for valid efi bootloaders to update the nvram.
-
-    This method checks for valid efi bootloaders in the device, if they exists
-    it updates the nvram using the efibootmgr.
-
-    :param device: the device to be checked.
-    :param efi_system_part_uuid: efi partition uuid.
-    :raises: DeviceNotFound if the efi partition cannot be found.
-    :return: True - if it founds any efi bootloader and the nvram was updated
-             using the efibootmgr.
-             False - if no efi bootloader is found.
-    """
-    efi_partition_mount_point = None
-    efi_mounted = False
-    LOG.debug('Attempting UEFI loader autodetection and NVRAM record setup.')
-    try:
-        # Force UEFI to rescan the device.
-        utils.rescan_device(device)
-
-        local_path = tempfile.mkdtemp()
-        # Trust the contents on the disk in the event of a whole disk image.
-        efi_partition = utils.get_efi_part_on_device(device)
-        if not efi_partition and efi_system_part_uuid:
-            # _get_partition returns <device>+<partition> and we only need the
-            # partition number
-            partition = _get_partition(device, uuid=efi_system_part_uuid)
-            try:
-                efi_partition = int(partition.replace(device, ""))
-            except ValueError:
-                # NVMe Devices get a partitioning scheme that is different from
-                # traditional block devices like SCSI/SATA
-                efi_partition = int(partition.replace(device + 'p', ""))
-
-        if not efi_partition:
-            # NOTE(dtantsur): we cannot have a valid EFI deployment without an
-            # EFI partition at all. This code path is easily hit when using an
-            # image that is not UEFI compatible (which sadly applies to most
-            # cloud images out there, with a nice exception of Ubuntu).
-            raise errors.DeviceNotFound(
-                "No EFI partition could be detected on device %s and "
-                "EFI partition UUID has not been recorded during deployment "
-                "(which is often the case for whole disk images). "
-                "Are you using a UEFI-compatible image?" % device)
-
-        efi_partition_mount_point = os.path.join(local_path, "boot/efi")
-        if not os.path.exists(efi_partition_mount_point):
-            os.makedirs(efi_partition_mount_point)
-
-        # The mount needs the device with the partition, in case the
-        # device ends with a digit we add a `p` and the partition number we
-        # found, otherwise we just join the device and the partition number
-        if device[-1].isdigit():
-            efi_device_part = '{}p{}'.format(device, efi_partition)
-            utils.execute('mount', efi_device_part, efi_partition_mount_point)
-        else:
-            efi_device_part = '{}{}'.format(device, efi_partition)
-            utils.execute('mount', efi_device_part, efi_partition_mount_point)
-        efi_mounted = True
-
-        valid_efi_bootloaders = _get_efi_bootloaders(efi_partition_mount_point)
-        if valid_efi_bootloaders:
-            _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
-                            efi_partition_mount_point)
-            return True
-        else:
-            # NOTE(dtantsur): if we have an empty EFI partition, try to use
-            # grub-install to populate it.
-            LOG.warning('Empty EFI partition detected.')
-            return False
-
-    except processutils.ProcessExecutionError as e:
-        error_msg = ('Could not verify uefi on device %(dev)s'
-                     'failed with %(err)s.' % {'dev': device, 'err': e})
-        LOG.error(error_msg)
-        raise errors.CommandExecutionError(error_msg)
-    finally:
-        LOG.debug('Executing _manage_uefi clean-up.')
-        umount_warn_msg = "Unable to umount %(local_path)s. Error: %(error)s"
-
-        try:
-            if efi_mounted:
-                utils.execute('umount', efi_partition_mount_point,
-                              attempts=3, delay_on_retry=True)
-        except processutils.ProcessExecutionError as e:
-            error_msg = ('Umounting efi system partition failed. '
-                         'Attempted 3 times. Error: %s' % e)
-            LOG.error(error_msg)
-            raise errors.CommandExecutionError(error_msg)
-
-        else:
-            # If umounting the binds succeed then we can try to delete it
-            try:
-                utils.execute('sync')
-            except processutils.ProcessExecutionError as e:
-                LOG.warning(umount_warn_msg, {'path': local_path, 'error': e})
-            else:
-                # After everything is umounted we can then remove the
-                # temporary directory
-                shutil.rmtree(local_path)
 
 
 # TODO(rg): handle PreP boot parts relocation as well
@@ -583,7 +280,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
     # NOTE(TheJulia): Seems we need to get this before ever possibly
     # restart the device in the case of multi-device RAID as pyudev
     # doesn't exactly like the partition disappearing.
-    root_partition = _get_partition(device, uuid=root_uuid)
+    root_partition = partition_utils.get_partition(device, uuid=root_uuid)
 
     # If the root device is an md device (or partition), restart the device
     # (to help grub finding it) and identify the underlying holder disks
@@ -608,7 +305,8 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         # Mount the partition and binds
         path = tempfile.mkdtemp()
         if efi_system_part_uuid:
-            efi_part = _get_partition(device, uuid=efi_system_part_uuid)
+            efi_part = partition_utils.get_partition(
+                device, uuid=efi_system_part_uuid)
             efi_partition = efi_part
         if hardware.is_md_device(device):
             holders = hardware.get_holder_disks(device)
@@ -621,7 +319,8 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
 
         # For power we want to install grub directly onto the PreP partition
         if prep_boot_part_uuid:
-            device = _get_partition(device, uuid=prep_boot_part_uuid)
+            device = partition_utils.get_partition(
+                device, uuid=prep_boot_part_uuid)
 
         # If the root device is an md device (or partition),
         # identify the underlying holder disks to install grub.
@@ -956,9 +655,8 @@ def _efi_boot_setup(device, efi_system_part_uuid=None, target_boot_mode=None):
         except FileNotFoundError:
             LOG.warning("efibootmgr is not available in the ramdisk")
         else:
-            if _manage_uefi(device,
-                            efi_system_part_uuid=efi_system_part_uuid):
-                return True
+            return efi_utils.manage_uefi(
+                device, efi_system_part_uuid=efi_system_part_uuid)
         return False
 
 

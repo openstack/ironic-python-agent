@@ -21,15 +21,17 @@ from unittest import mock
 from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 
+from ironic_python_agent import efi_utils
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import image
 from ironic_python_agent import hardware
+from ironic_python_agent import partition_utils
 from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-@mock.patch.object(utils, 'execute', autospec=True)
+@mock.patch.object(ilib_utils, 'execute', autospec=True)
 @mock.patch.object(tempfile, 'mkdtemp', lambda *_: '/tmp/fake-dir')
 @mock.patch.object(shutil, 'rmtree', lambda *_: None)
 class TestImageExtension(base.IronicAgentTest):
@@ -63,7 +65,7 @@ class TestImageExtension(base.IronicAgentTest):
             target_boot_mode='bios'
         )
 
-    @mock.patch.object(image, '_manage_uefi', autospec=True)
+    @mock.patch.object(efi_utils, 'manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi(self, mock_grub2, mock_uefi,
                                       mock_execute, mock_dispatch):
@@ -87,7 +89,7 @@ class TestImageExtension(base.IronicAgentTest):
             target_boot_mode='uefi'
         )
 
-    @mock.patch.object(image, '_manage_uefi', autospec=True)
+    @mock.patch.object(efi_utils, 'manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi_ignores_manage_failure(
             self, mock_grub2, mock_uefi,
@@ -114,7 +116,7 @@ class TestImageExtension(base.IronicAgentTest):
             target_boot_mode='uefi'
         )
 
-    @mock.patch.object(image, '_manage_uefi', autospec=True)
+    @mock.patch.object(efi_utils, 'manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi_ignores_grub_failure(
             self, mock_grub2, mock_uefi,
@@ -141,7 +143,7 @@ class TestImageExtension(base.IronicAgentTest):
             target_boot_mode='uefi'
         )
 
-    @mock.patch.object(image, '_manage_uefi', autospec=True)
+    @mock.patch.object(efi_utils, 'manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi_ignores_grub_failure_api_override(
             self, mock_grub2, mock_uefi,
@@ -168,7 +170,7 @@ class TestImageExtension(base.IronicAgentTest):
             target_boot_mode='uefi'
         )
 
-    @mock.patch.object(image, '_manage_uefi', autospec=True)
+    @mock.patch.object(efi_utils, 'manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_uefi_grub_failure_api_override(
             self, mock_grub2, mock_uefi,
@@ -211,8 +213,8 @@ class TestImageExtension(base.IronicAgentTest):
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=False)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_given_partition(
@@ -259,8 +261,8 @@ class TestImageExtension(base.IronicAgentTest):
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_find_partition(
@@ -306,8 +308,8 @@ class TestImageExtension(base.IronicAgentTest):
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_with_entry_removal(
@@ -363,8 +365,8 @@ Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_with_entry_removal_lenovo(
@@ -425,8 +427,8 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__add_multi_bootloaders(
@@ -518,7 +520,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2(self, mock_get_part_uuid, environ_mock,
                             mock_md_get_raid_devices, mock_is_md_device,
                             mock_append_to_fstab, mock_execute,
@@ -580,7 +582,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_prep(self, mock_get_part_uuid, environ_mock,
                                  mock_md_get_raid_devices, mock_is_md_device,
                                  mock_execute, mock_dispatch):
@@ -649,7 +651,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi(self, mock_get_part_uuid, mkdir_mock,
                                  environ_mock, mock_md_get_raid_devices,
                                  mock_is_md_device, mock_append_to_fstab,
@@ -737,7 +739,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_fstab(self, mock_get_part_uuid, mkdir_mock,
                                        environ_mock, mock_md_get_raid_devices,
                                        mock_is_md_device, mock_exists,
@@ -834,7 +836,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_no_fstab(
             self, mock_get_part_uuid,
             mkdir_mock,
@@ -948,7 +950,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_partition_image_with_loader(
             self, mock_get_part_uuid, mkdir_mock,
             environ_mock, mock_md_get_raid_devices,
@@ -1032,7 +1034,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_partition_image_with_loader_with_grubcfg(
             self, mock_get_part_uuid, mkdir_mock,
             environ_mock, mock_md_get_raid_devices,
@@ -1115,7 +1117,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_partition_image_with_preserve_failure(
             self, mock_get_part_uuid, mkdir_mock,
             environ_mock, mock_md_get_raid_devices,
@@ -1229,7 +1231,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_partition_image_with_preserve_failure2(
             self, mock_get_part_uuid, mkdir_mock,
             environ_mock, mock_md_get_raid_devices,
@@ -1351,7 +1353,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_partition_image_with_loader_grubcfg_fails(
             self, mock_get_part_uuid, mkdir_mock,
             environ_mock, mock_md_get_raid_devices,
@@ -1440,7 +1442,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_partition_image_with_no_loader(
             self, mock_get_part_uuid, mkdir_mock,
             environ_mock, mock_md_get_raid_devices,
@@ -1538,7 +1540,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_umount_fails(
             self, mock_get_part_uuid, mkdir_mock, environ_mock,
             mock_md_get_raid_devices, mock_is_md_device, mock_execute,
@@ -1598,7 +1600,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'md_get_raid_devices', autospec=True)
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_uefi_mount_fails(
             self, mock_get_part_uuid, mkdir_mock, environ_mock,
             mock_is_md_device, mock_md_get_raid_devices, mock_execute,
@@ -1637,7 +1639,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         mock_execute.assert_has_calls(expected)
 
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     def test__install_grub2_command_fail(self, mock_get_part_uuid,
                                          mock_execute,
                                          mock_dispatch):
@@ -1851,7 +1853,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                        return_value=['/dev/sda', '/dev/sdb'])
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     @mock.patch.object(image, '_prepare_boot_partitions_for_softraid',
                        autospec=True,
                        return_value='/dev/md/esp')
@@ -1969,7 +1971,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                        return_value=['/dev/sda', '/dev/sdb'])
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition', autospec=True)
     @mock.patch.object(image, '_prepare_boot_partitions_for_softraid',
                        autospec=True,
                        return_value=[])
@@ -2053,133 +2055,6 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         mock_holder.assert_called_once_with(self.fake_dev)
         mock_dracut.assert_called_once_with(self.fake_dir)
 
-    @mock.patch.object(image, '_is_bootloader_loaded', autospec=True)
-    @mock.patch.object(hardware, 'is_md_device', autospec=True)
-    def test__get_partition(self, mock_is_md_device, mock_is_bootloader,
-                            mock_execute, mock_dispatch):
-        mock_is_md_device.side_effect = [False]
-        mock_is_md_device.side_effect = [False, False]
-        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
-        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
-        KNAME="test2" UUID="%s" TYPE="part"''' % self.fake_root_uuid)
-        mock_execute.side_effect = (None, None, [lsblk_output])
-
-        root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
-        self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
-                              self.fake_dev)]
-        mock_execute.assert_has_calls(expected)
-        self.assertFalse(mock_dispatch.called)
-        self.assertFalse(mock_is_bootloader.called)
-
-    @mock.patch.object(hardware, 'is_md_device', autospec=True)
-    def test__get_partition_no_device_found(self, mock_is_md_device,
-                                            mock_execute, mock_dispatch):
-        mock_is_md_device.side_effect = [False, False]
-        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
-        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
-        KNAME="test2" UUID="" TYPE="part"''')
-        mock_execute.side_effect = (
-            None, None, [lsblk_output],
-            processutils.ProcessExecutionError('boom'),
-            processutils.ProcessExecutionError('kaboom'))
-
-        self.assertRaises(errors.DeviceNotFound,
-                          image._get_partition, self.fake_dev,
-                          self.fake_root_uuid)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
-                              self.fake_dev)]
-        mock_execute.assert_has_calls(expected)
-        self.assertFalse(mock_dispatch.called)
-
-    @mock.patch.object(hardware, 'is_md_device', autospec=True)
-    def test__get_partition_fallback_partuuid(self, mock_is_md_device,
-                                              mock_execute, mock_dispatch):
-        mock_is_md_device.side_effect = [False]
-        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
-        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
-        KNAME="test2" UUID="" TYPE="part"''')
-        findfs_output = ('/dev/loop0\n', None)
-        mock_execute.side_effect = (
-            None, None, [lsblk_output],
-            processutils.ProcessExecutionError('boom'),
-            findfs_output)
-
-        result = image._get_partition(self.fake_dev, self.fake_root_uuid)
-        self.assertEqual('/dev/loop0', result)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
-                              self.fake_dev),
-                    mock.call('findfs', 'UUID=%s' % self.fake_root_uuid),
-                    mock.call('findfs', 'PARTUUID=%s' % self.fake_root_uuid)]
-        mock_execute.assert_has_calls(expected)
-        self.assertFalse(mock_dispatch.called)
-
-    @mock.patch.object(hardware, 'is_md_device', autospec=True)
-    def test__get_partition_command_fail(self, mock_is_md_device,
-                                         mock_execute, mock_dispatch):
-        mock_is_md_device.side_effect = [False, False]
-        mock_execute.side_effect = (None, None,
-                                    processutils.ProcessExecutionError('boom'))
-        self.assertRaises(errors.CommandExecutionError,
-                          image._get_partition, self.fake_dev,
-                          self.fake_root_uuid)
-
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
-                              self.fake_dev)]
-        mock_execute.assert_has_calls(expected)
-        self.assertFalse(mock_dispatch.called)
-
-    @mock.patch.object(hardware, 'is_md_device', autospec=True)
-    def test__get_partition_partuuid(self, mock_is_md_device, mock_execute,
-                                     mock_dispatch):
-        mock_is_md_device.side_effect = [False, False]
-        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
-        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
-        KNAME="test2" UUID="903e7bf9-8a13-4f7f-811b-25dc16faf6f7" TYPE="part" \
-                      LABEL="%s"''' % self.fake_root_uuid)
-        mock_execute.side_effect = (None, None, [lsblk_output])
-
-        root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
-        self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
-                              self.fake_dev)]
-        mock_execute.assert_has_calls(expected)
-        self.assertFalse(mock_dispatch.called)
-
-    @mock.patch.object(hardware, 'is_md_device', autospec=True)
-    def test__get_partition_label(self, mock_is_md_device, mock_execute,
-                                  mock_dispatch):
-        mock_is_md_device.side_effect = [False, False]
-        lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
-        KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
-        KNAME="test2" PARTUUID="%s" TYPE="part"''' % self.fake_root_uuid)
-        mock_execute.side_effect = (None, None, [lsblk_output])
-
-        root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
-        self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
-                              self.fake_dev)]
-        mock_execute.assert_has_calls(expected)
-        self.assertFalse(mock_dispatch.called)
-
     def test__is_bootloader_loaded(self, mock_execute,
                                    mock_dispatch):
         mock_dispatch.return_value = hardware.BootInfo(
@@ -2247,302 +2122,6 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         self.assertFalse(result)
         mock_dispatch.assert_any_call('get_boot_info')
         self.assertEqual(0, mock_execute.call_count)
-
-    @mock.patch.object(image, '_get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
-    def test__manage_uefi_no_partition(self, mock_utils_efi_part,
-                                       mock_get_part_uuid,
-                                       mock_execute, mock_dispatch):
-        mock_utils_efi_part.return_value = None
-        self.assertRaises(errors.DeviceNotFound,
-                          image._manage_uefi, self.fake_dev, None)
-        self.assertFalse(mock_get_part_uuid.called)
-
-    @mock.patch.object(image, '_get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
-    def test__manage_uefi_empty_partition_by_uuid(self, mock_utils_efi_part,
-                                                  mock_get_part_uuid,
-                                                  mock_execute, mock_dispatch):
-        mock_utils_efi_part.return_value = None
-        mock_get_part_uuid.return_value = self.fake_root_part
-        result = image._manage_uefi(self.fake_dev, self.fake_root_uuid)
-        self.assertFalse(result)
-
-    @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
-    @mock.patch.object(os, 'makedirs', autospec=True)
-    def test__manage_uefi(self, mkdir_mock, mock_utils_efi_part,
-                          mock_get_part_uuid, mock_efi_bl, mock_execute,
-                          mock_dispatch):
-        mock_utils_efi_part.return_value = '1'
-        mock_get_part_uuid.return_value = self.fake_dev
-
-        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-
-        mock_execute.side_effect = iter([('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', '')])
-
-        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('mount', self.fake_efi_system_part,
-                              self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
-                    mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
-                              '-p', '1', '-w',
-                              '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
-                    mock.call('umount', self.fake_dir + '/boot/efi',
-                              attempts=3, delay_on_retry=True),
-                    mock.call('sync')]
-
-        result = image._manage_uefi(self.fake_dev, self.fake_root_uuid)
-        self.assertTrue(result)
-        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
-        mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
-        mock_execute.assert_has_calls(expected)
-        self.assertEqual(7, mock_execute.call_count)
-
-    @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
-    @mock.patch.object(os, 'makedirs', autospec=True)
-    def test__manage_uefi_found_csv(self, mkdir_mock, mock_utils_efi_part,
-                                    mock_get_part_uuid, mock_efi_bl,
-                                    mock_execute, mock_dispatch):
-        mock_utils_efi_part.return_value = '1'
-        mock_get_part_uuid.return_value = self.fake_dev
-        mock_efi_bl.return_value = ['EFI/vendor/BOOTX64.CSV']
-
-        # Format is <file>,<entry_name>,<options>,humanfriendlytextnotused
-        # https://www.rodsbooks.com/efi-bootloaders/fallback.html
-        # Mild difference, Ubuntu ships a file without a 0xFEFF delimiter
-        # at the start of the file, where as Red Hat *does*
-        csv_file_data = u'shimx64.efi,Vendor String,,Grub2MadeUSDoThis\n'
-        # This test also handles deleting a pre-existing matching vendor
-        # string in advance.
-        dupe_entry = """
-BootCurrent: 0001
-Timeout: 0 seconds
-BootOrder: 0000,00001
-Boot0000* Vendor String HD(1,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
-Boot0001 Vendor String HD(2,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
-Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
-"""  # noqa This is a giant literal string for testing.
-
-        mock_execute.side_effect = iter([('', ''), ('', ''),
-                                         ('', ''), (dupe_entry, ''),
-                                         ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', '')])
-
-        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('mount', self.fake_efi_system_part,
-                              self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
-                    mock.call('efibootmgr', '-b', '0000', '-B'),
-                    mock.call('efibootmgr', '-b', '0001', '-B'),
-                    mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
-                              '-p', '1', '-w',
-                              '-L', 'Vendor String', '-l',
-                              '\\EFI\\vendor\\shimx64.efi'),
-                    mock.call('umount', self.fake_dir + '/boot/efi',
-                              attempts=3, delay_on_retry=True),
-                    mock.call('sync')]
-        with mock.patch('builtins.open',
-                        mock.mock_open(read_data=csv_file_data)):
-            result = image._manage_uefi(self.fake_dev, self.fake_root_uuid)
-        self.assertTrue(result)
-        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
-        mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
-        mock_execute.assert_has_calls(expected)
-        self.assertEqual(9, mock_execute.call_count)
-
-    @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
-    @mock.patch.object(os, 'makedirs', autospec=True)
-    def test__manage_uefi_nvme_device(self, mkdir_mock, mock_utils_efi_part,
-                                      mock_get_part_uuid, mock_efi_bl,
-                                      mock_execute, mock_dispatch):
-        mock_utils_efi_part.return_value = '1'
-        mock_get_part_uuid.return_value = '/dev/fakenvme0p1'
-
-        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-
-        mock_execute.side_effect = iter([('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', '')])
-
-        expected = [mock.call('partx', '-a', '/dev/fakenvme0', attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('mount', '/dev/fakenvme0p1',
-                              self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
-                    mock.call('efibootmgr', '-v', '-c', '-d', '/dev/fakenvme0',
-                              '-p', '1', '-w',
-                              '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
-                    mock.call('umount', self.fake_dir + '/boot/efi',
-                              attempts=3, delay_on_retry=True),
-                    mock.call('sync')]
-
-        result = image._manage_uefi('/dev/fakenvme0', self.fake_root_uuid)
-        self.assertTrue(result)
-        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
-        mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
-        mock_execute.assert_has_calls(expected)
-        self.assertEqual(7, mock_execute.call_count)
-
-    @mock.patch.object(os.path, 'exists', lambda *_: False)
-    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
-    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
-    @mock.patch.object(os, 'makedirs', autospec=True)
-    def test__manage_uefi_wholedisk(
-            self, mkdir_mock, mock_utils_efi_part,
-            mock_get_part_uuid, mock_efi_bl, mock_execute,
-            mock_dispatch):
-        mock_utils_efi_part.return_value = '1'
-        mock_get_part_uuid.side_effect = Exception
-
-        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-
-        mock_execute.side_effect = iter([('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', '')])
-
-        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
-                              delay_on_retry=True),
-                    mock.call('udevadm', 'settle'),
-                    mock.call('mount', self.fake_efi_system_part,
-                              self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
-                    mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
-                              '-p', '1', '-w',
-                              '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
-                    mock.call('umount', self.fake_dir + '/boot/efi',
-                              attempts=3, delay_on_retry=True),
-                    mock.call('sync')]
-
-        result = image._manage_uefi(self.fake_dev, None)
-        self.assertTrue(result)
-        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
-        mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
-        mock_execute.assert_has_calls(expected)
-        self.assertEqual(7, mock_execute.call_count)
-
-    @mock.patch.object(os, 'walk', autospec=True)
-    @mock.patch.object(os, 'access', autospec=False)
-    def test__no_efi_bootloaders(self, mock_access, mock_walk, mock_execute,
-                                 mock_dispatch):
-        # No valid efi file.
-        mock_walk.return_value = [
-            ('/boot/efi', ['EFI'], []),
-            ('/boot/efi/EFI', ['centos', 'BOOT'], []),
-            ('/boot/efi/EFI/centos', ['fw', 'fonts'],
-             ['shimx64-centos.efi',
-              'MokManager.efi', 'mmx64.efi', 'shim.efi', 'fwupia32.efi',
-              'fwupx64.efi', 'shimx64.efi', 'grubenv', 'grubx64.efi',
-              'grub.cfg']),
-            ('/boot/efi/EFI/centos/fw', [], []),
-            ('/boot/efi/EFI/centos/fonts', [], ['unicode.pf2']),
-            ('/boot/efi/EFI/BOOT', [], [])
-        ]
-
-        result = image._get_efi_bootloaders("/boot/efi")
-        self.assertEqual(result, [])
-        mock_access.assert_not_called()
-
-    @mock.patch.object(os, 'walk', autospec=True)
-    @mock.patch.object(os, 'access', autospec=True)
-    def test__get_efi_bootloaders(self, mock_access, mock_walk, mock_execute,
-                                  mock_dispatch):
-        mock_walk.return_value = [
-            ('/boot/efi', ['EFI'], []),
-            ('/boot/efi/EFI', ['centos', 'BOOT'], []),
-            ('/boot/efi/EFI/centos', ['fw', 'fonts'],
-             ['shimx64-centos.efi', 'BOOTX64.CSV',
-              'MokManager.efi', 'mmx64.efi', 'shim.efi', 'fwupia32.efi',
-              'fwupx64.efi', 'shimx64.efi', 'grubenv', 'grubx64.efi',
-              'grub.cfg']),
-            ('/boot/efi/EFI/centos/fw', [], []),
-            ('/boot/efi/EFI/centos/fonts', [], ['unicode.pf2']),
-            ('/boot/efi/EFI/BOOT', [],
-             ['BOOTX64.EFI', 'fallback.efi', 'fbx64.efi'])
-        ]
-        mock_access.return_value = True
-        result = image._get_efi_bootloaders("/boot/efi")
-        self.assertEqual(result[0], 'EFI/centos/BOOTX64.CSV')
-
-    @mock.patch.object(os, 'walk', autospec=True)
-    @mock.patch.object(os, 'access', autospec=True)
-    def test__get_efi_bootloaders_no_csv(
-            self, mock_access, mock_walk, mock_execute, mock_dispatch):
-        mock_walk.return_value = [
-            ('/boot/efi', ['EFI'], []),
-            ('/boot/efi/EFI', ['centos', 'BOOT'], []),
-            ('/boot/efi/EFI/centos', ['fw', 'fonts'],
-             ['shimx64-centos.efi',
-              'MokManager.efi', 'mmx64.efi', 'shim.efi', 'fwupia32.efi',
-              'fwupx64.efi', 'shimx64.efi', 'grubenv', 'grubx64.efi',
-              'grub.cfg']),
-            ('/boot/efi/EFI/centos/fw', [], []),
-            ('/boot/efi/EFI/centos/fonts', [], ['unicode.pf2']),
-            ('/boot/efi/EFI/BOOT', [],
-             ['BOOTX64.EFI', 'fallback.efi', 'fbx64.efi'])
-        ]
-        mock_access.return_value = True
-        result = image._get_efi_bootloaders("/boot/efi")
-        self.assertEqual(result[0], 'EFI/BOOT/BOOTX64.EFI')
-
-    @mock.patch.object(os, 'walk', autospec=True)
-    @mock.patch.object(os, 'access', autospec=True)
-    def test__get_windows_efi_bootloaders(self, mock_access, mock_walk,
-                                          mock_execute, mock_dispatch):
-        mock_walk.return_value = [
-            ('/boot/efi', ['WINDOWS'], []),
-            ('/boot/efi/WINDOWS', ['system32'], []),
-            ('/boot/efi/WINDOWS/system32', [],
-             ['winload.efi'])
-        ]
-        mock_access.return_value = True
-        result = image._get_efi_bootloaders("/boot/efi")
-        self.assertEqual(result[0], 'WINDOWS/system32/winload.efi')
-
-    def test__run_efibootmgr_no_bootloaders(self, mock_execute, mock_dispatch):
-        result = image._run_efibootmgr([], self.fake_dev,
-                                       self.fake_efi_system_part,
-                                       self.fake_dir)
-        expected = []
-        self.assertIsNone(result)
-        mock_execute.assert_has_calls(expected)
-
-    def test__run_efibootmgr(self, mock_execute, mock_dispatch):
-        mock_execute.return_value = ('', '')
-        result = image._run_efibootmgr(['EFI/BOOT/BOOTX64.EFI'],
-                                       self.fake_dev,
-                                       self.fake_efi_system_part,
-                                       self.fake_dir)
-        expected = [mock.call('efibootmgr', '-v'),
-                    mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
-                              '-p', self.fake_efi_system_part, '-w',
-                              '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI')]
-        self.assertIsNone(result)
-        mock_execute.assert_has_calls(expected)
 
     @mock.patch.object(os.path, 'exists', lambda *_: True)
     def test__append_uefi_to_fstab_handles_error(self, mock_execute,
