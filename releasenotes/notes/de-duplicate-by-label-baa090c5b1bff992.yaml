@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes cases where duplicates may not be found in the UEFI
+    firmware NVRAM boot entry table by explicitly looking for, and deleting
+    for matching labels in advance of creating the EFI boot loader entry.
