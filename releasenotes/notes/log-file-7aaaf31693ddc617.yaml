@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The configured log file and/or log directory is now always explicitly
+    included in the ramdisk logs.

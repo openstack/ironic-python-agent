@@ -291,7 +291,7 @@ class TestFailures(testtools.TestCase):
         self.assertRaisesRegex(FakeException, 'foo', f.raise_if_needed)
 
 
-class TestUtils(testtools.TestCase):
+class TestUtils(ironic_agent_base.IronicAgentTest):
 
     def _get_journalctl_output(self, mock_execute, lines=None, units=None):
         contents = b'Krusty Krab'
@@ -449,6 +449,33 @@ class TestUtils(testtools.TestCase):
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
     @mock.patch.object(utils, 'get_command_output', autospec=True)
+    @mock.patch.object(utils, 'get_journalctl_output', autospec=True)
+    def test_collect_system_logs_journald_with_logfile(
+            self, mock_logs, mock_outputs, mock_journalctl, mock_gzip_b64):
+        tmp = tempfile.NamedTemporaryFile()
+        self.addCleanup(lambda: tmp.close())
+
+        self.config(log_file=tmp.name)
+        mock_journalctl.return_value = True
+        ret = 'Patrick Star'
+        mock_gzip_b64.return_value = ret
+
+        logs_string = utils.collect_system_logs()
+        self.assertEqual(ret, logs_string)
+        mock_logs.assert_called_once_with(lines=None)
+        calls = [mock.call(['ps', 'au']), mock.call(['df', '-a']),
+                 mock.call(['iptables', '-L']), mock.call(['ip', 'addr']),
+                 mock.call(['lshw', '-quiet', '-json'])]
+        mock_outputs.assert_has_calls(calls, any_order=True)
+        mock_gzip_b64.assert_called_once_with(
+            file_list=[tmp.name],
+            io_dict={'journal': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
+                     'df': mock.ANY, 'iptables': mock.ANY, 'lshw': mock.ANY,
+                     'lsblk': mock.ANY, 'mdstat': mock.ANY})
+
+    @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
+    @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
+    @mock.patch.object(utils, 'get_command_output', autospec=True)
     def test_collect_system_logs_non_journald(
             self, mock_outputs, mock_journalctl, mock_gzip_b64):
         mock_journalctl.return_value = False
@@ -464,6 +491,32 @@ class TestUtils(testtools.TestCase):
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
             file_list=['/var/log'],
+            io_dict={'iptables': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
+                     'dmesg': mock.ANY, 'df': mock.ANY, 'lshw': mock.ANY,
+                     'lsblk': mock.ANY, 'mdstat': mock.ANY})
+
+    @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
+    @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
+    @mock.patch.object(utils, 'get_command_output', autospec=True)
+    def test_collect_system_logs_non_journald_with_logfile(
+            self, mock_outputs, mock_journalctl, mock_gzip_b64):
+        tmp = tempfile.NamedTemporaryFile()
+        self.addCleanup(lambda: tmp.close())
+
+        self.config(log_file=tmp.name)
+        mock_journalctl.return_value = False
+        ret = 'SpongeBob SquarePants'
+        mock_gzip_b64.return_value = ret
+
+        logs_string = utils.collect_system_logs()
+        self.assertEqual(ret, logs_string)
+        calls = [mock.call(['dmesg']), mock.call(['ps', 'au']),
+                 mock.call(['df', '-a']), mock.call(['iptables', '-L']),
+                 mock.call(['ip', 'addr']),
+                 mock.call(['lshw', '-quiet', '-json'])]
+        mock_outputs.assert_has_calls(calls, any_order=True)
+        mock_gzip_b64.assert_called_once_with(
+            file_list=['/var/log', tmp.name],
             io_dict={'iptables': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
                      'dmesg': mock.ANY, 'df': mock.ANY, 'lshw': mock.ANY,
                      'lsblk': mock.ANY, 'mdstat': mock.ANY})
