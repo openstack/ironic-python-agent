@@ -268,12 +268,10 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
 
     # Before updating let's get information about the bootorder
     LOG.debug("Getting information about boot order.")
-    utils.execute('efibootmgr', '-v')
-    # NOTE(iurygregory): regex used to identify the Warning in the stderr after
-    # we add the new entry. Example:
-    # "efibootmgr: ** Warning ** : Boot0004 has same label ironic"
-    duplicated_label = re.compile(r'^.*:\s\*\*.*\*\*\s:\s.*'
-                                  r'Boot([0-9a-f-A-F]+)\s.*$')
+    original_efi_output = utils.execute('efibootmgr', '-v')
+    # NOTE(TheJulia): regex used to identify entries in the efibootmgr
+    # output on stdout.
+    entry_label = re.compile(r'Boot([0-9a-f-A-F]+):\s(.*).*$')
     label_id = 1
     for v_bl in valid_efi_bootloaders:
         if 'csv' in v_bl.lower():
@@ -295,20 +293,26 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
             v_efi_bl_path = '\\' + v_bl.replace('/', '\\')
             label = 'ironic' + str(label_id)
 
+        # Iterate through standard out, and look for duplicates
+        for line in original_efi_output[0].split('\n'):
+            match = entry_label.match(line)
+            # Look for the base label in the string if a line match
+            # occurs, so we can identify if we need to eliminate the
+            # entry.
+            if match and label in match.group(2):
+                boot_num = match.group(1)
+                LOG.debug("Found bootnum %s matching label", boot_num)
+                utils.execute('efibootmgr', '-b', boot_num, '-B')
+
         LOG.debug("Adding loader %(path)s on partition %(part)s of device "
                   " %(dev)s", {'path': v_efi_bl_path, 'part': efi_partition,
                                'dev': device})
         # Update the nvram using efibootmgr
         # https://linux.die.net/man/8/efibootmgr
-        cmd = utils.execute('efibootmgr', '-v', '-c', '-d', device,
-                            '-p', efi_partition, '-w', '-L', label,
-                            '-l', v_efi_bl_path)
-        for line in cmd[1].split('\n'):
-            match = duplicated_label.match(line)
-            if match:
-                boot_num = match.group(1)
-                LOG.debug("Found bootnum %s matching label", boot_num)
-                utils.execute('efibootmgr', '-b', boot_num, '-B')
+        utils.execute('efibootmgr', '-v', '-c', '-d', device,
+                      '-p', efi_partition, '-w', '-L', label,
+                      '-l', v_efi_bl_path)
+        # Increment the ID in case the loop runs again.
         label_id += 1
 
 
