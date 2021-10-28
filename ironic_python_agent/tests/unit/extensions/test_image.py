@@ -344,13 +344,17 @@ class TestImageExtension(base.IronicAgentTest):
         mock_partition.return_value = self.fake_dev
         mock_utils_efi_part.return_value = '1'
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-        stdeer_msg = """
-efibootmgr: ** Warning ** : Boot0004 has same label ironic1\n
-efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
-"""
+        stdout_msg = """
+BootCurrent: 0001
+Timeout: 0 seconds
+BootOrder: 0000,00001
+Boot0000: ironic1   HD(1, GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
+Boot0001: ironic2   HD(1, GPT,4f3c6294-bf9b-4208-9808-111111111112)File(\EFI\Boot\BOOTX64.EFI)
+Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
+"""  # noqa This is a giant literal string for testing.
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
-                                         ('', ''), ('', stdeer_msg),
+                                         (stdout_msg, ''), ('', ''),
                                          ('', ''), ('', ''),
                                          ('', ''), ('', '')])
 
@@ -361,12 +365,11 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
                     mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-b', '0000', '-B'),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'ironic1', '-l',
                               '\\EFI\\BOOT\\BOOTX64.EFI'),
-                    mock.call('efibootmgr', '-b', '0004', '-B'),
-                    mock.call('efibootmgr', '-b', '0005', '-B'),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -381,7 +384,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
         mock_execute.assert_has_calls(expected)
         mock_utils_efi_part.assert_called_once_with(self.fake_dev)
-        self.assertEqual(10, mock_execute.call_count)
+        self.assertEqual(9, mock_execute.call_count)
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
@@ -2150,8 +2153,19 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         # Mild difference, Ubuntu ships a file without a 0xFEFF delimiter
         # at the start of the file, where as Red Hat *does*
         csv_file_data = u'shimx64.efi,Vendor String,,Grub2MadeUSDoThis\n'
+        # This test also handles deleting a pre-existing matching vendor
+        # string in advance.
+        dupe_entry = """
+BootCurrent: 0001
+Timeout: 0 seconds
+BootOrder: 0000,00001
+Boot0000: Vendor String   HD(1, GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
+Boot0001: Vendor String   HD(2, GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
+Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
+"""  # noqa This is a giant literal string for testing.
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
+                                         ('', ''), (dupe_entry, ''),
                                          ('', ''), ('', ''),
                                          ('', ''), ('', ''),
                                          ('', '')])
@@ -2162,6 +2176,8 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
                     mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-b', '0000', '-B'),
+                    mock.call('efibootmgr', '-b', '0001', '-B'),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'Vendor String', '-l',
@@ -2176,7 +2192,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
         mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
         mock_execute.assert_has_calls(expected)
-        self.assertEqual(7, mock_execute.call_count)
+        self.assertEqual(9, mock_execute.call_count)
 
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
@@ -2344,6 +2360,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         mock_execute.assert_has_calls(expected)
 
     def test__run_efibootmgr(self, mock_execute, mock_dispatch):
+        mock_execute.return_value = ('', '')
         result = image._run_efibootmgr(['EFI/BOOT/BOOTX64.EFI'],
                                        self.fake_dev,
                                        self.fake_efi_system_part,
