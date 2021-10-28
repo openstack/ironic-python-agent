@@ -550,11 +550,19 @@ def collect_system_logs(journald_max_lines=None):
 
     io_dict = {}
     file_list = []
+    log_locations = [CONF.log_file, CONF.log_dir]
     if is_journalctl_present():
         io_dict['journal'] = get_journalctl_output(lines=journald_max_lines)
+        for log_loc in log_locations:
+            if log_loc and os.path.exists(log_loc):
+                file_list.append(log_loc)
     else:
         try_get_command_output(io_dict, 'dmesg', ['dmesg'])
         file_list.append('/var/log')
+        for log_loc in log_locations:
+            if (log_loc and os.path.exists(log_loc)
+                    and not log_loc.startswith('/var/log')):
+                file_list.append(log_loc)
 
     for name, cmd in COLLECT_LOGS_COMMANDS.items():
         try_get_command_output(io_dict, name, cmd)
