@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes a minor issue with the regular expression used for UEFI duplicate
+    entry cleanup which was introduced in a prior change to refactor the
+    cleanup operation to avoid UEFI firmware which treats deletion of
+    entries after addition as an invalid operation.
