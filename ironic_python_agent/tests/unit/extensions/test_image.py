@@ -323,9 +323,9 @@ class TestImageExtension(base.IronicAgentTest):
 BootCurrent: 0001
 Timeout: 0 seconds
 BootOrder: 0000,00001
-Boot0000: ironic1   HD(1, GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
-Boot0001: ironic2   HD(1, GPT,4f3c6294-bf9b-4208-9808-111111111112)File(\EFI\Boot\BOOTX64.EFI)
-Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
+Boot0000 ironic1 HD(1,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
+Boot0001 ironic2 HD(1,GPT,4f3c6294-bf9b-4208-9808-111111111112)File(\EFI\Boot\BOOTX64.EFI)
+Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
 """  # noqa This is a giant literal string for testing.
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
@@ -360,6 +360,68 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
         mock_execute.assert_has_calls(expected)
         mock_utils_efi_part.assert_called_once_with(self.fake_dev)
         self.assertEqual(9, mock_execute.call_count)
+
+    @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
+    @mock.patch.object(os.path, 'exists', lambda *_: False)
+    @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    def test__uefi_bootloader_with_entry_removal_lenovo(
+            self, mkdir_mock, mock_utils_efi_part, mock_partition,
+            mock_efi_bl, mock_execute, mock_dispatch):
+        mock_dispatch.side_effect = [
+            self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
+        ]
+        mock_partition.return_value = self.fake_dev
+        mock_utils_efi_part.return_value = '1'
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
+        # NOTE(TheJulia): This test string was derived from a lenovo SR650
+        # which does do some weird things with additional entries.
+        # most notabley
+        stdout_msg = """
+BootCurrent: 0000
+Timeout: 1 seconds
+BootOrder: 0000,0003,0002,0001
+Boot0000* ironic1       HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x64000)/File(\EFI\boot\shimx64.efi)
+Boot0001* CD/DVD Rom    VenHw(1fad3248-0000-7950-2166-a1e506fdb83a,02000000)..GO
+Boot0002* Hard Disk     VenHw(1fad3248-0000-7950-2166-a1e506fdb83a,01000000)..GO..NO..........V.U.E.F.I.:. . . .S.C.S.I. .H.a.r.d. .D.r.i.v.e........A....................................*..............@.........U..[J.Uy...H.......BO
+Boot0003* Network       VenHw(1fad3248-0000-7950-2166-a1e506fdb83a,05000000)..GO..NO............U.E.F.I.:. . . .S.L.O.T.2. .(.2.F./.0./.0.). .P.X.E. .I.P.4. . .Q.L.o.g.i.c. .Q.L.4.1.2.6.2. .P.C.I.e. .2.5.G.b. .2.-.P.o.r.t. .S.F.P.2.8. .E.t.h.e.r.n.e.t. .A.d.a.p.t.e.r. .-. .P.X.E........A....................%.4..Z...............................................................Gd-.;.A..MQ..L.P.X.E. .I.P.4. .Q.L.o.g.i.c. .Q.L.4.1.2.6.2. .P.C.I.e. .2.5.G.b. .2.-.P.o.r.t. .S.F.P.2.8. .E.t.h.e.r.n.e.t. .A.d.a.p.t.e.r. .-. .P.X.E.......BO..NO............U.E.F.I.:. . . .S.L.O.T.1. .(.3.0./.0./.0.). .P.X.E. .I.P.4. . .Q.L.o.g.i.c. .Q.L.4.1.2.6.2. .P.C.I.e. .2.5.G.b. .2.-.P.o.r.t. .S.F.P.2.8. .E.t.h.e.r.n.e.t. .A.d.a.p.t.e.r. .-.
+Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x64000)/File(\EFI\boot\shimx64.efi)
+"""  # noqa This is a giant literal string for testing.
+        mock_execute.side_effect = iter([('', ''), ('', ''),
+                                         ('', ''), ('', ''),
+                                         (stdout_msg, ''), ('', ''),
+                                         ('', ''), ('', ''),
+                                         ('', ''), ('', '')])
+        expected = [mock.call('efibootmgr', '--version'),
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('mount', self.fake_efi_system_part,
+                              self.fake_dir + '/boot/efi'),
+                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-b', '0000', '-B'),
+                    mock.call('efibootmgr', '-b', '0004', '-B'),
+                    mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
+                              '-p', '1', '-w',
+                              '-L', 'ironic1', '-l',
+                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                    mock.call('umount', self.fake_dir + '/boot/efi',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('sync')]
+
+        self.agent_extension.install_bootloader(
+            root_uuid=self.fake_root_uuid,
+            efi_system_part_uuid=None).join()
+
+        mock_dispatch.assert_any_call('get_os_install_device')
+        mock_dispatch.assert_any_call('get_boot_info')
+        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_execute.assert_has_calls(expected)
+        mock_utils_efi_part.assert_called_once_with(self.fake_dev)
+        self.assertEqual(10, mock_execute.call_count)
 
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
@@ -2268,8 +2330,8 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
 BootCurrent: 0001
 Timeout: 0 seconds
 BootOrder: 0000,00001
-Boot0000: Vendor String   HD(1, GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
-Boot0001: Vendor String   HD(2, GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
+Boot0000* Vendor String HD(1,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
+Boot0001 Vendor String HD(2,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
 Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
 """  # noqa This is a giant literal string for testing.
 
