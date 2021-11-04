@@ -273,7 +273,7 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
     original_efi_output = utils.execute('efibootmgr', '-v')
     # NOTE(TheJulia): regex used to identify entries in the efibootmgr
     # output on stdout.
-    entry_label = re.compile(r'Boot([0-9a-f-A-F]+):\s(.*).*$')
+    entry_label = re.compile(r'Boot([0-9a-f-A-F]+)\*?\s(.*).*$')
     label_id = 1
     for v_bl in valid_efi_bootloaders:
         if 'csv' in v_bl.lower():
