@@ -920,3 +920,21 @@ class StreamingClient:
         except requests.RequestException as exc:
             raise errors.CommandExecutionError(
                 "Unable to read data from %s: %s" % (url, exc))
+
+
+def rescan_device(device):
+    """Force the device to be rescanned
+
+    :param device: device upon which to rescan and update
+                   kernel partition records.
+    """
+    try:
+        execute('partx', '-a', device, attempts=3, delay_on_retry=True)
+    except processutils.ProcessExecutionError:
+        LOG.warning("Couldn't re-read the partition table "
+                    "on device %s", device)
+    try:
+        execute('udevadm', 'settle')
+    except processutils.ProcessExecutionError as e:
+        LOG.warning('Something went wrong when waiting for udev '
+                    'to settle. Error: %s', e)

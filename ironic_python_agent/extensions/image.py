@@ -55,28 +55,13 @@ BOOTLOADERS_EFI = [
 ]
 
 
-def _rescan_device(device):
-    """Force the device to be rescanned
-
-    :param device: device upon which to rescan and update
-                   kernel partition records.
-    """
-    try:
-        utils.execute('partx', '-a', device, attempts=3,
-                      delay_on_retry=True)
-        utils.execute('udevadm', 'settle')
-    except processutils.ProcessExecutionError:
-        LOG.warning("Couldn't re-read the partition table "
-                    "on device %s", device)
-
-
 def _get_partition(device, uuid):
     """Find the partition of a given device."""
     LOG.debug("Find the partition %(uuid)s on device %(dev)s",
               {'dev': device, 'uuid': uuid})
 
     try:
-        _rescan_device(device)
+        utils.rescan_device(device)
         lsblk = utils.execute(
             'lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL', device)
         report = lsblk[0]
@@ -337,7 +322,7 @@ def _manage_uefi(device, efi_system_part_uuid=None):
     LOG.debug('Attempting UEFI loader autodetection and NVRAM record setup.')
     try:
         # Force UEFI to rescan the device.
-        _rescan_device(device)
+        utils.rescan_device(device)
 
         local_path = tempfile.mkdtemp()
         # Trust the contents on the disk in the event of a whole disk image.
@@ -609,7 +594,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
         hardware.md_restart(device)
         # If an md device, we need to rescan the devices anyway to pickup
         # the md device partition.
-        _rescan_device(device)
+        utils.rescan_device(device)
     elif (_is_bootloader_loaded(device)
           and not (efi_system_part_uuid
                    or prep_boot_part_uuid)):

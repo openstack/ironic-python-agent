@@ -2152,26 +2152,12 @@ class GenericHardwareManager(HardwareManager):
                     utils.execute('parted', device, '-s', '-a',
                                   'optimal', '--', 'mkpart', 'primary',
                                   start_str, end_str)
-
-                    # Parted/udev partition creation is asynchronous.
-                    # Wait for udev events to be processed before going to
-                    # next step. This avoids getting errors at mdadm
-                    # create because a device is not ready yet.
-                    _udev_settle()
-
-                    # Necessary, if we want to avoid hitting
-                    # an error when creating the mdadm array below
-                    # 'mdadm: cannot open /dev/nvme1n1p1: No such file
-                    # or directory'.
-                    # The real difference between partx and partprobe is
-                    # unclear, but note that partprobe does not seem to
-                    # work synchronously for nvme drives...
-                    utils.execute("partx", "-a", device,
-                                  check_exit_code=False)
                 except processutils.ProcessExecutionError as e:
                     msg = "Failed to create partitions on {}: {}".format(
                         device, e)
                     raise errors.SoftwareRAIDError(msg)
+
+                utils.rescan_device(device)
 
                 parted_start_dict[device] = end
 

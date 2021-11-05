@@ -2544,10 +2544,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ('42', None),  # sgdisk -F sda
             None,  # mklabel sda
             ('42', None),  # sgdisk -F sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
             None, None  # mdadms
         ]
 
@@ -2567,22 +2567,31 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('sgdisk', '-F', '/dev/sdb'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '1', '--raid-devices', 2,
                       '/dev/sda1', '/dev/sdb1'),
             mock.call('mdadm', '--create', '/dev/md1', '--force', '--run',
                       '--metadata=1', '--level', '0', '--raid-devices', 2,
                       '/dev/sda2', '/dev/sdb2')])
+
         self.assertEqual(raid_config, result)
 
         self.assertEqual(2, mock_list_parts.call_count)
@@ -2628,12 +2637,12 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ('42', None),  # sgdisk -F sdb
             None,  # mklabel sdc
             ('42', None),  # sgdisk -F sdc
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sdc
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sdc
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sdc
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sdc
             None, None  # mdadms
         ]
 
@@ -2645,33 +2654,42 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         result = self.hardware.create_configuration(node, [])
 
         mocked_execute.assert_has_calls([
-            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel',
-                      'msdos'),
+            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
             mock.call('sgdisk', '-F', '/dev/sda'),
-            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel',
-                      'msdos'),
+            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
-            mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel',
-                      'msdos'),
+            mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel', 'msdos'),
             mock.call('sgdisk', '-F', '/dev/sdc'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdc', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdc', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdc', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdc', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '1', '--raid-devices', 3,
                       '/dev/sda1', '/dev/sdb1', '/dev/sdc1'),
@@ -2721,14 +2739,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ('42', None),  # sgdisk -F sdc
             None,  # mklabel sdd
             ('42', None),  # sgdisk -F sdd
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sdc
-            None, None,  # parted + partx sdd
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sdc
-            None, None,  # parted + partx sdd
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sdc
+            None, None, None,  # parted + partx + udevadm_settle sdd
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sdc
+            None, None, None,  # parted + partx + udevadm_settle sdd
             None, None  # mdadms
         ]
 
@@ -2740,42 +2758,54 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         result = self.hardware.create_configuration(node, [])
 
         mocked_execute.assert_has_calls([
-            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel',
-                      'msdos'),
+            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
             mock.call('sgdisk', '-F', '/dev/sda'),
-            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel',
-                      'msdos'),
+            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
-            mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel',
-                      'msdos'),
+            mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel', 'msdos'),
             mock.call('sgdisk', '-F', '/dev/sdc'),
-            mock.call('parted', '/dev/sdd', '-s', '--', 'mklabel',
-                      'msdos'),
+            mock.call('parted', '/dev/sdd', '-s', '--', 'mklabel', 'msdos'),
             mock.call('sgdisk', '-F', '/dev/sdd'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdc', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdc', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdd', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdd', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdd', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdc', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdc', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdd', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdd', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdd', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '1', '--raid-devices', 4,
                       '/dev/sda1', '/dev/sdb1', '/dev/sdc1', '/dev/sdd1'),
@@ -2818,10 +2848,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = [
             None,  # mklabel sda
             None,  # mklabel sda
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
             None, None  # mdadms
         ]
 
@@ -2839,16 +2869,24 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'gpt'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '551MiB', '10GiB'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '551MiB', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '1', '--raid-devices', 2,
                       '/dev/sda1', '/dev/sdb1'),
@@ -2897,10 +2935,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = [
             None,  # mklabel sda
             None,  # mklabel sda
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
             None, None  # mdadms
         ]
 
@@ -2918,16 +2956,24 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'gpt'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '8MiB', '10GiB'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '8MiB', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '1', '--raid-devices', 2,
                       '/dev/sda1', '/dev/sdb1'),
@@ -2976,11 +3022,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ('42', None),  # sgdisk -F sda
             None,  # mklabel sda
             ('42', None),  # sgdisk -F sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,   # mdadms
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None   # mdadms
         ]
 
         result = self.hardware.create_configuration(node, [])
@@ -2992,16 +3038,24 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('sgdisk', '-F', '/dev/sdb'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '30GiB'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '30GiB'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '1', '--raid-devices', 2,
                       '/dev/sda1', '/dev/sdb1'),
@@ -3047,10 +3101,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ('42', None),  # sgdisk -F sda
             None,  # mklabel sda
             ('42', None),  # sgdisk -F sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
             None, None  # mdadms
         ]
 
@@ -3068,16 +3122,24 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('sgdisk', '-F', '/dev/sdb'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '20GiB'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '20GiB'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '20GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '20GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '0', '--raid-devices', 2,
                       '/dev/sda1', '/dev/sdb1'),
@@ -3132,10 +3194,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ('42', None),  # sgdisk -F sda
             None,  # mklabel sda
             ('42', None),  # sgdisk -F sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
             None, None  # mdadms
         ]
 
@@ -3147,24 +3209,30 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         result = self.hardware.create_configuration(node, [])
 
         mocked_execute.assert_has_calls([
-            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel',
-                      'msdos'),
+            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
             mock.call('sgdisk', '-F', '/dev/sda'),
-            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel',
-                      'msdos'),
+            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sda', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/sdb', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '1', '--raid-devices', 2,
                       '/dev/sda1', '/dev/sdb1'),
@@ -3349,15 +3417,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                self.hardware.create_configuration,
                                self.node, [])
         # raid device creation
-        error_regex = ("Failed to create md device /dev/md0 "
-                       "on /dev/sda1 /dev/sdb1")
+        error_regex = "Failed to create partitions on /dev/sda"
         mocked_execute.side_effect = [
             None,  # partition tables on sda
             ('42', None),  # sgdisk -F sda
             None,  # partition tables on sdb
             ('42', None),  # sgdisk -F sdb
-            None, None, None, None,  # RAID-1 partitions on sd{a,b} + partx
-            None, None, None, None,  # RAID-N partitions on sd{a,b} + partx
+            None, None, None,  # RAID-1 partitions on sd{a,b}
+            None, None, None,  # RAID-N partitions on sd{a,b}
             processutils.ProcessExecutionError]
         self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
                                self.hardware.create_configuration,
@@ -3474,10 +3541,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = [
             None,  # mklabel sda
             None,  # mklabel sda
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
-            None, None,  # parted + partx sda
-            None, None,  # parted + partx sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
             None, None  # mdadms
         ]
 
@@ -3495,16 +3562,24 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                       'gpt'),
             mock.call('parted', '/dev/nvme0n1', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '551MiB', '10GiB'),
-            mock.call('partx', '-a', '/dev/nvme0n1', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/nvme0n1', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/nvme1n1', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '551MiB', '10GiB'),
-            mock.call('partx', '-a', '/dev/nvme1n1', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/nvme1n1', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/nvme0n1', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/nvme0n1', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/nvme0n1', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('parted', '/dev/nvme1n1', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '10GiB', '-1'),
-            mock.call('partx', '-a', '/dev/nvme1n1', check_exit_code=False),
+            mock.call('partx', '-a', '/dev/nvme1n1', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
                       '--metadata=1', '--level', '1', '--raid-devices', 2,
                       '/dev/nvme0n1p1', '/dev/nvme1n1p1'),
@@ -3569,13 +3644,12 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                self.hardware.create_configuration,
                                self.node, [])
         # raid device creation
-        error_regex = ("Failed to create md device /dev/md0 "
-                       "on /dev/nvme0n1p1 /dev/nvme1n1p1")
+        error_regex = "Failed to create partitions on /dev/nvme0n1"
         mocked_execute.side_effect = [
             None,  # partition tables on sda
             None,  # partition tables on sdb
-            None, None, None, None,  # RAID-1 partitions on sd{a,b} + partx
-            None, None, None, None,  # RAID-N partitions on sd{a,b} + partx
+            None, None, None,  # RAID-1 partitions on sd{a,b}
+            None, None, None,  # RAID-N partitions on sd{a,b}
             processutils.ProcessExecutionError]
         self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
                                self.hardware.create_configuration,
