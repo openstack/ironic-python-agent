@@ -239,7 +239,7 @@ class TestImageExtension(base.IronicAgentTest):
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-u', '/dev/fake', attempts=3,
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -287,7 +287,7 @@ class TestImageExtension(base.IronicAgentTest):
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-u', '/dev/fake', attempts=3,
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -344,7 +344,7 @@ Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-u', '/dev/fake', attempts=3,
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -406,7 +406,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                          ('', ''), ('', ''),
                                          ('', ''), ('', '')])
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-u', '/dev/fake', attempts=3,
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -459,7 +459,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                          ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-u', '/dev/fake', attempts=3,
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -1969,7 +1969,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
         root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
@@ -1993,7 +1993,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         self.assertRaises(errors.DeviceNotFound,
                           image._get_partition, self.fake_dev,
                           self.fake_root_uuid)
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
@@ -2016,7 +2016,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
         result = image._get_partition(self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/loop0', result)
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
@@ -2036,7 +2036,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                           image._get_partition, self.fake_dev,
                           self.fake_root_uuid)
 
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
@@ -2055,7 +2055,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
         root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE',
@@ -2159,7 +2159,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                          ('', ''), ('', ''),
                                          ('', '')])
 
-        expected = [mock.call('partx', '-u', '/dev/fake', attempts=3,
+        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -2214,7 +2214,7 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
                                          ('', ''), ('', ''),
                                          ('', '')])
 
-        expected = [mock.call('partx', '-u', '/dev/fake', attempts=3,
+        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -2256,7 +2256,7 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
                                          ('', ''), ('', ''),
                                          ('', '')])
 
-        expected = [mock.call('partx', '-u', '/dev/fakenvme0', attempts=3,
+        expected = [mock.call('partx', '-a', '/dev/fakenvme0', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', '/dev/fakenvme0p1',
@@ -2296,7 +2296,7 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
                                          ('', ''), ('', ''),
                                          ('', '')])
 
-        expected = [mock.call('partx', '-u', '/dev/fake', attempts=3,
+        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
