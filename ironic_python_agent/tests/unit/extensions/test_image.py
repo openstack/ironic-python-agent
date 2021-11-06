@@ -254,7 +254,7 @@ class TestImageExtension(base.IronicAgentTest):
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-u', '/dev/fake', attempts=3,
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -302,7 +302,7 @@ class TestImageExtension(base.IronicAgentTest):
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-u', '/dev/fake', attempts=3,
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -355,7 +355,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-u', '/dev/fake', attempts=3,
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -408,7 +408,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                          ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-u', '/dev/fake', attempts=3,
+                    mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -1917,7 +1917,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
         root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -1941,7 +1941,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
         self.assertRaises(errors.DeviceNotFound,
                           image._get_partition, self.fake_dev,
                           self.fake_root_uuid)
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -1964,7 +1964,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
         result = image._get_partition(self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/loop0', result)
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -1984,7 +1984,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                           image._get_partition, self.fake_dev,
                           self.fake_root_uuid)
 
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -2004,7 +2004,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
         root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -2023,7 +2023,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
 
         root_part = image._get_partition(self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-u', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -2137,7 +2137,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                          ('', ''), ('', ''),
                                          ('', '')])
 
-        expected = [mock.call('partx', '-u', '/dev/fake', attempts=3,
+        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -2181,7 +2181,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                          ('', ''), ('', ''),
                                          ('', '')])
 
-        expected = [mock.call('partx', '-u', '/dev/fake', attempts=3,
+        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -2221,7 +2221,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                          ('', ''), ('', ''),
                                          ('', '')])
 
-        expected = [mock.call('partx', '-u', '/dev/fakenvme0', attempts=3,
+        expected = [mock.call('partx', '-a', '/dev/fakenvme0', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', '/dev/fakenvme0p1',
@@ -2261,7 +2261,7 @@ efibootmgr: ** Warning ** : Boot0005 has same label ironic1\n
                                          ('', ''), ('', ''),
                                          ('', '')])
 
-        expected = [mock.call('partx', '-u', '/dev/fake', attempts=3,
+        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
