@@ -62,7 +62,7 @@ def _rescan_device(device):
                    kernel partition records.
     """
     try:
-        utils.execute('partx', '-u', device, attempts=3,
+        utils.execute('partx', '-a', device, attempts=3,
                       delay_on_retry=True)
         utils.execute('udevadm', 'settle')
     except processutils.ProcessExecutionError:
