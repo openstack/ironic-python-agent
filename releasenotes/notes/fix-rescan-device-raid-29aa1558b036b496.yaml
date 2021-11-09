@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes an issue where partitions are not visible due to an
+    incorrect call to have the partition table re-read during raid
+    configuration creation.
+
