@@ -2043,7 +2043,7 @@ class GenericHardwareManager(HardwareManager):
                     # The real difference between partx and partprobe is
                     # unclear, but note that partprobe does not seem to
                     # work synchronously for nvme drives...
-                    utils.execute("partx", "-u", device,
+                    utils.execute("partx", "-a", device,
                                   check_exit_code=False)
                 except processutils.ProcessExecutionError as e:
                     msg = "Failed to create partitions on {}: {}".format(
