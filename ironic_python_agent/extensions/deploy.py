@@ -10,6 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ironic_lib import exception as il_exc
 from oslo_log import log
 
 from ironic_python_agent import errors
@@ -75,9 +76,14 @@ class DeployExtension(base.BaseAgentExtension):
         try:
             result = hardware.dispatch_to_managers(step['step'], node, ports,
                                                    **kwargs)
+        except (errors.RESTError, il_exc.IronicException):
+            LOG.exception('Error performing deploy step %s', step['step'])
+            raise
         except Exception as e:
-            msg = ('Error performing deploy step %(step)s: %(err)s' %
-                   {'step': step['step'], 'err': e})
+            msg = ('Unexpected exception performing deploy step %(step)s. '
+                   '%(cls)s: %(err)s' % {'step': step['step'],
+                                         'cls': e.__class__.__name__,
+                                         'err': e})
             LOG.exception(msg)
             raise errors.DeploymentError(msg)
 
