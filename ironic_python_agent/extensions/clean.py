@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ironic_lib import exception as il_exc
 from oslo_log import log
 
 from ironic_python_agent import errors
@@ -73,9 +74,14 @@ class CleanExtension(base.BaseAgentExtension):
             raise ValueError(msg)
         try:
             result = hardware.dispatch_to_managers(step['step'], node, ports)
+        except (errors.RESTError, il_exc.IronicException):
+            LOG.exception('Error performing clean step %s', step['step'])
+            raise
         except Exception as e:
-            msg = ('Error performing clean step %(step)s: %(err)s' %
-                   {'step': step['step'], 'err': e})
+            msg = ('Unexpected exception performing clean step %(step)s. '
+                   '%(cls)s: %(err)s' % {'step': step['step'],
+                                         'cls': e.__class__.__name__,
+                                         'err': e})
             LOG.exception(msg)
             raise errors.CleaningError(msg)
 

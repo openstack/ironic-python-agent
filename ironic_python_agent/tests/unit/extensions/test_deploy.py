@@ -235,7 +235,8 @@ class TestDeployExtension(base.IronicAgentTest):
                 autospec=True)
     def test_execute_deploy_step_fail(self, mock_version, mock_dispatch,
                                       mock_cache_node):
-        mock_dispatch.side_effect = RuntimeError
+        err = errors.BlockDeviceError("I'm a teapot")
+        mock_dispatch.side_effect = err
 
         async_result = self.agent_extension.execute_deploy_step(
             step=self.step['GenericHardwareManager'][0], node=self.node,
@@ -243,6 +244,29 @@ class TestDeployExtension(base.IronicAgentTest):
         async_result.join()
 
         self.assertEqual('FAILED', async_result.command_status)
+        self.assertEqual(err, async_result.command_error)
+
+        mock_version.assert_called_once_with(self.version)
+        mock_dispatch.assert_called_once_with(
+            self.step['GenericHardwareManager'][0]['step'],
+            self.node, self.ports)
+        mock_cache_node.assert_called_once_with(self.node)
+
+    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
+                autospec=True)
+    @mock.patch('ironic_python_agent.hardware.check_versions',
+                autospec=True)
+    def test_execute_deploy_step_exception(self, mock_version, mock_dispatch,
+                                           mock_cache_node):
+        mock_dispatch.side_effect = RuntimeError('boom')
+
+        async_result = self.agent_extension.execute_deploy_step(
+            step=self.step['GenericHardwareManager'][0], node=self.node,
+            ports=self.ports, deploy_version=self.version)
+        async_result.join()
+
+        self.assertEqual('FAILED', async_result.command_status)
+        self.assertIn('RuntimeError: boom', str(async_result.command_error))
 
         mock_version.assert_called_once_with(self.version)
         mock_dispatch.assert_called_once_with(
