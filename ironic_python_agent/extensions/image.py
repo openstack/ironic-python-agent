@@ -139,7 +139,7 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
             # let grub handle the magic.
             efi_part = disk_utils.find_efi_partition(device)
             if efi_part:
-                efi_part = '{}p{}'.format(device, efi_part)
+                efi_part = '{}p{}'.format(device, efi_part['number'])
 
         LOG.info("Creating EFI partitions on software RAID holder disks")
         # We know that we kept this space when configuring raid,see

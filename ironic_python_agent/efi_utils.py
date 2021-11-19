@@ -50,6 +50,9 @@ def manage_uefi(device, efi_system_part_uuid=None):
         local_path = tempfile.mkdtemp()
         # Trust the contents on the disk in the event of a whole disk image.
         efi_partition = disk_utils.find_efi_partition(device)
+        if efi_partition:
+            efi_partition = efi_partition['number']
+
         if not efi_partition and efi_system_part_uuid:
             # _get_partition returns <device>+<partition> and we only need the
             # partition number
@@ -100,7 +103,7 @@ def manage_uefi(device, efi_system_part_uuid=None):
             return False
 
     except processutils.ProcessExecutionError as e:
-        error_msg = ('Could not verify uefi on device %(dev)s'
+        error_msg = ('Could not verify uefi on device %(dev)s, '
                      'failed with %(err)s.' % {'dev': device, 'err': e})
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)

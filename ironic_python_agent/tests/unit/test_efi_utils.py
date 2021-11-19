@@ -162,7 +162,7 @@ class TestManageUefi(base.IronicAgentTest):
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test_ok(self, mkdir_mock, mock_efi_bl, mock_utils_efi_part,
                 mock_get_part_uuid, mock_execute, mock_rescan):
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = {'number': '1'}
         mock_get_part_uuid.return_value = self.fake_dev
 
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
@@ -196,7 +196,7 @@ class TestManageUefi(base.IronicAgentTest):
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test_found_csv(self, mkdir_mock, mock_efi_bl, mock_utils_efi_part,
                        mock_get_part_uuid, mock_execute, mock_rescan):
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = {'number': '1'}
         mock_get_part_uuid.return_value = self.fake_dev
         mock_efi_bl.return_value = ['EFI/vendor/BOOTX64.CSV']
 
@@ -246,7 +246,7 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test_nvme_device(self, mkdir_mock, mock_efi_bl, mock_utils_efi_part,
                          mock_get_part_uuid, mock_execute, mock_rescan):
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = {'number': '1'}
         mock_get_part_uuid.return_value = '/dev/fakenvme0p1'
 
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
@@ -278,7 +278,7 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test_wholedisk(self, mkdir_mock, mock_efi_bl, mock_utils_efi_part,
                        mock_get_part_uuid, mock_execute, mock_rescan):
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = {'number': '1'}
         mock_get_part_uuid.side_effect = Exception
 
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']

@@ -39,7 +39,7 @@
         - openstack-tox-functional
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
-        - metalsmith-integration-ipa-src
+        - metalsmith-integration-ipa-src-uefi
     post:
       jobs:
         - ironic-python-agent-build-image-tinyipa

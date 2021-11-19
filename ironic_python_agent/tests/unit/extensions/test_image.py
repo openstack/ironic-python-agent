@@ -225,7 +225,7 @@ class TestImageExtension(base.IronicAgentTest):
         ]
         mock_partition.side_effect = [self.fake_dev, self.fake_efi_system_part]
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = {'number': '1'}
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
@@ -272,7 +272,7 @@ class TestImageExtension(base.IronicAgentTest):
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
         mock_partition.return_value = self.fake_dev
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = {'number': '1'}
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
@@ -319,7 +319,7 @@ class TestImageExtension(base.IronicAgentTest):
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
         mock_partition.return_value = self.fake_dev
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = {'number': '1'}
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         stdout_msg = """
 BootCurrent: 0001
@@ -376,7 +376,7 @@ Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
         mock_partition.return_value = self.fake_dev
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = {'number': '1'}
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         # NOTE(TheJulia): This test string was derived from a lenovo SR650
         # which does do some weird things with additional entries.
@@ -438,7 +438,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
         mock_partition.return_value = self.fake_dev
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = {'number': '1'}
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI',
                                     'WINDOWS/system32/winload.efi']
 
@@ -1656,7 +1656,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     def test__prepare_boot_partitions_for_softraid_uefi_gpt(
             self, mock_efi_part, mock_execute, mock_dispatch):
-        mock_efi_part.return_value = '12'
+        mock_efi_part.return_value = {'number': '12'}
         mock_execute.side_effect = [
             ('451', None),  # sgdisk -F
             (None, None),  # sgdisk create part
