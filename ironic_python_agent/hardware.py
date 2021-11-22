@@ -103,7 +103,7 @@ def _get_system_lshw_dict():
 
     :return: A python dict from the lshw json output
     """
-    out, _e = utils.execute('lshw', '-quiet', '-json', log_stdout=False)
+    out, _e = il_utils.execute('lshw', '-quiet', '-json', log_stdout=False)
     out = json.loads(out)
     # Depending on lshw version, output might be a list, starting with
     # https://github.com/lyonel/lshw/commit/135a853c60582b14c5b67e5cd988a8062d9896f4  # noqa
@@ -120,7 +120,7 @@ def _udev_settle():
 
     """
     try:
-        utils.execute('udevadm', 'settle')
+        il_utils.execute('udevadm', 'settle')
     except processutils.ProcessExecutionError as e:
         LOG.warning('Something went wrong when waiting for udev '
                     'to settle. Error: %s', e)
@@ -147,13 +147,13 @@ def _check_for_iscsi():
     - If no connection is detected we simply return.
     """
     try:
-        utils.execute('iscsistart', '-f')
+        il_utils.execute('iscsistart', '-f')
     except (processutils.ProcessExecutionError, EnvironmentError) as e:
         LOG.debug("No iscsi connection detected. Skipping iscsi. "
                   "Error: %s", e)
         return
     try:
-        utils.execute('iscsistart', '-b')
+        il_utils.execute('iscsistart', '-b')
     except processutils.ProcessExecutionError as e:
         LOG.warning("Something went wrong executing 'iscsistart -b' "
                     "Error: %s", e)
@@ -166,8 +166,8 @@ def _get_md_uuid(raid_device):
     :returns: A string containing the UUID of an md device.
     """
     try:
-        out, _ = utils.execute('mdadm', '--detail', raid_device,
-                               use_standard_locale=True)
+        out, _ = il_utils.execute('mdadm', '--detail', raid_device,
+                                  use_standard_locale=True)
     except processutils.ProcessExecutionError as e:
         LOG.warning('Could not get the details of %(dev)s: %(err)s',
                     {'dev': raid_device, 'err': e})
@@ -205,8 +205,8 @@ def _get_component_devices(raid_device):
                                                 ignore_raid=True))
     for bdev in block_devices:
         try:
-            out, _ = utils.execute('mdadm', '--examine', bdev.name,
-                                   use_standard_locale=True)
+            out, _ = il_utils.execute('mdadm', '--examine', bdev.name,
+                                      use_standard_locale=True)
         except processutils.ProcessExecutionError as e:
             if "No md superblock detected" in str(e):
                 # actually not a component device
@@ -259,8 +259,8 @@ def get_holder_disks(raid_device):
         return []
 
     try:
-        out, _ = utils.execute('mdadm', '--detail', raid_device,
-                               use_standard_locale=True)
+        out, _ = il_utils.execute('mdadm', '--detail', raid_device,
+                                  use_standard_locale=True)
     except processutils.ProcessExecutionError as e:
         LOG.warning('Could not get holder disks of %(dev)s: %(err)s',
                     {'dev': raid_device, 'err': e})
@@ -303,7 +303,7 @@ def is_md_device(raid_device):
     :returns: True if the device is an md device, False otherwise.
     """
     try:
-        utils.execute('mdadm', '--detail', raid_device)
+        il_utils.execute('mdadm', '--detail', raid_device)
         LOG.debug("%s is an md device", raid_device)
         return True
     except FileNotFoundError:
@@ -326,9 +326,9 @@ def md_restart(raid_device):
     try:
         LOG.debug('Restarting software RAID device %s', raid_device)
         component_devices = _get_component_devices(raid_device)
-        utils.execute('mdadm', '--stop', raid_device)
-        utils.execute('mdadm', '--assemble', raid_device,
-                      *component_devices)
+        il_utils.execute('mdadm', '--stop', raid_device)
+        il_utils.execute('mdadm', '--assemble', raid_device,
+                         *component_devices)
     except processutils.ProcessExecutionError as e:
         error_msg = ('Could not restart md device %(dev)s: %(err)s' %
                      {'dev': raid_device, 'err': e})
@@ -342,7 +342,7 @@ def md_get_raid_devices():
     :return: A python dict containing details about the discovered RAID
       devices
     """
-    report = utils.execute('mdadm', '--examine', '--scan')[0]
+    report = il_utils.execute('mdadm', '--examine', '--scan')[0]
     lines = report.splitlines()
     result = {}
     for line in lines:
@@ -360,7 +360,7 @@ def _md_scan_and_assemble():
     This call does not fail if no md devices are present.
     """
     try:
-        utils.execute('mdadm', '--assemble', '--scan', '--verbose')
+        il_utils.execute('mdadm', '--assemble', '--scan', '--verbose')
     except FileNotFoundError:
         LOG.warning('mdadm has not been found, RAID devices will not be '
                     'supported')
@@ -424,8 +424,8 @@ def list_all_block_devices(block_type='disk',
                     "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
 
     columns = utils.LSBLK_COLUMNS
-    report = utils.execute('lsblk', '-Pbia',
-                           '-o{}'.format(','.join(columns)))[0]
+    report = il_utils.execute('lsblk', '-Pbia',
+                              '-o{}'.format(','.join(columns)))[0]
     lines = report.splitlines()
     context = pyudev.Context()
 
@@ -1087,8 +1087,7 @@ class GenericHardwareManager(HardwareManager):
             return
 
         try:
-            stdout, _ = utils.execute('biosdevname', '-i',
-                                      interface_name)
+            stdout, _ = il_utils.execute('biosdevname', '-i', interface_name)
             return stdout.rstrip('\n')
         except OSError:
             if not WARN_BIOSDEVNAME_NOT_FOUND:
@@ -1150,7 +1149,7 @@ class GenericHardwareManager(HardwareManager):
         return network_interfaces_list
 
     def get_cpus(self):
-        lines = utils.execute('lscpu')[0]
+        lines = il_utils.execute('lscpu')[0]
         cpu_info = {k.strip().lower(): v.strip() for k, v in
                     (line.split(':', 1)
                      for line in lines.split('\n')
@@ -1469,7 +1468,7 @@ class GenericHardwareManager(HardwareManager):
         args += ('--verbose', '--iterations', str(npasses), block_device.name)
 
         try:
-            utils.execute(*args)
+            il_utils.execute(*args)
         except (processutils.ProcessExecutionError, OSError) as e:
             LOG.error("Erasing block device %(dev)s failed with error %(err)s",
                       {'dev': block_device.name, 'err': e})
@@ -1502,8 +1501,8 @@ class GenericHardwareManager(HardwareManager):
         try:
             # Don't use the '--nodeps' of lsblk to also catch the
             # parent device of partitions which are RAID members.
-            out, _ = utils.execute('lsblk', '--fs', '--noheadings',
-                                   block_device.name)
+            out, _ = il_utils.execute('lsblk', '--fs', '--noheadings',
+                                      block_device.name)
         except processutils.ProcessExecutionError as e:
             LOG.warning("Could not determine if %(name)s is a RAID member: "
                         "%(err)s",
@@ -1544,7 +1543,7 @@ class GenericHardwareManager(HardwareManager):
         return False
 
     def _get_ata_security_lines(self, block_device):
-        output = utils.execute('hdparm', '-I', block_device.name)[0]
+        output = il_utils.execute('hdparm', '-I', block_device.name)[0]
 
         if '\nSecurity: ' not in output:
             return []
@@ -1577,9 +1576,9 @@ class GenericHardwareManager(HardwareManager):
             # instead of `scsi` or `sat` as smartctl will not be able to read
             # a bridged device that it doesn't understand, and accordingly
             # return an error code.
-            output = utils.execute('smartctl', '-d', 'ata', block_device.name,
-                                   '-g', 'security',
-                                   check_exit_code=[0, 127])[0]
+            output = il_utils.execute('smartctl', '-d', 'ata',
+                                      block_device.name, '-g', 'security',
+                                      check_exit_code=[0, 127])[0]
             if 'Unavailable' in output:
                 # Smartctl is reporting it is unavailable, lets return false.
                 LOG.debug('Smartctl has reported that security is '
@@ -1612,9 +1611,9 @@ class GenericHardwareManager(HardwareManager):
                 if 'not locked' in security_lines:
                     break
                 try:
-                    utils.execute('hdparm', '--user-master', 'u',
-                                  '--security-unlock', password,
-                                  block_device.name)
+                    il_utils.execute('hdparm', '--user-master', 'u',
+                                     '--security-unlock', password,
+                                     block_device.name)
                 except processutils.ProcessExecutionError as e:
                     LOG.info('Security unlock failed for device '
                              '%(name)s using password "%(password)s": %(err)s',
@@ -1660,8 +1659,9 @@ class GenericHardwareManager(HardwareManager):
             # SEC1. Try to transition to SEC5 by setting empty user
             # password.
             try:
-                utils.execute('hdparm', '--user-master', 'u',
-                              '--security-set-pass', 'NULL', block_device.name)
+                il_utils.execute('hdparm', '--user-master', 'u',
+                                 '--security-set-pass', 'NULL',
+                                 block_device.name)
             except processutils.ProcessExecutionError as e:
                 error_msg = ('Security password set failed for device '
                              '{name}: {err}'
@@ -1674,8 +1674,8 @@ class GenericHardwareManager(HardwareManager):
             erase_option += '-enhanced'
 
         try:
-            utils.execute('hdparm', '--user-master', 'u', erase_option,
-                          'NULL', block_device.name)
+            il_utils.execute('hdparm', '--user-master', 'u', erase_option,
+                             'NULL', block_device.name)
         except processutils.ProcessExecutionError as e:
             # NOTE(TheJulia): Attempt unlock to allow fallback to shred
             # to occur, otherwise shred will fail as well, as the security
@@ -1720,8 +1720,8 @@ class GenericHardwareManager(HardwareManager):
         try:
             LOG.debug("Attempting to fetch NVMe capabilities for device %s",
                       block_device.name)
-            nvme_info, _e = utils.execute('nvme', 'id-ctrl',
-                                          block_device.name, '-o', 'json')
+            nvme_info, _e = il_utils.execute('nvme', 'id-ctrl',
+                                             block_device.name, '-o', 'json')
             nvme_info = json.loads(nvme_info)
 
         except processutils.ProcessExecutionError as e:
@@ -1763,8 +1763,8 @@ class GenericHardwareManager(HardwareManager):
         try:
             LOG.debug("Attempting to nvme-format %s using secure format mode "
                       "(ses) %s", block_device.name, format_mode)
-            utils.execute('nvme', 'format', block_device.name, '-s',
-                          format_mode, '-f')
+            il_utils.execute('nvme', 'format', block_device.name, '-s',
+                             format_mode, '-f')
             LOG.info("nvme-cli format for device %s (ses= %s ) completed "
                      "successfully.", block_device.name, format_mode)
             return True
@@ -1785,7 +1785,7 @@ class GenericHardwareManager(HardwareManager):
             # different types of communication media and protocols and
             # effectively used
             for channel in range(1, 12):
-                out, e = utils.execute(
+                out, e = il_utils.execute(
                     "ipmitool lan print {} | awk '/IP Address[ \\t]*:/"
                     " {{print $4}}'".format(channel), shell=True)
                 if e.startswith("Invalid channel"):
@@ -1822,7 +1822,7 @@ class GenericHardwareManager(HardwareManager):
             # different types of communication media and protocols and
             # effectively used
             for channel in range(1, 12):
-                out, e = utils.execute(
+                out, e = il_utils.execute(
                     "ipmitool lan print {} | awk '/(IP|MAC) Address[ \\t]*:/"
                     " {{print $4}}'".format(channel), shell=True)
                 if e.startswith("Invalid channel"):
@@ -1870,7 +1870,7 @@ class GenericHardwareManager(HardwareManager):
             cmd = "ipmitool lan6 print {} {}_addr".format(
                 channel, 'dynamic' if dynamic else 'static')
             try:
-                out, exc = utils.execute(cmd, shell=True)
+                out, exc = il_utils.execute(cmd, shell=True)
             except processutils.ProcessExecutionError:
                 return
 
@@ -1900,7 +1900,7 @@ class GenericHardwareManager(HardwareManager):
             # different types of communication media and protocols and
             # effectively used
             for channel in range(1, 12):
-                addr_mode, e = utils.execute(
+                addr_mode, e = il_utils.execute(
                     r"ipmitool lan6 print {} enables | "
                     r"awk '/IPv6\/IPv4 Addressing Enables[ \t]*:/"
                     r"{{print $NF}}'".format(channel), shell=True)
@@ -2149,9 +2149,11 @@ class GenericHardwareManager(HardwareManager):
                     LOG.debug("Creating partition on %(dev)s: %(str)s %(end)s",
                               {'dev': device, 'str': start_str,
                                'end': end_str})
-                    utils.execute('parted', device, '-s', '-a',
-                                  'optimal', '--', 'mkpart', 'primary',
-                                  start_str, end_str)
+
+                    il_utils.execute('parted', device, '-s', '-a',
+                                     'optimal', '--', 'mkpart', 'primary',
+                                     start_str, end_str)
+
                 except processutils.ProcessExecutionError as e:
                     msg = "Failed to create partitions on {}: {}".format(
                         device, e)
@@ -2185,8 +2187,8 @@ class GenericHardwareManager(HardwareManager):
         """
 
         def _scan_raids():
-            utils.execute('mdadm', '--assemble', '--scan',
-                          check_exit_code=False)
+            il_utils.execute('mdadm', '--assemble', '--scan',
+                             check_exit_code=False)
             raid_devices = list_all_block_devices(block_type='raid',
                                                   ignore_raid=False,
                                                   ignore_empty=False)
@@ -2236,12 +2238,12 @@ class GenericHardwareManager(HardwareManager):
 
             # Remove md devices.
             try:
-                utils.execute('wipefs', '-af', raid_device.name)
+                il_utils.execute('wipefs', '-af', raid_device.name)
             except processutils.ProcessExecutionError as e:
                 LOG.warning('Failed to wipefs %(device)s: %(err)s',
                             {'device': raid_device.name, 'err': e})
             try:
-                utils.execute('mdadm', '--stop', raid_device.name)
+                il_utils.execute('mdadm', '--stop', raid_device.name)
             except processutils.ProcessExecutionError as e:
                 LOG.warning('Failed to stop %(device)s: %(err)s',
                             {'device': raid_device.name, 'err': e})
@@ -2249,8 +2251,8 @@ class GenericHardwareManager(HardwareManager):
             # Remove md metadata from component devices.
             for component_device in component_devices:
                 try:
-                    utils.execute('mdadm', '--examine', component_device,
-                                  use_standard_locale=True)
+                    il_utils.execute('mdadm', '--examine', component_device,
+                                     use_standard_locale=True)
                 except processutils.ProcessExecutionError as e:
                     if "No md superblock detected" in str(e):
                         # actually not a component device
@@ -2262,8 +2264,8 @@ class GenericHardwareManager(HardwareManager):
 
                 LOG.debug('Deleting md superblock on %s', component_device)
                 try:
-                    utils.execute('mdadm', '--zero-superblock',
-                                  component_device)
+                    il_utils.execute('mdadm', '--zero-superblock',
+                                     component_device)
                 except processutils.ProcessExecutionError as e:
                     LOG.warning('Failed to remove superblock from'
                                 '%(device)s: %(err)s',
@@ -2302,8 +2304,8 @@ class GenericHardwareManager(HardwareManager):
         all_blks = reversed(self.list_block_devices(include_partitions=True))
         for blk in all_blks:
             try:
-                utils.execute('mdadm', '--examine', blk.name,
-                              use_standard_locale=True)
+                il_utils.execute('mdadm', '--examine', blk.name,
+                                 use_standard_locale=True)
             except processutils.ProcessExecutionError as e:
                 if "No md superblock detected" in str(e):
                     # actually not a component device
@@ -2313,7 +2315,7 @@ class GenericHardwareManager(HardwareManager):
                                 {'name': blk.name, 'err': e})
                     continue
             try:
-                utils.execute('mdadm', '--zero-superblock', blk.name)
+                il_utils.execute('mdadm', '--zero-superblock', blk.name)
             except processutils.ProcessExecutionError as e:
                 LOG.warning('Failed to remove superblock from'
                             '%(device)s: %(err)s',
@@ -2325,7 +2327,7 @@ class GenericHardwareManager(HardwareManager):
         for holder_disk in all_holder_disks_uniq:
             LOG.info('Removing partitions on holder disk %s', holder_disk)
             try:
-                utils.execute('wipefs', '-af', holder_disk)
+                il_utils.execute('wipefs', '-af', holder_disk)
             except processutils.ProcessExecutionError as e:
                 LOG.warning('Failed to remove partitions on %s: %s',
                             holder_disk, e)
