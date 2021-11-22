@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Adds support for express cleaning mode where hardware-assisted, fast and
+    secure data erasure is performed on NVMe devices that support it,
+    while other devices fall back to erase_devices_metadata.
+    The goal of this feature is to enable express node cleaning in
+    environments with hybrid storage configuration (e.g. NVMe + HDD).

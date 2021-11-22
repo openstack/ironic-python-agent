@@ -130,6 +130,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 'abortable': True
             },
             {
+                'step': 'erase_devices_express',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
                 'step': 'erase_pstore',
                 'priority': 0,
                 'interface': 'deploy',
@@ -2096,6 +2103,32 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ])
 
     @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_nvme_erase', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_list_erasable_devices', autospec=True)
+    def test_erase_devices_express(
+            self, mock_list_erasable_devices, mock_nvme_erase,
+            mock_destroy_disk_metadata, mock_execute):
+        block_devices = [
+            hardware.BlockDevice('/dev/sda', 'sata', 65535, False),
+            hardware.BlockDevice('/dev/md0', 'raid-device', 32767, False),
+            hardware.BlockDevice('/dev/nvme0n1', 'nvme', 32767, False),
+            hardware.BlockDevice('/dev/nvme1n1', 'nvme', 32767, False)
+        ]
+        mock_list_erasable_devices.return_value = list(block_devices)
+
+        self.hardware.erase_devices_express(self.node, [])
+        self.assertEqual([mock.call(self.hardware, block_devices[2]),
+                         mock.call(self.hardware, block_devices[3])],
+                         mock_nvme_erase.call_args_list)
+        self.assertEqual([mock.call('/dev/sda', self.node['uuid']),
+                         mock.call('/dev/md0', self.node['uuid'])],
+                         mock_destroy_disk_metadata.call_args_list)
+        mock_list_erasable_devices.assert_called_with(self.hardware)
+
+    @mock.patch.object(il_utils, 'execute', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_virtual_media_device', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
@@ -2128,8 +2161,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           mock.call('/dev/sda', self.node['uuid']),
                           mock.call('/dev/md0', self.node['uuid'])],
                          mock_metadata.call_args_list)
-        mock_list_devs.assert_called_once_with(self.hardware,
-                                               include_partitions=True)
+        mock_list_devs.assert_called_with(self.hardware,
+                                          include_partitions=True)
         self.assertEqual([mock.call(self.hardware, block_devices[0]),
                           mock.call(self.hardware, block_devices[1]),
                           mock.call(self.hardware, block_devices[4]),
@@ -2176,8 +2209,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual([mock.call('/dev/sdb', self.node['uuid']),
                           mock.call('/dev/sda', self.node['uuid'])],
                          mock_metadata.call_args_list)
-        mock_list_devs.assert_called_once_with(self.hardware,
-                                               include_partitions=True)
+        mock_list_devs.assert_called_with(self.hardware,
+                                          include_partitions=True)
         self.assertEqual([mock.call(self.hardware, block_devices[1]),
                           mock.call(self.hardware, block_devices[0])],
                          mock__is_vmedia.call_args_list)
