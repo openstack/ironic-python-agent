@@ -187,6 +187,45 @@ def _get_efi_bootloaders(location):
     return valid_bootloaders
 
 
+# NOTE(TheJulia): regex used to identify entries in the efibootmgr
+# output on stdout.
+_ENTRY_LABEL = re.compile(r'Boot([0-9a-f-A-F]+)\*?\s(.*).*$')
+
+
+def get_boot_records():
+    """Executes efibootmgr and returns boot records.
+
+    :return: an iterator yielding pairs (boot number, boot record).
+    """
+    efi_output = utils.execute('efibootmgr', '-v')
+    for line in efi_output[0].split('\n'):
+        match = _ENTRY_LABEL.match(line)
+        if match is not None:
+            yield (match[1], match[2])
+
+
+def add_boot_record(device, efi_partition, loader, label):
+    """Add an EFI boot record with efibootmgr.
+
+    :param device: the device to be used
+    :param efi_partition: the number of the EFI partition on the device
+    :param loader: path to the EFI boot loader
+    :param label: the record label
+    """
+    # https://linux.die.net/man/8/efibootmgr
+    utils.execute('efibootmgr', '-v', '-c', '-d', device,
+                  '-p', efi_partition, '-w', '-L', label,
+                  '-l', loader)
+
+
+def remove_boot_record(boot_num):
+    """Remove an EFI boot record with efibootmgr.
+
+    :param boot_num: the number of the boot record
+    """
+    utils.execute('efibootmgr', '-b', boot_num, '-B')
+
+
 def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
                     mount_point):
     """Executes efibootmgr and removes duplicate entries.
@@ -201,10 +240,7 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
 
     # Before updating let's get information about the bootorder
     LOG.debug("Getting information about boot order.")
-    original_efi_output = utils.execute('efibootmgr', '-v')
-    # NOTE(TheJulia): regex used to identify entries in the efibootmgr
-    # output on stdout.
-    entry_label = re.compile(r'Boot([0-9a-f-A-F]+)\*?\s(.*).*$')
+    boot_records = list(get_boot_records())
     label_id = 1
     for v_bl in valid_efi_bootloaders:
         if 'csv' in v_bl.lower():
@@ -224,23 +260,18 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
             label = 'ironic' + str(label_id)
 
         # Iterate through standard out, and look for duplicates
-        for line in original_efi_output[0].split('\n'):
-            match = entry_label.match(line)
+        for boot_num, boot_rec in boot_records:
             # Look for the base label in the string if a line match
             # occurs, so we can identify if we need to eliminate the
             # entry.
-            if match and label in match.group(2):
-                boot_num = match.group(1)
+            if label in boot_rec:
                 LOG.debug("Found bootnum %s matching label", boot_num)
-                utils.execute('efibootmgr', '-b', boot_num, '-B')
+                remove_boot_record(boot_num)
 
         LOG.debug("Adding loader %(path)s on partition %(part)s of device "
                   " %(dev)s", {'path': v_efi_bl_path, 'part': efi_partition,
                                'dev': device})
         # Update the nvram using efibootmgr
-        # https://linux.die.net/man/8/efibootmgr
-        utils.execute('efibootmgr', '-v', '-c', '-d', device,
-                      '-p', efi_partition, '-w', '-L', label,
-                      '-l', v_efi_bl_path)
+        add_boot_record(device, efi_partition, v_efi_bl_path, label)
         # Increment the ID in case the loop runs again.
         label_id += 1
