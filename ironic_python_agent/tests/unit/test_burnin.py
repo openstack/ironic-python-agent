@@ -21,6 +21,39 @@ from ironic_python_agent import hardware
 from ironic_python_agent.tests.unit import base
 
 
+SMART_OUTPUT_JSON_COMPLETED = ("""
+{
+  "ata_smart_data": {
+    "self_test": {
+      "status": {
+        "value": 0,
+        "string": "completed without error",
+        "passed": true
+      },
+      "polling_minutes": {
+        "short": 1,
+        "extended": 2,
+        "conveyance": 2
+      }
+    }
+  }
+}
+""")
+
+SMART_OUTPUT_JSON_MISSING = ("""
+{
+  "ata_smart_data": {
+    "self_test": {
+      "status": {
+        "value": 0,
+        "passed": true
+      }
+    }
+  }
+}
+""")
+
+
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestBurnin(base.IronicAgentTest):
 
@@ -132,6 +165,50 @@ class TestBurnin(base.IronicAgentTest):
             'crc32c', '--verify_dump', 1, '--continue_on_error', 'verify',
             '--loops', 5, '--runtime', 600, '--time_based', '--name',
             '/dev/sdj', '--name', '/dev/hdaa')
+
+    def test__smart_test_status(self, mock_execute):
+        device = hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True)
+        mock_execute.return_value = ([SMART_OUTPUT_JSON_COMPLETED, 'err'])
+
+        status = burnin._smart_test_status(device)
+
+        mock_execute.assert_called_once_with('smartctl', '-ja', '/dev/sdj')
+        self.assertEqual(status, "completed without error")
+
+    def test__smart_test_status_missing(self, mock_execute):
+        device = hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True)
+        mock_execute.return_value = ([SMART_OUTPUT_JSON_MISSING, 'err'])
+
+        status = burnin._smart_test_status(device)
+
+        mock_execute.assert_called_once_with('smartctl', '-ja', '/dev/sdj')
+        self.assertIsNone(status)
+
+    @mock.patch.object(burnin, '_smart_test_status', autospec=True)
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    def test_fio_disk_smart_test(self, mock_list, mock_status, mock_execute):
+
+        node = {'driver_info': {'agent_burnin_fio_disk_smart_test': True}}
+
+        mock_list.return_value = [
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
+        ]
+        mock_status.return_value = "completed without error"
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.fio_disk(node)
+
+        expected_calls = [
+            mock.call('fio', '--rw', 'readwrite', '--bs', '4k', '--direct', 1,
+                      '--ioengine', 'libaio', '--iodepth', '32', '--verify',
+                      'crc32c', '--verify_dump', 1, '--continue_on_error',
+                      'verify', '--loops', 4, '--runtime', 0, '--time_based',
+                      '--name', '/dev/sdj', '--name', '/dev/hdaa'),
+            mock.call('smartctl', '-t', 'long', '/dev/sdj'),
+            mock.call('smartctl', '-t', 'long', '/dev/hdaa')
+        ]
+        mock_execute.assert_has_calls(expected_calls)
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     def test_fio_disk_no_fio(self, mock_list, mock_execute):

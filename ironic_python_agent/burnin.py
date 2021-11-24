@@ -10,6 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import time
 
 from ironic_lib import utils
@@ -84,6 +85,83 @@ def stress_ng_vm(node):
         raise errors.CommandExecutionError(error_msg)
 
 
+def _smart_test_status(device):
+    """Get the SMART test status of a device
+
+    :param device: The device to check.
+    :raises: CommandExecutionError if the execution of smartctl fails.
+    :returns: A string with the SMART test status of the device and
+              None if the status is not available.
+    """
+    args = ['smartctl', '-ja', device.name]
+    try:
+        out, _ = utils.execute(*args)
+        smart_info = json.loads(out)
+        if smart_info:
+            return smart_info['ata_smart_data'][
+                'self_test']['status']['string']
+    except (processutils.ProcessExecutionError, OSError, KeyError) as e:
+        LOG.error('SMART test on %(device)s failed with '
+                  '%(err)s', {'device': device.name, 'err': e})
+    return None
+
+
+def _run_smart_test(devices):
+    """Launch a SMART test on the passed devices
+
+    :param devices: A list of device objects to check.
+    :raises: CommandExecutionError if the execution of smartctl fails.
+    :raises: CleaningError if the SMART test on any of the devices fails.
+    """
+    failed_devices = []
+    for device in devices:
+        args = ['smartctl', '-t', 'long', device.name]
+        LOG.info('SMART self test command: %s',
+                 ' '.join(map(str, args)))
+        try:
+            utils.execute(*args)
+        except (processutils.ProcessExecutionError, OSError) as e:
+            LOG.error("Starting SMART test on %(device)s failed with: "
+                      "%(err)s", {'device': device.name, 'err': e})
+            failed_devices.append(device.name)
+    if failed_devices:
+        error_msg = ("fio (disk) failed to start SMART self test on %s",
+                     ', '.join(failed_devices))
+        raise errors.CleaningError(error_msg)
+
+    # wait for the test to finish and report the test results
+    failed_devices = []
+    while True:
+        for device in list(devices):
+            status = _smart_test_status(device)
+            if status is None:
+                devices.remove(device)
+                continue
+            if "in progress" in status:
+                msg = "SMART test still running on %s ..." % device.name
+                LOG.debug(msg)
+                continue
+            if "completed without error" in status:
+                msg = "%s passed SMART test" % device.name
+                LOG.info(msg)
+                devices.remove(device)
+                continue
+            failed_devices.append(device.name)
+            LOG.warning("%(device)s failed SMART test with: %(err)s",
+                        {'device': device.name, 'err': status})
+            devices.remove(device)
+        if not devices:
+            break
+        LOG.info("SMART tests still running ...")
+        time.sleep(30)
+
+    # fail the clean step if the SMART test has failed
+    if failed_devices:
+        msg = ('fio (disk) SMART test failed for %s' % ' '.join(
+            map(str, failed_devices)))
+        raise errors.CleaningError(msg)
+
+
 def fio_disk(node):
     """Burn-in the disks with fio
 
@@ -117,6 +195,12 @@ def fio_disk(node):
         error_msg = "fio (disk) failed with error %s" % e
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
+
+    # if configured, run a smart self test on all devices and fail the
+    # step if any of the devices reports an error
+    smart_test = info.get('agent_burnin_fio_disk_smart_test', False)
+    if smart_test:
+        _run_smart_test(devices)
 
 
 def _do_fio_network(writer, runtime, partner):
