@@ -1097,15 +1097,15 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
 
 # NOTE(TheJulia): trigger_device_rescan is systemwide thus pointless
 # to execute in the file test case. Also, CI unit test jobs lack sgdisk.
-@mock.patch.object(disk_utils, 'trigger_device_rescan', lambda *_: None)
-@mock.patch.object(utils, 'wait_for_disk_to_become_available', lambda *_: None)
-@mock.patch.object(disk_utils, 'is_block_device', lambda d: True)
-@mock.patch.object(disk_utils, 'block_uuid', lambda p: 'uuid')
-@mock.patch.object(disk_utils, 'dd', lambda *_: None)
-@mock.patch.object(disk_utils, 'convert_image', lambda *_: None)
-@mock.patch.object(utils, 'mkfs', lambda fs, path, label=None: None)
+@mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
+@mock.patch.object(utils, 'wait_for_disk_to_become_available', autospec=True)
+@mock.patch.object(disk_utils, 'is_block_device', autospec=True)
+@mock.patch.object(disk_utils, 'block_uuid', autospec=True)
+@mock.patch.object(disk_utils, 'dd', autospec=True)
+@mock.patch.object(disk_utils, 'convert_image', autospec=True)
+@mock.patch.object(utils, 'mkfs', autospec=True)
 # NOTE(dtantsur): destroy_disk_metadata resets file size, disabling it
-@mock.patch.object(disk_utils, 'destroy_disk_metadata', lambda *_: None)
+@mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
 class RealFilePartitioningTestCase(base.IronicAgentTest):
     """This test applies some real-world partitioning scenario to a file.
 
@@ -1143,7 +1143,9 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
         with mock.patch.object(utils, 'execute', fake_execute):
             return func(*args, **kwargs)
 
-    def test_different_sizes(self):
+    def test_different_sizes(self, mock_destroy, mock_mkfs, mock_convert,
+                             mock_dd, mock_block_uuid, mock_is_block,
+                             mock_wait, mock_trigger_rescan):
         # NOTE(dtantsur): Keep this list in order with expected partitioning
         fields = ['ephemeral_mb', 'swap_mb', 'root_mb']
         variants = ((0, 0, 12), (4, 2, 8), (0, 4, 10), (5, 0, 10))
@@ -1158,7 +1160,9 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
                 self.assertEqual(expected_size, part['size'],
                                  "comparison failed for %s" % list(variant))
 
-    def test_whole_disk(self):
+    def test_whole_disk(self, mock_destroy, mock_mkfs, mock_convert, mock_dd,
+                        mock_block_uuid, mock_is_block, mock_wait,
+                        mock_trigger_rescan):
         # 6 MiB ephemeral + 3 MiB swap + 9 MiB root + 1 MiB for MBR
         # + 1 MiB MAGIC == 20 MiB whole disk
         # TODO(dtantsur): figure out why we need 'magic' 1 more MiB
