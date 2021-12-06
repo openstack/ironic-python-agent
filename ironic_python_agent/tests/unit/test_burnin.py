@@ -14,6 +14,7 @@ from unittest import mock
 
 from ironic_lib import utils
 from oslo_concurrency import processutils
+from tooz import coordination
 
 from ironic_python_agent import burnin
 from ironic_python_agent import errors
@@ -379,3 +380,138 @@ class TestBurnin(base.IronicAgentTest):
         # we loop 3 times, then do the 2 fio calls
         self.assertEqual(5, mock_execute.call_count)
         self.assertEqual(3, mock_time.call_count)
+
+    def test_fio_network_dynamic_pairing_raise_missing_config(self,
+                                                              mock_execute):
+        node = {'driver_info': {}}
+        self.assertRaises(errors.CleaningError, burnin.fio_network, node)
+
+    def test_fio_network_dynamic_pairing_raise_wrong_config(self,
+                                                            mock_execute):
+        node = {'driver_info': {
+            'backend_url': 'zookeeper://zookeeper-host-01:2181',
+            'group_name': 'ironic.dynamic-network-burnin',
+            'timeout': 600}}
+        self.assertRaises(errors.CleaningError, burnin.fio_network, node)
+
+    @mock.patch.object(burnin, '_find_network_burnin_partner_and_role',
+                       autospec=True)
+    def test_fio_network_dynamic_pairing_defaults(self, mock_find,
+                                                  mock_execute):
+        node = {'driver_info': {
+            'agent_burnin_fio_network_pairing_backend_url':
+                'zookeeper://zookeeper-host-01:2181'}}
+        mock_find.return_value = ['partner-host', 'reader']
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.fio_network(node)
+
+        mock_find.assert_called_once_with(
+            backend_url='zookeeper://zookeeper-host-01:2181',
+            group_name='ironic.network-burnin',
+            timeout=900)
+
+    @mock.patch.object(burnin, '_find_network_burnin_partner_and_role',
+                       autospec=True)
+    def test_fio_network_dynamic_pairing_no_defaults(self, mock_find,
+                                                     mock_execute):
+        node = {'driver_info': {
+            'agent_burnin_fio_network_pairing_backend_url':
+                'zookeeper://zookeeper-host-01:2181',
+            'agent_burnin_fio_network_pairing_group_name':
+                'ironic.special-group',
+            'agent_burnin_fio_network_pairing_timeout': 600}}
+        mock_find.return_value = ['partner-host', 'reader']
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.fio_network(node)
+
+        mock_find.assert_called_once_with(
+            backend_url='zookeeper://zookeeper-host-01:2181',
+            group_name='ironic.special-group',
+            timeout=600)
+
+    @mock.patch.object(coordination, 'get_coordinator', autospec=True)
+    def test_fio_network_dynamic_find_timeout(self, mock_get_coordinator,
+                                              mock_execute):
+        mock_coordinator = mock.MagicMock()
+        mock_get_coordinator.return_value = mock_coordinator
+
+        # timeout since no other node is joining
+        self.assertRaises(errors.CleaningError,
+                          burnin._find_network_burnin_partner_and_role,
+                          "zk://xyz", 'group', 2)
+
+        # group did not exist, so we created it
+        mock_coordinator.create_group.assert_called_once_with('group')
+        mock_coordinator.join_group.assert_called_once()
+        # get_members is called initially, then every second
+        # up to the timeout
+        self.assertEqual(3, mock_coordinator.get_members.call_count)
+
+    @mock.patch.object(coordination, 'get_coordinator', autospec=True)
+    def test_fio_network_dynamic_find_pair_1st(self, mock_get_coordinator,
+                                               mock_execute):
+        mock_coordinator = mock.MagicMock()
+        mock_get_coordinator.return_value = mock_coordinator
+
+        class Members:
+            def __init__(self, members=[]):
+                self.members = members
+
+            def get(self):
+                return self.members
+
+        # we are the first node to enter, so no other host
+        # initially until the second one appears after some
+        # interations
+        mock_coordinator.get_members.side_effect = \
+            [Members(), Members([b'host1']), Members([b'host1']),
+             Members([b'host1']), Members([b'host1', b'host2'])]
+
+        (partner, role) = \
+            burnin._find_network_burnin_partner_and_role("zk://xyz",
+                                                         "group", 10)
+
+        # ... so we will leave first and be the writer
+        self.assertEqual((partner, role), ("host2", "writer"))
+
+        # group did not exist, so we created it
+        mock_coordinator.create_group.assert_called_once_with('group')
+        mock_coordinator.join_group.assert_called_once()
+        # get_members is called initially, then every second
+        # up to the timeout
+        self.assertEqual(5, mock_coordinator.get_members.call_count)
+
+    @mock.patch.object(coordination, 'get_coordinator', autospec=True)
+    def test_fio_network_dynamic_find_pair_2nd(self, mock_get_coordinator,
+                                               mock_execute):
+        mock_coordinator = mock.MagicMock()
+        mock_get_coordinator.return_value = mock_coordinator
+
+        class Members:
+            def __init__(self, members=[]):
+                self.members = members
+
+            def get(self):
+                return self.members
+
+        # we are the second node to enter, host1 is there before us ...
+        mock_coordinator.get_members.side_effect = \
+            [Members([b'host1']),
+             Members([b'host1', b'host2']),
+             Members([b'host2'])]
+
+        (partner, role) = \
+            burnin._find_network_burnin_partner_and_role("zk://xyz",
+                                                         "group", 10)
+
+        # ... so we will leave second and be the reader
+        self.assertEqual((partner, role), ("host1", "reader"))
+
+        # group did not exist, so we created it
+        mock_coordinator.create_group.assert_called_once_with('group')
+        mock_coordinator.join_group.assert_called_once()
+        # get_members is called initially, then every second until the
+        # other node appears
+        self.assertEqual(3, mock_coordinator.get_members.call_count)

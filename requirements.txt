@@ -20,3 +20,4 @@ tenacity>=6.2.0 # Apache-2.0
 ironic-lib>=5.1.0 # Apache-2.0
 Werkzeug>=1.0.1 # BSD License
 cryptography>=2.3 # BSD/Apache-2.0
+tooz>=2.7.2 # Apache-2.0
