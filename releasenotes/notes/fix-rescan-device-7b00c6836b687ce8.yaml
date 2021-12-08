@@ -1,5 +1,5 @@
 ---
 fixes:
   - |
-    Fixes an issue where partitions are not visible due to a
-    incorrect call to have the partition table re-read.
+    Fixes an issue where partitions are not visible due to an incorrect call
+    when re-reading the partition table during a device rescan.
