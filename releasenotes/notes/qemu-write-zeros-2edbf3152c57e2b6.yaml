@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    IPA instructs qemu-img to write image zeros to disk.
+    Doing this will cause it not to zero out the entire
+    block device which can be very costly on a slow HDD.

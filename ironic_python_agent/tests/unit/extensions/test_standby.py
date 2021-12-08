@@ -182,7 +182,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         convert_mock.assert_called_once_with(location, device,
                                              out_format='host_device',
                                              cache='directsync',
-                                             out_of_order=True)
+                                             out_of_order=True,
+                                             sparse_size='0')
         wipe_mock.assert_called_once_with(device, '')
         udev_mock.assert_called_once_with()
         rescan_mock.assert_called_once_with(device)
