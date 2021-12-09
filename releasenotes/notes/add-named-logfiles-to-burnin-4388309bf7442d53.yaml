@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add options to have named output files for the burn-in logging:
+    {'agent_burnin_cpu', 'agent_burnin_vm', 'agent_burnin_fio_network',
+    'agent_burnin_fio_disk'}_outputfile. This should ease collecting
+    the output of the burn-in steps for analysis.

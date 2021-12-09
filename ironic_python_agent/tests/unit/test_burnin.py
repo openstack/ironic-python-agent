@@ -69,14 +69,17 @@ class TestBurnin(base.IronicAgentTest):
 
     def test_stress_ng_cpu_non_default(self, mock_execute):
 
-        node = {'driver_info': {'agent_burnin_cpu_cpu': 3,
-                                'agent_burnin_cpu_timeout': 2911}}
+        node = {'driver_info': {
+            'agent_burnin_cpu_cpu': 3,
+            'agent_burnin_cpu_timeout': 2911,
+            'agent_burnin_cpu_outputfile': '/var/log/burnin.cpu'}}
         mock_execute.return_value = (['out', 'err'])
 
         burnin.stress_ng_cpu(node)
 
         mock_execute.assert_called_once_with(
-            'stress-ng', '--cpu', 3, '--timeout', 2911, '--metrics-brief')
+            'stress-ng', '--cpu', 3, '--timeout', 2911, '--metrics-brief',
+            '--log-file', '/var/log/burnin.cpu')
 
     def test_stress_ng_cpu_no_stress_ng(self, mock_execute):
 
@@ -103,16 +106,19 @@ class TestBurnin(base.IronicAgentTest):
 
     def test_stress_ng_vm_non_default(self, mock_execute):
 
-        node = {'driver_info': {'agent_burnin_vm_vm': 2,
-                                'agent_burnin_vm_vm-bytes': '25%',
-                                'agent_burnin_vm_timeout': 120}}
+        node = {'driver_info': {
+            'agent_burnin_vm_vm': 2,
+            'agent_burnin_vm_vm-bytes': '25%',
+            'agent_burnin_vm_timeout': 120,
+            'agent_burnin_vm_outputfile': '/var/log/burnin.vm'}}
         mock_execute.return_value = (['out', 'err'])
 
         burnin.stress_ng_vm(node)
 
         mock_execute.assert_called_once_with(
             'stress-ng', '--vm', 2, '--vm-bytes', '25%',
-            '--timeout', 120, '--metrics-brief')
+            '--timeout', 120, '--metrics-brief',
+            '--log-file', '/var/log/burnin.vm')
 
     def test_stress_ng_vm_no_stress_ng(self, mock_execute):
 
@@ -148,8 +154,10 @@ class TestBurnin(base.IronicAgentTest):
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     def test_fio_disk_no_default(self, mock_list, mock_execute):
 
-        node = {'driver_info': {'agent_burnin_fio_disk_runtime': 600,
-                                'agent_burnin_fio_disk_loops': 5}}
+        node = {'driver_info': {
+            'agent_burnin_fio_disk_runtime': 600,
+            'agent_burnin_fio_disk_loops': 5,
+            'agent_burnin_fio_disk_outputfile': '/var/log/burnin.disk'}}
 
         mock_list.return_value = [
             hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
@@ -163,8 +171,9 @@ class TestBurnin(base.IronicAgentTest):
             'fio', '--rw', 'readwrite', '--bs', '4k', '--direct', 1,
             '--ioengine', 'libaio', '--iodepth', '32', '--verify',
             'crc32c', '--verify_dump', 1, '--continue_on_error', 'verify',
-            '--loops', 5, '--runtime', 600, '--time_based', '--name',
-            '/dev/sdj', '--name', '/dev/hdaa')
+            '--loops', 5, '--runtime', 600, '--time_based', '--output-format',
+            'json', '--output', '/var/log/burnin.disk', '--name', '/dev/sdj',
+            '--name', '/dev/hdaa', )
 
     def test__smart_test_status(self, mock_execute):
         device = hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True)
@@ -244,6 +253,33 @@ class TestBurnin(base.IronicAgentTest):
                       '--listen')]
         mock_execute.assert_has_calls(expected_calls)
 
+    def test_fio_network_reader_w_logfile(self, mock_execute):
+
+        node = {'driver_info': {
+            'agent_burnin_fio_network_runtime': 600,
+            'agent_burnin_fio_network_config':
+                {'partner': 'host-002',
+                 'role': 'reader'},
+            'agent_burnin_fio_network_outputfile': '/var/log/burnin.network'}}
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.fio_network(node)
+
+        expected_calls = [
+            mock.call('fio', '--ioengine', 'net', '--port', '9000',
+                      '--fill_device', 1, '--group_reporting',
+                      '--gtod_reduce', 1, '--numjobs', 16, '--name',
+                      'reader', '--rw', 'read', '--hostname', 'host-002',
+                      '--output-format', 'json', '--output',
+                      '/var/log/burnin.network.reader'),
+            mock.call('fio', '--ioengine', 'net', '--port', '9000',
+                      '--fill_device', 1, '--group_reporting',
+                      '--gtod_reduce', 1, '--numjobs', 16, '--name', 'writer',
+                      '--rw', 'write', '--runtime', 600, '--time_based',
+                      '--listen', '--output-format', 'json', '--output',
+                      '/var/log/burnin.network.writer')]
+        mock_execute.assert_has_calls(expected_calls)
+
     def test_fio_network_writer(self, mock_execute):
 
         node = {'driver_info': {'agent_burnin_fio_network_runtime': 600,
@@ -264,6 +300,33 @@ class TestBurnin(base.IronicAgentTest):
                       '--fill_device', 1, '--group_reporting',
                       '--gtod_reduce', 1, '--numjobs', 16, '--name',
                       'reader', '--rw', 'read', '--hostname', 'host-001')]
+        mock_execute.assert_has_calls(expected_calls)
+
+    def test_fio_network_writer_w_logfile(self, mock_execute):
+
+        node = {'driver_info': {
+            'agent_burnin_fio_network_runtime': 600,
+            'agent_burnin_fio_network_config':
+                {'partner': 'host-001',
+                 'role': 'writer'},
+            'agent_burnin_fio_network_outputfile': '/var/log/burnin.network'}}
+        mock_execute.return_value = (['out', 'err'])
+
+        burnin.fio_network(node)
+
+        expected_calls = [
+            mock.call('fio', '--ioengine', 'net', '--port', '9000',
+                      '--fill_device', 1, '--group_reporting',
+                      '--gtod_reduce', 1, '--numjobs', 16, '--name', 'writer',
+                      '--rw', 'write', '--runtime', 600, '--time_based',
+                      '--listen', '--output-format', 'json', '--output',
+                      '/var/log/burnin.network.writer'),
+            mock.call('fio', '--ioengine', 'net', '--port', '9000',
+                      '--fill_device', 1, '--group_reporting',
+                      '--gtod_reduce', 1, '--numjobs', 16, '--name',
+                      'reader', '--rw', 'read', '--hostname', 'host-001',
+                      '--output-format', 'json', '--output',
+                      '/var/log/burnin.network.reader')]
         mock_execute.assert_has_calls(expected_calls)
 
     def test_fio_network_no_fio(self, mock_execute):
@@ -303,11 +366,11 @@ class TestBurnin(base.IronicAgentTest):
                                 {'partner': 'host-004', 'role': 'reader'}}}
         # mock the infinite loop
         mock_execute.side_effect = (processutils.ProcessExecutionError(
-                                    'Connection timeout'),
+                                    'Connection timeout', exit_code=16),
                                     processutils.ProcessExecutionError(
-                                    'Connection timeout'),
+                                    'Connection timeout', exit_code=16),
                                     processutils.ProcessExecutionError(
-                                    'Connection refused'),
+                                    'Connection refused', exit_code=16),
                                     ['out', 'err'],  # connected!
                                     ['out', 'err'])  # reversed roles
 

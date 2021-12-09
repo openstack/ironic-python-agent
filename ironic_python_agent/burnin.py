@@ -39,9 +39,13 @@ def stress_ng_cpu(node):
     info = node.get('driver_info', {})
     cpu = info.get('agent_burnin_cpu_cpu', 0)
     timeout = info.get('agent_burnin_cpu_timeout', 86400)
+    outputfile = info.get('agent_burnin_cpu_outputfile', None)
 
     args = ('stress-ng', '--cpu', cpu, '--timeout', timeout,
             '--metrics-brief')
+    if outputfile:
+        args += ('--log-file', outputfile,)
+
     LOG.debug('Burn-in stress_ng_cpu command: %s', args)
 
     try:
@@ -70,9 +74,13 @@ def stress_ng_vm(node):
     vm = info.get('agent_burnin_vm_vm', 0)
     vm_bytes = info.get('agent_burnin_vm_vm-bytes', '98%')
     timeout = info.get('agent_burnin_vm_timeout', 86400)
+    outputfile = info.get('agent_burnin_vm_outputfile', None)
 
     args = ('stress-ng', '--vm', vm, '--vm-bytes', vm_bytes,
             '--timeout', timeout, '--metrics-brief')
+    if outputfile:
+        args += ('--log-file', outputfile,)
+
     LOG.debug('Burn-in stress_ng_vm command: %s', args)
 
     try:
@@ -175,11 +183,14 @@ def fio_disk(node):
     # 4 iterations, same as badblock's default
     loops = info.get('agent_burnin_fio_disk_loops', 4)
     runtime = info.get('agent_burnin_fio_disk_runtime', 0)
+    outputfile = info.get('agent_burnin_fio_disk_outputfile', None)
 
     args = ['fio', '--rw', 'readwrite', '--bs', '4k', '--direct', 1,
             '--ioengine', 'libaio', '--iodepth', '32', '--verify',
             'crc32c', '--verify_dump', 1, '--continue_on_error', 'verify',
             '--loops', loops, '--runtime', runtime, '--time_based']
+    if outputfile:
+        args.extend(['--output-format', 'json', '--output', outputfile])
 
     devices = hardware.list_all_block_devices()
     for device in devices:
@@ -203,7 +214,7 @@ def fio_disk(node):
         _run_smart_test(devices)
 
 
-def _do_fio_network(writer, runtime, partner):
+def _do_fio_network(writer, runtime, partner, outputfile):
 
     args = ['fio', '--ioengine', 'net', '--port', '9000', '--fill_device', 1,
             '--group_reporting', '--gtod_reduce', 1, '--numjobs', 16]
@@ -213,6 +224,8 @@ def _do_fio_network(writer, runtime, partner):
     else:
         xargs = ['--name', 'reader', '--rw', 'read', '--hostname', partner]
     args.extend(xargs)
+    if outputfile:
+        args.extend(['--output-format', 'json', '--output', outputfile])
 
     while True:
         LOG.info('Burn-in fio network command: %s', ' '.join(map(str, args)))
@@ -221,13 +234,17 @@ def _do_fio_network(writer, runtime, partner):
             # fio reports on stdout
             LOG.info(out)
             break
-        except (processutils.ProcessExecutionError, OSError) as e:
+        except processutils.ProcessExecutionError as e:
             error_msg = "fio (network) failed with error %s" % e
             LOG.error(error_msg)
-            # while the writer blocks in fio, the reader fails with
+            if writer:
+                raise errors.CommandExecutionError(error_msg)
+            # While the writer blocks in fio, the reader fails with
             # 'Connection {refused, timeout}' errors if the partner
-            # is not ready, so we need to wait explicitly
-            if not writer and 'Connection' in str(e):
+            # is not ready, so we need to wait explicitly. Using the
+            # exit code accounts for both, logging to stderr as well
+            # as to a file.
+            if e.exit_code == 16:
                 LOG.info("fio (network): reader retrying in %s seconds ...",
                          NETWORK_READER_CYCLE)
                 time.sleep(NETWORK_READER_CYCLE)
@@ -255,6 +272,7 @@ def fio_network(node):
 
     info = node.get('driver_info', {})
     runtime = info.get('agent_burnin_fio_network_runtime', 21600)
+    outputfile = info.get('agent_burnin_fio_network_outputfile', None)
 
     # get our role and identify our partner
     config = info.get('agent_burnin_fio_network_config')
@@ -274,6 +292,14 @@ def fio_network(node):
         error_msg = ("fio (network) failed to find partner")
         raise errors.CleaningError(error_msg)
 
-    _do_fio_network(role == 'writer', runtime, partner)
+    logfilename = None
+    if outputfile:
+        logfilename = outputfile + '.' + role
+    _do_fio_network(role == 'writer', runtime, partner, logfilename)
+
     LOG.debug("fio (network): first direction done, swapping roles ...")
-    _do_fio_network(not role == 'writer', runtime, partner)
+
+    if outputfile:
+        irole = "reader" if (role == "writer") else "writer"
+        logfilename = outputfile + '.' + irole
+    _do_fio_network(not role == 'writer', runtime, partner, logfilename)
