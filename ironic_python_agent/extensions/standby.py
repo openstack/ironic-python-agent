@@ -200,12 +200,13 @@ def _write_whole_disk_image(image, image_info, device):
     disk_utils.udev_settle()
 
     command = ['qemu-img', 'convert',
-               '-t', 'directsync', '-O', 'host_device', '-W',
+               '-t', 'directsync', '-S', '0', '-O', 'host_device', '-W',
                image, device]
     LOG.info('Writing image with command: %s', ' '.join(command))
     try:
         disk_utils.convert_image(image, device, out_format='host_device',
-                                 cache='directsync', out_of_order=True)
+                                 cache='directsync', out_of_order=True,
+                                 sparse_size='0')
     except processutils.ProcessExecutionError as e:
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
 
