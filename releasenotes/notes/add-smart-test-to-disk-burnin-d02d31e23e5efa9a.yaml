@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add 'agent_burnin_fio_disk_smart_test' option in driver-info for disk
+    burn-in. If set to True, this option will launch a parallel SMART self
+    test on all devices after the disk burn-in and fail the disk burn-in
+    clean step if any of the tests fail.
