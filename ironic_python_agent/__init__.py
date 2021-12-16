@@ -15,7 +15,7 @@ import os
 import eventlet
 
 # NOTE(TheJulia): Eventlet, when monkey patching occurs, replaces the base
-# dns resolver methods. This can lead to compatability issues,
+# dns resolver methods. This can lead to compatibility issues,
 # and un-expected exceptions being raised during the process
 # of monkey patching. Such as one if there are no resolvers.
 os.environ['EVENTLET_NO_GREENDNS'] = "yes"
