@@ -11,11 +11,13 @@
 # limitations under the License.
 
 import json
+import socket
 import time
 
 from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_log import log
+from tooz import coordination
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
@@ -252,45 +254,160 @@ def _do_fio_network(writer, runtime, partner, outputfile):
                 raise errors.CommandExecutionError(error_msg)
 
 
+def _find_network_burnin_partner_and_role(backend_url, group_name, timeout):
+    """Find a partner node for network burn-in and get our role.
+
+    :param backend_url: The tooz backend url.
+    :param group_name: The tooz group name for pairing.
+    :param timeout:Timeout in seconds for a node to wait for a partner.
+    :returns: A set with the partner node and the role of the local node.
+    """
+
+    member_id = socket.gethostname()
+    coordinator = coordination.get_coordinator(backend_url, member_id)
+    coordinator.start(start_heart=True)
+
+    groups = coordinator.get_groups()
+    for group in groups.get():
+        if group_name == group.decode('utf-8'):
+            LOG.debug("Found group %s", group_name)
+            break
+    else:
+        LOG.info("Creating group %s", group_name)
+        coordinator.create_group(group_name)
+
+    def join_group(group_name):
+        request = coordinator.join_group(group_name)
+        request.get()
+
+    def leave_group(group_name):
+        request = coordinator.leave_group(group_name)
+        request.get()
+
+    # Attempt to get the pairing lock. The lock is released when:
+    # a) a node enters the group and is the first to join, or
+    # b) a node enters second, finished pairing, sees
+    #    the pairing node exiting, and left itself.
+    # The lock 'walls' all nodes willing to pair.
+    group_lock = coordinator.get_lock("group_lock")
+    with group_lock:
+        # we need the initial members in order to know the first
+        # node (which may leave quickly when we join)
+        init_members = coordinator.get_members(group_name)
+        LOG.info("Original group members are %s", init_members.get())
+        members_cnt = len(init_members.get())
+
+        join_group(group_name)
+
+        # we assign the first node the writer role since it will
+        # leave the group first, it may be ready once the second
+        # node leaves the group, and we save one wait cycle
+        if not members_cnt:
+            first = True
+            role = "writer"
+            group_lock.release()  # allow second node to enter
+        else:
+            first = False
+            role = "reader"
+
+        partner = None
+        start_pairing = time.time()
+        while time.time() - start_pairing < timeout:
+            if first:
+                # we are the first and therefore need to wait
+                # for another node to join
+                members = coordinator.get_members(group_name)
+                members_cnt = len(members.get())
+            else:
+                # use the initial members in case the other
+                # node leaves before we get an updated list
+                members = init_members
+
+            assert members_cnt < 3
+
+            if members_cnt == 2 or not first:
+                LOG.info("Two members, start pairing...")
+                for member in members.get():
+                    node = member.decode('utf-8')
+                    if node != member_id:
+                        partner = node
+                if not partner:
+                    error_msg = ("fio (network) no partner to pair found")
+                    raise errors.CleaningError(error_msg)
+
+                # if you are the second to enter, wait for the first to exit
+                if not first:
+                    members = coordinator.get_members(group_name)
+                    while (len(members.get()) == 2):
+                        time.sleep(0.2)
+                        members = coordinator.get_members(group_name)
+                    leave_group(group_name)
+                    group_lock.release()
+                else:
+                    leave_group(group_name)
+                break
+            else:
+                LOG.info("One member, waiting for second node to join ...")
+            time.sleep(1)
+        else:
+            leave_group(group_name)
+            error_msg = ("fio (network) timed out to find partner")
+            raise errors.CleaningError(error_msg)
+
+    return (partner, role)
+
+
 def fio_network(node):
     """Burn-in the network with fio
 
     Run an fio network job for a pair of nodes for a configurable
-    amount of time. The pair is statically defined in driver_info
-    via 'agent_burnin_fio_network_config'.
+    amount of time. The pair is either statically defined in
+    driver_info via 'agent_burnin_fio_network_config' or the role
+    and partner is found dynamically via a tooz backend.
+
     The writer will wait for the reader to connect, then write to the
     network. Upon completion, the roles are swapped.
-
-    Note (arne_wiebalck): Initial version. The plan is to make the
-                          match making dynamic by posting availability
-                          on a distributed backend, e.g. via tooz.
 
     :param node: Ironic node object
     :raises: CommandExecutionError if the execution of fio fails.
     :raises: CleaningError if the configuration is incomplete.
     """
-
     info = node.get('driver_info', {})
     runtime = info.get('agent_burnin_fio_network_runtime', 21600)
     outputfile = info.get('agent_burnin_fio_network_outputfile', None)
 
     # get our role and identify our partner
     config = info.get('agent_burnin_fio_network_config')
-    if not config:
-        error_msg = ("fio (network) failed to find "
-                     "'agent_burnin_fio_network_config' in driver_info")
-        raise errors.CleaningError(error_msg)
-    LOG.debug("agent_burnin_fio_network_config is %s", str(config))
+    if config:
+        LOG.debug("static agent_burnin_fio_network_config is %s",
+                  config)
+        role = config.get('role')
+        partner = config.get('partner')
+    else:
+        timeout = info.get(
+            'agent_burnin_fio_network_pairing_timeout', 900)
+        group_name = info.get(
+            'agent_burnin_fio_network_pairing_group_name',
+            'ironic.network-burnin')
+        backend_url = info.get(
+            'agent_burnin_fio_network_pairing_backend_url', None)
+        if not backend_url:
+            msg = ('fio (network): dynamic pairing config is missing '
+                   'agent_burnin_fio_network_pairing_backend_url')
+            raise errors.CleaningError(msg)
+        LOG.info("dynamic pairing for network burn-in ...")
+        (partner, role) = _find_network_burnin_partner_and_role(
+            backend_url=backend_url,
+            group_name=group_name,
+            timeout=timeout)
 
-    role = config.get('role')
     if role not in NETWORK_BURNIN_ROLES:
         error_msg = "fio (network) found an unknown role: %s" % role
         raise errors.CleaningError(error_msg)
-
-    partner = config.get('partner')
     if not partner:
-        error_msg = ("fio (network) failed to find partner")
+        error_msg = "fio (network) failed to find partner"
         raise errors.CleaningError(error_msg)
+    LOG.info("fio (network): partner %s, role is %s", partner, role)
 
     logfilename = None
     if outputfile:
