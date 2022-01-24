@@ -181,7 +181,7 @@ def _get_md_uuid(raid_device):
             return match.group(1)
 
 
-def _get_component_devices(raid_device):
+def get_component_devices(raid_device):
     """Get the component devices of a Software RAID device.
 
     Get the UUID of the md device and scan all other devices
@@ -325,7 +325,7 @@ def md_restart(raid_device):
     """
     try:
         LOG.debug('Restarting software RAID device %s', raid_device)
-        component_devices = _get_component_devices(raid_device)
+        component_devices = get_component_devices(raid_device)
         utils.execute('mdadm', '--stop', raid_device)
         utils.execute('mdadm', '--assemble', raid_device,
                       *component_devices)
@@ -2235,7 +2235,7 @@ class GenericHardwareManager(HardwareManager):
     def _delete_config_pass(self, raid_devices):
         all_holder_disks = []
         for raid_device in raid_devices:
-            component_devices = _get_component_devices(raid_device.name)
+            component_devices = get_component_devices(raid_device.name)
             if not component_devices:
                 # A "Software RAID device" without components is usually
                 # a partition on an md device (as, for instance, created

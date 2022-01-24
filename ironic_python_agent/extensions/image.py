@@ -20,6 +20,7 @@ import shutil
 import stat
 import tempfile
 
+from ironic_lib import disk_utils
 from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -261,7 +262,7 @@ def _get_efi_bootloaders(location):
 
 
 def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
-                    mount_point):
+                    mount_point, label_suffix=None):
     """Executes efibootmgr and removes duplicate entries.
 
     :param valid_efi_bootloaders: the list of valid efi bootloaders
@@ -270,6 +271,9 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
     :param mount_point: The mountpoint for the EFI partition so we can
                         read contents of files if necessary to perform
                         proper bootloader injection operations.
+    :param label_suffix: a string to be appended to the EFI label,
+                         mainly used in the case of software to uniqify
+                         the entries for the md components.
     """
 
     # Before updating let's get information about the bootorder
@@ -292,9 +296,13 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
             v_efi_bl_path = v_bl.replace(csv_filename, str(csv_contents[0]))
             v_efi_bl_path = '\\' + v_efi_bl_path.replace('/', '\\')
             label = csv_contents[1]
+            if label_suffix:
+                label = label + " " + str(label_suffix)
         else:
             v_efi_bl_path = '\\' + v_bl.replace('/', '\\')
             label = 'ironic' + str(label_id)
+            if label_suffix:
+                label = label + " " + str(label_suffix)
 
         # Iterate through standard out, and look for duplicates
         for line in original_efi_output[0].split('\n'):
@@ -307,9 +315,11 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
                 LOG.debug("Found bootnum %s matching label", boot_num)
                 utils.execute('efibootmgr', '-b', boot_num, '-B')
 
-        LOG.debug("Adding loader %(path)s on partition %(part)s of device "
-                  " %(dev)s", {'path': v_efi_bl_path, 'part': efi_partition,
-                               'dev': device})
+        LOG.info("Adding loader %(path)s on partition %(part)s of device "
+                 " %(dev)s with label %(label)s",
+                 {'path': v_efi_bl_path, 'part': efi_partition,
+                  'dev': device, 'label': label})
+
         # Update the nvram using efibootmgr
         # https://linux.die.net/man/8/efibootmgr
         utils.execute('efibootmgr', '-v', '-c', '-d', device,
@@ -380,15 +390,59 @@ def _manage_uefi(device, efi_system_part_uuid=None):
         efi_mounted = True
 
         valid_efi_bootloaders = _get_efi_bootloaders(efi_partition_mount_point)
-        if valid_efi_bootloaders:
-            _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
-                            efi_partition_mount_point)
-            return True
-        else:
+        if not valid_efi_bootloaders:
             # NOTE(dtantsur): if we have an empty EFI partition, try to use
             # grub-install to populate it.
             LOG.warning('Empty EFI partition detected.')
             return False
+
+        if not hardware.is_md_device(device):
+            efi_devices = [device]
+            efi_partition_numbers = [efi_partition]
+            efi_label_suffix = ''
+        else:
+            # umount to allow for signature removal (to avoid confusion about
+            # which ESP to mount once the instance is deployed)
+            utils.execute('umount', efi_partition_mount_point, attempts=3,
+                          delay_on_retry=True)
+            efi_mounted = False
+
+            holders = hardware.get_holder_disks(device)
+            efi_md_device = prepare_boot_partitions_for_softraid(
+                device, holders, efi_device_part, target_boot_mode='uefi'
+            )
+            efi_devices = hardware.get_component_devices(efi_md_device)
+            efi_partition_numbers = []
+            _PARTITION_NUMBER = re.compile(r'(\d+)$')
+            for dev in efi_devices:
+                match = _PARTITION_NUMBER.search(dev)
+                if match:
+                    partition_number = match.group(1)
+                    efi_partition_numbers.append(partition_number)
+                else:
+                    raise errors.DeviceNotFound(
+                        "Could not extract the partition number "
+                        "from %s!" % dev)
+            efi_label_suffix = "(RAID, part%s)"
+
+            # remount for _run_efibootmgr
+            utils.execute('mount', efi_device_part, efi_partition_mount_point)
+            efi_mounted = True
+
+        efi_dev_part = zip(efi_devices, efi_partition_numbers)
+        for i, (efi_dev, efi_part) in enumerate(efi_dev_part):
+            LOG.debug("Calling efibootmgr with dev %s part %s",
+                      efi_dev, efi_part)
+            if efi_label_suffix:
+                # NOTE (arne_wiebalck): uniqify the labels to prevent
+                # unintentional boot entry cleanup
+                _run_efibootmgr(valid_efi_bootloaders, efi_dev, efi_part,
+                                efi_partition_mount_point,
+                                efi_label_suffix % i)
+            else:
+                _run_efibootmgr(valid_efi_bootloaders, efi_dev, efi_part,
+                                efi_partition_mount_point)
+        return True
 
     except processutils.ProcessExecutionError as e:
         error_msg = ('Could not verify uefi on device %(dev)s'
@@ -422,8 +476,8 @@ def _manage_uefi(device, efi_system_part_uuid=None):
 
 
 # TODO(rg): handle PreP boot parts relocation as well
-def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
-                                          target_boot_mode):
+def prepare_boot_partitions_for_softraid(device, holders, efi_part,
+                                         target_boot_mode):
     """Prepare boot partitions when relevant.
 
     Create either a RAIDed EFI partition or bios boot partitions for software
@@ -492,14 +546,16 @@ def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
                       target_part, holder)
 
         # RAID the ESPs, metadata=1.0 is mandatory to be able to boot
-        md_device = '/dev/md/esp'
+        md_device = raid_utils.get_next_free_raid_device()
         LOG.debug("Creating md device %(md_device)s for the ESPs "
                   "on %(efi_partitions)s",
                   {'md_device': md_device, 'efi_partitions': efi_partitions})
         utils.execute('mdadm', '--create', md_device, '--force',
                       '--run', '--metadata=1.0', '--level', '1',
-                      '--raid-devices', len(efi_partitions),
+                      '--name', 'esp', '--raid-devices', len(efi_partitions),
                       *efi_partitions)
+
+        disk_utils.trigger_device_rescan(md_device)
 
         if efi_part:
             # Blockdev copy the source ESP and erase it
@@ -627,7 +683,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
             efi_partition = efi_part
         if hardware.is_md_device(device):
             holders = hardware.get_holder_disks(device)
-            efi_partition = _prepare_boot_partitions_for_softraid(
+            efi_partition = prepare_boot_partitions_for_softraid(
                 device, holders, efi_part, target_boot_mode
             )
 
@@ -1004,9 +1060,7 @@ def _efi_boot_setup(device, efi_system_part_uuid=None, target_boot_mode=None):
                     {'target': target_boot_mode,
                      'current': boot.current_boot_mode})
 
-    # FIXME(arne_wiebalck): make software RAID work with efibootmgr
-    if (boot.current_boot_mode == 'uefi'
-            and not hardware.is_md_device(device)):
+    if boot.current_boot_mode == 'uefi':
         try:
             utils.execute('efibootmgr', '--version')
         except FileNotFoundError:

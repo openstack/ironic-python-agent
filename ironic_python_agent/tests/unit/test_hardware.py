@@ -3597,9 +3597,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, '_get_md_uuid', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
-    def test__get_component_devices(self, mocked_execute,
-                                    mocked_list_all_block_devices,
-                                    mocked_md_uuid):
+    def test_get_component_devices(self, mocked_execute,
+                                   mocked_list_all_block_devices,
+                                   mocked_md_uuid):
         raid_device1 = hardware.BlockDevice('/dev/md0', 'RAID-1',
                                             107374182400, True)
         sda = hardware.BlockDevice('/dev/sda', 'model12', 21, True)
@@ -3619,7 +3619,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             [hws.MDADM_EXAMINE_OUTPUT_NON_MEMBER, '_'],
         ]
 
-        component_devices = hardware._get_component_devices(raid_device1)
+        component_devices = hardware.get_component_devices(raid_device1)
         self.assertEqual(['/dev/sda1'], component_devices)
         mocked_execute.assert_has_calls([
             mock.call('mdadm', '--examine', '/dev/sda',
@@ -3676,7 +3676,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(['/dev/sda'], holder_disks)
 
     @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
-    @mock.patch.object(hardware, '_get_component_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_delete_configuration(self, mocked_execute, mocked_list,
@@ -3764,7 +3764,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
         ])
 
-    @mock.patch.object(hardware, '_get_component_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_delete_configuration_partition(self, mocked_execute, mocked_list,
@@ -3789,7 +3789,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
         ])
 
-    @mock.patch.object(hardware, '_get_component_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_delete_configuration_failure_blocks_remaining(
