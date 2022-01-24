@@ -105,8 +105,8 @@ def _is_bootloader_loaded(dev):
 
 
 # TODO(rg): handle PreP boot parts relocation as well
-def _prepare_boot_partitions_for_softraid(device, holders, efi_part,
-                                          target_boot_mode):
+def prepare_boot_partitions_for_softraid(device, holders, efi_part,
+                                         target_boot_mode):
     """Prepare boot partitions when relevant.
 
     Create either a RAIDed EFI partition or bios boot partitions for software
@@ -311,7 +311,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
             efi_partition = efi_part
         if hardware.is_md_device(device):
             holders = hardware.get_holder_disks(device)
-            efi_partition = _prepare_boot_partitions_for_softraid(
+            efi_partition = prepare_boot_partitions_for_softraid(
                 device, holders, efi_part, target_boot_mode
             )
 
@@ -648,9 +648,7 @@ def _efi_boot_setup(device, efi_system_part_uuid=None, target_boot_mode=None):
                     {'target': target_boot_mode,
                      'current': boot.current_boot_mode})
 
-    # FIXME(arne_wiebalck): make software RAID work with efibootmgr
-    if (boot.current_boot_mode == 'uefi'
-            and not hardware.is_md_device(device)):
+    if boot.current_boot_mode == 'uefi':
         try:
             utils.execute('efibootmgr', '--version')
         except FileNotFoundError:
