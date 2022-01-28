@@ -18,8 +18,6 @@ import re
 import shutil
 import tempfile
 
-from ironic_lib import disk_utils
-from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -102,123 +100,6 @@ def _is_bootloader_loaded(dev):
         return False
 
     return _find_bootable_device(stdout, dev)
-
-
-# TODO(rg): handle PreP boot parts relocation as well
-def prepare_boot_partitions_for_softraid(device, holders, efi_part,
-                                         target_boot_mode):
-    """Prepare boot partitions when relevant.
-
-    Create either a RAIDed EFI partition or bios boot partitions for software
-    RAID, according to both target boot mode and disk holders partition table
-    types.
-
-    :param device: the softraid device path
-    :param holders: the softraid drive members
-    :param efi_part: when relevant the efi partition coming from the image
-     deployed on softraid device, can be/is often None
-    :param target_boot_mode: target boot mode can be bios/uefi/None
-     or anything else for unspecified
-
-    :returns: the path to the ESP md device when target boot mode is uefi,
-     nothing otherwise.
-    """
-    # Actually any fat partition could be a candidate. Let's assume the
-    # partition also has the esp flag
-    if target_boot_mode == 'uefi':
-        if not efi_part:
-
-            LOG.debug("No explicit EFI partition provided. Scanning for any "
-                      "EFI partition located on software RAID device %s to "
-                      "be relocated",
-                      device)
-
-            # NOTE: for whole disk images, no efi part uuid will be provided.
-            # Let's try to scan for esp on the root softraid device. If not
-            # found, it's fine in most cases to just create an empty esp and
-            # let grub handle the magic.
-            efi_part = disk_utils.find_efi_partition(device)
-            if efi_part:
-                efi_part = '{}p{}'.format(device, efi_part['number'])
-
-        LOG.info("Creating EFI partitions on software RAID holder disks")
-        # We know that we kept this space when configuring raid,see
-        # hardware.GenericHardwareManager.create_configuration.
-        # We could also directly get the EFI partition size.
-        partsize_mib = raid_utils.ESP_SIZE_MIB
-        partlabel_prefix = 'uefi-holder-'
-        efi_partitions = []
-        for number, holder in enumerate(holders):
-            # NOTE: see utils.get_partition_table_type_from_specs
-            # for uefi we know that we have setup a gpt partition table,
-            # sgdisk can be used to edit table, more user friendly
-            # for alignment and relative offsets
-            partlabel = '{}{}'.format(partlabel_prefix, number)
-            out, _u = utils.execute('sgdisk', '-F', holder)
-            start_sector = '{}s'.format(out.splitlines()[-1].strip())
-            out, _u = utils.execute(
-                'sgdisk', '-n', '0:{}:+{}MiB'.format(start_sector,
-                                                     partsize_mib),
-                '-t', '0:ef00', '-c', '0:{}'.format(partlabel), holder)
-
-            # Refresh part table
-            utils.execute("partprobe")
-            utils.execute("blkid")
-
-            target_part, _u = utils.execute(
-                "blkid", "-l", "-t", "PARTLABEL={}".format(partlabel), holder)
-
-            target_part = target_part.splitlines()[-1].split(':', 1)[0]
-            efi_partitions.append(target_part)
-
-            LOG.debug("EFI partition %s created on holder disk %s",
-                      target_part, holder)
-
-        # RAID the ESPs, metadata=1.0 is mandatory to be able to boot
-        md_device = raid_utils.get_next_free_raid_device()
-        LOG.debug("Creating md device %(md_device)s for the ESPs "
-                  "on %(efi_partitions)s",
-                  {'md_device': md_device, 'efi_partitions': efi_partitions})
-        utils.execute('mdadm', '--create', md_device, '--force',
-                      '--run', '--metadata=1.0', '--level', '1',
-                      '--name', 'esp', '--raid-devices', len(efi_partitions),
-                      *efi_partitions)
-
-        disk_utils.trigger_device_rescan(md_device)
-
-        if efi_part:
-            # Blockdev copy the source ESP and erase it
-            LOG.debug("Relocating EFI %s to %s", efi_part, md_device)
-            utils.execute('cp', efi_part, md_device)
-            LOG.debug("Erasing EFI partition %s", efi_part)
-            utils.execute('wipefs', '-a', efi_part)
-        else:
-            fslabel = 'efi-part'
-            ilib_utils.mkfs(fs='vfat', path=md_device, label=fslabel)
-
-        return md_device
-
-    elif target_boot_mode == 'bios':
-        partlabel_prefix = 'bios-boot-part-'
-        for number, holder in enumerate(holders):
-            label = disk_utils.get_partition_table_type(holder)
-            if label == 'gpt':
-                LOG.debug("Creating bios boot partition on disk holder %s",
-                          holder)
-                out, _u = utils.execute('sgdisk', '-F', holder)
-                start_sector = '{}s'.format(out.splitlines()[-1].strip())
-                partlabel = '{}{}'.format(partlabel_prefix, number)
-                out, _u = utils.execute(
-                    'sgdisk', '-n', '0:{}:+2MiB'.format(start_sector),
-                    '-t', '0:ef02', '-c', '0:{}'.format(partlabel), holder)
-
-            # Q: MBR case, could we dd the boot code from the softraid
-            # (446 first bytes) if we detect a bootloader with
-            # _is_bootloader_loaded?
-            # A: This won't work. Because it includes the address on the
-            # disk, as in virtual disk, where to load the data from.
-            # Since there is a structural difference, this means it will
-            # fail.
 
 
 def _umount_all_partitions(path, path_variable, umount_warn_msg):
@@ -313,7 +194,7 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
             efi_partition = efi_part
         if hardware.is_md_device(device):
             holders = hardware.get_holder_disks(device)
-            efi_partition = prepare_boot_partitions_for_softraid(
+            efi_partition = raid_utils.prepare_boot_partitions_for_softraid(
                 device, holders, efi_part, target_boot_mode
             )
 

@@ -12,6 +12,8 @@
 
 from unittest import mock
 
+from ironic_lib import disk_utils
+from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 
 from ironic_python_agent import errors
@@ -114,6 +116,222 @@ class TestRaidUtils(base.IronicAgentTest):
                                "Failed re-add /dev/sdb1 to /dev/md0",
                                raid_utils.create_raid_device, 0,
                                logical_disk)
+
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
+    @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
+                       return_value='/dev/md42')
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
+    def test_prepare_boot_partitions_for_softraid_uefi_gpt(
+            self, mock_efi_part, mock_execute, mock_dispatch,
+            mock_free_raid_device, mock_rescan):
+        mock_efi_part.return_value = {'number': '12'}
+        mock_execute.side_effect = [
+            ('451', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sda12: dsfkgsdjfg', None),  # blkid
+            ('452', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sdb14: whatever', None),  # blkid
+            (None, None),  # mdadm
+            (None, None),  # cp
+            (None, None),  # wipefs
+        ]
+
+        efi_part = raid_utils.prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
+            target_boot_mode='uefi')
+
+        mock_efi_part.assert_called_once_with('/dev/md0')
+        expected = [
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-0', '/dev/sda'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
+                      '/dev/sda'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-1', '/dev/sdb'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
+                      '/dev/sdb'),
+            mock.call('mdadm', '--create', '/dev/md42', '--force', '--run',
+                      '--metadata=1.0', '--level', '1', '--name', 'esp',
+                      '--raid-devices', 2, '/dev/sda12', '/dev/sdb14'),
+            mock.call('cp', '/dev/md0p12', '/dev/md42'),
+            mock.call('wipefs', '-a', '/dev/md0p12')
+        ]
+        mock_execute.assert_has_calls(expected, any_order=False)
+        self.assertEqual(efi_part, '/dev/md42')
+        mock_rescan.assert_called_once_with('/dev/md42')
+
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
+    @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
+                       return_value='/dev/md42')
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
+    @mock.patch.object(ilib_utils, 'mkfs', autospec=True)
+    def test_prepare_boot_partitions_for_softraid_uefi_gpt_esp_not_found(
+            self, mock_mkfs, mock_efi_part, mock_execute, mock_dispatch,
+            mock_free_raid_device, mock_rescan):
+        mock_efi_part.return_value = None
+        mock_execute.side_effect = [
+            ('451', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sda12: dsfkgsdjfg', None),  # blkid
+            ('452', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sdb14: whatever', None),  # blkid
+            (None, None),  # mdadm
+        ]
+
+        efi_part = raid_utils.prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
+            target_boot_mode='uefi')
+
+        mock_efi_part.assert_called_once_with('/dev/md0')
+        expected = [
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-0', '/dev/sda'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
+                      '/dev/sda'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-1', '/dev/sdb'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
+                      '/dev/sdb'),
+        ]
+        mock_execute.assert_has_calls(expected, any_order=False)
+        mock_mkfs.assert_has_calls([
+            mock.call(path='/dev/md42', label='efi-part', fs='vfat'),
+        ], any_order=False)
+        self.assertEqual(efi_part, '/dev/md42')
+        mock_rescan.assert_called_once_with('/dev/md42')
+
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
+    @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
+                       return_value='/dev/md42')
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    def test_prepare_boot_partitions_for_softraid_uefi_gpt_efi_provided(
+            self, mock_execute, mock_dispatch, mock_free_raid_device,
+            mock_rescan):
+        mock_execute.side_effect = [
+            ('451', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sda12: dsfkgsdjfg', None),  # blkid
+            ('452', None),  # sgdisk -F
+            (None, None),  # sgdisk create part
+            (None, None),  # partprobe
+            (None, None),  # blkid
+            ('/dev/sdb14: whatever', None),  # blkid
+            (None, None),  # mdadm create
+            (None, None),  # cp
+            (None, None),  # wipefs
+        ]
+
+        efi_part = raid_utils.prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], '/dev/md0p15',
+            target_boot_mode='uefi')
+
+        expected = [
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-0', '/dev/sda'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
+                      '/dev/sda'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
+                      '0:uefi-holder-1', '/dev/sdb'),
+            mock.call('partprobe'),
+            mock.call('blkid'),
+            mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
+                      '/dev/sdb'),
+            mock.call('mdadm', '--create', '/dev/md42', '--force', '--run',
+                      '--metadata=1.0', '--level', '1', '--name', 'esp',
+                      '--raid-devices', 2, '/dev/sda12', '/dev/sdb14'),
+            mock.call('cp', '/dev/md0p15', '/dev/md42'),
+            mock.call('wipefs', '-a', '/dev/md0p15')
+        ]
+        mock_execute.assert_has_calls(expected, any_order=False)
+        self.assertEqual(efi_part, '/dev/md42')
+
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True,
+                       return_value='msdos')
+    def test_prepare_boot_partitions_for_softraid_bios_msdos(
+            self, mock_label_scan, mock_execute, mock_dispatch):
+
+        efi_part = raid_utils.prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], 'notusedanyway',
+            target_boot_mode='bios')
+
+        expected = [
+            mock.call('/dev/sda'),
+            mock.call('/dev/sdb'),
+        ]
+        mock_label_scan.assert_has_calls(expected, any_order=False)
+        self.assertIsNone(efi_part)
+
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True,
+                       return_value='gpt')
+    def test_prepare_boot_partitions_for_softraid_bios_gpt(
+            self, mock_label_scan, mock_execute, mock_dispatch):
+
+        mock_execute.side_effect = [
+            ('whatever\n314', None),  # sgdisk -F
+            (None, None),  # bios boot grub
+            ('warning message\n914', None),  # sgdisk -F
+            (None, None),  # bios boot grub
+        ]
+
+        efi_part = raid_utils.prepare_boot_partitions_for_softraid(
+            '/dev/md0', ['/dev/sda', '/dev/sdb'], 'notusedanyway',
+            target_boot_mode='bios')
+
+        expected_scan = [
+            mock.call('/dev/sda'),
+            mock.call('/dev/sdb'),
+        ]
+
+        mock_label_scan.assert_has_calls(expected_scan, any_order=False)
+
+        expected_exec = [
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:314s:+2MiB', '-t', '0:ef02', '-c',
+                      '0:bios-boot-part-0', '/dev/sda'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:914s:+2MiB', '-t', '0:ef02', '-c',
+                      '0:bios-boot-part-1', '/dev/sdb'),
+        ]
+
+        mock_execute.assert_has_calls(expected_exec, any_order=False)
+        self.assertIsNone(efi_part)
 
 
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)

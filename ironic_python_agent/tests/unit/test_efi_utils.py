@@ -19,9 +19,9 @@ from ironic_lib import disk_utils
 
 from ironic_python_agent import efi_utils
 from ironic_python_agent import errors
-from ironic_python_agent.extensions import image
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
+from ironic_python_agent import raid_utils
 from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
@@ -321,7 +321,7 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
 
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(hardware, 'get_component_devices', autospec=True)
-    @mock.patch.object(image,
+    @mock.patch.object(raid_utils,
                        'prepare_boot_partitions_for_softraid',
                        autospec=True)
     @mock.patch.object(hardware, 'get_holder_disks', autospec=True)

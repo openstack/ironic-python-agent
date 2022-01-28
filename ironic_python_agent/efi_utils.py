@@ -20,9 +20,9 @@ from oslo_concurrency import processutils
 from oslo_log import log
 
 from ironic_python_agent import errors
-from ironic_python_agent.extensions import image
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
+from ironic_python_agent import raid_utils
 from ironic_python_agent import utils
 
 
@@ -112,7 +112,7 @@ def manage_uefi(device, efi_system_part_uuid=None):
             efi_mounted = False
 
             holders = hardware.get_holder_disks(device)
-            efi_md_device = image.prepare_boot_partitions_for_softraid(
+            efi_md_device = raid_utils.prepare_boot_partitions_for_softraid(
                 device, holders, efi_device_part, target_boot_mode='uefi'
             )
             efi_devices = hardware.get_component_devices(efi_md_device)
