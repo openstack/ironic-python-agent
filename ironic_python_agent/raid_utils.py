@@ -248,3 +248,17 @@ def create_raid_device(index, logical_disk):
             msg = "Failed re-add {} to {}: {}".format(
                 dev, md_device, e)
             raise errors.SoftwareRAIDError(msg)
+
+
+def get_next_free_raid_device():
+    """Get a device name that is still free."""
+    from ironic_python_agent import hardware
+
+    names = {dev.name for dev in
+             hardware.dispatch_to_managers('list_block_devices')}
+    for idx in range(128):
+        name = f'/dev/md{idx}'
+        if name not in names:
+            return name
+
+    raise errors.SoftwareRAIDError("No free md (RAID) devices are left")
