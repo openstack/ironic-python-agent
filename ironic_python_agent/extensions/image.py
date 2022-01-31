@@ -175,14 +175,16 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
                       target_part, holder)
 
         # RAID the ESPs, metadata=1.0 is mandatory to be able to boot
-        md_device = '/dev/md/esp'
+        md_device = raid_utils.get_next_free_raid_device()
         LOG.debug("Creating md device %(md_device)s for the ESPs "
                   "on %(efi_partitions)s",
                   {'md_device': md_device, 'efi_partitions': efi_partitions})
         utils.execute('mdadm', '--create', md_device, '--force',
                       '--run', '--metadata=1.0', '--level', '1',
-                      '--raid-devices', len(efi_partitions),
+                      '--name', 'esp', '--raid-devices', len(efi_partitions),
                       *efi_partitions)
+
+        disk_utils.trigger_device_rescan(md_device)
 
         if efi_part:
             # Blockdev copy the source ESP and erase it
