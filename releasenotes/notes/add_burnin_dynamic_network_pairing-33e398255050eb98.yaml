@@ -3,15 +3,16 @@ features:
   - |
     For network burn-in, nodes can now be paired dynamically via a
     distributed coordination backend (as an alternative to a static
-    configuration). This allows burn-in to proceed on a 'first come
-    first served' basis with the nodes available, rather than a node
+    configuration). This allows burn-in to proceed on a "first come
+    first served" basis with the nodes available, rather than a node
     being blocked since the static partner is currently delayed.
+
     In order to configure this dynamic pairing, the nodes will need
-    at least 'agent_burnin_fio_network_pairing_backend_url' in their
-    driver-info (the URL for the coordination backend). In order to
+    at least ``agent_burnin_fio_network_pairing_backend_url`` in their
+    ``driver_info`` (the URL for the coordination backend). In order to
     separate different hardware types, which may be using different
     networks and shall be burnt-in separately, the nodes can in
-    addition define 'agent_burnin_fio_network_pairing_group_name' to
+    addition define ``agent_burnin_fio_network_pairing_group_name`` to
     have pairing only happening between nodes in the same group. An
-    additional 'agent_burnin_fio_network_pairing_timeout' allows to
+    additional parameter ``agent_burnin_fio_network_pairing_timeout`` allows to
     limit the time given to the nodes to wait for a partner.
