@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Adds device rescan operation after partitioning the root device to ensure
+    that updated UUIDs are reflected correctly
