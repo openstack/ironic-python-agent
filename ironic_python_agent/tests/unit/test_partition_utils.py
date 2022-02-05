@@ -406,6 +406,8 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              cpu_arch="")
         mock_unlink.assert_called_once_with('fake-path')
 
+    @mock.patch.object(disk_utils, 'trigger_device_rescan',
+                       lambda d: None)
     @mock.patch.object(utils, 'mkfs', lambda fs, path, label=None: None)
     @mock.patch.object(disk_utils, 'block_uuid', lambda p: 'uuid')
     @mock.patch.object(disk_utils, 'populate_image', autospec=True)
@@ -440,6 +442,8 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         self.assertEqual('uuid', res['root uuid'])
         self.assertFalse(mock_populate.called)
 
+    @mock.patch.object(disk_utils, 'trigger_device_rescan',
+                       lambda d: None)
     @mock.patch.object(utils, 'mkfs', lambda fs, path, label=None: None)
     @mock.patch.object(disk_utils, 'block_uuid', lambda p: 'uuid')
     @mock.patch.object(disk_utils, 'populate_image', lambda image_path,
@@ -473,11 +477,12 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              disk_label='gpt',
                                              cpu_arch="")
 
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
     @mock.patch.object(disk_utils, 'block_uuid', autospec=True)
     @mock.patch.object(disk_utils, 'populate_image', autospec=True)
     @mock.patch.object(utils, 'mkfs', autospec=True)
     def test_uefi_localboot(self, mock_mkfs, mock_populate_image,
-                            mock_block_uuid):
+                            mock_block_uuid, mock_trigger_device_rescan):
         """Test that we create a fat filesystem with UEFI localboot."""
         root_part = '/dev/fake-part1'
         efi_part = '/dev/fake-part2'
@@ -508,12 +513,14 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                                     root_part, conv_flags=None)
         mock_block_uuid.assert_any_call(root_part)
         mock_block_uuid.assert_any_call(efi_part)
+        mock_trigger_device_rescan.assert_called_once_with(self.dev)
 
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
     @mock.patch.object(disk_utils, 'block_uuid', autospec=True)
     @mock.patch.object(disk_utils, 'populate_image', autospec=True)
     @mock.patch.object(utils, 'mkfs', autospec=True)
     def test_preserve_ephemeral(self, mock_mkfs, mock_populate_image,
-                                mock_block_uuid):
+                                mock_block_uuid, mock_trigger_device_rescan):
         """Test that ephemeral partition doesn't get overwritten."""
         ephemeral_part = '/dev/fake-part1'
         root_part = '/dev/fake-part2'
@@ -541,11 +548,12 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              cpu_arch="")
         self.assertFalse(mock_mkfs.called)
 
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
     @mock.patch.object(disk_utils, 'block_uuid', autospec=True)
     @mock.patch.object(disk_utils, 'populate_image', autospec=True)
     @mock.patch.object(utils, 'mkfs', autospec=True)
     def test_ppc64le_prep_part(self, mock_mkfs, mock_populate_image,
-                               mock_block_uuid):
+                               mock_block_uuid, mock_trigger_device_rescan):
         """Test that PReP partition uuid is returned."""
         prep_part = '/dev/fake-part1'
         root_part = '/dev/fake-part2'
@@ -571,11 +579,12 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              cpu_arch="ppc64le")
         self.assertFalse(mock_mkfs.called)
 
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
     @mock.patch.object(disk_utils, 'block_uuid', autospec=True)
     @mock.patch.object(disk_utils, 'populate_image', autospec=True)
     @mock.patch.object(utils, 'mkfs', autospec=True)
     def test_convert_to_sparse(self, mock_mkfs, mock_populate_image,
-                               mock_block_uuid):
+                               mock_block_uuid, mock_trigger_device_rescan):
         ephemeral_part = '/dev/fake-part1'
         swap_part = '/dev/fake-part2'
         root_part = '/dev/fake-part3'
