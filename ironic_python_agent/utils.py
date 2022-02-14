@@ -888,7 +888,7 @@ def rescan_device(device):
                    kernel partition records.
     """
     try:
-        execute('partx', '-a', device, attempts=3, delay_on_retry=True)
+        execute('partx', '-av', device, attempts=3, delay_on_retry=True)
     except processutils.ProcessExecutionError:
         LOG.warning("Couldn't re-read the partition table "
                     "on device %s", device)

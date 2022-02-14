@@ -234,7 +234,7 @@ class TestImageExtension(base.IronicAgentTest):
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-a', '/dev/fake', attempts=3,
+                    mock.call('partx', '-av', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -281,7 +281,7 @@ class TestImageExtension(base.IronicAgentTest):
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-a', '/dev/fake', attempts=3,
+                    mock.call('partx', '-av', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -337,7 +337,7 @@ Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-a', '/dev/fake', attempts=3,
+                    mock.call('partx', '-av', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -398,7 +398,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                          ('', ''), ('', ''),
                                          ('', ''), ('', '')])
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-a', '/dev/fake', attempts=3,
+                    mock.call('partx', '-av', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -450,7 +450,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                          ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
-                    mock.call('partx', '-a', '/dev/fake', attempts=3,
+                    mock.call('partx', '-av', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
@@ -1908,7 +1908,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             efi_system_part_uuid=self.fake_efi_system_part_uuid,
             target_boot_mode='uefi')
 
-        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
+        expected = [mock.call('partx', '-av', '/dev/fake', attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', '/dev/fake2', self.fake_dir),

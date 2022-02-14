@@ -1199,7 +1199,7 @@ class TestGetPartition(base.IronicAgentTest):
         root_part = partition_utils.get_partition(
             self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-av', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -1219,7 +1219,7 @@ class TestGetPartition(base.IronicAgentTest):
         self.assertRaises(errors.DeviceNotFound,
                           partition_utils.get_partition, self.fake_dev,
                           self.fake_root_uuid)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-av', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -1240,7 +1240,7 @@ class TestGetPartition(base.IronicAgentTest):
         result = partition_utils.get_partition(
             self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/loop0', result)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-av', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -1257,7 +1257,7 @@ class TestGetPartition(base.IronicAgentTest):
                           partition_utils.get_partition, self.fake_dev,
                           self.fake_root_uuid)
 
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-av', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -1275,7 +1275,7 @@ class TestGetPartition(base.IronicAgentTest):
         root_part = partition_utils.get_partition(
             self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-av', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
@@ -1292,7 +1292,7 @@ class TestGetPartition(base.IronicAgentTest):
         root_part = partition_utils.get_partition(
             self.fake_dev, self.fake_root_uuid)
         self.assertEqual('/dev/test2', root_part)
-        expected = [mock.call('partx', '-a', self.fake_dev, attempts=3,
+        expected = [mock.call('partx', '-av', self.fake_dev, attempts=3,
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
