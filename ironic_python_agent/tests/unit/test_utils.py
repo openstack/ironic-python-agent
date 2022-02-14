@@ -431,7 +431,8 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
             file_list=[],
             io_dict={'journal': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
                      'df': mock.ANY, 'iptables': mock.ANY, 'lshw': mock.ANY,
-                     'lsblk': mock.ANY, 'mdstat': mock.ANY})
+                     'lsblk': mock.ANY, 'mdstat': mock.ANY,
+                     'mount': mock.ANY, 'parted': mock.ANY})
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -458,7 +459,8 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
             file_list=[tmp.name],
             io_dict={'journal': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
                      'df': mock.ANY, 'iptables': mock.ANY, 'lshw': mock.ANY,
-                     'lsblk': mock.ANY, 'mdstat': mock.ANY})
+                     'lsblk': mock.ANY, 'mdstat': mock.ANY,
+                     'mount': mock.ANY, 'parted': mock.ANY})
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -480,7 +482,8 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
             file_list=['/var/log'],
             io_dict={'iptables': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
                      'dmesg': mock.ANY, 'df': mock.ANY, 'lshw': mock.ANY,
-                     'lsblk': mock.ANY, 'mdstat': mock.ANY})
+                     'lsblk': mock.ANY, 'mdstat': mock.ANY,
+                     'mount': mock.ANY, 'parted': mock.ANY})
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -506,7 +509,8 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
             file_list=['/var/log', tmp.name],
             io_dict={'iptables': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
                      'dmesg': mock.ANY, 'df': mock.ANY, 'lshw': mock.ANY,
-                     'lsblk': mock.ANY, 'mdstat': mock.ANY})
+                     'lsblk': mock.ANY, 'mdstat': mock.ANY,
+                     'mount': mock.ANY, 'parted': mock.ANY})
 
     def test_get_ssl_client_options(self):
         # defaults
