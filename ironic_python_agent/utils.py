@@ -70,6 +70,8 @@ COLLECT_LOGS_COMMANDS = {
     'lsblk': ['lsblk', '--all', '-o%s' % ','.join(LSBLK_COLUMNS)],
     'lsblk-full': ['lsblk', '--all', '--bytes', '--output-all', '--pairs'],
     'mdstat': ['cat', '/proc/mdstat'],
+    'mount': ['mount'],
+    'parted': ['parted', '-l'],
 }
 
 
