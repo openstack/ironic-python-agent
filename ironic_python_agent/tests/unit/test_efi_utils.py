@@ -16,6 +16,7 @@ import tempfile
 from unittest import mock
 
 from ironic_lib import disk_utils
+from oslo_concurrency import processutils
 
 from ironic_python_agent import efi_utils
 from ironic_python_agent import errors
@@ -371,3 +372,100 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
         mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
         mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
         mock_execute.assert_has_calls(expected)
+
+    @mock.patch.object(os.path, 'exists', lambda *_: False)
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    def test_failure(self, mkdir_mock, mock_efi_bl, mock_is_md_device,
+                     mock_utils_efi_part, mock_get_part_uuid, mock_execute,
+                     mock_rescan):
+        mock_utils_efi_part.return_value = {'number': '1'}
+        mock_get_part_uuid.return_value = self.fake_dev
+        mock_is_md_device.return_value = False
+
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
+
+        mock_execute.side_effect = processutils.ProcessExecutionError('boom')
+
+        self.assertRaisesRegex(errors.CommandExecutionError, 'boom',
+                               efi_utils.manage_uefi,
+                               self.fake_dev, self.fake_root_uuid)
+        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_efi_bl.assert_not_called()
+        mock_execute.assert_called_once_with(
+            'mount', self.fake_efi_system_part, self.fake_dir + '/boot/efi')
+        mock_rescan.assert_called_once_with(self.fake_dev)
+
+    @mock.patch.object(os.path, 'exists', lambda *_: False)
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    def test_failure_after_mount(self, mkdir_mock, mock_efi_bl,
+                                 mock_is_md_device, mock_utils_efi_part,
+                                 mock_get_part_uuid, mock_execute,
+                                 mock_rescan):
+        mock_utils_efi_part.return_value = {'number': '1'}
+        mock_get_part_uuid.return_value = self.fake_dev
+        mock_is_md_device.return_value = False
+
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
+
+        mock_execute.side_effect = [
+            ('', ''),
+            processutils.ProcessExecutionError('boom'),
+            ('', ''),
+            ('', ''),
+        ]
+
+        expected = [mock.call('mount', self.fake_efi_system_part,
+                              self.fake_dir + '/boot/efi'),
+                    mock.call('efibootmgr', '-v'),
+                    mock.call('umount', self.fake_dir + '/boot/efi',
+                              attempts=3, delay_on_retry=True),
+                    mock.call('sync')]
+
+        self.assertRaisesRegex(errors.CommandExecutionError, 'boom',
+                               efi_utils.manage_uefi,
+                               self.fake_dev, self.fake_root_uuid)
+        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_execute.assert_has_calls(expected)
+        self.assertEqual(4, mock_execute.call_count)
+        mock_rescan.assert_called_once_with(self.fake_dev)
+
+    @mock.patch.object(os.path, 'exists', lambda *_: False)
+    @mock.patch.object(hardware, 'is_md_device', autospec=True)
+    @mock.patch.object(efi_utils, '_get_efi_bootloaders', autospec=True)
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    def test_failure_after_failure(self, mkdir_mock, mock_efi_bl,
+                                   mock_is_md_device, mock_utils_efi_part,
+                                   mock_get_part_uuid, mock_execute,
+                                   mock_rescan):
+        mock_utils_efi_part.return_value = {'number': '1'}
+        mock_get_part_uuid.return_value = self.fake_dev
+        mock_is_md_device.return_value = False
+
+        mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
+
+        mock_execute.side_effect = [
+            ('', ''),
+            processutils.ProcessExecutionError('boom'),
+            processutils.ProcessExecutionError('no umount'),
+            ('', ''),
+        ]
+
+        expected = [mock.call('mount', self.fake_efi_system_part,
+                              self.fake_dir + '/boot/efi'),
+                    mock.call('efibootmgr', '-v'),
+                    mock.call('umount', self.fake_dir + '/boot/efi',
+                              attempts=3, delay_on_retry=True)]
+
+        self.assertRaisesRegex(errors.CommandExecutionError, 'boom',
+                               efi_utils.manage_uefi,
+                               self.fake_dev, self.fake_root_uuid)
+        mkdir_mock.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_efi_bl.assert_called_once_with(self.fake_dir + '/boot/efi')
+        mock_execute.assert_has_calls(expected)
+        self.assertEqual(3, mock_execute.call_count)
+        mock_rescan.assert_called_once_with(self.fake_dev)
