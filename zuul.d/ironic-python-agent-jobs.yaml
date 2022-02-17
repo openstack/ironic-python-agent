@@ -40,6 +40,7 @@
         s-object: True
         s-proxy: True
       devstack_localrc:
+        IRONIC_BOOT_MODE: bios
         IRONIC_DEFAULT_BOOT_OPTION: netboot
         IRONIC_DEFAULT_DEPLOY_INTERFACE: direct
         SWIFT_ENABLE_TEMPURLS: True
@@ -140,7 +141,6 @@
       - openstack/ironic-lib
     vars:
       devstack_localrc:
-        IRONIC_DEFAULT_BOOT_OPTION: netboot
         IRONIC_BUILD_DEPLOY_RAMDISK: True
         # NOTE(dtantsur): the ansible deploy doesn't depend on IPA code,
         # excluding it from the enabled list to save gate time.
