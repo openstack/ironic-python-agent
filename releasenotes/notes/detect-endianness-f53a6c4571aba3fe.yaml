@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    In case the CSV file used for the bootloader hint does not have BOM
+    we fail reading its content as utf-16 codec is too generic.
+    Fail over to utf-16-le as Little Endian is mostly used.
