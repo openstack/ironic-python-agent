@@ -891,17 +891,58 @@ def _try_preserve_efi_assets(device, path,
 def _append_uefi_to_fstab(fs_path, efi_system_part_uuid):
     """Append the efi partition id to the filesystem table.
 
-    :param fs_path:
-    :param efi_system_part_uuid:
+    :param fs_path: The path to the filesystem.
+    :param efi_system_part_uuid: uuid to use to try and find the
+                                 partition. Warning: this may be
+                                 a partition uuid or a actual uuid.
     """
     fstab_file = os.path.join(fs_path, 'etc/fstab')
     if not os.path.exists(fstab_file):
         return
     try:
-        fstab_string = ("UUID=%s\t/boot/efi\tvfat\tumask=0077\t"
-                        "0\t1\n") % efi_system_part_uuid
+        # Collect all of the block devices so we appropriately match UUID
+        # or PARTUUID into an fstab entry.
+        block_devs = hardware.list_all_block_devices(block_type='part')
+
+        # Default to uuid, but if we find a partuuid instead, that is okay,
+        # we just need to know later on.
+        fstab_label = None
+        for bdev in block_devs:
+            # Check UUID first
+            if bdev.uuid and efi_system_part_uuid in bdev.uuid:
+                LOG.debug('Identified block device %(dev)s UUID %(uuid)s '
+                          'for UEFI boot. Proceeding with fstab update using '
+                          'a UUID.',
+                          {'dev': bdev.name,
+                           'uuid': efi_system_part_uuid})
+                # What we have works, and is correct, we can break the loop
+                fstab_label = 'UUID'
+                break
+            # Fallback to PARTUUID, since we don't know if the provided
+            # UUID matches a PARTUUID, or UUID field, and the fstab entry
+            # needs to match it.
+            if bdev.partuuid and efi_system_part_uuid in bdev.partuuid:
+                LOG.debug('Identified block device %(dev)s partition UUID '
+                          '%(uuid)s for UEFI boot. Proceeding with fstab '
+                          'update using a PARTUUID.',
+                          {'dev': bdev.name,
+                           'uuid': efi_system_part_uuid})
+                fstab_label = 'PARTUUID'
+                break
+
+        if not fstab_label:
+            # Fallback to prior behavior, which should generally be correct.
+            LOG.warning('Falling back to fstab entry addition label of UUID. '
+                        'We could not identify which UUID or PARTUUID '
+                        'identifier label should be used, thus UUID will be '
+                        'used.')
+            fstab_label = 'UUID'
+
+        fstab_string = ("%s=%s\t/boot/efi\tvfat\tumask=0077\t"
+                        "0\t1\n") % (fstab_label, efi_system_part_uuid)
         with open(fstab_file, "r+") as fstab:
-            if efi_system_part_uuid not in fstab.read():
+            already_present_string = fstab_label + '=' + efi_system_part_uuid
+            if already_present_string not in fstab.read():
                 fstab.writelines(fstab_string)
     except (OSError, EnvironmentError, IOError) as exc:
         LOG.debug('Failed to add entry to /etc/fstab. Error %s', exc)

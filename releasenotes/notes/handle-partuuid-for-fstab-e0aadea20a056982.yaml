@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixes handling of a Partition UUID being returned instead of a
+    Partition's UUID when the OS may not return the Partition's UUID in time.
+    These two fields are typically referred to as PARTUUID and UUID,
+    respectively. Often these sorts of issues arise under heavy IO load.
+    We now scan, and identify which "UUID" we identified, and update
+    a Linux fstab entry appropriately. For more information, please see
+    `story #2009881 <https://storyboard.openstack.org/#!/story/2009881>`_.

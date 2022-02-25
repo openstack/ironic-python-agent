@@ -530,6 +530,7 @@ def list_all_block_devices(block_type='disk',
                                                            'block', 'vendor'),
                                    by_path=by_path_name,
                                    uuid=device['UUID'],
+                                   partuuid=device['PARTUUID'],
                                    **extra))
     return devices
 
@@ -597,7 +598,7 @@ class BlockDevice(encoding.SerializableComparable):
     def __init__(self, name, model, size, rotational, wwn=None, serial=None,
                  vendor=None, wwn_with_extension=None,
                  wwn_vendor_extension=None, hctl=None, by_path=None,
-                 uuid=None):
+                 uuid=None, partuuid=None):
         self.name = name
         self.model = model
         self.size = size
@@ -610,6 +611,7 @@ class BlockDevice(encoding.SerializableComparable):
         self.wwn_vendor_extension = wwn_vendor_extension
         self.hctl = hctl
         self.by_path = by_path
+        self.partuuid = partuuid
 
 
 class NetworkInterface(encoding.SerializableComparable):

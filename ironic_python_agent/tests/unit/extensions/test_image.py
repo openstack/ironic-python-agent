@@ -804,6 +804,18 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         mock_is_md_device.return_value = False
         mock_md_get_raid_devices.return_value = {}
         mock_exists.side_effect = iter([False, True, False, True, True])
+        partuuid_device = ('KNAME="sda" MODEL="DRIVE 0" SIZE="10240000" '
+                           'ROTA="1" TYPE="disk" UUID="987654-3210" '
+                           'PARTUUID=""\n'
+                           'KNAME="sda0" MODEL="DRIVE 0" SIZE="102400" '
+                           'ROTA="1" TYPE="part" '
+                           'UUID="' + self.fake_efi_system_part_uuid + '" '
+                           'PARTUUID="1234-2918"\n')
+        exec_side_effect = [('', '')] * 16
+        exec_side_effect.append((partuuid_device, ''))
+        exec_side_effect.extend([('', '')] * 8)
+        mock_execute.side_effect = exec_side_effect
+
         with mock.patch('builtins.open', mock.mock_open()) as mock_open:
             image._install_grub2(
                 self.fake_dev, root_uuid=self.fake_root_uuid,
@@ -858,6 +870,9 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                   'GRUB_DISABLE_OS_PROBER': 'true',
                                   'GRUB_SAVEDEFAULT': 'true'},
                               use_standard_locale=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-Pbia',
+                              '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
@@ -902,8 +917,21 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         environ_mock.get.return_value = '/sbin'
         mock_is_md_device.return_value = False
         mock_md_get_raid_devices.return_value = {}
+        partuuid_device = ('KNAME="sda" MODEL="DRIVE 0" SIZE="10240000" '
+                           'ROTA="1" TYPE="disk" UUID="987654-3210" '
+                           'PARTUUID=""\n'
+                           'KNAME="sda0" MODEL="DRIVE 0" SIZE="102400" '
+                           'ROTA="1" TYPE="part" UUID="987654-3210" '
+                           'PARTUUID="' + self.fake_efi_system_part_uuid
+                           + '"\n')
+        exec_side_effect = [('', '')] * 16
+        exec_side_effect.append((partuuid_device, ''))
+        exec_side_effect.extend([('', '')] * 8)
+        mock_execute.side_effect = exec_side_effect
+        # Validates the complete opposite path *and* no-write behavior
+        # occurs if the entry already exists.
         fstab_data = (
-            'UUID=%s\tpath vfat option' % self.fake_efi_system_part_uuid)
+            'PARTUUID=%s\tpath vfat option' % self.fake_efi_system_part_uuid)
         mock_exists.side_effect = [True, False, True, True, True, False,
                                    True, True]
         with mock.patch('builtins.open',
@@ -969,6 +997,9 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                   'GRUB_DISABLE_OS_PROBER': 'true',
                                   'GRUB_SAVEDEFAULT': 'true'},
                               use_standard_locale=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('lsblk', '-Pbia',
+                              '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call(('chroot %s /bin/sh -c "umount -a -t vfat"' %
@@ -1079,6 +1110,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
     @mock.patch.object(os, 'listdir', lambda *_: ['file1', 'file2'])
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
+    @mock.patch.object(image, '_append_uefi_to_fstab', autospec=True)
     @mock.patch.object(shutil, 'copy2', autospec=True)
     @mock.patch.object(os.path, 'isfile', autospec=True)
     @mock.patch.object(image, '_efi_boot_setup', autospec=True)
@@ -1095,7 +1127,8 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             mock_is_md_device, mock_exists,
             mock_copytree, mock_efi_setup,
             mock_isfile, mock_copy2,
-            mock_execute, mock_dispatch):
+            mock_fstab_append, mock_execute,
+            mock_dispatch):
         mock_exists.return_value = True
         mock_efi_setup.return_value = True
         mock_get_part_uuid.side_effect = [self.fake_root_part,
@@ -1159,6 +1192,9 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                            uuid=self.fake_root_uuid)
         mock_get_part_uuid.assert_any_call(self.fake_dev,
                                            uuid=self.fake_efi_system_part_uuid)
+        mock_fstab_append.assert_called_once_with(
+            self.fake_dir,
+            self.fake_efi_system_part_uuid)
         self.assertFalse(mock_dispatch.called)
 
     @mock.patch.object(os.path, 'ismount', lambda *_: False)
@@ -1276,6 +1312,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                                 self.fake_efi_system_part_uuid)
 
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)
+    @mock.patch.object(image, '_append_uefi_to_fstab', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(shutil, 'copy2', autospec=True)
     @mock.patch.object(os.path, 'isfile', autospec=True)
@@ -1293,8 +1330,8 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             mock_is_md_device, mock_exists,
             mock_copytree, mock_efi_setup,
             mock_isfile, mock_copy2,
-            mock_oslistdir, mock_execute,
-            mock_dispatch):
+            mock_oslistdir, mock_append_to_fstab,
+            mock_execute, mock_dispatch):
         mock_exists.return_value = True
         mock_efi_setup.return_value = True
         mock_get_part_uuid.side_effect = [self.fake_root_part,
@@ -1363,6 +1400,8 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                            uuid=self.fake_efi_system_part_uuid)
         self.assertFalse(mock_dispatch.called)
         self.assertEqual(2, mock_oslistdir.call_count)
+        mock_append_to_fstab.assert_called_with(self.fake_dir,
+                                                self.fake_efi_system_part_uuid)
 
     @mock.patch.object(os.path, 'ismount', lambda *_: False)
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: False)

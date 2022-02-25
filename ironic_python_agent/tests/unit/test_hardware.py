@@ -66,6 +66,13 @@ RAID_BLK_DEVICE_TEMPLATE_DEVICES = [
                          vendor="FooTastic", uuid=""),
 ]
 
+BLK_DEVICE_TEMPLATE_PARTUUID_DEVICE = [
+    hardware.BlockDevice(name='/dev/sda1', model='DRIVE 0',
+                         size=107373133824, rotational=True,
+                         vendor="FooTastic", uuid="987654-3210",
+                         partuuid="1234-5678"),
+]
+
 
 class FakeHardwareManager(hardware.GenericHardwareManager):
     def __init__(self, hardware_support):
@@ -4141,6 +4148,25 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.assert_called_once_with(
             'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID')
         self.assertEqual(RAID_BLK_DEVICE_TEMPLATE_DEVICES, result)
+        mocked_udev.assert_called_once_with()
+
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(hardware, '_get_device_info',
+                       lambda x, y, z: 'FooTastic')
+    @mock.patch.object(hardware, '_udev_settle', autospec=True)
+    @mock.patch.object(hardware.pyudev.Devices, "from_device_file",
+                       autospec=False)
+    def test_list_all_block_devices_partuuid_success(
+            self, mocked_fromdevfile,
+            mocked_udev, mocked_readlink,
+            mocked_execute):
+        mocked_readlink.return_value = '../../sda'
+        mocked_fromdevfile.return_value = {}
+        mocked_execute.return_value = (hws.PARTUUID_DEVICE_TEMPLATE, '')
+        result = hardware.list_all_block_devices(block_type='part')
+        mocked_execute.assert_called_once_with(
+            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID')
+        self.assertEqual(BLK_DEVICE_TEMPLATE_PARTUUID_DEVICE, result)
         mocked_udev.assert_called_once_with()
 
     @mock.patch.object(hardware, '_get_device_info',
