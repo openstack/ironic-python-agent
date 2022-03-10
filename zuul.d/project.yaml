@@ -22,6 +22,8 @@
             voting: false
         - ironic-python-agent-check-image-dib-centos8:
             voting: false
+        - ironic-python-agent-check-image-dib-centos9:
+            voting: false
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
