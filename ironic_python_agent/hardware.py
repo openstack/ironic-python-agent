@@ -1349,6 +1349,30 @@ class GenericHardwareManager(HardwareManager):
         LOG.error(msg)
         raise errors.IncompatibleHardwareMethodError(msg)
 
+    def _list_erasable_devices(self):
+        block_devices = self.list_block_devices(include_partitions=True)
+        # NOTE(coreywright): Reverse sort by device name so a partition (eg
+        # sda1) is processed before it disappears when its associated disk (eg
+        # sda) has its partition table erased and the kernel notified.
+        block_devices.sort(key=lambda dev: dev.name, reverse=True)
+        erasable_devices = []
+        for dev in block_devices:
+            if self._is_virtual_media_device(dev):
+                LOG.info("Skipping erasure of virtual media device %s",
+                         dev.name)
+                continue
+            if self._is_linux_raid_member(dev):
+                LOG.info("Skipping erasure of RAID member device %s",
+                         dev.name)
+                continue
+            if self._is_read_only_device(dev):
+                LOG.info("Skipping erasure of read-only device %s",
+                         dev.name)
+                continue
+            erasable_devices.append(dev)
+
+        return erasable_devices
+
     def erase_devices_metadata(self, node, ports):
         """Attempt to erase the disk devices metadata.
 
@@ -1363,20 +1387,7 @@ class GenericHardwareManager(HardwareManager):
         # sda) has its partition table erased and the kernel notified.
         block_devices.sort(key=lambda dev: dev.name, reverse=True)
         erase_errors = {}
-        for dev in block_devices:
-            if self._is_virtual_media_device(dev):
-                LOG.info("Skipping metadata erase of virtual media device %s",
-                         dev.name)
-                continue
-            if self._is_linux_raid_member(dev):
-                LOG.info("Skipping metadata erase of RAID member device %s",
-                         dev.name)
-                continue
-            if self._is_read_only_device(dev):
-                LOG.info("Skipping metadata erase of read-only device %s",
-                         dev.name)
-                continue
-
+        for dev in self._list_erasable_devices():
             try:
                 disk_utils.destroy_disk_metadata(dev.name, node['uuid'])
             except processutils.ProcessExecutionError as e:
@@ -1388,6 +1399,55 @@ class GenericHardwareManager(HardwareManager):
             excpt_msg = ('Failed to erase the metadata on the device(s): %s' %
                          '; '.join(['"%s": %s' % (k, v)
                                     for k, v in erase_errors.items()]))
+            raise errors.BlockDeviceEraseError(excpt_msg)
+
+    def erase_devices_express(self, node, ports):
+        """Attempt to perform time-optimised disk erasure:
+
+        for NVMe devices, perform NVMe Secure Erase if supported. For other
+        devices, perform metadata erasure
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        :raises BlockDeviceEraseError: when there's an error erasing the
+                block device
+        """
+        erase_errors = {}
+        info = node.get('driver_internal_info', {})
+        if not self._list_erasable_devices:
+            LOG.debug("No erasable devices have been found.")
+            return
+        for dev in self._list_erasable_devices():
+            try:
+                if self._is_nvme(dev):
+                    execute_nvme_erase = info.get(
+                        'agent_enable_nvme_secure_erase', True)
+                    if execute_nvme_erase and self._nvme_erase(dev):
+                        continue
+            except errors.BlockDeviceEraseError as e:
+                LOG.error('Failed to securely erase device "%(dev)s". '
+                          'Error: %(error)s, falling back to metadata '
+                          'clean', {'dev': dev.name, 'error': e})
+                secure_erase_error = e
+            try:
+                disk_utils.destroy_disk_metadata(dev.name, node['uuid'])
+            except processutils.ProcessExecutionError as e:
+                LOG.error('Failed to erase the metadata on device '
+                          '"%(dev)s". Error: %(error)s',
+                          {'dev': dev.name, 'error': e})
+                if secure_erase_error:
+                    erase_errors[dev.name] = (
+                        "Secure erase failed: %s. "
+                        "Fallback to metadata erase also failed: %s.",
+                        secure_erase_error, e)
+                else:
+                    erase_errors[dev.name] = e
+
+        if erase_errors:
+            excpt_msg = ('Failed to conduct an express erase on '
+                         'the device(s): %s' % '\n'.join('"%s": %s' % item
+                                                         for item in
+                                                         erase_errors.items()))
             raise errors.BlockDeviceEraseError(excpt_msg)
 
     def _find_pstore_mount_point(self):
@@ -1938,6 +1998,13 @@ class GenericHardwareManager(HardwareManager):
             {
                 'step': 'erase_devices_metadata',
                 'priority': 99,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'erase_devices_express',
+                'priority': 0,
                 'interface': 'deploy',
                 'reboot_requested': False,
                 'abortable': True
