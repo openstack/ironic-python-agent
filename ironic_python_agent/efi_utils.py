@@ -12,7 +12,7 @@
 
 import os
 import re
-import shutil
+import sys
 import tempfile
 
 from ironic_lib import disk_utils
@@ -45,52 +45,53 @@ def manage_uefi(device, efi_system_part_uuid=None):
     efi_partition_mount_point = None
     efi_mounted = False
     LOG.debug('Attempting UEFI loader autodetection and NVRAM record setup.')
+
+    # Force UEFI to rescan the device.
+    utils.rescan_device(device)
+
+    # Trust the contents on the disk in the event of a whole disk image.
+    efi_partition = disk_utils.find_efi_partition(device)
+    if efi_partition:
+        efi_partition = efi_partition['number']
+
+    if not efi_partition and efi_system_part_uuid:
+        # _get_partition returns <device>+<partition> and we only need the
+        # partition number
+        partition = partition_utils.get_partition(
+            device, uuid=efi_system_part_uuid)
+        try:
+            efi_partition = int(partition.replace(device, ""))
+        except ValueError:
+            # NVMe Devices get a partitioning scheme that is different from
+            # traditional block devices like SCSI/SATA
+            efi_partition = int(partition.replace(device + 'p', ""))
+
+    if not efi_partition:
+        # NOTE(dtantsur): we cannot have a valid EFI deployment without an
+        # EFI partition at all. This code path is easily hit when using an
+        # image that is not UEFI compatible (which sadly applies to most
+        # cloud images out there, with a nice exception of Ubuntu).
+        raise errors.DeviceNotFound(
+            "No EFI partition could be detected on device %s and "
+            "EFI partition UUID has not been recorded during deployment "
+            "(which is often the case for whole disk images). "
+            "Are you using a UEFI-compatible image?" % device)
+
+    local_path = tempfile.mkdtemp()
+    efi_partition_mount_point = os.path.join(local_path, "boot/efi")
+    if not os.path.exists(efi_partition_mount_point):
+        os.makedirs(efi_partition_mount_point)
+
+    # The mount needs the device with the partition, in case the
+    # device ends with a digit we add a `p` and the partition number we
+    # found, otherwise we just join the device and the partition number
+    if device[-1].isdigit():
+        efi_device_part = '{}p{}'.format(device, efi_partition)
+    else:
+        efi_device_part = '{}{}'.format(device, efi_partition)
+
     try:
-        # Force UEFI to rescan the device.
-        utils.rescan_device(device)
-
-        local_path = tempfile.mkdtemp()
-        # Trust the contents on the disk in the event of a whole disk image.
-        efi_partition = disk_utils.find_efi_partition(device)
-        if efi_partition:
-            efi_partition = efi_partition['number']
-
-        if not efi_partition and efi_system_part_uuid:
-            # _get_partition returns <device>+<partition> and we only need the
-            # partition number
-            partition = partition_utils.get_partition(
-                device, uuid=efi_system_part_uuid)
-            try:
-                efi_partition = int(partition.replace(device, ""))
-            except ValueError:
-                # NVMe Devices get a partitioning scheme that is different from
-                # traditional block devices like SCSI/SATA
-                efi_partition = int(partition.replace(device + 'p', ""))
-
-        if not efi_partition:
-            # NOTE(dtantsur): we cannot have a valid EFI deployment without an
-            # EFI partition at all. This code path is easily hit when using an
-            # image that is not UEFI compatible (which sadly applies to most
-            # cloud images out there, with a nice exception of Ubuntu).
-            raise errors.DeviceNotFound(
-                "No EFI partition could be detected on device %s and "
-                "EFI partition UUID has not been recorded during deployment "
-                "(which is often the case for whole disk images). "
-                "Are you using a UEFI-compatible image?" % device)
-
-        efi_partition_mount_point = os.path.join(local_path, "boot/efi")
-        if not os.path.exists(efi_partition_mount_point):
-            os.makedirs(efi_partition_mount_point)
-
-        # The mount needs the device with the partition, in case the
-        # device ends with a digit we add a `p` and the partition number we
-        # found, otherwise we just join the device and the partition number
-        if device[-1].isdigit():
-            efi_device_part = '{}p{}'.format(device, efi_partition)
-            utils.execute('mount', efi_device_part, efi_partition_mount_point)
-        else:
-            efi_device_part = '{}{}'.format(device, efi_partition)
-            utils.execute('mount', efi_device_part, efi_partition_mount_point)
+        utils.execute('mount', efi_device_part, efi_partition_mount_point)
         efi_mounted = True
 
         valid_efi_bootloaders = _get_efi_bootloaders(efi_partition_mount_point)
@@ -149,34 +150,28 @@ def manage_uefi(device, efi_system_part_uuid=None):
         return True
 
     except processutils.ProcessExecutionError as e:
-        error_msg = ('Could not verify uefi on device %(dev)s, '
-                     'failed with %(err)s.' % {'dev': device, 'err': e})
-        LOG.error(error_msg)
+        error_msg = ('Could not configure UEFI boot on device %(dev)s: %(err)s'
+                     % {'dev': device, 'err': e})
+        LOG.exception(error_msg)
         raise errors.CommandExecutionError(error_msg)
     finally:
-        LOG.debug('Executing _manage_uefi clean-up.')
-        umount_warn_msg = "Unable to umount %(local_path)s. Error: %(error)s"
-
-        try:
-            if efi_mounted:
+        if efi_mounted:
+            try:
                 utils.execute('umount', efi_partition_mount_point,
                               attempts=3, delay_on_retry=True)
-        except processutils.ProcessExecutionError as e:
-            error_msg = ('Umounting efi system partition failed. '
-                         'Attempted 3 times. Error: %s' % e)
-            LOG.error(error_msg)
-            raise errors.CommandExecutionError(error_msg)
-
-        else:
-            # If umounting the binds succeed then we can try to delete it
-            try:
-                utils.execute('sync')
             except processutils.ProcessExecutionError as e:
-                LOG.warning(umount_warn_msg, {'path': local_path, 'error': e})
+                error_msg = ('Umounting efi system partition failed. '
+                             'Attempted 3 times. Error: %s' % e)
+                LOG.error(error_msg)
+                # Do not mask the actual failure, if any
+                if sys.exc_info()[0] is None:
+                    raise errors.CommandExecutionError(error_msg)
+
             else:
-                # After everything is umounted we can then remove the
-                # temporary directory
-                shutil.rmtree(local_path)
+                try:
+                    utils.execute('sync')
+                except processutils.ProcessExecutionError as e:
+                    LOG.warning('Unable to sync the local disks: %s', e)
 
 
 # NOTE(TheJulia): Do not add bootia32.csv to this list. That is 32bit
