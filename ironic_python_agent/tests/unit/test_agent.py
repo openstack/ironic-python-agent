@@ -159,6 +159,7 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
 
 @mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
+@mock.patch.object(hardware, '_load_ipmi_modules', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 class TestBaseAgent(ironic_agent_base.IronicAgentTest):
@@ -538,6 +539,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         wsgi_server.start.assert_called_once_with()
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch.object(hardware, '_enable_multipath', autospec=True)
     @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
                 mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
@@ -548,7 +550,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
     def test_run_with_inspection(self, mock_list_hardware, mock_wsgi,
-                                 mock_dispatch, mock_inspector, mock_wait):
+                                 mock_dispatch, mock_inspector, mock_wait,
+                                 mock_mpath):
         CONF.set_override('inspection_callback_url', 'http://foo/bar')
 
         def set_serve_api():
@@ -589,6 +592,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                          mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
 
+    @mock.patch.object(hardware, '_enable_multipath', autospec=True)
     @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
@@ -606,7 +610,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                                 mock_dispatch,
                                                 mock_inspector,
                                                 mock_wait,
-                                                mock_mdns):
+                                                mock_mdns,
+                                                mock_mpath):
         mock_mdns.side_effect = lib_exc.ServiceLookupFailure()
         # If inspection_callback_url is configured and api_url is not when the
         # agent starts, ensure that the inspection will be called and wsgi
@@ -646,6 +651,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertTrue(mock_wait.called)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(hardware, '_enable_multipath', autospec=True)
     @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
@@ -663,7 +669,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                                mock_dispatch,
                                                mock_inspector,
                                                mock_wait,
-                                               mock_mdns):
+                                               mock_mdns,
+                                               mock_mpath):
         mock_mdns.side_effect = lib_exc.ServiceLookupFailure()
         # If both api_url and inspection_callback_url are not configured when
         # the agent starts, ensure that the inspection will be skipped and wsgi
@@ -959,6 +966,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 
 @mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
+@mock.patch.object(hardware, '_load_ipmi_modules', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
 @mock.patch.object(socket, 'gethostbyname', autospec=True)
@@ -988,12 +996,13 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
 
+    @mock.patch.object(hardware, '_enable_multipath', autospec=True)
     @mock.patch.object(netutils, 'get_ipv4_addr',
                        autospec=True)
     @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
                 autospec=True)
-    def test_with_network_interface(self, mock_cna, mock_get_ipv4, mock_exec,
-                                    mock_gethostbyname):
+    def test_with_network_interface(self, mock_cna, mock_get_ipv4, mock_mpath,
+                                    mock_exec, mock_gethostbyname):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = '1.2.3.4'
         mock_cna.return_value = False
@@ -1006,12 +1015,14 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_gethostbyname.called)
 
+    @mock.patch.object(hardware, '_enable_multipath', autospec=True)
     @mock.patch.object(netutils, 'get_ipv4_addr',
                        autospec=True)
     @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
                 autospec=True)
     def test_with_network_interface_failed(self, mock_cna, mock_get_ipv4,
-                                           mock_exec, mock_gethostbyname):
+                                           mock_mpath, mock_exec,
+                                           mock_gethostbyname):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = None
         mock_cna.return_value = False
