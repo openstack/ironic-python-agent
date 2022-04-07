@@ -81,6 +81,8 @@ RAID_APPLY_CONFIGURATION_ARGSINFO = {
     }
 }
 
+MULTIPATH_ENABLED = None
+
 
 def _get_device_info(dev, devclass, field):
     """Get the device info according to device class and field."""
@@ -138,6 +140,36 @@ def _load_ipmi_modules():
     il_utils.try_execute('modprobe', 'ipmi_si')
 
 
+def _load_multipath_modules():
+    """Load multipath modules
+
+    This is required to be able to collect multipath information.
+
+    Two separate paths exist, one with a helper utility for Centos/RHEL
+    and another which is just load the modules, and trust multipathd
+    will do the needful.
+    """
+    if (os.path.isfile('/usr/sbin/mpathconf')
+        and not os.path.isfile('/etc/multipath.conf')):
+        # For Centos/Rhel/Etc which uses mpathconf, this does
+        # a couple different things, including configuration generation...
+        # which is not *really* required.. at least *shouldn't* be.
+        # WARNING(TheJulia): This command explicitly replaces local
+        # configuration.
+        il_utils.try_execute('/usr/sbin/mpathconf', '--enable',
+                             '--find_multipaths', 'yes',
+                             '--with_module', 'y',
+                             '--with_multipathd', 'y')
+    else:
+        # Ensure modules are loaded. Configuration is not required
+        # and implied based upon compiled in defaults.
+        # NOTE(TheJulia): Debian/Ubuntu specifically just document
+        # using `multipath -t` output to start a new configuration
+        # file, if needed.
+        il_utils.try_execute('modprobe', 'dm_multipath')
+        il_utils.try_execute('modprobe', 'multipath')
+
+
 def _check_for_iscsi():
     """Connect iSCSI shared connected via iBFT or OF.
 
@@ -179,6 +211,84 @@ def _get_md_uuid(raid_device):
         match = re.search(r'UUID : ([a-f0-9:]+)', line)
         if match:
             return match.group(1)
+
+
+def _enable_multipath():
+    """Initialize multipath IO if possible.
+
+    :returns: True if the multipathd daemon and multipath command to enumerate
+              devices was scucessfully able to be called.
+    """
+    try:
+        _load_multipath_modules()
+        # This might not work, ideally it *should* already be running...
+        # NOTE(TheJulia): Testing locally, a prior running multipathd, the
+        # explicit multipathd start just appears to silently exit with a
+        # result code of 0.
+        il_utils.execute('multipathd')
+        # This is mainly to get the system to actually do the needful and
+        # identify/enumerate paths by combining what it can detect and what
+        # it already knows. This may be useful, and in theory this should be
+        # logged in the IPA log should it be needed.
+        il_utils.execute('multipath', '-ll')
+        return True
+    except FileNotFoundError as e:
+        LOG.warning('Attempted to determine if multipath tools were present. '
+                    'Not detected. Error recorded: %s', e)
+        return False
+    except processutils.ProcessExecutionError as e:
+        LOG.warning('Attempted to invoke multipath utilities, but we '
+                    'encountered an error: %s', e)
+        return False
+
+
+def _get_multipath_parent_device(device):
+    """Check and return a multipath device."""
+    if not device:
+        # if lsblk provides invalid output, this can be None.
+        return
+    check_device = os.path.join('/dev', str(device))
+    try:
+        # Explicitly run the check as regardless of if the device is mpath or
+        # not, multipath tools when using list always exits with a return
+        # code of 0.
+        il_utils.execute('multipath', '-c', check_device)
+        # path check with return an exit code of 1 if you send it a multipath
+        # device mapper device, like dm-0.
+        # NOTE(TheJulia): -ll is supposed to load from all available
+        # information, but may not force a rescan. It may be -f if we need
+        # that. That being said, it has been about a decade since I was
+        # running multipath tools on SAN connected gear, so my memory is
+        # definitely fuzzy.
+        out, _ = il_utils.execute('multipath', '-ll', check_device)
+    except processutils.ProcessExecutionError as e:
+        # FileNotFoundError if the utility does not exist.
+        # -1 return code if the device is not valid.
+        LOG.debug('Checked device %(dev)s and determined it was '
+                  'not a multipath device. %(error)s',
+                  {'dev': check_device,
+                   'error': e})
+        return
+    except FileNotFoundError:
+        # This should never happen, as MULTIPATH_ENABLED would be False
+        # before this occurs.
+        LOG.warning('Attempted to check multipathing status, however '
+                    'the \'multipath\' binary is missing or not in the '
+                    'execution PATH.')
+        return
+    # Data format:
+    # MPATHDEVICENAME dm-0 TYPE,HUMANNAME
+    # size=56G features='1 retain_attached_hw_handler' hwhandler='0' wp=rw
+    # `-+- policy='service-time 0' prio=1 status=active
+    #   `- 0:0:0:0 sda 8:0  active ready running
+    try:
+        lines = out.splitlines()
+        mpath_device = lines[0].split(' ')[1]
+        # give back something like dm-0 so we can log it.
+        return mpath_device
+    except IndexError:
+        # We didn't get any command output, so Nope.
+        pass
 
 
 def get_component_devices(raid_device):
@@ -371,7 +481,8 @@ def _md_scan_and_assemble():
 def list_all_block_devices(block_type='disk',
                            ignore_raid=False,
                            ignore_floppy=True,
-                           ignore_empty=True):
+                           ignore_empty=True,
+                           ignore_multipath=False):
     """List all physical block devices
 
     The switches we use for lsblk: P for KEY="value" output, b for size output
@@ -388,6 +499,9 @@ def list_all_block_devices(block_type='disk',
     :param ignore_floppy: Ignore floppy disk devices in the block device
                           list. By default, these devices are filtered out.
     :param ignore_empty: Whether to ignore disks with size equal 0.
+    :param ignore_multipath: Whether to ignore devices backing multipath
+                             devices. Default is to consider multipath
+                             devices, if possible.
     :return: A list of BlockDevices
     """
 
@@ -397,6 +511,8 @@ def list_all_block_devices(block_type='disk',
             if os.path.join('/dev', new_device_name) == known_dev.name:
                 return True
         return False
+
+    check_multipath = not ignore_multipath and get_multipath_status()
 
     _udev_settle()
 
@@ -428,7 +544,6 @@ def list_all_block_devices(block_type='disk',
                               '-o{}'.format(','.join(columns)))[0]
     lines = report.splitlines()
     context = pyudev.Context()
-
     devices = []
     for line in lines:
         device = {}
@@ -450,10 +565,25 @@ def list_all_block_devices(block_type='disk',
             LOG.debug('Ignoring floppy disk device: %s', line)
             continue
 
+        dev_kname = device.get('KNAME')
+        if check_multipath:
+            # Net effect is we ignore base devices, and their base devices
+            # to what would be the mapped device name which would not pass the
+            # validation, but would otherwise be match-able.
+            mpath_parent_dev = _get_multipath_parent_device(dev_kname)
+            if mpath_parent_dev:
+                LOG.warning(
+                    "We have identified a multipath device %(device)s, this "
+                    "is being ignored in favor of %(mpath_device)s and its "
+                    "related child devices.",
+                    {'device': dev_kname,
+                     'mpath_device': mpath_parent_dev})
+                continue
         # Search for raid in the reply type, as RAID is a
         # disk device, and we should honor it if is present.
         # Other possible type values, which we skip recording:
         #   lvm, part, rom, loop
+
         if devtype != block_type:
             if devtype is None or ignore_raid:
                 LOG.debug(
@@ -462,7 +592,7 @@ def list_all_block_devices(block_type='disk',
                     {'block_type': block_type, 'line': line})
                 continue
             elif ('raid' in devtype
-                  and block_type in ['raid', 'disk']):
+                  and block_type in ['raid', 'disk', 'mpath']):
                 LOG.debug(
                     "TYPE detected to contain 'raid', signifying a "
                     "RAID volume. Found: %s", line)
@@ -476,6 +606,11 @@ def list_all_block_devices(block_type='disk',
                 LOG.debug(
                     "TYPE detected to contain 'md', signifying a "
                     "RAID partition. Found: %s", line)
+            elif devtype == 'mpath' and block_type == 'disk':
+                LOG.debug(
+                    "TYPE detected to contain 'mpath', "
+                    "signifing a device mapper multipath device. "
+                    "Found: %s", line)
             else:
                 LOG.debug(
                     "TYPE did not match. Wanted: %(block_type)s but found: "
@@ -1001,6 +1136,10 @@ class GenericHardwareManager(HardwareManager):
         _check_for_iscsi()
         _md_scan_and_assemble()
         _load_ipmi_modules()
+        global MULTIPATH_ENABLED
+        if MULTIPATH_ENABLED is None:
+            MULTIPATH_ENABLED = _enable_multipath()
+
         self.wait_for_disks()
         return HardwareSupport.GENERIC
 
@@ -2787,3 +2926,11 @@ def deduplicate_steps(candidate_steps):
         deduped_steps[manager].append(winning_step)
 
     return deduped_steps
+
+
+def get_multipath_status():
+    """Return the status of multipath initialization."""
+    # NOTE(TheJulia): Provides a nice place to mock out and simplify testing
+    # as if we directly try and work with the global var, we will be racing
+    # tests endlessly.
+    return MULTIPATH_ENABLED

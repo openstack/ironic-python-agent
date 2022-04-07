@@ -121,7 +121,10 @@ BLK_DEVICE_TEMPLATE = (
     'KNAME="fd1" MODEL="magic" SIZE="4096" ROTA="1" TYPE="disk" UUID="" '
     'PARTUUID=""\n'
     'KNAME="sdf" MODEL="virtual floppy" SIZE="0" ROTA="1" TYPE="disk" UUID="" '
-    'PARTUUID=""'
+    'PARTUUID=""\n'
+    'KNAME="dm-0" MODEL="NWD-BLP4-1600   " SIZE="1765517033472" '
+    ' ROTA="0" TYPE="mpath" UUID="" PARTUUID=""\n'
+
 )
 
 # NOTE(pas-ha) largest device is 1 byte smaller than 4GiB
@@ -158,6 +161,49 @@ RAID_BLK_DEVICE_TEMPLATE = (
     'ROTA="0" TYPE="raid1" UUID="" PARTUUID=""\n'
     'KNAME="md1" MODEL="RAID" SIZE="" ROTA="0" TYPE="raid1" UUID="" '
     'PARTUUID=""'
+)
+
+MULTIPATH_BLK_DEVICE_TEMPLATE = (
+    'KNAME="sda" MODEL="INTEL_SSDSC2CT060A3" SIZE="60022480896" ROTA="0" '
+    'TYPE="disk" UUID="" PARTUUID=""\n'
+    'KNAME="sda2" MODEL="" SIZE="59162722304" ROTA="0" TYPE="part" '
+    'UUID="f8b55d59-96c3-3982-b129-1b6b2ee8da86" '
+    'PARTUUID="c97c8aac-7796-4433-b1fc-9b5fac43edf3"\n'
+    'KNAME="sda3" MODEL="" SIZE="650002432" ROTA="0" TYPE="part" '
+    'UUID="b3b03565-5f13-3c93-b2a6-6d90e25be926" '
+    'PARTUUID="6c85beff-b2bd-4a1c-91b7-8abb5256459d"\n'
+    'KNAME="sda1" MODEL="" SIZE="209715200" ROTA="0" TYPE="part" '
+    'UUID="0a83355d-7500-3f5f-9abd-66f6fd03714c" '
+    'PARTUUID="eba28b26-b76a-402c-94dd-0b66a523a485"\n'
+    'KNAME="dm-0" MODEL="" SIZE="60022480896" ROTA="0" TYPE="mpath" '
+    'UUID="" PARTUUID=""\n'
+    'KNAME="dm-4" MODEL="" SIZE="650002432" ROTA="0" TYPE="part" '
+    'UUID="b3b03565-5f13-3c93-b2a6-6d90e25be926" '
+    'PARTUUID="6c85beff-b2bd-4a1c-91b7-8abb5256459d"\n'
+    'KNAME="dm-2" MODEL="" SIZE="209715200" ROTA="0" TYPE="part" '
+    'UUID="0a83355d-7500-3f5f-9abd-66f6fd03714c" '
+    'PARTUUID="eba28b26-b76a-402c-94dd-0b66a523a485"\n'
+    'KNAME="dm-3" MODEL="" SIZE="59162722304" ROTA="0" TYPE="part" '
+    'UUID="f8b55d59-96c3-3982-b129-1b6b2ee8da86" '
+    'PARTUUID="c97c8aac-7796-4433-b1fc-9b5fac43edf3"\n'
+    'KNAME="sdb" MODEL="INTEL_SSDSC2CT060A3" SIZE="60022480896" '
+    'ROTA="0" TYPE="disk" UUID="" PARTUUID=""\n'
+    'KNAME="sdb2" MODEL="" SIZE="59162722304" ROTA="0" TYPE="part" '
+    'UUID="f8b55d59-96c3-3982-b129-1b6b2ee8da86" '
+    'PARTUUID="c97c8aac-7796-4433-b1fc-9b5fac43edf3"\n'
+    'KNAME="sdb3" MODEL="" SIZE="650002432" ROTA="0" TYPE="part" '
+    'UUID="b3b03565-5f13-3c93-b2a6-6d90e25be926" '
+    'PARTUUID="6c85beff-b2bd-4a1c-91b7-8abb5256459d"\n'
+    'KNAME="sdb1" MODEL="" SIZE="209715200" ROTA="0" TYPE="part" '
+    'UUID="0a83355d-7500-3f5f-9abd-66f6fd03714c" '
+    'PARTUUID="eba28b26-b76a-402c-94dd-0b66a523a485"\n'
+    'KNAME="sdc" MODEL="ST1000DM003-1CH162" SIZE="1000204886016" '
+    'ROTA="1" TYPE="disk" UUID="" PARTUUID=""\n'
+    'KNAME="sdc1" MODEL="" SIZE="899999072256" ROTA="1" TYPE="part" '
+    'UUID="457f7d3c-9376-4997-89bd-d1a7c8b04060" '
+    'PARTUUID="c9433d2e-3bbc-47b4-92bf-43c1d80f06e0"\n'
+    'KNAME="dm-1" MODEL="" SIZE="1000204886016" ROTA="0" TYPE="mpath" '
+    'UUID="" PARTUUID=""\n'
 )
 
 PARTUUID_DEVICE_TEMPLATE = (
@@ -1501,7 +1547,6 @@ NVME_CLI_INFO_TEMPLATE_FORMAT_UNSUPPORTED = ("""
 }
 """)
 
-
 SGDISK_INFO_TEMPLATE = ("""
 Partition GUID code: C12A7328-F81F-11D2-BA4B-00A0C93EC93B (EFI system partition)
 Partition unique GUID: FAED7408-6D92-4FC6-883B-9069E2274ECA
@@ -1511,3 +1556,13 @@ Partition size: 1048576 sectors (512.0 MiB)
 Attribute flags: 0000000000000000
 Partition name: 'EFI System Partition'
 """)  # noqa
+
+MULTIPATH_VALID_PATH = '%s is a valid multipath device path'
+MULTIPATH_INVALID_PATH = '%s is not a valid multipath device path'
+
+MULTIPATH_LINKS_DM = (
+    'SUPER_FRIENDLY_NAME %s ATA,INTEL SSDSC2CT06\n'
+    'size=56G features=\'1 retain_attached_hw_handler\' hwhandler=\'0\' wp=rw\n'  # noqa
+    ' `-+- policy=\'service-time 0\' prio=1 status=active\n'
+    '  `- 0:0:0:0 device s  8:0  active ready running\n'
+)
