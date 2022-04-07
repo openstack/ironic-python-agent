@@ -428,12 +428,13 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
                  mock.call(['lshw', '-quiet', '-json'])]
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
-            file_list=[],
             io_dict={'journal': mock.ANY, 'ps': mock.ANY, 'df': mock.ANY,
                      'iptables': mock.ANY, 'ip_addr': mock.ANY,
                      'lshw': mock.ANY, 'lsblk': mock.ANY,
                      'lsblk-full': mock.ANY, 'mdstat': mock.ANY,
-                     'mount': mock.ANY, 'parted': mock.ANY})
+                     'mount': mock.ANY, 'parted': mock.ANY,
+                     'multipath': mock.ANY},
+            file_list=[])
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -457,12 +458,13 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
                  mock.call(['lshw', '-quiet', '-json'])]
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
-            file_list=[tmp.name],
             io_dict={'journal': mock.ANY, 'ps': mock.ANY, 'df': mock.ANY,
                      'iptables': mock.ANY, 'ip_addr': mock.ANY,
                      'lshw': mock.ANY, 'lsblk': mock.ANY,
                      'lsblk-full': mock.ANY, 'mdstat': mock.ANY,
-                     'mount': mock.ANY, 'parted': mock.ANY})
+                     'mount': mock.ANY, 'parted': mock.ANY,
+                     'multipath': mock.ANY},
+            file_list=[tmp.name])
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -481,12 +483,13 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
                  mock.call(['lshw', '-quiet', '-json'])]
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
-            file_list=['/var/log'],
             io_dict={'dmesg': mock.ANY, 'ps': mock.ANY, 'df': mock.ANY,
                      'iptables': mock.ANY, 'ip_addr': mock.ANY,
                      'lshw': mock.ANY, 'lsblk': mock.ANY,
                      'lsblk-full': mock.ANY, 'mdstat': mock.ANY,
-                     'mount': mock.ANY, 'parted': mock.ANY})
+                     'mount': mock.ANY, 'parted': mock.ANY,
+                     'multipath': mock.ANY},
+            file_list=['/var/log'])
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -509,12 +512,13 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
                  mock.call(['lshw', '-quiet', '-json'])]
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
-            file_list=['/var/log', tmp.name],
             io_dict={'dmesg': mock.ANY, 'ps': mock.ANY, 'df': mock.ANY,
                      'iptables': mock.ANY, 'ip_addr': mock.ANY,
                      'lshw': mock.ANY, 'lsblk': mock.ANY,
                      'lsblk-full': mock.ANY, 'mdstat': mock.ANY,
-                     'mount': mock.ANY, 'parted': mock.ANY})
+                     'mount': mock.ANY, 'parted': mock.ANY,
+                     'multipath': mock.ANY},
+            file_list=['/var/log', tmp.name])
 
     def test_get_ssl_client_options(self):
         # defaults

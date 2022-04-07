@@ -72,6 +72,7 @@ COLLECT_LOGS_COMMANDS = {
     'mdstat': ['cat', '/proc/mdstat'],
     'mount': ['mount'],
     'parted': ['parted', '-l'],
+    'multipath': ['multipath', '-ll'],
 }
 
 
