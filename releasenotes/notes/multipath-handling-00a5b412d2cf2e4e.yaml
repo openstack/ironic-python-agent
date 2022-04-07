@@ -1,0 +1,18 @@
+---
+fixes:
+  - |
+    Fixes failures with handling of Multipath IO devices where Active/Passive
+    storage arrays are in use. Previously, "standby" paths could result in
+    IO errors causing cleaning to terminate. The agent now explicitly attempts
+    to handle and account for multipaths based upon the MPIO data available.
+    This requires the ``multipath`` and ``multipathd`` utility to be present
+    in the ramdisk. These are supplied by the ``device-mapper-multipath`` or
+    ``multipath-tools`` packages, and are not requried for the agent's use.
+  - |
+    Fixes non-ideal behavior when performing cleaning where Active/Active
+    MPIO devices would ultimately be cleaned once per IO path, instead of
+    once per backend device.
+other:
+  - |
+    The agent will now attempt to collect any multipath path information
+    and upload it to the agent ramdisk, if the tooling is present.
