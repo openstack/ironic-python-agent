@@ -723,60 +723,234 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('eth1.102', interfaces[4].name)
         self.assertEqual('eth1.103', interfaces[5].name)
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_os_install_device(self, mocked_execute, mock_cached_node,
-                                   mocked_listdir, mocked_readlink):
+                                   mocked_listdir, mocked_readlink,
+                                   mocked_mpath):
         mocked_readlink.return_value = '../../sda'
         mocked_listdir.return_value = ['1:0:0:0']
         mock_cached_node.return_value = None
-        mocked_execute.return_value = (hws.BLK_DEVICE_TEMPLATE, '')
+        mocked_mpath.return_value = False
+        mocked_execute.side_effect = [
+            (hws.BLK_DEVICE_TEMPLATE, ''),
+        ]
         self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
-        mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID')
+        mock_cached_node.assert_called_once_with()
+        self.assertEqual(1, mocked_mpath.call_count)
+
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_os_install_device_multipath(
+            self, mocked_execute, mock_cached_node,
+            mocked_listdir, mocked_readlink,
+            mocked_mpath):
+        mocked_mpath.return_value = True
+        mocked_readlink.return_value = '../../sda'
+        mocked_listdir.return_value = ['1:0:0:0']
+        mock_cached_node.return_value = None
+        mocked_execute.side_effect = [
+            (hws.MULTIPATH_BLK_DEVICE_TEMPLATE, ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sda', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sda2', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sda3', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sda1', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-4
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-2
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-3
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdb', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdb2', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdb3', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdb1', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdc'),  # sdc
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdc1'),  # sdc1
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-1
+        ]
+        expected = [
+            mock.call('lsblk', '-Pbia',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('multipath', '-c', '/dev/sda'),
+            mock.call('multipath', '-ll', '/dev/sda'),
+            mock.call('multipath', '-c', '/dev/sda2'),
+            mock.call('multipath', '-ll', '/dev/sda2'),
+            mock.call('multipath', '-c', '/dev/sda3'),
+            mock.call('multipath', '-ll', '/dev/sda3'),
+            mock.call('multipath', '-c', '/dev/sda1'),
+            mock.call('multipath', '-ll', '/dev/sda1'),
+            mock.call('multipath', '-c', '/dev/dm-0'),
+            mock.call('multipath', '-c', '/dev/dm-4'),
+            mock.call('multipath', '-c', '/dev/dm-2'),
+            mock.call('multipath', '-c', '/dev/dm-3'),
+            mock.call('multipath', '-c', '/dev/sdb'),
+            mock.call('multipath', '-ll', '/dev/sdb'),
+            mock.call('multipath', '-c', '/dev/sdb2'),
+            mock.call('multipath', '-ll', '/dev/sdb2'),
+            mock.call('multipath', '-c', '/dev/sdb3'),
+            mock.call('multipath', '-ll', '/dev/sdb3'),
+            mock.call('multipath', '-c', '/dev/sdb1'),
+            mock.call('multipath', '-ll', '/dev/sdb1'),
+            mock.call('multipath', '-c', '/dev/sdc'),
+            mock.call('multipath', '-c', '/dev/sdc1'),
+            mock.call('multipath', '-c', '/dev/dm-1'),
+        ]
+        self.assertEqual('/dev/dm-0', self.hardware.get_os_install_device())
+        mocked_execute.assert_has_calls(expected)
         mock_cached_node.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_os_install_device_not_multipath(
+            self, mocked_execute, mock_cached_node,
+            mocked_listdir, mocked_readlink, mocked_mpath):
+        mocked_readlink.return_value = '../../sda'
+        mocked_listdir.return_value = ['1:0:0:0']
+        mocked_mpath.return_value = True
+        hint = {'size': '>900'}
+        mock_cached_node.return_value = {'properties': {'root_device': hint},
+                                         'uuid': 'node1',
+                                         'instance_info': {}}
+        mocked_execute.side_effect = [
+            (hws.MULTIPATH_BLK_DEVICE_TEMPLATE, ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sda', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sda2', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sda3', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sda1', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-4
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-2
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-3
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdb', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdb2', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdb3', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdb1', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdc'),  # sdc
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdc1'),  # sdc1
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-1
+        ]
+        expected = [
+            mock.call('lsblk', '-Pbia',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('multipath', '-c', '/dev/sda'),
+            mock.call('multipath', '-ll', '/dev/sda'),
+            mock.call('multipath', '-c', '/dev/sda2'),
+            mock.call('multipath', '-ll', '/dev/sda2'),
+            mock.call('multipath', '-c', '/dev/sda3'),
+            mock.call('multipath', '-ll', '/dev/sda3'),
+            mock.call('multipath', '-c', '/dev/sda1'),
+            mock.call('multipath', '-ll', '/dev/sda1'),
+            mock.call('multipath', '-c', '/dev/dm-0'),
+            mock.call('multipath', '-c', '/dev/dm-4'),
+            mock.call('multipath', '-c', '/dev/dm-2'),
+            mock.call('multipath', '-c', '/dev/dm-3'),
+            mock.call('multipath', '-c', '/dev/sdb'),
+            mock.call('multipath', '-ll', '/dev/sdb'),
+            mock.call('multipath', '-c', '/dev/sdb2'),
+            mock.call('multipath', '-ll', '/dev/sdb2'),
+            mock.call('multipath', '-c', '/dev/sdb3'),
+            mock.call('multipath', '-ll', '/dev/sdb3'),
+            mock.call('multipath', '-c', '/dev/sdb1'),
+            mock.call('multipath', '-ll', '/dev/sdb1'),
+            mock.call('multipath', '-c', '/dev/sdc'),
+            mock.call('multipath', '-c', '/dev/sdc1'),
+            mock.call('multipath', '-c', '/dev/dm-1'),
+        ]
+        self.assertEqual('/dev/sdc', self.hardware.get_os_install_device())
+        mocked_execute.assert_has_calls(expected)
+        mock_cached_node.assert_called_once_with()
+        mocked_mpath.assert_called_once_with()
+
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_os_install_device_raid(self, mocked_execute,
                                         mock_cached_node, mocked_listdir,
-                                        mocked_readlink):
+                                        mocked_readlink, mocked_mpath):
         # NOTE(TheJulia): The readlink and listdir mocks are just to satisfy
         # what is functionally an available path check and that information
         # is stored in the returned result for use by root device hints.
-        mocked_readlink.side_effect = '../../sda'
+        mocked_readlink.return_value = '../../sda'
         mocked_listdir.return_value = ['1:0:0:0']
+        mocked_mpath.return_value = False
         mock_cached_node.return_value = None
-        mocked_execute.return_value = (hws.RAID_BLK_DEVICE_TEMPLATE, '')
-        # This should ideally select the smallest device and in theory raid
-        # should always be smaller
-        self.assertEqual('/dev/md0', self.hardware.get_os_install_device())
-        mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID')
+        mocked_execute.return_value = (hws.BLK_DEVICE_TEMPLATE_SMALL, '')
+        ex = self.assertRaises(errors.DeviceNotFound,
+                               self.hardware.get_os_install_device)
+        expected = [
+            mock.call('lsblk', '-Pbia',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+        ]
+        mocked_execute.assert_has_calls(expected)
+        self.assertIn(str(4 * units.Gi), ex.details)
         mock_cached_node.assert_called_once_with()
+        self.assertEqual(1, mocked_mpath.call_count)
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_os_install_device_fails(self, mocked_execute,
                                          mock_cached_node,
-                                         mocked_listdir, mocked_readlink):
+                                         mocked_listdir, mocked_readlink,
+                                         mocked_mpath):
         """Fail to find device >=4GB w/o root device hints"""
         mocked_readlink.return_value = '../../sda'
         mocked_listdir.return_value = ['1:0:0:0']
+        mocked_mpath.return_value = False
         mock_cached_node.return_value = None
         mocked_execute.return_value = (hws.BLK_DEVICE_TEMPLATE_SMALL, '')
         ex = self.assertRaises(errors.DeviceNotFound,
                                self.hardware.get_os_install_device)
-        mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID')
+        expected = [
+            mock.call('lsblk', '-Pbia',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+        ]
+        mocked_execute.assert_has_calls(expected)
         self.assertIn(str(4 * units.Gi), ex.details)
         mock_cached_node.assert_called_once_with()
+        self.assertEqual(1, mocked_mpath.call_count)
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
@@ -1183,6 +1357,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                                  ignore_raid=True)],
                          list_mock.call_args_list)
 
+    @mock.patch.object(hardware, 'get_multipath_status', lambda *_: True)
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
@@ -1200,7 +1375,34 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mock_readlink.side_effect = lambda x, m=by_path_map: m[x]
         mock_listdir.return_value = [os.path.basename(x)
                                      for x in sorted(by_path_map)]
-        mocked_execute.return_value = (hws.BLK_DEVICE_TEMPLATE, '')
+        mocked_execute.side_effect = [
+            (hws.BLK_DEVICE_TEMPLATE, ''),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sda'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdb'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdc'),
+            # Pretend sdd is a multipath device... because why not.
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdd', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # loop0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # zram0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram1
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram2
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram3
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdf'),
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-0
+        ]
         mocked_udev.side_effect = [pyudev.DeviceNotFoundByFileError(),
                                    pyudev.DeviceNotFoundByNumberError('block',
                                                                       1234),
@@ -1230,7 +1432,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  vendor='Super Vendor',
                                  hctl='1:0:0:0',
                                  by_path='/dev/disk/by-path/1:0:0:2'),
-            hardware.BlockDevice(name='/dev/sdd',
+            hardware.BlockDevice(name='/dev/dm-0',
                                  model='NWD-BLP4-1600',
                                  size=1765517033472,
                                  rotational=False,
@@ -1246,21 +1448,41 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 self.assertEqual(getattr(expected, attr),
                                  getattr(device, attr))
         expected_calls = [mock.call('/sys/block/%s/device/scsi_device' % dev)
-                          for dev in ('sda', 'sdb', 'sdc', 'sdd')]
+                          for dev in ('sda', 'sdb', 'sdc', 'dm-0')]
         mock_listdir.assert_has_calls(expected_calls)
-
         expected_calls = [mock.call('/dev/disk/by-path/1:0:0:%d' % dev)
                           for dev in range(3)]
         mock_readlink.assert_has_calls(expected_calls)
+        expected_calls = [
+            mock.call('lsblk', '-Pbia',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('multipath', '-c', '/dev/sda'),
+            mock.call('multipath', '-c', '/dev/sdb'),
+            mock.call('multipath', '-c', '/dev/sdc'),
+            mock.call('multipath', '-c', '/dev/sdd'),
+            mock.call('multipath', '-ll', '/dev/sdd'),
+            mock.call('multipath', '-c', '/dev/loop0'),
+            mock.call('multipath', '-c', '/dev/zram0'),
+            mock.call('multipath', '-c', '/dev/ram0'),
+            mock.call('multipath', '-c', '/dev/ram1'),
+            mock.call('multipath', '-c', '/dev/ram2'),
+            mock.call('multipath', '-c', '/dev/ram3'),
+            mock.call('multipath', '-c', '/dev/sdf'),
+            mock.call('multipath', '-c', '/dev/dm-0')
+        ]
+        mocked_execute.assert_has_calls(expected_calls)
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_hctl_fail(self, mocked_execute, mocked_udev,
                                              mocked_dev_vendor,
-                                             mocked_listdir):
+                                             mocked_listdir,
+                                             mocked_mpath):
         mocked_listdir.side_effect = (OSError, OSError, IndexError)
+        mocked_mpath.return_value = False
         mocked_execute.return_value = (hws.BLK_DEVICE_TEMPLATE_SMALL, '')
         mocked_dev_vendor.return_value = 'Super Vendor'
         devices = hardware.list_all_block_devices()
@@ -1272,6 +1494,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ]
         self.assertEqual(expected_calls, mocked_listdir.call_args_list)
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
@@ -1279,15 +1502,62 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_with_udev(self, mocked_execute, mocked_udev,
                                              mocked_dev_vendor, mocked_listdir,
-                                             mocked_readlink):
+                                             mocked_readlink, mocked_mpath):
         mocked_readlink.return_value = '../../sda'
         mocked_listdir.return_value = ['1:0:0:0']
-        mocked_execute.return_value = (hws.BLK_DEVICE_TEMPLATE, '')
+        mocked_execute.side_effect = [
+            (hws.BLK_DEVICE_TEMPLATE, ''),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sda'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdb'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdc'),
+            # Pretend sdd is a multipath device... because why not.
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdd', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # loop0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # zram0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram1
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram2
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram3
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdf'),
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-0
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+        ]
+
+        mocked_mpath.return_value = False
         mocked_udev.side_effect = iter([
             {'ID_WWN': 'wwn%d' % i, 'ID_SERIAL_SHORT': 'serial%d' % i,
              'ID_WWN_WITH_EXTENSION': 'wwn-ext%d' % i,
              'ID_WWN_VENDOR_EXTENSION': 'wwn-vendor-ext%d' % i}
-            for i in range(4)
+            for i in range(5)
         ])
         mocked_dev_vendor.return_value = 'Super Vendor'
         devices = hardware.list_all_block_devices()
@@ -1345,6 +1615,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         expected_calls = [mock.call('/sys/block/%s/device/scsi_device' % dev)
                           for dev in ('sda', 'sdb', 'sdc', 'sdd')]
         mocked_listdir.assert_has_calls(expected_calls)
+        mocked_mpath.assert_called_once_with()
 
     @mock.patch.object(hardware, 'ThreadPool', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
@@ -3988,6 +4259,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware._nvme_erase, block_device)
 
 
+@mock.patch.object(hardware, '_enable_multipath', autospec=True)
 @mock.patch.object(hardware.GenericHardwareManager,
                    'get_os_install_device', autospec=True)
 @mock.patch.object(hardware, '_md_scan_and_assemble', autospec=True)
@@ -4000,7 +4272,7 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
 
     def test_evaluate_hw_waits_for_disks(
             self, mocked_sleep, mocked_check_for_iscsi,
-            mocked_md_assemble, mocked_get_inst_dev):
+            mocked_md_assemble, mocked_get_inst_dev, mocked_enable_mpath):
         mocked_get_inst_dev.side_effect = [
             errors.DeviceNotFound('boom'),
             None
@@ -4018,7 +4290,7 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
     @mock.patch.object(hardware, 'LOG', autospec=True)
     def test_evaluate_hw_no_wait_for_disks(
             self, mocked_log, mocked_sleep, mocked_check_for_iscsi,
-            mocked_md_assemble, mocked_get_inst_dev):
+            mocked_md_assemble, mocked_get_inst_dev, mocked_enable_mpath):
         CONF.set_override('disk_wait_attempts', '0')
 
         result = self.hardware.evaluate_hardware_support()
@@ -4032,7 +4304,7 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
     @mock.patch.object(hardware, 'LOG', autospec=True)
     def test_evaluate_hw_waits_for_disks_nonconfigured(
             self, mocked_log, mocked_sleep, mocked_check_for_iscsi,
-            mocked_md_assemble, mocked_get_inst_dev):
+            mocked_md_assemble, mocked_get_inst_dev, mocked_enable_mpath):
         mocked_get_inst_dev.side_effect = [
             errors.DeviceNotFound('boom'),
             errors.DeviceNotFound('boom'),
@@ -4063,7 +4335,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
                                                     mocked_sleep,
                                                     mocked_check_for_iscsi,
                                                     mocked_md_assemble,
-                                                    mocked_get_inst_dev):
+                                                    mocked_get_inst_dev,
+                                                    mocked_enable_mpath):
         CONF.set_override('disk_wait_attempts', '1')
 
         mocked_get_inst_dev.side_effect = [
@@ -4083,7 +4356,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
     def test_evaluate_hw_disks_timeout_unconfigured(self, mocked_sleep,
                                                     mocked_check_for_iscsi,
                                                     mocked_md_assemble,
-                                                    mocked_get_inst_dev):
+                                                    mocked_get_inst_dev,
+                                                    mocked_enable_mpath):
         mocked_get_inst_dev.side_effect = errors.DeviceNotFound('boom')
         self.hardware.evaluate_hardware_support()
         mocked_sleep.assert_called_with(3)
@@ -4091,7 +4365,8 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
     def test_evaluate_hw_disks_timeout_configured(self, mocked_sleep,
                                                   mocked_check_for_iscsi,
                                                   mocked_md_assemble,
-                                                  mocked_root_dev):
+                                                  mocked_root_dev,
+                                                  mocked_enable_mpath):
         CONF.set_override('disk_wait_delay', '5')
         mocked_root_dev.side_effect = errors.DeviceNotFound('boom')
 
@@ -4100,7 +4375,7 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
 
     def test_evaluate_hw_disks_timeout(
             self, mocked_sleep, mocked_check_for_iscsi,
-            mocked_md_assemble, mocked_get_inst_dev):
+            mocked_md_assemble, mocked_get_inst_dev, mocked_enable_mpath):
         mocked_get_inst_dev.side_effect = errors.DeviceNotFound('boom')
         result = self.hardware.evaluate_hardware_support()
         self.assertEqual(hardware.HardwareSupport.GENERIC, result)
@@ -4114,6 +4389,7 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestModuleFunctions(base.IronicAgentTest):
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(hardware, '_get_device_info',
                        lambda x, y, z: 'FooTastic')
@@ -4122,16 +4398,30 @@ class TestModuleFunctions(base.IronicAgentTest):
                        autospec=False)
     def test_list_all_block_devices_success(self, mocked_fromdevfile,
                                             mocked_udev, mocked_readlink,
-                                            mocked_execute):
+                                            mocked_mpath, mocked_execute):
+        mocked_mpath.return_value = True
         mocked_readlink.return_value = '../../sda'
         mocked_fromdevfile.return_value = {}
-        mocked_execute.return_value = (hws.BLK_DEVICE_TEMPLATE_SMALL, '')
+        mocked_execute.side_effect = [
+            (hws.BLK_DEVICE_TEMPLATE_SMALL, ''),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sda'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdb'),
+        ]
         result = hardware.list_all_block_devices()
-        mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID')
+        expected_calls = [
+            mock.call('lsblk', '-Pbia',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('multipath', '-c', '/dev/sda'),
+            mock.call('multipath', '-c', '/dev/sdb')
+        ]
+        mocked_execute.assert_has_calls(expected_calls)
         self.assertEqual(BLK_DEVICE_TEMPLATE_SMALL_DEVICES, result)
         mocked_udev.assert_called_once_with()
+        mocked_mpath.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(hardware, '_get_device_info',
                        lambda x, y, z: 'FooTastic')
@@ -4140,16 +4430,49 @@ class TestModuleFunctions(base.IronicAgentTest):
                        autospec=False)
     def test_list_all_block_devices_success_raid(self, mocked_fromdevfile,
                                                  mocked_udev, mocked_readlink,
-                                                 mocked_execute):
+                                                 mocked_mpath, mocked_execute):
         mocked_readlink.return_value = '../../sda'
         mocked_fromdevfile.return_value = {}
-        mocked_execute.return_value = (hws.RAID_BLK_DEVICE_TEMPLATE, '')
+        mocked_mpath.return_value = True
+        mocked_execute.side_effect = [
+            (hws.RAID_BLK_DEVICE_TEMPLATE, ''),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sda'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sda1'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdb'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdb1'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sda'),
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # md0p1
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # md0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # md0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # md1
+        ]
+        expected_calls = [
+            mock.call('lsblk', '-Pbia',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('multipath', '-c', '/dev/sda'),
+            mock.call('multipath', '-c', '/dev/sda1'),
+            mock.call('multipath', '-c', '/dev/sdb'),
+            mock.call('multipath', '-c', '/dev/sdb1'),
+            mock.call('multipath', '-c', '/dev/md0p1'),
+            mock.call('multipath', '-c', '/dev/md0'),
+            mock.call('multipath', '-c', '/dev/md1'),
+        ]
+
         result = hardware.list_all_block_devices(ignore_empty=False)
-        mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID')
+        mocked_execute.assert_has_calls(expected_calls)
         self.assertEqual(RAID_BLK_DEVICE_TEMPLATE_DEVICES, result)
         mocked_udev.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(hardware, '_get_device_info',
                        lambda x, y, z: 'FooTastic')
@@ -4159,21 +4482,37 @@ class TestModuleFunctions(base.IronicAgentTest):
     def test_list_all_block_devices_partuuid_success(
             self, mocked_fromdevfile,
             mocked_udev, mocked_readlink,
-            mocked_execute):
+            mocked_mpath, mocked_execute):
         mocked_readlink.return_value = '../../sda'
         mocked_fromdevfile.return_value = {}
-        mocked_execute.return_value = (hws.PARTUUID_DEVICE_TEMPLATE, '')
+        mocked_mpath.return_value = True
+        mocked_execute.side_effect = [
+            (hws.PARTUUID_DEVICE_TEMPLATE, ''),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sda'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdb'),
+        ]
         result = hardware.list_all_block_devices(block_type='part')
-        mocked_execute.assert_called_once_with(
-            'lsblk', '-Pbia', '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID')
+        expected_calls = [
+            mock.call('lsblk', '-Pbia',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+            mock.call('multipath', '-c', '/dev/sda'),
+            mock.call('multipath', '-c', '/dev/sda1'),
+        ]
+        mocked_execute.assert_has_calls(expected_calls)
         self.assertEqual(BLK_DEVICE_TEMPLATE_PARTUUID_DEVICE, result)
         mocked_udev.assert_called_once_with()
+        mocked_mpath.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(hardware, '_get_device_info',
                        lambda x, y: "FooTastic")
     @mock.patch.object(hardware, '_udev_settle', autospec=True)
     def test_list_all_block_devices_wrong_block_type(self, mocked_udev,
+                                                     mock_mpath_enabled,
                                                      mocked_execute):
+        mock_mpath_enabled.return_value = False
         mocked_execute.return_value = ('TYPE="foo" MODEL="model"', '')
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
@@ -4181,17 +4520,32 @@ class TestModuleFunctions(base.IronicAgentTest):
         self.assertEqual([], result)
         mocked_udev.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(hardware, '_udev_settle', autospec=True)
     def test_list_all_block_devices_missing(self, mocked_udev,
+                                            mocked_mpath,
                                             mocked_execute):
         """Test for missing values returned from lsblk"""
-        mocked_execute.return_value = ('TYPE="disk" MODEL="model"', '')
+        mocked_mpath.return_value = False
+        mocked_execute.side_effect = [
+            ('TYPE="disk" MODEL="model"', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            ('', ''),
+        ]
+        expected_calls = [
+            mock.call('lsblk', '-Pbia',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID'),
+        ]
+
         self.assertRaisesRegex(
             errors.BlockDeviceError,
             r'^Block device caused unknown error: KNAME, PARTUUID, ROTA, '
             r'SIZE, UUID must be returned by lsblk.$',
             hardware.list_all_block_devices)
         mocked_udev.assert_called_once_with()
+        mocked_execute.assert_has_calls(expected_calls)
 
     def test__udev_settle(self, mocked_execute):
         hardware._udev_settle()
@@ -4208,6 +4562,103 @@ class TestModuleFunctions(base.IronicAgentTest):
         hardware._check_for_iscsi()
         mocked_execute.assert_has_calls([
             mock.call('iscsistart', '-f')])
+
+
+@mock.patch.object(utils, 'execute', autospec=True)
+@mock.patch.object(il_utils, 'try_execute', autospec=True)
+class TestMultipathEnabled(base.IronicAgentTest):
+
+    @mock.patch.object(os.path, 'isfile', autospec=True)
+    def test_enable_multipath_with_config(self, mock_isfile, mock_try_exec,
+                                          mocked_execute):
+        mock_isfile.side_effect = [True, True]
+        mock_try_exec.side_effect = [
+            ('', ''),
+            ('', ''),
+        ]
+        mocked_execute.side_effect = [
+            ('', ''),
+            ('', ''),
+            ('', ''),
+        ]
+        self.assertTrue(hardware._enable_multipath())
+        mock_try_exec.assert_has_calls([
+            mock.call('modprobe', 'dm_multipath'),
+            mock.call('modprobe', 'multipath'),
+        ])
+        mocked_execute.assert_has_calls([
+            mock.call('multipathd'),
+            mock.call('multipath', '-ll'),
+        ])
+
+    @mock.patch.object(os.path, 'isfile', autospec=True)
+    def test_enable_multipath_mpathconf(self, mock_isfile, mock_try_exec,
+                                        mocked_execute):
+        mock_isfile.side_effect = [True, False]
+        mock_try_exec.side_effect = [
+            ('', ''),
+            ('', ''),
+        ]
+        mocked_execute.side_effect = [
+            ('', ''),
+            ('', ''),
+        ]
+        self.assertTrue(hardware._enable_multipath())
+        mock_try_exec.assert_has_calls([
+            mock.call('/usr/sbin/mpathconf', '--enable',
+                      '--find_multipaths', 'yes',
+                      '--with_module', 'y',
+                      '--with_multipathd', 'y'),
+        ])
+        mocked_execute.assert_has_calls([
+            mock.call('multipathd'),
+            mock.call('multipath', '-ll'),
+        ])
+
+    @mock.patch.object(os.path, 'isfile', autospec=True)
+    def test_enable_multipath_no_multipath(self, mock_isfile, mock_try_exec,
+                                           mocked_execute):
+        mock_isfile.return_value = False
+        mock_try_exec.side_effect = [
+            ('', ''),
+            ('', ''),
+        ]
+        mocked_execute.side_effect = [
+            ('', ''),
+            ('', ''),
+        ]
+        self.assertTrue(hardware._enable_multipath())
+        mock_try_exec.assert_has_calls([
+            mock.call('modprobe', 'dm_multipath'),
+            mock.call('modprobe', 'multipath'),
+        ])
+        mocked_execute.assert_has_calls([
+            mock.call('multipathd'),
+            mock.call('multipath', '-ll'),
+        ])
+
+    @mock.patch.object(hardware, '_load_multipath_modules', autospec=True)
+    def test_enable_multipath_not_found_mpath_config(self,
+                                                     mock_modules,
+                                                     mock_try_exec,
+                                                     mocked_execute):
+        mocked_execute.side_effect = FileNotFoundError()
+        self.assertFalse(hardware._enable_multipath())
+        self.assertEqual(1, mocked_execute.call_count)
+        self.assertEqual(1, mock_modules.call_count)
+
+    @mock.patch.object(hardware, '_load_multipath_modules', autospec=True)
+    def test_enable_multipath_lacking_support(self,
+                                              mock_modules,
+                                              mock_try_exec,
+                                              mocked_execute):
+        mocked_execute.side_effect = [
+            ('', ''),  # Help will of course work.
+            processutils.ProcessExecutionError('lacking kernel support')
+        ]
+        self.assertFalse(hardware._enable_multipath())
+        self.assertEqual(2, mocked_execute.call_count)
+        self.assertEqual(1, mock_modules.call_count)
 
 
 def create_hdparm_info(supported=False, enabled=False, locked=False,

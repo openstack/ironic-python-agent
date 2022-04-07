@@ -787,6 +787,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         mock_append_to_fstab.assert_called_with(self.fake_dir,
                                                 self.fake_efi_system_part_uuid)
 
+    @mock.patch.object(hardware, 'get_multipath_status', lambda *_: False)
     @mock.patch.object(os.path, 'ismount', lambda *_: False)
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: True)
     @mock.patch.object(os.path, 'exists', autospec=True)
@@ -898,6 +899,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                            uuid=self.fake_efi_system_part_uuid)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(hardware, 'get_multipath_status', lambda *_: False)
     @mock.patch.object(image, '_efi_boot_setup', lambda *_: False)
     @mock.patch.object(os.path, 'ismount', lambda *_: False)
     @mock.patch.object(image, '_is_bootloader_loaded', lambda *_: True)
