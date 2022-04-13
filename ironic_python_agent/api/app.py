@@ -20,7 +20,6 @@ from oslo_service import wsgi
 import werkzeug
 from werkzeug import exceptions as http_exc
 from werkzeug import routing
-from werkzeug.wrappers import json as http_json
 
 from ironic_python_agent import encoding
 
@@ -30,7 +29,7 @@ _CUSTOM_MEDIA_TYPE = 'application/vnd.openstack.ironic-python-agent.v1+json'
 _DOCS_URL = 'https://docs.openstack.org/ironic-python-agent'
 
 
-class Request(werkzeug.Request, http_json.JSONMixin):
+class Request(werkzeug.Request):
     """Custom request class with JSON support."""
 
 

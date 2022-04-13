@@ -1,5 +1,5 @@
 Pint==0.5
-Werkzeug==1.0.1
+Werkzeug==2.0.0
 bandit==1.1.0
 coverage==4.0
 cryptography==2.3

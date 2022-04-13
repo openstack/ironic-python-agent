@@ -18,7 +18,6 @@ from unittest import mock
 from oslo_config import cfg
 from werkzeug import test as http_test
 from werkzeug import wrappers
-from werkzeug.wrappers import json as http_json
 
 from ironic_python_agent import agent
 from ironic_python_agent.api import app
@@ -29,7 +28,7 @@ from ironic_python_agent.tests.unit import base as ironic_agent_base
 PATH_PREFIX = '/v1'
 
 
-class Response(wrappers.Response, http_json.JSONMixin):
+class Response(wrappers.Response):
     pass
 
 
