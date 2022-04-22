@@ -348,3 +348,22 @@ class HeartbeatConnectionError(IronicAPIError):
 
     def __init__(self, details):
         super(HeartbeatConnectionError, self).__init__(details)
+
+
+class ProtectedDeviceError(CleaningError):
+    """Error raised when a cleaning is halted due to a protected device."""
+
+    message = 'Protected device located, cleaning aborted.'
+
+    def __init__(self, device, what):
+        details = ('Protected %(what)s located on device %(device)s. '
+                   'This volume or contents may be a shared block device. '
+                   'Please consult your storage administrator, and restart '
+                   'cleaning after either detaching the volumes, or '
+                   'instructing IPA to not protect contents. See Ironic '
+                   'Python Agent documentation for more information.' %
+                   {'what': what,
+                    'device': device})
+
+        self.message = details
+        super(CleaningError, self).__init__(details)

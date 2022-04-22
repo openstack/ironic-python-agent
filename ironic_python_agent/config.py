@@ -315,6 +315,17 @@ cli_opts = [
                min=0, max=99,  # 100 is when IPA is booted
                help='Priority of the inject_files deploy step (disabled '
                     'by default), an integer between 1 and .'),
+    cfg.BoolOpt('guard-special-filesystems',
+                default=APARAMS.get('ipa-guard-special-filesystems', True),
+                help='Guard "special" shared device filesystems from '
+                     'cleaning by the stock hardware manager\'s cleaning '
+                     'methods. If one of these filesystems is detected '
+                     'during cleaning, the cleaning process will be aborted '
+                     'and infrastructure operator intervention may be '
+                     'required as this option is intended to prevent '
+                     'cleaning from inadvertently destroying a running '
+                     'cluster which may be visible over a storage fabric '
+                     'such as FibreChannel.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

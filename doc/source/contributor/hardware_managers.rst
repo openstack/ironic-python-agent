@@ -10,6 +10,13 @@ deploying your own hardware manager.
 IPA ships with :doc:`GenericHardwareManager </admin/hardware_managers>`, which
 implements basic cleaning and deployment methods compatible with most hardware.
 
+.. warning::
+   Some functionality inherent in the stock hardware manager cleaning methods
+   may be useful in custom hardware managers, but should not be inherently
+   expected to also work in custom managers. Examples of this are clustered
+   filesystem protections, and cleaning method fallback logic. Custom hardware
+   manager maintainers should be mindful when overriding the stock methods.
+
 How are methods executed on HardwareManagers?
 ---------------------------------------------
 Methods that modify hardware are dispatched to each hardware manager in
@@ -148,6 +155,18 @@ function with extra parameters.
     If two managers return steps with the same `step` key, the priority will
     be set to whichever manager has a higher hardware support level and then
     use the higher priority in the case of a tie.
+
+In some cases, it may be necessary to create a customized cleaning step to
+take a particular pattern of behavior. Those doing such work may want to
+leverage file system safety checks, which are part of the stock hardware
+managers.
+
+.. code-block:: python
+
+    def custom_erase_devices(self, node, ports):
+        for dev in determine_my_devices_to_erase():
+            hardware.safety_check_block_device(node, dev.name)
+            my_special_cleaning(dev.name)
 
 Custom HardwareManagers and Deploying
 -------------------------------------
