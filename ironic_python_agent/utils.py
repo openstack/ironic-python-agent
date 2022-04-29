@@ -68,6 +68,7 @@ COLLECT_LOGS_COMMANDS = {
     'ip_addr': ['ip', 'addr'],
     'lshw': ['lshw', '-quiet', '-json'],
     'lsblk': ['lsblk', '--all', '-o%s' % ','.join(LSBLK_COLUMNS)],
+    'lsblk-full': ['lsblk', '--all', '--bytes', '--output-all', '--pairs'],
     'mdstat': ['cat', '/proc/mdstat'],
 }
 
