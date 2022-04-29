@@ -429,10 +429,7 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
             file_list=[],
-            io_dict={'journal': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
-                     'df': mock.ANY, 'iptables': mock.ANY, 'lshw': mock.ANY,
-                     'lsblk': mock.ANY, 'mdstat': mock.ANY,
-                     'mount': mock.ANY, 'parted': mock.ANY})
+            io_dict=mock.ANY)
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -457,10 +454,7 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
             file_list=[tmp.name],
-            io_dict={'journal': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
-                     'df': mock.ANY, 'iptables': mock.ANY, 'lshw': mock.ANY,
-                     'lsblk': mock.ANY, 'mdstat': mock.ANY,
-                     'mount': mock.ANY, 'parted': mock.ANY})
+            io_dict=mock.ANY)
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -480,10 +474,7 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
             file_list=['/var/log'],
-            io_dict={'iptables': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
-                     'dmesg': mock.ANY, 'df': mock.ANY, 'lshw': mock.ANY,
-                     'lsblk': mock.ANY, 'mdstat': mock.ANY,
-                     'mount': mock.ANY, 'parted': mock.ANY})
+            io_dict=mock.ANY)
 
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
@@ -507,10 +498,7 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
         mock_outputs.assert_has_calls(calls, any_order=True)
         mock_gzip_b64.assert_called_once_with(
             file_list=['/var/log', tmp.name],
-            io_dict={'iptables': mock.ANY, 'ip_addr': mock.ANY, 'ps': mock.ANY,
-                     'dmesg': mock.ANY, 'df': mock.ANY, 'lshw': mock.ANY,
-                     'lsblk': mock.ANY, 'mdstat': mock.ANY,
-                     'mount': mock.ANY, 'parted': mock.ANY})
+            io_dict=mock.ANY)
 
     def test_get_ssl_client_options(self):
         # defaults
