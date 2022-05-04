@@ -1493,3 +1493,14 @@ NVME_CLI_INFO_TEMPLATE_FORMAT_UNSUPPORTED = ("""
   ]
 }
 """)
+
+
+SGDISK_INFO_TEMPLATE = ("""
+Partition GUID code: C12A7328-F81F-11D2-BA4B-00A0C93EC93B (EFI system partition)
+Partition unique GUID: FAED7408-6D92-4FC6-883B-9069E2274ECA
+First sector: 2048 (at 1024.0 KiB)
+Last sector: 1050623 (at 513.0 MiB)
+Partition size: 1048576 sectors (512.0 MiB)
+Attribute flags: 0000000000000000
+Partition name: 'EFI System Partition'
+""")  # noqa

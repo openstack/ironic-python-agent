@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes configuring UEFI boot when the EFI partition is located on a
+    devicemapper device.
