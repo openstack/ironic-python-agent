@@ -312,10 +312,41 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
         # Update the nvram using efibootmgr
         # https://linux.die.net/man/8/efibootmgr
         utils.execute('efibootmgr', '-v', '-c', '-d', device,
-                      '-p', efi_partition, '-w', '-L', label,
+                      '-p', str(efi_partition), '-w', '-L', label,
                       '-l', v_efi_bl_path)
         # Increment the ID in case the loop runs again.
         label_id += 1
+
+
+def get_partition_path_by_number(device, part_num):
+    """Get partition path (/dev/something) by a partition number on device.
+
+    Only works for GPT partition table.
+    """
+    uuid = None
+    partinfo, _ = utils.execute('sgdisk', '-i', str(part_num), device,
+                                use_standard_locale=True)
+    for line in partinfo.splitlines():
+        if not line.strip():
+            continue
+
+        try:
+            field, value = line.rsplit(':', 1)
+        except ValueError:
+            LOG.warning('Invalid sgdisk line: %s', line)
+            continue
+
+        if 'partition unique guid' in field.lower():
+            uuid = value.strip().lower()
+            LOG.debug('GPT partition number %s on device %s has UUID %s',
+                      part_num, device, uuid)
+            break
+
+    if uuid is not None:
+        return _get_partition(device, uuid)
+    else:
+        LOG.warning('No UUID information provided in sgdisk output for '
+                    'partition %s on device %s', part_num, device)
 
 
 def _manage_uefi(device, efi_system_part_uuid=None):
@@ -333,6 +364,7 @@ def _manage_uefi(device, efi_system_part_uuid=None):
     """
     efi_partition_mount_point = None
     efi_mounted = False
+    efi_partition = None
 
     try:
         # Force UEFI to rescan the device. Required if the deployment
@@ -341,17 +373,27 @@ def _manage_uefi(device, efi_system_part_uuid=None):
 
         local_path = tempfile.mkdtemp()
         # Trust the contents on the disk in the event of a whole disk image.
-        efi_partition = utils.get_efi_part_on_device(device)
+        efi_part_num = utils.get_efi_part_on_device(device)
+        if efi_part_num is not None:
+            efi_partition = get_partition_path_by_number(device, efi_part_num)
+
         if not efi_partition and efi_system_part_uuid:
             # _get_partition returns <device>+<partition> and we only need the
             # partition number
-            partition = _get_partition(device, uuid=efi_system_part_uuid)
+            efi_partition = _get_partition(device, uuid=efi_system_part_uuid)
             try:
-                efi_partition = int(partition.replace(device, ""))
+                efi_part_num = int(efi_partition.replace(device, ""))
             except ValueError:
                 # NVMe Devices get a partitioning scheme that is different from
                 # traditional block devices like SCSI/SATA
-                efi_partition = int(partition.replace(device + 'p', ""))
+                try:
+                    efi_part_num = int(efi_partition.replace(device + 'p', ""))
+                except ValueError as exc:
+                    # At least provide a reasonable error message if the device
+                    # does not follow this procedure.
+                    raise errors.DeviceNotFound(
+                        "Cannot detect the partition number of the device "
+                        "%s: %s" % (device, exc))
 
         if not efi_partition:
             # NOTE(dtantsur): we cannot have a valid EFI deployment without an
@@ -368,20 +410,12 @@ def _manage_uefi(device, efi_system_part_uuid=None):
         if not os.path.exists(efi_partition_mount_point):
             os.makedirs(efi_partition_mount_point)
 
-        # The mount needs the device with the partition, in case the
-        # device ends with a digit we add a `p` and the partition number we
-        # found, otherwise we just join the device and the partition number
-        if device[-1].isdigit():
-            efi_device_part = '{}p{}'.format(device, efi_partition)
-            utils.execute('mount', efi_device_part, efi_partition_mount_point)
-        else:
-            efi_device_part = '{}{}'.format(device, efi_partition)
-            utils.execute('mount', efi_device_part, efi_partition_mount_point)
+        utils.execute('mount', efi_partition, efi_partition_mount_point)
         efi_mounted = True
 
         valid_efi_bootloaders = _get_efi_bootloaders(efi_partition_mount_point)
         if valid_efi_bootloaders:
-            _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
+            _run_efibootmgr(valid_efi_bootloaders, device, efi_part_num,
                             efi_partition_mount_point)
             return True
         else:
