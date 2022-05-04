@@ -29,6 +29,37 @@ from ironic_python_agent import utils
 LOG = log.getLogger(__name__)
 
 
+def get_partition_path_by_number(device, part_num):
+    """Get partition path (/dev/something) by a partition number on device.
+
+    Only works for GPT partition table.
+    """
+    uuid = None
+    partinfo, _ = utils.execute('sgdisk', '-i', str(part_num), device,
+                                use_standard_locale=True)
+    for line in partinfo.splitlines():
+        if not line.strip():
+            continue
+
+        try:
+            field, value = line.rsplit(':', 1)
+        except ValueError:
+            LOG.warning('Invalid sgdisk line: %s', line)
+            continue
+
+        if 'partition unique guid' in field.lower():
+            uuid = value.strip().lower()
+            LOG.debug('GPT partition number %s on device %s has UUID %s',
+                      part_num, device, uuid)
+            break
+
+    if uuid is not None:
+        return partition_utils.get_partition(device, uuid)
+    else:
+        LOG.warning('No UUID information provided in sgdisk output for '
+                    'partition %s on device %s', part_num, device)
+
+
 def manage_uefi(device, efi_system_part_uuid=None):
     """Manage the device looking for valid efi bootloaders to update the nvram.
 
@@ -52,19 +83,33 @@ def manage_uefi(device, efi_system_part_uuid=None):
     # Trust the contents on the disk in the event of a whole disk image.
     efi_partition = disk_utils.find_efi_partition(device)
     if efi_partition:
-        efi_partition = efi_partition['number']
+        efi_part_num = efi_partition['number']
+        efi_partition = get_partition_path_by_number(device, efi_part_num)
 
     if not efi_partition and efi_system_part_uuid:
-        # _get_partition returns <device>+<partition> and we only need the
+        # get_partition returns <device>+<partition> and we only need the
         # partition number
-        partition = partition_utils.get_partition(
+        efi_partition = partition_utils.get_partition(
             device, uuid=efi_system_part_uuid)
+        # FIXME(dtantsur): this procedure will not work for devicemapper
+        # devices. To fix that we need a way to convert a UUID to a partition
+        # number, which is surprisingly non-trivial and may involve looping
+        # over existing numbers and calling `sgdisk -i` for each of them.
+        # But I'm not sure we even need this logic: find_efi_partition should
+        # be sufficient for both whole disk and partition images.
         try:
-            efi_partition = int(partition.replace(device, ""))
+            efi_part_num = int(efi_partition.replace(device, ""))
         except ValueError:
             # NVMe Devices get a partitioning scheme that is different from
             # traditional block devices like SCSI/SATA
-            efi_partition = int(partition.replace(device + 'p', ""))
+            try:
+                efi_part_num = int(efi_partition.replace(device + 'p', ""))
+            except ValueError as exc:
+                # At least provide a reasonable error message if the device
+                # does not follow this procedure.
+                raise errors.DeviceNotFound(
+                    "Cannot detect the partition number of the device %s: %s" %
+                    (efi_partition, exc))
 
     if not efi_partition:
         # NOTE(dtantsur): we cannot have a valid EFI deployment without an
@@ -82,16 +127,8 @@ def manage_uefi(device, efi_system_part_uuid=None):
     if not os.path.exists(efi_partition_mount_point):
         os.makedirs(efi_partition_mount_point)
 
-    # The mount needs the device with the partition, in case the
-    # device ends with a digit we add a `p` and the partition number we
-    # found, otherwise we just join the device and the partition number
-    if device[-1].isdigit():
-        efi_device_part = '{}p{}'.format(device, efi_partition)
-    else:
-        efi_device_part = '{}{}'.format(device, efi_partition)
-
     try:
-        utils.execute('mount', efi_device_part, efi_partition_mount_point)
+        utils.execute('mount', efi_partition, efi_partition_mount_point)
         efi_mounted = True
 
         valid_efi_bootloaders = _get_efi_bootloaders(efi_partition_mount_point)
@@ -103,7 +140,7 @@ def manage_uefi(device, efi_system_part_uuid=None):
 
         if not hardware.is_md_device(device):
             efi_devices = [device]
-            efi_partition_numbers = [efi_partition]
+            efi_partition_numbers = [efi_part_num]
             efi_label_suffix = ''
         else:
             # umount to allow for signature removal (to avoid confusion about
@@ -114,7 +151,7 @@ def manage_uefi(device, efi_system_part_uuid=None):
 
             holders = hardware.get_holder_disks(device)
             efi_md_device = raid_utils.prepare_boot_partitions_for_softraid(
-                device, holders, efi_device_part, target_boot_mode='uefi'
+                device, holders, efi_partition, target_boot_mode='uefi'
             )
             efi_devices = hardware.get_component_devices(efi_md_device)
             efi_partition_numbers = []
@@ -131,12 +168,12 @@ def manage_uefi(device, efi_system_part_uuid=None):
             efi_label_suffix = "(RAID, part%s)"
 
             # remount for _run_efibootmgr
-            utils.execute('mount', efi_device_part, efi_partition_mount_point)
+            utils.execute('mount', efi_partition, efi_partition_mount_point)
             efi_mounted = True
 
         efi_dev_part = zip(efi_devices, efi_partition_numbers)
         for i, (efi_dev, efi_part) in enumerate(efi_dev_part):
-            LOG.debug("Calling efibootmgr with dev %s part %s",
+            LOG.debug("Calling efibootmgr with dev %s partition number %s",
                       efi_dev, efi_part)
             if efi_label_suffix:
                 # NOTE (arne_wiebalck): uniqify the labels to prevent
@@ -255,7 +292,7 @@ def add_boot_record(device, efi_partition, loader, label):
     """
     # https://linux.die.net/man/8/efibootmgr
     utils.execute('efibootmgr', '-v', '-c', '-d', device,
-                  '-p', efi_partition, '-w', '-L', label,
+                  '-p', str(efi_partition), '-w', '-L', label,
                   '-l', loader)
 
 
