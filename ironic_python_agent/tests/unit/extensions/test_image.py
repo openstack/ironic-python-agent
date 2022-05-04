@@ -27,6 +27,7 @@ from ironic_python_agent.extensions import image
 from ironic_python_agent import hardware
 from ironic_python_agent import raid_utils
 from ironic_python_agent.tests.unit import base
+from ironic_python_agent.tests.unit.samples import hardware_samples
 from ironic_python_agent import utils
 
 
@@ -218,14 +219,14 @@ class TestImageExtension(base.IronicAgentTest):
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=False)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_given_partition(
-            self, mkdir_mock, mock_utils_efi_part, mock_partition,
+            self, mkdir_mock, mock_utils_efi_part, mock_get_partition,
             mock_efi_bl, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
-        mock_partition.side_effect = [self.fake_dev, self.fake_efi_system_part]
+        mock_get_partition.return_value = self.fake_efi_system_part
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-        mock_utils_efi_part.return_value = '1'
+        mock_utils_efi_part.return_value = None
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
@@ -262,16 +263,16 @@ class TestImageExtension(base.IronicAgentTest):
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, 'get_partition_path_by_number', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_find_partition(
-            self, mkdir_mock, mock_utils_efi_part, mock_partition,
+            self, mkdir_mock, mock_utils_efi_part, mock_get_part_path,
             mock_efi_bl, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
-        mock_partition.return_value = self.fake_dev
+        mock_get_part_path.return_value = self.fake_efi_system_part
         mock_utils_efi_part.return_value = '1'
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         mock_execute.side_effect = iter([('', ''), ('', ''),
@@ -309,16 +310,16 @@ class TestImageExtension(base.IronicAgentTest):
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, 'get_partition_path_by_number', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_with_entry_removal(
-            self, mkdir_mock, mock_utils_efi_part, mock_partition,
+            self, mkdir_mock, mock_utils_efi_part, mock_get_part_path,
             mock_efi_bl, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
-        mock_partition.return_value = self.fake_dev
+        mock_get_part_path.return_value = self.fake_efi_system_part
         mock_utils_efi_part.return_value = '1'
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         stdout_msg = """
@@ -366,16 +367,16 @@ Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, 'get_partition_path_by_number', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__uefi_bootloader_with_entry_removal_lenovo(
-            self, mkdir_mock, mock_utils_efi_part, mock_partition,
+            self, mkdir_mock, mock_utils_efi_part, mock_get_part_path,
             mock_efi_bl, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
-        mock_partition.return_value = self.fake_dev
+        mock_get_part_path.return_value = self.fake_efi_system_part
         mock_utils_efi_part.return_value = '1'
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         # NOTE(TheJulia): This test string was derived from a lenovo SR650
@@ -428,16 +429,16 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(hardware, 'is_md_device', lambda *_: False)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, 'get_partition_path_by_number', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__add_multi_bootloaders(
-            self, mkdir_mock, mock_utils_efi_part, mock_partition,
+            self, mkdir_mock, mock_utils_efi_part, mock_get_part_path,
             mock_efi_bl, mock_execute, mock_dispatch):
         mock_dispatch.side_effect = [
             self.fake_dev, hardware.BootInfo(current_boot_mode='uefi')
         ]
-        mock_partition.return_value = self.fake_dev
+        mock_get_part_path.return_value = self.fake_efi_system_part
         mock_utils_efi_part.return_value = '1'
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI',
                                     'WINDOWS/system32/winload.efi']
@@ -2326,14 +2327,14 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, 'get_partition_path_by_number', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__manage_uefi(self, mkdir_mock, mock_utils_efi_part,
-                          mock_get_part_uuid, mock_efi_bl, mock_is_md_device,
+                          mock_get_part_path, mock_efi_bl, mock_is_md_device,
                           mock_execute, mock_dispatch):
         mock_utils_efi_part.return_value = '1'
-        mock_get_part_uuid.return_value = self.fake_dev
+        mock_get_part_path.return_value = self.fake_efi_system_part
         mock_is_md_device.return_value = False
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
 
@@ -2366,15 +2367,15 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, 'get_partition_path_by_number', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__manage_uefi_found_csv(self, mkdir_mock, mock_utils_efi_part,
-                                    mock_get_part_uuid, mock_efi_bl,
+                                    mock_get_part_path, mock_efi_bl,
                                     mock_is_md_device, mock_execute,
                                     mock_dispatch):
         mock_utils_efi_part.return_value = '1'
-        mock_get_part_uuid.return_value = self.fake_dev
+        mock_get_part_path.return_value = self.fake_efi_system_part
         mock_is_md_device.return_value = False
         mock_efi_bl.return_value = ['EFI/vendor/BOOTX64.CSV']
 
@@ -2427,15 +2428,15 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, 'get_partition_path_by_number', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__manage_uefi_nvme_device(self, mkdir_mock, mock_utils_efi_part,
-                                      mock_get_part_uuid, mock_efi_bl,
+                                      mock_get_part_path, mock_efi_bl,
                                       mock_is_md_device, mock_execute,
                                       mock_dispatch):
         mock_utils_efi_part.return_value = '1'
-        mock_get_part_uuid.return_value = '/dev/fakenvme0p1'
+        mock_get_part_path.return_value = '/dev/fakenvme0p1'
         mock_is_md_device.return_value = False
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
 
@@ -2468,15 +2469,15 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
     @mock.patch.object(os.path, 'exists', lambda *_: False)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, 'get_partition_path_by_number', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__manage_uefi_wholedisk(
             self, mkdir_mock, mock_utils_efi_part,
-            mock_get_part_uuid, mock_efi_bl, mock_is_md_device,
+            mock_get_part_path, mock_efi_bl, mock_is_md_device,
             mock_execute, mock_dispatch):
         mock_utils_efi_part.return_value = '1'
-        mock_get_part_uuid.side_effect = Exception
+        mock_get_part_path.return_value = self.fake_efi_system_part
         mock_is_md_device.return_value = False
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
 
@@ -2514,16 +2515,16 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
     @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
     @mock.patch.object(hardware, 'is_md_device', autospec=True)
     @mock.patch.object(image, '_get_efi_bootloaders', autospec=True)
-    @mock.patch.object(image, '_get_partition', autospec=True)
+    @mock.patch.object(image, 'get_partition_path_by_number', autospec=True)
     @mock.patch.object(utils, 'get_efi_part_on_device', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test__manage_uefi_software_raid(
             self, mkdir_mock, mock_utils_efi_part,
-            mock_get_part_uuid, mock_efi_bl, mock_is_md_device,
+            mock_get_part_path, mock_efi_bl, mock_is_md_device,
             mock_get_holder_disks, mock_prepare, mock_get_component_devices,
             mock_execute, mock_dispatch):
         mock_utils_efi_part.return_value = '1'
-        mock_get_part_uuid.side_effect = Exception
+        mock_get_part_path.return_value = self.fake_efi_system_part
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         mock_is_md_device.return_value = True
         mock_get_holder_disks.return_value = ['/dev/sda', '/dev/sdb']
@@ -2671,3 +2672,21 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
             mock_open.side_effect = OSError('boom')
             image._append_uefi_to_fstab(
                 self.fake_dir, 'abcd-efgh')
+
+
+@mock.patch.object(image, '_get_partition', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
+class TestGetPartitionPathByNumber(base.IronicAgentTest):
+    def test_ok(self, mock_execute, mock_get_partition):
+        mock_execute.return_value = (hardware_samples.SGDISK_INFO_TEMPLATE, '')
+        mock_get_partition.return_value = '/dev/fake1'
+        result = image.get_partition_path_by_number('/dev/fake', 1)
+        self.assertEqual('/dev/fake1', result)
+        mock_execute.assert_called_once_with('sgdisk', '-i', '1', '/dev/fake',
+                                             use_standard_locale=True)
+
+    def test_broken(self, mock_execute, mock_get_partition):
+        mock_execute.return_value = ('I am a teaport', '')
+        self.assertIsNone(
+            image.get_partition_path_by_number('/dev/fake', 1))
+        mock_get_partition.assert_not_called()
