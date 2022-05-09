@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    The ramdisk logs now contain an ``lsblk`` output with all pairs in the new
+    ``lsblk-full`` file.
