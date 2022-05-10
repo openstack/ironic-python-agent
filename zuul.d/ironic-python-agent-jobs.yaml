@@ -15,7 +15,9 @@
       - ^tox.ini$
     required-projects:
       - name: openstack/devstack
-        override-checkout: master
+        override-checkout: stable/yoga
+      - name: openstack/requirements
+        override-checkout: stable/yoga
       - name: openstack/ironic
         override-checkout: bugfix/19.0
       - openstack/ironic-lib
@@ -152,12 +154,16 @@
     parent: metalsmith-integration-glance-localboot-centos8-uefi
     required-projects:
       - name: openstack/devstack
-        override-checkout: master
+        override-checkout: stable/yoga
+      - name: openstack/requirements
+        override-checkout: stable/yoga
+      - name: openstack/ironic
+        override-checkout: bugfix/19.0
       - name: openstack/metalsmith
-        override-checkout: master
+        override-checkout: stable/yoga
       - openstack/ironic-python-agent
       - name: openstack/ironic-python-agent-builder
-        override-checkout: master
+        override-checkout: stable/yoga
       - openstack/ironic-lib
     vars:
       devstack_localrc:
@@ -173,3 +179,40 @@
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 1024
+
+- project-template:
+    name: openstack-python3-yoga-jobs-ironic-bugfix
+    description: |
+      Runs unit tests for an OpenStack Python project under the CPython
+      version 3 releases designated for testing in the Yoga release.
+    check:
+      jobs:
+        - openstack-tox-pep8:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
+        - openstack-tox-py36:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
+        - openstack-tox-py39:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
+    gate:
+      jobs:
+        - openstack-tox-pep8:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
+        - openstack-tox-py36:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
+        - openstack-tox-py39:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
+    post:
+      jobs:
+        - publish-openstack-python-branch-tarball

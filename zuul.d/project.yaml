@@ -1,14 +1,19 @@
 - project:
     templates:
       - check-requirements
-      - openstack-cover-jobs
-      - openstack-lower-constraints-master-branch-jobs
-      - openstack-python3-yoga-jobs
+      - openstack-python3-yoga-jobs-ironic-bugfix
       - publish-openstack-docs-pti
       - release-notes-jobs-python3
     check:
       jobs:
-        - openstack-tox-functional
+        - openstack-tox-functional:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
+        - openstack-tox-cover:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
         - ipa-tox-examples
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
@@ -36,7 +41,14 @@
     gate:
       queue: ironic
       jobs:
-        - openstack-tox-functional
+        - openstack-tox-functional:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
+        - openstack-tox-cover:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/yoga
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src-uefi
