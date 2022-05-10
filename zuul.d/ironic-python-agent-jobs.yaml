@@ -15,7 +15,9 @@
       - ^tox.ini$
     required-projects:
       - name: openstack/devstack
-        override-checkout: master
+        override-checkout: stable/xena
+      - name: openstack/requirements
+        override-checkout: stable/xena
       - name: openstack/ironic
         override-checkout: bugfix/18.1
       - openstack/ironic-lib
@@ -149,14 +151,12 @@
 - job:
     name: metalsmith-integration-ipa-src
     parent: metalsmith-integration-glance-localboot-centos7
+    override-checkout: stable/xena
     required-projects:
-      - name: openstack/devstack
-        override-checkout: master
-      - name: openstack/metalsmith
-        override-checkout: master
-      - openstack/ironic-python-agent
-      - openstack/ironic-python-agent-builder
-      - openstack/ironic-lib
+      - name: openstack/ironic
+        override-checkout: bugfix/18.1
+      - name: openstack/ironic-python-agent
+        override-checkout: bugfix/8.1
     vars:
       devstack_localrc:
         # Don't waste time on cleaning, it's checked everywhere else
@@ -167,14 +167,12 @@
 - job:
     name: metalsmith-integration-ipa-src-uefi
     parent: metalsmith-integration-glance-localboot-centos8-uefi
+    override-checkout: stable/xena
     required-projects:
-      - name: openstack/devstack
-        override-checkout: master
-      - name: openstack/metalsmith
-        override-checkout: master
-      - openstack/ironic-python-agent
-      - openstack/ironic-python-agent-builder
-      - openstack/ironic-lib
+      - name: openstack/ironic
+        override-checkout: bugfix/18.1
+      - name: openstack/ironic-python-agent
+        override-checkout: bugfix/8.1
     vars:
       devstack_localrc:
         # Don't waste time on cleaning, it's checked everywhere else
@@ -189,3 +187,46 @@
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 1024
+
+- project-template:
+    name: openstack-python3-xena-jobs-ironic-bugfix
+    description: |
+      Runs unit tests for an OpenStack Python project under the CPython
+      version 3 releases designated for testing in the Xena release.
+    check:
+      jobs:
+        - openstack-tox-pep8:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/xena
+        - openstack-tox-py36:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/xena
+        - openstack-tox-py38:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/xena
+        - openstack-tox-py39:
+            voting:
+                false
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/xena
+    gate:
+      jobs:
+        - openstack-tox-pep8:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/xena
+        - openstack-tox-py36:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/xena
+        - openstack-tox-py38:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/xena
+    post:
+      jobs:
+        - publish-openstack-python-branch-tarball
