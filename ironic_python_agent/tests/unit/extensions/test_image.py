@@ -1654,7 +1654,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         self.assertFalse(mock_dispatch.called)
 
     @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
-    def test__prepare_boot_partitions_for_softraid_uefi_gpt(
+    def test_prepare_boot_partitions_for_softraid_uefi_gpt(
             self, mock_efi_part, mock_execute, mock_dispatch):
         mock_efi_part.return_value = {'number': '12'}
         mock_execute.side_effect = [
@@ -1673,7 +1673,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             (None, None),  # wipefs
         ]
 
-        efi_part = image._prepare_boot_partitions_for_softraid(
+        efi_part = image.prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
             target_boot_mode='uefi')
 
@@ -1704,7 +1704,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
     @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     @mock.patch.object(ilib_utils, 'mkfs', autospec=True)
-    def test__prepare_boot_partitions_for_softraid_uefi_gpt_esp_not_found(
+    def test_prepare_boot_partitions_for_softraid_uefi_gpt_esp_not_found(
             self, mock_mkfs, mock_efi_part, mock_execute, mock_dispatch):
         mock_efi_part.return_value = None
         mock_execute.side_effect = [
@@ -1721,7 +1721,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             (None, None),  # mdadm
         ]
 
-        efi_part = image._prepare_boot_partitions_for_softraid(
+        efi_part = image.prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
             target_boot_mode='uefi')
 
@@ -1748,7 +1748,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         ], any_order=False)
         self.assertEqual(efi_part, '/dev/md/esp')
 
-    def test__prepare_boot_partitions_for_softraid_uefi_gpt_efi_provided(
+    def test_prepare_boot_partitions_for_softraid_uefi_gpt_efi_provided(
             self, mock_execute, mock_dispatch):
         mock_execute.side_effect = [
             ('451', None),  # sgdisk -F
@@ -1766,7 +1766,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             (None, None),  # wipefs
         ]
 
-        efi_part = image._prepare_boot_partitions_for_softraid(
+        efi_part = image.prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], '/dev/md0p15',
             target_boot_mode='uefi')
 
@@ -1796,10 +1796,10 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
     @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True,
                        return_value='msdos')
-    def test__prepare_boot_partitions_for_softraid_bios_msdos(
+    def test_prepare_boot_partitions_for_softraid_bios_msdos(
             self, mock_label_scan, mock_execute, mock_dispatch):
 
-        efi_part = image._prepare_boot_partitions_for_softraid(
+        efi_part = image.prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], 'notusedanyway',
             target_boot_mode='bios')
 
@@ -1812,7 +1812,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
     @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True,
                        return_value='gpt')
-    def test__prepare_boot_partitions_for_softraid_bios_gpt(
+    def test_prepare_boot_partitions_for_softraid_bios_gpt(
             self, mock_label_scan, mock_execute, mock_dispatch):
 
         mock_execute.side_effect = [
@@ -1822,7 +1822,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             (None, None),  # bios boot grub
         ]
 
-        efi_part = image._prepare_boot_partitions_for_softraid(
+        efi_part = image.prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], 'notusedanyway',
             target_boot_mode='bios')
 
@@ -1854,7 +1854,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     @mock.patch.object(partition_utils, 'get_partition', autospec=True)
-    @mock.patch.object(image, '_prepare_boot_partitions_for_softraid',
+    @mock.patch.object(image, 'prepare_boot_partitions_for_softraid',
                        autospec=True,
                        return_value='/dev/md/esp')
     @mock.patch.object(image, '_has_dracut',
@@ -1972,7 +1972,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
     @mock.patch.object(os, 'environ', autospec=True)
     @mock.patch.object(os, 'makedirs', autospec=True)
     @mock.patch.object(partition_utils, 'get_partition', autospec=True)
-    @mock.patch.object(image, '_prepare_boot_partitions_for_softraid',
+    @mock.patch.object(image, 'prepare_boot_partitions_for_softraid',
                        autospec=True,
                        return_value=[])
     @mock.patch.object(image, '_has_dracut',

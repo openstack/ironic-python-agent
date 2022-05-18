@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Use efibootmgr instead of grub2-install for software RAID.
+    This fixes an issue with images which include newer versions
+    of grub2-install as they refuse bootloader installations in
+    UEFI boot mode due to the lack of secure boot support.
