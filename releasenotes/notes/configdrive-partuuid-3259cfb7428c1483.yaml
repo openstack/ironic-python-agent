@@ -1,0 +1,17 @@
+---
+issues:
+  - |
+    Creating a configdrive partition on a devicemapper device (e.g. a multipath
+    storage device) with MBR partitioning may fail with the following error::
+
+      Command execution failed: Failed to create config drive on disk /dev/dm-0
+      for node 168af30d-0fad-4d67-af99-b28b3238e977. Error: Unexpected error
+      while running command.
+
+    Use GPT partitioning instead.
+fixes:
+  - |
+    Fixes creating a configdrive partition on a devicemapper device (e.g.
+    a multipath storage device) with GPT partitioning. The newly created
+    partition is now detected by a pre-generated UUID rather than by comparing
+    partition numbers.
