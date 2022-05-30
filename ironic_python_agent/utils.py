@@ -70,6 +70,7 @@ COLLECT_LOGS_COMMANDS = {
     'lshw': ['lshw', '-quiet', '-json'],
     'lsblk': ['lsblk', '--all', '-o%s' % ','.join(LSBLK_COLUMNS)],
     'mdstat': ['cat', '/proc/mdstat'],
+    'multipath': ['multipath', '-ll'],
 }
 
 
