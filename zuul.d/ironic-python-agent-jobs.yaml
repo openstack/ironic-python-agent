@@ -20,7 +20,8 @@
         override-checkout: stable/xena
       - name: openstack/ironic
         override-checkout: bugfix/18.1
-      - openstack/ironic-lib
+      - name: openstack/ironic-lib
+        override-checkout: stable/xena
     vars:
       # The default is 1GB, we need a little more to prevent OOMs killing the jobs
       configure_swap_size: 8192
@@ -139,7 +140,8 @@
         override-checkout: master
       - name: openstack/ironic
         override-checkout: bugfix/18.1
-      - openstack/ironic-lib
+      - name: openstack/ironic-lib
+        override-checkout: stable/xena
     vars:
       devstack_localrc:
         IRONIC_DEFAULT_BOOT_OPTION: netboot
