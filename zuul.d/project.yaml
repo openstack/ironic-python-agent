@@ -20,13 +20,7 @@
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src-uefi
-        # NOTE(TheJulia): The cleaning tests run in standalone job has a
-        # high failure rate due to possible race during long running steps
-        # like deployment with raid setup. While we're working on a fix,
-        # we also need to fix IPA and Ironic itself, so this is as a result
-        # temporary.
-        - ironic-standalone-ipa-src:
-            voting: false
+        - ironic-standalone-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
         - ironic-python-agent-check-image-tinyipa:
@@ -52,6 +46,7 @@
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src-uefi
+        - ironic-standalone-ipa-src
     post:
       jobs:
         - ironic-python-agent-build-image-tinyipa
