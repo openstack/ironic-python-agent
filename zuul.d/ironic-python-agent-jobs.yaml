@@ -20,7 +20,8 @@
         override-checkout: stable/yoga
       - name: openstack/ironic
         override-checkout: bugfix/19.0
-      - openstack/ironic-lib
+      - name: openstack/ironic-lib
+        override-checkout: stable/yoga
     vars:
       # The default is 1GB, we need a little more to prevent OOMs killing the jobs
       configure_swap_size: 8192
@@ -137,10 +138,13 @@
     description: Test ironic standalone with IPA from source
     required-projects:
       - name: openstack/devstack
-        override-checkout: master
+        override-checkout: stable/yoga
+      - name: openstack/requirements
+        override-checkout: stable/yoga
       - name: openstack/ironic
         override-checkout: bugfix/19.0
-      - openstack/ironic-lib
+      - name: openstack/ironic-lib
+        override-checkout: stable/yoga
     vars:
       devstack_localrc:
         IRONIC_BUILD_DEPLOY_RAMDISK: True
