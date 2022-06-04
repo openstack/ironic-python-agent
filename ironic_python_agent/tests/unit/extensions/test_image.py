@@ -27,6 +27,7 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import image
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
+from ironic_python_agent import raid_utils
 from ironic_python_agent.tests.unit import base
 
 
@@ -1653,9 +1654,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                                                    uuid=self.fake_root_uuid)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
+    @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
+                       return_value='/dev/md42')
     @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     def test_prepare_boot_partitions_for_softraid_uefi_gpt(
-            self, mock_efi_part, mock_execute, mock_dispatch):
+            self, mock_efi_part, mock_free_raid_device, mock_rescan,
+            mock_execute, mock_dispatch):
         mock_efi_part.return_value = {'number': '12'}
         mock_execute.side_effect = [
             ('451', None),  # sgdisk -F
@@ -1693,19 +1698,24 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
                       '/dev/sdb'),
-            mock.call('mdadm', '--create', '/dev/md/esp', '--force', '--run',
-                      '--metadata=1.0', '--level', '1', '--raid-devices', 2,
-                      '/dev/sda12', '/dev/sdb14'),
-            mock.call('cp', '/dev/md0p12', '/dev/md/esp'),
+            mock.call('mdadm', '--create', '/dev/md42', '--force', '--run',
+                      '--metadata=1.0', '--level', '1', '--name', 'esp',
+                      '--raid-devices', 2, '/dev/sda12', '/dev/sdb14'),
+            mock.call('cp', '/dev/md0p12', '/dev/md42'),
             mock.call('wipefs', '-a', '/dev/md0p12')
         ]
         mock_execute.assert_has_calls(expected, any_order=False)
-        self.assertEqual(efi_part, '/dev/md/esp')
+        self.assertEqual(efi_part, '/dev/md42')
+        mock_rescan.assert_called_once_with('/dev/md42')
 
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
+    @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
+                       return_value='/dev/md42')
     @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     @mock.patch.object(ilib_utils, 'mkfs', autospec=True)
     def test_prepare_boot_partitions_for_softraid_uefi_gpt_esp_not_found(
-            self, mock_mkfs, mock_efi_part, mock_execute, mock_dispatch):
+            self, mock_mkfs, mock_efi_part, mock_free_raid_device,
+            mock_rescan, mock_execute, mock_dispatch):
         mock_efi_part.return_value = None
         mock_execute.side_effect = [
             ('451', None),  # sgdisk -F
@@ -1744,12 +1754,17 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         ]
         mock_execute.assert_has_calls(expected, any_order=False)
         mock_mkfs.assert_has_calls([
-            mock.call(path='/dev/md/esp', label='efi-part', fs='vfat'),
+            mock.call(path='/dev/md42', label='efi-part', fs='vfat'),
         ], any_order=False)
-        self.assertEqual(efi_part, '/dev/md/esp')
+        self.assertEqual(efi_part, '/dev/md42')
+        mock_rescan.assert_called_once_with('/dev/md42')
 
+    @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
+    @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
+                       return_value='/dev/md42')
     def test_prepare_boot_partitions_for_softraid_uefi_gpt_efi_provided(
-            self, mock_execute, mock_dispatch):
+            self, mock_free_raid_device, mock_rescan,
+            mock_execute, mock_dispatch):
         mock_execute.side_effect = [
             ('451', None),  # sgdisk -F
             (None, None),  # sgdisk create part
@@ -1785,14 +1800,14 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
                       '/dev/sdb'),
-            mock.call('mdadm', '--create', '/dev/md/esp', '--force', '--run',
-                      '--metadata=1.0', '--level', '1', '--raid-devices', 2,
-                      '/dev/sda12', '/dev/sdb14'),
-            mock.call('cp', '/dev/md0p15', '/dev/md/esp'),
+            mock.call('mdadm', '--create', '/dev/md42', '--force', '--run',
+                      '--metadata=1.0', '--level', '1', '--name', 'esp',
+                      '--raid-devices', 2, '/dev/sda12', '/dev/sdb14'),
+            mock.call('cp', '/dev/md0p15', '/dev/md42'),
             mock.call('wipefs', '-a', '/dev/md0p15')
         ]
         mock_execute.assert_has_calls(expected, any_order=False)
-        self.assertEqual(efi_part, '/dev/md/esp')
+        self.assertEqual(efi_part, '/dev/md42')
 
     @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True,
                        return_value='msdos')

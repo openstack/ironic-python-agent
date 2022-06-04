@@ -15,9 +15,11 @@ from unittest import mock
 from oslo_concurrency import processutils
 
 from ironic_python_agent import errors
+from ironic_python_agent import hardware
 from ironic_python_agent import raid_utils
 from ironic_python_agent.tests.unit import base
 from ironic_python_agent.tests.unit.samples import hardware_samples as hws
+from ironic_python_agent.tests.unit import test_hardware
 from ironic_python_agent import utils
 
 
@@ -112,3 +114,24 @@ class TestRaidUtils(base.IronicAgentTest):
                                "Failed re-add /dev/sdb1 to /dev/md0",
                                raid_utils.create_raid_device, 0,
                                logical_disk)
+
+
+@mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+class TestGetNextFreeRaidDevice(base.IronicAgentTest):
+
+    def test_ok(self, mock_dispatch):
+        mock_dispatch.return_value = \
+            test_hardware.RAID_BLK_DEVICE_TEMPLATE_DEVICES
+        result = raid_utils.get_next_free_raid_device()
+        self.assertEqual('/dev/md2', result)
+        mock_dispatch.assert_called_once_with('list_block_devices')
+
+    def test_no_device(self, mock_dispatch):
+        mock_dispatch.return_value = [
+            hardware.BlockDevice(name=f'/dev/md{idx}', model='RAID',
+                                 size=1765517033470, rotational=False,
+                                 vendor="FooTastic", uuid="")
+            for idx in range(128)
+        ]
+        self.assertRaises(errors.SoftwareRAIDError,
+                          raid_utils.get_next_free_raid_device)
