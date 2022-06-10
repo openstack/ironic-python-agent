@@ -1,7 +1,5 @@
 # these are needed to compile Python dependencies from sources
-python-dev [platform:dpkg test]
 python3-all-dev [platform:dpkg !platform:ubuntu-precise test]
-python-devel [platform:rpm test]
 python3-devel [platform:rpm test]
 build-essential [platform:dpkg test]
 libssl-dev [platform:dpkg test]
@@ -25,7 +23,7 @@ libguestfs [platform:rpm imagebuild]
 python-guestfs [platform:dpkg imagebuild]
 # for TinyIPA build
 wget [imagebuild]
-python-pip [imagebuild]
+python3-pip [imagebuild]
 unzip [imagebuild]
 sudo [imagebuild]
 gawk [imagebuild]
