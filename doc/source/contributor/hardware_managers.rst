@@ -107,6 +107,42 @@ message, and no further managers will be called. An example step:
         else:
             raise errors.IncompatibleHardwareMethodError()
 
+If the step has args, you need to add them to argsinfo and provide the
+function with extra parameters.
+
+.. code-block:: python
+
+    def get_clean_steps(self, node, ports):
+        return [
+            {
+                # A function on the custom hardware manager
+                'step': 'upgrade_firmware',
+                # An integer priority. Largest priorities are executed first
+                'priority': 10,
+                # Should always be the deploy interface
+                'interface': 'deploy',
+                # Arguments that can be required or optional.
+                'argsinfo': {
+                    'firmware_url': {
+                        'description': 'Url for firmware',
+                        'required': True,
+                    },
+                }
+                # Request the node to be rebooted out of band by Ironic when
+                # the step completes successfully
+                'reboot_requested': False
+            }
+        ]
+
+.. code-block:: python
+
+    def upgrade_firmware(self, node, ports, firmware_url):
+        if self._device_exists():
+            # Do the upgrade
+            return 'upgraded firmware'
+        else:
+            raise errors.IncompatibleHardwareMethodError()
+
 .. note::
 
     If two managers return steps with the same `step` key, the priority will
