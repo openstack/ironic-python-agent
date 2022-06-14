@@ -1586,13 +1586,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             ('', ''),
         ]
 
-        mocked_mpath.return_value = False
-        mocked_udev.side_effect = iter([
+        mocked_mpath.return_value = True
+        mocked_udev.side_effect = [
             {'ID_WWN': 'wwn%d' % i, 'ID_SERIAL_SHORT': 'serial%d' % i,
+             'ID_SERIAL': 'do not use me',
              'ID_WWN_WITH_EXTENSION': 'wwn-ext%d' % i,
              'ID_WWN_VENDOR_EXTENSION': 'wwn-vendor-ext%d' % i}
-            for i in range(5)
-        ])
+            for i in range(3)
+        ] + [
+            {'DM_WWN': 'wwn3', 'DM_SERIAL': 'serial3'},
+        ]
         mocked_dev_vendor.return_value = 'Super Vendor'
         devices = hardware.list_all_block_devices()
         expected_devices = [
@@ -1626,19 +1629,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  wwn_vendor_extension='wwn-vendor-ext2',
                                  serial='serial2',
                                  hctl='1:0:0:0'),
-            hardware.BlockDevice(name='/dev/sdd',
+            hardware.BlockDevice(name='/dev/dm-0',
                                  model='NWD-BLP4-1600',
                                  size=1765517033472,
                                  rotational=False,
                                  vendor='Super Vendor',
                                  wwn='wwn3',
-                                 wwn_with_extension='wwn-ext3',
-                                 wwn_vendor_extension='wwn-vendor-ext3',
+                                 wwn_with_extension=None,
+                                 wwn_vendor_extension=None,
                                  serial='serial3',
                                  hctl='1:0:0:0')
         ]
 
-        self.assertEqual(4, len(expected_devices))
+        self.assertEqual(4, len(devices))
         for expected, device in zip(expected_devices, devices):
             # Compare all attrs of the objects
             for attr in ['name', 'model', 'size', 'rotational',
@@ -1647,7 +1650,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 self.assertEqual(getattr(expected, attr),
                                  getattr(device, attr))
         expected_calls = [mock.call('/sys/block/%s/device/scsi_device' % dev)
-                          for dev in ('sda', 'sdb', 'sdc', 'sdd')]
+                          for dev in ('sda', 'sdb', 'sdc', 'dm-0')]
         mocked_listdir.assert_has_calls(expected_calls)
         mocked_mpath.assert_called_once_with()
 
