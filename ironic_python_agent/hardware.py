@@ -622,26 +622,34 @@ def list_all_block_devices(block_type='disk',
 
         name = os.path.join('/dev', device['KNAME'])
 
+        extra = {}
         try:
             udev = pyudev.Devices.from_device_file(context, name)
         except pyudev.DeviceNotFoundByFileError as e:
             LOG.warning("Device %(dev)s is inaccessible, skipping... "
                         "Error: %(error)s", {'dev': name, 'error': e})
-            extra = {}
         except pyudev.DeviceNotFoundByNumberError as e:
             LOG.warning("Device %(dev)s is not supported by pyudev, "
                         "skipping... Error: %(error)s",
                         {'dev': name, 'error': e})
-            extra = {}
         else:
             # TODO(lucasagomes): Since lsblk only supports
             # returning the short serial we are using
-            # ID_SERIAL_SHORT here to keep compatibility with the
+            # ID_SERIAL_SHORT first to keep compatibility with the
             # bash deploy ramdisk
-            extra = {key: udev.get('ID_%s' % udev_key) for key, udev_key in
-                     [('wwn', 'WWN'), ('serial', 'SERIAL_SHORT'),
-                      ('wwn_with_extension', 'WWN_WITH_EXTENSION'),
-                      ('wwn_vendor_extension', 'WWN_VENDOR_EXTENSION')]}
+            for key, udev_key in [
+                ('serial', 'SERIAL_SHORT'),
+                ('serial', 'SERIAL'),
+                ('wwn', 'WWN'),
+                ('wwn_with_extension', 'WWN_WITH_EXTENSION'),
+                ('wwn_vendor_extension', 'WWN_VENDOR_EXTENSION')
+            ]:
+                if key in extra:
+                    continue
+                value = (udev.get(f'ID_{udev_key}')
+                         or udev.get(f'DM_{udev_key}'))  # devicemapper
+                if value:
+                    extra[key] = value
 
         # NOTE(lucasagomes): Newer versions of the lsblk tool supports
         # HCTL as a parameter but let's get it from sysfs to avoid breaking
