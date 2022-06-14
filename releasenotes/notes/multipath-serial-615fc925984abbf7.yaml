@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes discovering WWN/serial numbers for devicemapper devices.
