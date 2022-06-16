@@ -246,7 +246,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                      mockedget_managers):
         mockedget_managers.return_value = [hardware.GenericHardwareManager()]
         mocked_listdir.return_value = ['lo', 'eth0', 'foobar']
-        mocked_exists.side_effect = [False, True, True]
+        mocked_exists.side_effect = [False, False, True, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -290,7 +290,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                                       mockedget_managers):
         mockedget_managers.return_value = [hardware.GenericHardwareManager()]
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, True]
+        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -385,7 +385,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mockedget_managers.return_value = [hardware.GenericHardwareManager()]
         CONF.set_override('collect_lldp', True)
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, True]
+        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -435,7 +435,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mockedget_managers.return_value = [hardware.GenericHardwareManager()]
         CONF.set_override('collect_lldp', True)
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, True]
+        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -478,7 +478,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mockedget_managers.return_value = [hardware.GenericHardwareManager()]
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, True]
+        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -519,7 +519,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                                       mockedget_managers):
         mockedget_managers.return_value = [hardware.GenericHardwareManager()]
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, True]
+        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -551,6 +551,50 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
     @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
+    def test_list_network_interfaces_with_bond(self,
+                                               mock_has_carrier,
+                                               mock_get_mac,
+                                               mocked_execute,
+                                               mocked_open,
+                                               mocked_exists,
+                                               mocked_listdir,
+                                               mocked_ifaddresses,
+                                               mockedget_managers):
+        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
+        mocked_listdir.return_value = ['lo', 'bond0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_execute.return_value = ('\n', '')
+        mock_has_carrier.return_value = True
+        mock_get_mac.side_effect = [
+            '00:0c:29:8c:11:b1',
+            None,
+        ]
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('bond0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertIsNone(interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('', interfaces[0].biosdevname)
+
+    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
+    @mock.patch('netifaces.ifaddresses', autospec=True)
+    @mock.patch('os.listdir', autospec=True)
+    @mock.patch('os.path.exists', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
     def test_list_network_vlan_interfaces(self,
                                           mock_has_carrier,
                                           mock_get_mac,
@@ -563,7 +607,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mockedget_managers.return_value = [hardware.GenericHardwareManager()]
         CONF.set_override('enable_vlan_interfaces', 'eth0.100')
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, True, False]
+        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -610,7 +654,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         CONF.set_override('enable_vlan_interfaces', 'eth0')
         mocked_listdir.return_value = ['lo', 'eth0']
         mocked_execute.return_value = ('em0\n', '')
-        mocked_exists.side_effect = [False, True, False]
+        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -662,7 +706,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         CONF.set_override('collect_lldp', True)
         CONF.set_override('enable_vlan_interfaces', 'enp0s1')
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, True, False]
+        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -699,7 +743,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         CONF.set_override('enable_vlan_interfaces', 'all')
         mocked_listdir.return_value = ['lo', 'eth0', 'eth1']
         mocked_execute.return_value = ('em0\n', '')
-        mocked_exists.side_effect = [False, True, True]
+        mocked_exists.side_effect = [False, False, True, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read

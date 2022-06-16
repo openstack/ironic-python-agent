@@ -1237,11 +1237,17 @@ class GenericHardwareManager(HardwareManager):
 
         return vlan.isdigit()
 
+    def _is_bond(self, interface_name):
+        device_path = '{}/class/net/{}/bonding'.format(self.sys_path,
+                                                       interface_name)
+        return os.path.exists(device_path)
+
     def list_network_interfaces(self):
         network_interfaces_list = []
         iface_names = os.listdir('{}/class/net'.format(self.sys_path))
         iface_names = [name for name in iface_names
-                       if self._is_vlan(name) or self._is_device(name)]
+                       if self._is_vlan(name) or self._is_device(name)
+                       or self._is_bond(name)]
 
         if CONF.collect_lldp:
             self.lldp_data = dispatch_to_managers('collect_lldp_data',
