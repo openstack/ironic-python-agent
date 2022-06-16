@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes GenericHardwareManager to find network information
+    for bonded interfaces if they exist.
