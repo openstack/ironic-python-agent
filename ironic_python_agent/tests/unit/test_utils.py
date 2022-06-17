@@ -16,6 +16,7 @@
 import errno
 import glob
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -410,12 +411,14 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
         mock_call.side_effect = os_error
         self.assertFalse(utils.is_journalctl_present())
 
+    @mock.patch.object(utils, '_collect_udev', autospec=True)
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
     @mock.patch.object(utils, 'get_command_output', autospec=True)
     @mock.patch.object(utils, 'get_journalctl_output', autospec=True)
     def test_collect_system_logs_journald(
-            self, mock_logs, mock_outputs, mock_journalctl, mock_gzip_b64):
+            self, mock_logs, mock_outputs, mock_journalctl, mock_gzip_b64,
+            mock_udev):
         mock_journalctl.return_value = True
         ret = 'Patrick Star'
         mock_gzip_b64.return_value = ret
@@ -435,13 +438,16 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
                      'mount': mock.ANY, 'parted': mock.ANY,
                      'multipath': mock.ANY},
             file_list=[])
+        mock_udev.assert_called_once_with(mock.ANY)
 
+    @mock.patch.object(utils, '_collect_udev', autospec=True)
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
     @mock.patch.object(utils, 'get_command_output', autospec=True)
     @mock.patch.object(utils, 'get_journalctl_output', autospec=True)
     def test_collect_system_logs_journald_with_logfile(
-            self, mock_logs, mock_outputs, mock_journalctl, mock_gzip_b64):
+            self, mock_logs, mock_outputs, mock_journalctl, mock_gzip_b64,
+            mock_udev):
         tmp = tempfile.NamedTemporaryFile()
         self.addCleanup(lambda: tmp.close())
 
@@ -465,12 +471,15 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
                      'mount': mock.ANY, 'parted': mock.ANY,
                      'multipath': mock.ANY},
             file_list=[tmp.name])
+        mock_udev.assert_called_once_with(mock.ANY)
 
+    @mock.patch.object(utils, '_collect_udev', autospec=True)
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
     @mock.patch.object(utils, 'get_command_output', autospec=True)
     def test_collect_system_logs_non_journald(
-            self, mock_outputs, mock_journalctl, mock_gzip_b64):
+            self, mock_outputs, mock_journalctl, mock_gzip_b64,
+            mock_udev):
         mock_journalctl.return_value = False
         ret = 'SpongeBob SquarePants'
         mock_gzip_b64.return_value = ret
@@ -490,12 +499,15 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
                      'mount': mock.ANY, 'parted': mock.ANY,
                      'multipath': mock.ANY},
             file_list=['/var/log'])
+        mock_udev.assert_called_once_with(mock.ANY)
 
+    @mock.patch.object(utils, '_collect_udev', autospec=True)
     @mock.patch.object(utils, 'gzip_and_b64encode', autospec=True)
     @mock.patch.object(utils, 'is_journalctl_present', autospec=True)
     @mock.patch.object(utils, 'get_command_output', autospec=True)
     def test_collect_system_logs_non_journald_with_logfile(
-            self, mock_outputs, mock_journalctl, mock_gzip_b64):
+            self, mock_outputs, mock_journalctl, mock_gzip_b64,
+            mock_udev):
         tmp = tempfile.NamedTemporaryFile()
         self.addCleanup(lambda: tmp.close())
 
@@ -519,6 +531,31 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
                      'mount': mock.ANY, 'parted': mock.ANY,
                      'multipath': mock.ANY},
             file_list=['/var/log', tmp.name])
+        mock_udev.assert_called_once_with(mock.ANY)
+
+    @mock.patch('pyudev.Context', lambda: mock.sentinel.context)
+    @mock.patch('pyudev.Devices.from_device_file', autospec=True)
+    @mock.patch.object(ironic_utils, 'execute', autospec=True)
+    def test_collect_udev(self, mock_execute, mock_from_dev):
+        mock_execute.return_value = """
+            fake0
+            fake1
+            fake42
+        """, ""
+        mock_from_dev.side_effect = [
+            mock.Mock(properties={'ID_UUID': '0'}),
+            RuntimeError('nope'),
+            {'ID_UUID': '42'}
+        ]
+
+        result = {}
+        utils._collect_udev(result)
+        self.assertEqual({'udev/fake0', 'udev/fake42'}, set(result))
+        for i in ('0', '42'):
+            buf = result[f'udev/fake{i}']
+            # Avoiding getvalue on purpose - checking that the IO is not closed
+            val = json.loads(buf.read().decode('utf-8'))
+            self.assertEqual({'ID_UUID': i}, val)
 
     def test_get_ssl_client_options(self):
         # defaults
