@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+
 from oslo_config import cfg
 from oslo_log import log
-from oslo_serialization import jsonutils
 import requests
 import tenacity
 
@@ -103,7 +104,7 @@ class APIClient(object):
 
         try:
             response = self._request('GET', '/')
-            data = jsonutils.loads(response.content)
+            data = json.loads(response.content)
             version = data['default_version']['version'].split('.')
             self._ironic_api_version = (int(version[0]), int(version[1]))
             return self._ironic_api_version
@@ -127,8 +128,8 @@ class APIClient(object):
             if not isinstance(body, dict):
                 # Old ironic format
                 try:
-                    body = jsonutils.loads(body)
-                except ValueError:
+                    body = json.loads(body)
+                except json.decoder.JSONDecodeError:
                     body = {}
 
             text = (body.get('faultstring')
@@ -253,8 +254,8 @@ class APIClient(object):
             return False
 
         try:
-            content = jsonutils.loads(response.content)
-        except Exception as e:
+            content = json.loads(response.content)
+        except json.decoder.JSONDecodeError as e:
             LOG.warning('Error decoding response: %s', e)
             return False
 

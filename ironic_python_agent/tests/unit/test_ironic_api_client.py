@@ -16,7 +16,6 @@ import json
 from unittest import mock
 
 from oslo_config import cfg
-from oslo_serialization import jsonutils
 import requests
 
 from ironic_python_agent import errors
@@ -149,7 +148,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
         expected_data = {
             'callback_url': 'http://192.0.2.1:9999',
             'agent_version': version.__version__}
-        self.assertEqual(jsonutils.dumps(expected_data), data)
+        self.assertEqual(json.dumps(expected_data), data)
 
     def test_successful_heartbeat_ip6(self):
         response = FakeResponse(status_code=202)
@@ -172,7 +171,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
         expected_data = {
             'callback_url': 'http://[fc00:1111::4]:9999',
             'agent_version': version.__version__}
-        self.assertEqual(jsonutils.dumps(expected_data), data)
+        self.assertEqual(json.dumps(expected_data), data)
 
     def test_successful_heartbeat_with_token(self):
         response = FakeResponse(status_code=202)
@@ -197,7 +196,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
             'callback_url': 'http://192.0.2.1:9999',
             'agent_token': 'magical',
             'agent_version': version.__version__}
-        self.assertEqual(jsonutils.dumps(expected_data), data)
+        self.assertEqual(json.dumps(expected_data), data)
 
     def test_heartbeat_agent_version_unsupported(self):
         response = FakeResponse(status_code=202)
@@ -218,7 +217,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
         self.assertEqual(API_URL + heartbeat_path, request_args[1])
         expected_data = {
             'callback_url': 'http://[fc00:1111::4]:9999'}
-        self.assertEqual(jsonutils.dumps(expected_data), data)
+        self.assertEqual(json.dumps(expected_data), data)
 
     def test_successful_heartbeat_with_verify_ca(self):
         response = FakeResponse(status_code=202)
@@ -246,7 +245,7 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
             'agent_token': 'magical',
             'agent_version': version.__version__,
             'agent_verify_ca': 'I am a cert'}
-        self.assertEqual(jsonutils.dumps(expected_data), data)
+        self.assertEqual(json.dumps(expected_data), data)
         headers = self.api_client.session.request.call_args[1]['headers']
         self.assertEqual(
             '%d.%d' % ironic_api_client.AGENT_VERIFY_CA_IRONIC_VERSION,
