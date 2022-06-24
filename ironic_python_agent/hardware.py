@@ -1688,10 +1688,11 @@ class GenericHardwareManager(HardwareManager):
                         'ATA commands via the `smartctl` utility with device '
                         '%s do not succeed.', block_device.name)
             return False
-        except OSError:
+        except OSError as e:
             # Processutils can raise OSError if a path is not found,
             # and it is okay that we tollerate that since it was the
             # prior behavior.
+            LOG.warning('Unable to execute `smartctl` utility: %s', e)
             return True
 
     def _ata_erase(self, block_device):
