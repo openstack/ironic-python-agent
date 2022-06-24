@@ -22,8 +22,6 @@
         override-checkout: bugfix/19.0
       - name: openstack/ironic-lib
         override-checkout: stable/yoga
-      - name: openstack/swift
-        override-checkout: stable/yoga
     vars:
       # The default is 1GB, we need a little more to prevent OOMs killing the jobs
       configure_swap_size: 8192
@@ -169,6 +167,8 @@
         override-checkout: stable/yoga
       - openstack/ironic-python-agent
       - name: openstack/ironic-python-agent-builder
+        override-checkout: stable/yoga
+      - name: openstack/neutron
         override-checkout: stable/yoga
       - openstack/ironic-lib
     vars:
