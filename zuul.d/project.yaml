@@ -31,6 +31,7 @@
       queue: ironic
       jobs:
         - openstack-tox-functional
+        - ipa-tox-examples
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src-uefi
