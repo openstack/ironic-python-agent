@@ -540,32 +540,36 @@ def list_all_block_devices(block_type='disk',
                     "Cause: %(error)s", {'path': disk_by_path_dir, 'error': e})
 
     columns = utils.LSBLK_COLUMNS
-    report = il_utils.execute('lsblk', '-Pbia',
-                              '-o{}'.format(','.join(columns)))[0]
-    lines = report.splitlines()
+    report = il_utils.execute('lsblk', '-bia', '--json',
+                              '-o{}'.format(','.join(columns)),
+                              check_exit_code=[0])[0]
+
+    try:
+        report_json = json.loads(report)
+    except json.decoder.JSONDecodeError as ex:
+        LOG.error("Unable to decode lsblk output, invalid JSON: %s", ex)
+
     context = pyudev.Context()
+    devices_raw = report_json['blockdevices']
+    # Convert raw json output to something useful for us
     devices = []
-    for line in lines:
-        device = {}
-        # Split into KEY=VAL pairs
-        vals = shlex.split(line)
-        for key, val in (v.split('=', 1) for v in vals):
-            device[key] = val.strip()
+    for device_raw in devices_raw:
         # Ignore block types not specified
-        devtype = device.get('TYPE')
+        devtype = device_raw.get('type')
 
         # We already have devices, we should ensure we don't store duplicates.
-        if _is_known_device(devices, device.get('KNAME')):
+        if _is_known_device(devices, device_raw.get('kname')):
+            LOG.debug('Ignoring already known device %s', device_raw)
             continue
 
         # If we collected the RM column, we could consult it for removable
         # media, however USB devices are also flagged as removable media.
         # we have to explicitly do this as floppy disks are type disk.
-        if ignore_floppy and str(device.get('KNAME')).startswith('fd'):
-            LOG.debug('Ignoring floppy disk device: %s', line)
+        if ignore_floppy and str(device_raw.get('kname')).startswith('fd'):
+            LOG.debug('Ignoring floppy disk device %s', device_raw)
             continue
 
-        dev_kname = device.get('KNAME')
+        dev_kname = device_raw.get('kname')
         if check_multipath:
             # Net effect is we ignore base devices, and their base devices
             # to what would be the mapped device name which would not pass the
@@ -588,14 +592,15 @@ def list_all_block_devices(block_type='disk',
             if devtype is None or ignore_raid:
                 LOG.debug(
                     "TYPE did not match. Wanted: %(block_type)s but found: "
-                    "%(line)s (RAID devices are ignored)",
-                    {'block_type': block_type, 'line': line})
+                    "%(devtype)s (RAID devices are ignored)",
+                    {'block_type': block_type, 'devtype': devtype})
                 continue
             elif ('raid' in devtype
                   and block_type in ['raid', 'disk', 'mpath']):
                 LOG.debug(
                     "TYPE detected to contain 'raid', signifying a "
-                    "RAID volume. Found: %s", line)
+                    "RAID volume. Found: %(device_raw)s",
+                    {'device_raw': device_raw})
             elif (devtype == 'md'
                   and (block_type == 'part'
                        or block_type == 'md')):
@@ -605,38 +610,41 @@ def list_all_block_devices(block_type='disk',
                 # more detail.
                 LOG.debug(
                     "TYPE detected to contain 'md', signifying a "
-                    "RAID partition. Found: %s", line)
+                    "RAID partition. Found: %(device_raw)s",
+                    {'device_raw': device_raw})
             elif devtype == 'mpath' and block_type == 'disk':
                 LOG.debug(
                     "TYPE detected to contain 'mpath', "
                     "signifing a device mapper multipath device. "
-                    "Found: %s", line)
+                    "Found: %(device_raw)s",
+                    {'device_raw': device_raw})
             else:
                 LOG.debug(
                     "TYPE did not match. Wanted: %(block_type)s but found: "
-                    "%(line)s", {'block_type': block_type, 'line': line})
+                    "%(device_raw)s (RAID devices are ignored)",
+                    {'block_type': block_type, 'device_raw': device_raw})
                 continue
 
         # Ensure all required columns are at least present, even if blank
-        missing = set(columns) - set(device)
+        missing = set(map(str.lower, columns)) - set(device_raw)
         if missing:
             raise errors.BlockDeviceError(
                 '%s must be returned by lsblk.' % ', '.join(sorted(missing)))
 
         # NOTE(dtantsur): RAM disks and zRAM devices appear in the output of
         # lsblk as disks, but we cannot do anything useful with them.
-        if (device['KNAME'].startswith('ram')
-                or device['KNAME'].startswith('zram')):
-            LOG.debug('Skipping RAM device %s', device)
+        if (device_raw['kname'].startswith('ram')
+                or device_raw['kname'].startswith('zram')):
+            LOG.debug('Skipping RAM device %s', device_raw)
             continue
 
         # NOTE(dtantsur): some hardware represents virtual floppy devices as
         # normal block devices with size 0. Filter them out.
-        if ignore_empty and not int(device['SIZE'] or 0):
-            LOG.debug('Skipping device %s with zero size', device)
+        if ignore_empty and not int(device_raw['size'] or 0):
+            LOG.debug('Skipping device %s with zero size', device_raw)
             continue
 
-        name = os.path.join('/dev', device['KNAME'])
+        name = os.path.join('/dev', device_raw['kname'])
 
         extra = {}
         try:
@@ -672,7 +680,7 @@ def list_all_block_devices(block_type='disk',
         # old distros.
         try:
             extra['hctl'] = os.listdir(
-                '/sys/block/%s/device/scsi_device' % device['KNAME'])[0]
+                '/sys/block/%s/device/scsi_device' % device_raw['kname'])[0]
         except (OSError, IndexError):
             LOG.warning('Could not find the SCSI address (HCTL) for '
                         'device %s. Skipping', name)
@@ -681,14 +689,14 @@ def list_all_block_devices(block_type='disk',
         by_path_name = by_path_mapping.get(name)
 
         devices.append(BlockDevice(name=name,
-                                   model=device['MODEL'],
-                                   size=int(device['SIZE'] or 0),
-                                   rotational=bool(int(device['ROTA'])),
-                                   vendor=_get_device_info(device['KNAME'],
+                                   model=device_raw['model'],
+                                   size=int(device_raw['size'] or 0),
+                                   rotational=bool(int(device_raw['rota'])),
+                                   vendor=_get_device_info(device_raw['kname'],
                                                            'block', 'vendor'),
                                    by_path=by_path_name,
-                                   uuid=device['UUID'],
-                                   partuuid=device['PARTUUID'],
+                                   uuid=device_raw['uuid'],
+                                   partuuid=device_raw['partuuid'],
                                    **extra))
     return devices
 
