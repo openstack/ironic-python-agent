@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import base64
 import errno
 import glob
 import io
@@ -26,7 +27,6 @@ from unittest import mock
 
 from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
-from oslo_serialization import base64
 import requests
 import testtools
 
@@ -321,7 +321,7 @@ class TestUtils(ironic_agent_base.IronicAgentTest):
         data = utils.gzip_and_b64encode(io_dict=io_dict)
         self.assertIsInstance(data, str)
 
-        res = io.BytesIO(base64.decode_as_bytes(data))
+        res = io.BytesIO(base64.b64decode(data))
         with tarfile.open(fileobj=res) as tar:
             members = [(m.name, m.size) for m in tar]
             self.assertEqual([('fake-name', len(contents))], members)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 from collections import abc
 import contextlib
 import copy
@@ -31,8 +32,6 @@ from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_serialization import base64
-from oslo_serialization import jsonutils
 from oslo_utils import units
 import pyudev
 import requests
@@ -504,6 +503,13 @@ def get_journalctl_output(lines=None, units=None):
     return get_command_output(cmd)
 
 
+def _encode_as_text(s):
+    if isinstance(s, str):
+        s = s.encode('utf-8')
+    s = base64.b64encode(s)
+    return s.decode('ascii')
+
+
 def gzip_and_b64encode(io_dict=None, file_list=None):
     """Gzip and base64 encode files and BytesIO buffers.
 
@@ -529,7 +535,8 @@ def gzip_and_b64encode(io_dict=None, file_list=None):
                 tar.add(f)
 
         fp.seek(0)
-        return base64.encode_as_text(fp.getvalue())
+
+        return _encode_as_text(fp.getvalue())
 
 
 def _collect_udev(io_dict):
@@ -686,8 +693,8 @@ def parse_capabilities(root):
     capabilities = root.get('capabilities', {})
     if isinstance(capabilities, str):
         try:
-            capabilities = jsonutils.loads(capabilities)
-        except (ValueError, TypeError):
+            capabilities = json.loads(capabilities)
+        except json.decoder.JSONDecodeError:
             capabilities = _parse_capabilities_str(capabilities)
 
     if not isinstance(capabilities, dict):

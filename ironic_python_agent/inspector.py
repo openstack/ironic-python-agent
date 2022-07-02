@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import os
 import time
 
@@ -20,7 +21,6 @@ from ironic_lib import mdns
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_serialization import jsonutils
 from oslo_utils import excutils
 import requests
 import stevedore
@@ -290,10 +290,10 @@ def collect_extra_hardware(data, failures):
         return
 
     try:
-        data['data'] = jsonutils.loads(out)
-    except ValueError as exc:
+        data['data'] = json.loads(out)
+    except json.decoder.JSONDecodeError as ex:
         msg = 'JSON returned from hardware-detect cannot be decoded: %s'
-        failures.add(msg, exc)
+        failures.add(msg, ex)
 
 
 def collect_pci_devices_info(data, failures):
