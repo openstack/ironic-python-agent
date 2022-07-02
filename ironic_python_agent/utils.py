@@ -18,6 +18,7 @@ import copy
 import errno
 import glob
 import io
+import json
 import os
 import re
 import shutil
@@ -33,6 +34,7 @@ from oslo_log import log as logging
 from oslo_serialization import base64
 from oslo_serialization import jsonutils
 from oslo_utils import units
+import pyudev
 import requests
 import tenacity
 
@@ -530,6 +532,42 @@ def gzip_and_b64encode(io_dict=None, file_list=None):
         return base64.encode_as_text(fp.getvalue())
 
 
+def _collect_udev(io_dict):
+    """Collect device properties from udev."""
+    try:
+        out, _e = ironic_utils.execute('lsblk', '-no', 'KNAME')
+    except processutils.ProcessExecutionError as exc:
+        LOG.warning('Could not list block devices: %s', exc)
+        return
+
+    context = pyudev.Context()
+
+    for kname in out.splitlines():
+        kname = kname.strip()
+        if not kname:
+            continue
+
+        name = os.path.join('/dev', kname)
+
+        try:
+            udev = pyudev.Devices.from_device_file(context, name)
+        except Exception as e:
+            LOG.warning("Device %(dev)s is inaccessible, skipping... "
+                        "Error: %(error)s", {'dev': name, 'error': e})
+            continue
+
+        try:
+            props = dict(udev.properties)
+        except AttributeError:  # pyudev < 0.20
+            props = dict(udev)
+
+        fp = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+        json.dump(props, fp)
+        buf = fp.detach()
+        buf.seek(0)
+        io_dict[f'udev/{kname}'] = buf
+
+
 def collect_system_logs(journald_max_lines=None):
     """Collect system logs.
 
@@ -567,6 +605,11 @@ def collect_system_logs(journald_max_lines=None):
 
     for name, cmd in COLLECT_LOGS_COMMANDS.items():
         try_get_command_output(io_dict, name, cmd)
+
+    try:
+        _collect_udev(io_dict)
+    except Exception:
+        LOG.exception('Unexpected error when collecting udev properties')
 
     return gzip_and_b64encode(io_dict=io_dict, file_list=file_list)
 

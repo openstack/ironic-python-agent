@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    Block devices properties reported by udev are now collected with the
+    ramdisk logs.
