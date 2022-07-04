@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes an issue where arguments were not passed to clean steps when
+    a manual cleaning operation was being executed. The arguments are
+    now passed in appropriately.
