@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    No longer supports network boot of instances (``boot_option=netboot``).
+    This feature is dropped from Ironic in the Zed cycle.

@@ -187,7 +187,7 @@ def get_labelled_partition(device_path, label, node_uuid):
 
 def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
                  image_path, node_uuid, preserve_ephemeral=False,
-                 configdrive=None, boot_option="netboot", boot_mode="bios",
+                 configdrive=None, boot_mode="bios",
                  tempdir=None, disk_label=None, cpu_arch="", conv_flags=None):
     """Create partitions and copy an image to the root partition.
 
@@ -206,7 +206,6 @@ def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
         partition table has not changed).
     :param configdrive: Optional. Base64 encoded Gzipped configdrive content
                         or configdrive HTTP URL.
-    :param boot_option: Can be "local" or "netboot". "netboot" by default.
     :param boot_mode: Can be "bios" or "uefi". "bios" by default.
     :param tempdir: A temporary directory
     :param disk_label: The disk label to be used when creating the
@@ -248,7 +247,7 @@ def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
                                                root_mb, swap_mb, ephemeral_mb,
                                                configdrive_mb, node_uuid,
                                                commit=commit,
-                                               boot_option=boot_option,
+                                               boot_option='local',
                                                boot_mode=boot_mode,
                                                disk_label=disk_label,
                                                cpu_arch=cpu_arch)
@@ -278,7 +277,7 @@ def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
 
         # If it's a uefi localboot, then we have created the efi system
         # partition.  Create a fat filesystem on it.
-        if boot_mode == "uefi" and boot_option == "local":
+        if boot_mode == "uefi":
             efi_system_part = part_dict.get('efi system partition')
             utils.mkfs(fs='vfat', path=efi_system_part, label='efi-part')
 

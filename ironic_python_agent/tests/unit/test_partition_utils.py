@@ -321,7 +321,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              self.swap_mb, self.ephemeral_mb,
                                              self.configdrive_mb,
                                              self.node_uuid, commit=True,
-                                             boot_option="netboot",
+                                             boot_option="local",
                                              boot_mode="bios",
                                              disk_label=None,
                                              cpu_arch="")
@@ -340,7 +340,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              self.swap_mb, self.ephemeral_mb,
                                              self.configdrive_mb,
                                              self.node_uuid, commit=True,
-                                             boot_option="netboot",
+                                             boot_option="local",
                                              boot_mode="bios",
                                              disk_label=None,
                                              cpu_arch="")
@@ -368,7 +368,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              self.swap_mb, ephemeral_mb,
                                              self.configdrive_mb,
                                              self.node_uuid, commit=True,
-                                             boot_option="netboot",
+                                             boot_option="local",
                                              boot_mode="bios",
                                              disk_label=None,
                                              cpu_arch="")
@@ -395,14 +395,13 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                           self.swap_mb, self.ephemeral_mb,
                           self.ephemeral_format, self.image_path,
                           self.node_uuid, preserve_ephemeral=False,
-                          configdrive=configdrive_url,
-                          boot_option="netboot")
+                          configdrive=configdrive_url)
         self.assertEqual(self.mock_ibd.call_args_list, calls)
         self.mock_mp.assert_called_once_with(self.dev, self.root_mb,
                                              self.swap_mb, self.ephemeral_mb,
                                              configdrive_mb, self.node_uuid,
                                              commit=True,
-                                             boot_option="netboot",
+                                             boot_option="local",
                                              boot_mode="bios",
                                              disk_label=None,
                                              cpu_arch="")
@@ -436,7 +435,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              self.swap_mb, ephemeral_mb,
                                              self.configdrive_mb,
                                              self.node_uuid, commit=True,
-                                             boot_option="netboot",
+                                             boot_option="local",
                                              boot_mode="bios",
                                              disk_label=None,
                                              cpu_arch="")
@@ -474,7 +473,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              self.swap_mb, ephemeral_mb,
                                              self.configdrive_mb,
                                              self.node_uuid, commit=True,
-                                             boot_option="netboot",
+                                             boot_option="local",
                                              boot_mode="bios",
                                              disk_label='gpt',
                                              cpu_arch="")
@@ -483,8 +482,8 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
     @mock.patch.object(disk_utils, 'block_uuid', autospec=True)
     @mock.patch.object(disk_utils, 'populate_image', autospec=True)
     @mock.patch.object(utils, 'mkfs', autospec=True)
-    def test_uefi_localboot(self, mock_mkfs, mock_populate_image,
-                            mock_block_uuid, mock_trigger_device_rescan):
+    def test_uefi(self, mock_mkfs, mock_populate_image,
+                  mock_block_uuid, mock_trigger_device_rescan):
         """Test that we create a fat filesystem with UEFI localboot."""
         root_part = '/dev/fake-part1'
         efi_part = '/dev/fake-part2'
@@ -498,7 +497,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                      self.swap_mb, self.ephemeral_mb,
                                      self.ephemeral_format,
                                      self.image_path, self.node_uuid,
-                                     boot_option="local", boot_mode="uefi")
+                                     boot_mode="uefi")
 
         self.mock_mp.assert_called_once_with(self.dev, self.root_mb,
                                              self.swap_mb, self.ephemeral_mb,
@@ -544,7 +543,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                              self.swap_mb, ephemeral_mb,
                                              self.configdrive_mb,
                                              self.node_uuid, commit=False,
-                                             boot_option="netboot",
+                                             boot_option="local",
                                              boot_mode="bios",
                                              disk_label=None,
                                              cpu_arch="")
@@ -568,8 +567,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         partition_utils.work_on_disk(self.dev, self.root_mb,
                                      self.swap_mb, self.ephemeral_mb,
                                      self.ephemeral_format, self.image_path,
-                                     self.node_uuid, boot_option="local",
-                                     cpu_arch='ppc64le')
+                                     self.node_uuid, cpu_arch='ppc64le')
         self.assertEqual(self.mock_ibd.call_args_list, calls)
         self.mock_mp.assert_called_once_with(self.dev, self.root_mb,
                                              self.swap_mb, self.ephemeral_mb,

@@ -53,7 +53,6 @@ def _build_fake_partition_image_info():
         'ephemeral_format': 'abc',
         'preserve_ephemeral': 'False',
         'image_type': 'partition',
-        'boot_option': 'netboot',
         'disk_label': 'msdos',
         'deploy_boot_mode': 'bios'}
 
@@ -234,7 +233,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
         boot_mode = image_info['deploy_boot_mode']
-        boot_option = image_info['boot_option']
         disk_label = image_info['disk_label']
         cpu_arch = self.fake_cpu.architecture
 
@@ -257,7 +255,6 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   configdrive='configdrive',
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
-                                                  boot_option=boot_option,
                                                   disk_label=disk_label,
                                                   cpu_arch=cpu_arch)
 
@@ -281,7 +278,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
         boot_mode = image_info['deploy_boot_mode']
-        boot_option = image_info['boot_option']
         disk_label = image_info['disk_label']
         cpu_arch = self.fake_cpu.architecture
 
@@ -304,7 +300,6 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   configdrive='configdrive',
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
-                                                  boot_option=boot_option,
                                                   disk_label=disk_label,
                                                   cpu_arch=cpu_arch)
 
@@ -353,7 +348,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
         boot_mode = image_info['deploy_boot_mode']
-        boot_option = image_info['boot_option']
         disk_label = image_info['disk_label']
         cpu_arch = self.fake_cpu.architecture
 
@@ -374,7 +368,6 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   configdrive='configdrive',
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode=boot_mode,
-                                                  boot_option=boot_option,
                                                   disk_label=disk_label,
                                                   cpu_arch=cpu_arch)
 
@@ -1346,24 +1339,9 @@ class TestStandbyExtension(base.IronicAgentTest):
                         '/dev/fake root_uuid=root_uuid')
         self.assertEqual(expected_msg, result_msg)
 
-    def test__message_format_partition_uefi_netboot(self):
+    def test__message_format_partition_uefi(self):
         image_info = _build_fake_partition_image_info()
         image_info['deploy_boot_mode'] = 'uefi'
-        image_info['boot_option'] = 'netboot'
-        msg = ('image ({}) already present on device {} ')
-        device = '/dev/fake'
-        partition_uuids = {'root uuid': 'root_uuid',
-                           'efi system partition uuid': None}
-        result_msg = standby._message_format(msg, image_info,
-                                             device, partition_uuids)
-        expected_msg = ('image (fake_id) already present on device '
-                        '/dev/fake root_uuid=root_uuid')
-        self.assertEqual(expected_msg, result_msg)
-
-    def test__message_format_partition_uefi_localboot(self):
-        image_info = _build_fake_partition_image_info()
-        image_info['deploy_boot_mode'] = 'uefi'
-        image_info['boot_option'] = 'local'
         msg = ('image ({}) already present on device {} ')
         device = '/dev/fake'
         partition_uuids = {'root uuid': 'root_uuid',
@@ -1430,7 +1408,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         ephemeral_format = image_info['ephemeral_format']
         node_uuid = image_info['node_uuid']
         pr_ep = image_info['preserve_ephemeral']
-        boot_option = image_info['boot_option']
         cpu_arch = self.fake_cpu.architecture
 
         image_path = standby._image_location(image_info)
@@ -1452,7 +1429,6 @@ class TestStandbyExtension(base.IronicAgentTest):
                                                   configdrive='configdrive',
                                                   preserve_ephemeral=pr_ep,
                                                   boot_mode='uefi',
-                                                  boot_option=boot_option,
                                                   disk_label='gpt',
                                                   cpu_arch=cpu_arch)
 

@@ -152,7 +152,6 @@ def _write_partition_image(image, image_info, device, configdrive=None):
 
     node_uuid = image_info.get('node_uuid')
     preserve_ep = image_info['preserve_ephemeral']
-    boot_option = image_info.get('boot_option', 'local')
     boot_mode = utils.get_node_boot_mode(cached_node)
     disk_label = utils.get_partition_table_type_from_specs(cached_node)
     root_mb = image_info['root_mb']
@@ -175,7 +174,6 @@ def _write_partition_image(image, image_info, device, configdrive=None):
                                             image, node_uuid,
                                             preserve_ephemeral=preserve_ep,
                                             configdrive=configdrive,
-                                            boot_option=boot_option,
                                             boot_mode=boot_mode,
                                             disk_label=disk_label,
                                             cpu_arch=cpu_arch)
@@ -253,7 +251,6 @@ def _message_format(msg, image_info, device, partition_uuids):
     efi_system_partition_uuid = (
         partition_uuids.get('efi system partition uuid'))
     if (image_info.get('deploy_boot_mode') == 'uefi'
-            and image_info.get('boot_option') == 'local'
             and efi_system_partition_uuid):
         result_msg = msg + 'root_uuid={} efi_system_partition_uuid={}'
         message = result_msg.format(image_info['id'], device,
