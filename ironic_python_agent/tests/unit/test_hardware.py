@@ -5154,29 +5154,31 @@ class TestProtectedDiskSafetyChecks(base.IronicAgentTest):
         mock_execute.assert_not_called()
 
     def test_special_filesystem_guard_enabled_no_results(self, mock_execute):
-        mock_execute.return_value = ('', '')
+        mock_execute.return_value = ('{"blockdevices": [{"foo": "bar"}]}', '')
         hardware.safety_check_block_device({}, '/dev/foo')
 
     def test_special_filesystem_guard_raises(self, mock_execute):
-        GFS2 = 'FSTYPE="gfs2"\n'
-        GPFS1 = 'UUID="37AFFC90-EF7D-4E96-91C3-2D7AE055B174"\n'
-        GPFS2 = 'PTUUID="37AFFC90-EF7D-4E96-91C3-2D7AE055B174"\n'
-        GPFS3 = 'PARTTYPE="37AFFC90-EF7D-4E96-91C3-2D7AE055B174"\n'
-        GPFS4 = 'PARTUUID="37AFFC90-EF7D-4E96-91C3-2D7AE055B174"\n'
-        VMFS1 = 'UUID="AA31E02A-400F-11DB-9590-000C2911D1B8"\n'
-        VMFS2 = 'UUID="AA31E02A-400F-11DB-9590-000C2911D1B8"\n'
-        VMFS3 = 'UUID="AA31E02A-400F-11DB-9590-000C2911D1B8"\n'
-        VMFS4 = 'UUID="AA31E02A-400F-11DB-9590-000C2911D1B8"\n'
-        VMFS5 = 'UUID="0xfb"\n'
-        VMFS6 = 'PTUUID="0xfb"\n'
-        VMFS7 = 'PARTTYPE="0xfb"\n'
-        VMFS8 = 'PARTUUID="0xfb"\n'
+        GFS2 = '"fstype": "gfs2"'
+        GPFS1 = '"uuid": "37AFFC90-EF7D-4E96-91C3-2D7AE055B174"'
+        GPFS2 = '"ptuuid": "37AFFC90-EF7D-4E96-91C3-2D7AE055B174"'
+        GPFS3 = '"parttype": "37AFFC90-EF7D-4E96-91C3-2D7AE055B174"'
+        GPFS4 = '"partuuid": "37AFFC90-EF7D-4E96-91C3-2D7AE055B174"'
+        VMFS1 = '"uuid": "AA31E02A-400F-11DB-9590-000C2911D1B8"'
+        VMFS2 = '"uuid": "AA31E02A-400F-11DB-9590-000C2911D1B8"'
+        VMFS3 = '"uuid": "AA31E02A-400F-11DB-9590-000C2911D1B8"'
+        VMFS4 = '"uuid": "AA31E02A-400F-11DB-9590-000C2911D1B8"'
+        VMFS5 = '"uuid": "0xfb"'
+        VMFS6 = '"ptuuid": "0xfb"'
+        VMFS7 = '"parttype": "0xfb"'
+        VMFS8 = '"partuuid": "0xfb"'
 
         expected_failures = [GFS2, GPFS1, GPFS2, GPFS3, GPFS4, VMFS1, VMFS2,
                              VMFS3, VMFS4, VMFS5, VMFS6, VMFS7, VMFS8]
         for failure in expected_failures:
             mock_execute.reset_mock()
-            mock_execute.return_value = (failure, '')
+            dev_failure = ('{{"blockdevices": [{{{failure}}}]}}'
+                           .format(failure=failure))
+            mock_execute.return_value = (dev_failure, '')
             self.assertRaises(errors.ProtectedDeviceError,
                               hardware.safety_check_block_device,
                               {}, '/dev/foo')
