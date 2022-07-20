@@ -1551,11 +1551,6 @@ class GenericHardwareManager(HardwareManager):
                  operational risk which exists as it could also be a sign
                  of an environmental misconfiguration.
         """
-        block_devices = self.list_block_devices(include_partitions=True)
-        # NOTE(coreywright): Reverse sort by device name so a partition (eg
-        # sda1) is processed before it disappears when its associated disk (eg
-        # sda) has its partition table erased and the kernel notified.
-        block_devices.sort(key=lambda dev: dev.name, reverse=True)
         erase_errors = {}
         for dev in self._list_erasable_devices():
             safety_check_block_device(node, dev.name)
