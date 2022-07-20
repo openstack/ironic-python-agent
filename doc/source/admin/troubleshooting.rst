@@ -24,7 +24,7 @@ image boots. Kernel command line parameters are used to do this.
 
 dynamic-login element example:
 
-- Add ``sshkey="ssh-rsa BBA1..."`` to pxe_append_params setting in
+- Add ``sshkey="ssh-rsa BBA1..."`` to kernel_append_params setting in
   the ``ironic.conf`` file
 - Restart the ironic-conductor with the command
   ``service ironic-conductor restart``
@@ -76,7 +76,7 @@ are used to do this.
 dynamic-login element example::
 
   Generate a ENCRYPTED_PASSWORD with the openssl passwd -1 command
-  Add rootpwd="$ENCRYPTED_PASSWORD" value on the pxe_append_params setting in /etc/ironic/ironic.conf
+  Add rootpwd="$ENCRYPTED_PASSWORD" value on the kernel_append_params setting in /etc/ironic/ironic.conf
   Restart the ironic-conductor with the command service ironic-conductor restart
 
 Users can also be added to DIB built IPA images with the devuser element [1]_
@@ -118,7 +118,7 @@ Set IPA to debug logging
 Debug logging can be enabled a several different ways. The easiest way is to
 add ``ipa-debug=1`` to the kernel command line. To do this:
 
-- Append ``ipa-debug=1`` to the pxe_append_params setting in the
+- Append ``ipa-debug=1`` to the kernel_append_params setting in the
   ``ironic.conf`` file
 - Restart the ironic-conductor with the command
   ``service ironic-conductor restart``
@@ -160,6 +160,96 @@ If the system does not use systemd then IPA can be restarted directly::
 If the system uses systemd then systemctl can be used to restart the service::
 
   sudo systemctl restart ironic-python-agent.service
+
+Cleaning halted with ProtectedDeviceError
+=========================================
+
+The IPA service has halted cleaning as one of the block devices within or
+attached to the bare metal node contains a class of filesystem which **MAY**
+cause irreparable harm to a potentially running cluster if accidently removed.
+
+These filesystems *may* be used for only local storage and as a result be
+safe to erase. However if a shared block device is in use, such as a device
+supplied via a Storage Area Network utilizing protocols such as iSCSI or
+FibreChannel. Ultimately the Host Bus Adapter (HBA) may not be an entirely
+"detectable" entity given the hardware market place and aspects such as
+"SmartNICs" and Converged Network Adapters with specific offload functions
+to support standards like "NVMe over Fabric" (NVMe-oF).
+
+By default, the agent will prevent these filesystems from being deleted and
+will halt the cleaning process when detected. The cleaning process can be
+re-triggered via Ironic's state machine once one of the documented settings
+have been used to notify the agent that no action is required.
+
+What filesystems are looked for
+-------------------------------
+
++-------------------------------------------+
+| IBM General Parallel Filesystem           |
++-------------------------------------------+
+| Red Hat Global Filesystem 2               |
++-------------------------------------------+
+| VmWare Virtual Machine FileSystem (VMFS)  |
++-------------------------------------------+
+
+I'm okay with deleting, how do I tell IPA to clean the disk(s)?
+---------------------------------------------------------------
+
+Four potential ways exist to signal to IPA. Please note, all of these options
+require access either to the ndoe in Ironic's API or ability to modify Ironic
+configuration.
+
+Via Ironic
+~~~~~~~~~~
+
+.. note:: This option requires that the version of Ironic be sufficient enough
+   to understand and explicitly provide this option to the Agent.
+
+Inform Ironic to provide the option to the Agent::
+
+  baremetal node set --driver-info wipe_special_filesystems=True
+
+Via a node's kernel_append_params setting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This may be set on a node level by utilizing the override
+``kernel_append_params`` setting which can be utilized on a node
+level. Example::
+
+  baremetal node set --driver-info kernel_append_params="ipa-guard-special-filesystems=False"
+
+Alternatively, if you wish to set this only once, you may use
+the ``instance_info`` field, which is wiped upon teardown of the node.
+Example::
+
+  baremetal node set --instance-info kernel_append_params="ipa-guard-special-filesystems=False"
+
+Via Ironic's Boot time PXE parameters (Globally)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Globally, this setting may be passed by modifying the ``ironic.conf``
+configuration file on your cluster by adding
+``ipa-guard-special-filesystems=False`` string to the
+``[pxe]kernel_append_params`` parameter.
+
+.. warning::
+   If your running a multi-conductor deployment, all of your ``ironic.conf``
+   configuration files will need to be updated to match.
+
+Via Ramdisk configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This option requires modifying the ramdisk, and is the most complex, but may
+be advisable if you have a mixed environment cluster where shared clustered
+filesystems may be a concern on some machines, but not others.
+
+.. warning::
+   This requires rebuilding your agent ramdisk, and modifying the embedded
+   configuration file for the ironic-python-agent. If your confused at all
+   by this statement, this option is not for you.
+
+Edit /etc/ironic_python_agent/ironic_python_agent.conf and set the parameter
+``[DEFAULT]guard_special_filesystems`` to ``False``.
 
 
 References

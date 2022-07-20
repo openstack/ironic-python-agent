@@ -1710,10 +1710,12 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_listdir.assert_has_calls(expected_calls)
         mocked_mpath.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
     @mock.patch.object(hardware, 'ThreadPool', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     def test_erase_devices_no_parallel_by_default(self, mocked_dispatch,
-                                                  mock_threadpool):
+                                                  mock_threadpool,
+                                                  mock_safety_check):
 
         # NOTE(TheJulia): This test was previously more elaborate and
         # had a high failure rate on py37 and py38. So instead, lets just
@@ -1732,10 +1734,43 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         calls = [mock.call(1)]
         self.hardware.erase_devices({}, [])
         mock_threadpool.assert_has_calls(calls)
+        mock_safety_check.assert_has_calls([
+            mock.call({}, '/dev/sdj'),
+            mock.call({}, '/dev/hdaa')
+        ])
 
+    @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
+    @mock.patch.object(hardware, 'ThreadPool', autospec=True)
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    def test_erase_devices_no_parallel_by_default_protected_device(
+            self, mocked_dispatch,
+            mock_threadpool,
+            mock_safety_check):
+        mock_safety_check.side_effect = errors.ProtectedDeviceError(
+            device='foo',
+            what='bar')
+
+        self.hardware.list_block_devices = mock.Mock()
+
+        self.hardware.list_block_devices.return_value = [
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
+        ]
+
+        calls = [mock.call(1)]
+        self.assertRaises(errors.ProtectedDeviceError,
+                          self.hardware.erase_devices, {}, [])
+        mock_threadpool.assert_has_calls(calls)
+        mock_safety_check.assert_has_calls([
+            mock.call({}, '/dev/sdj'),
+        ])
+        mock_threadpool.apply_async.assert_not_called()
+
+    @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
     @mock.patch('multiprocessing.pool.ThreadPool.apply_async', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    def test_erase_devices_concurrency(self, mocked_dispatch, mocked_async):
+    def test_erase_devices_concurrency(self, mocked_dispatch, mocked_async,
+                                       mock_safety_check):
         internal_info = self.node['driver_internal_info']
         internal_info['disk_erasure_concurrency'] = 10
         mocked_dispatch.return_value = 'erased device'
@@ -1760,9 +1795,15 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                  for dev in (blkdev1, blkdev2)]
         mocked_async.assert_has_calls(calls)
         self.assertEqual(expected, result)
+        mock_safety_check.assert_has_calls([
+            mock.call(self.node, '/dev/sdj'),
+            mock.call(self.node, '/dev/hdaa'),
+        ])
 
+    @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
     @mock.patch.object(hardware, 'ThreadPool', autospec=True)
-    def test_erase_devices_concurrency_pool_size(self, mocked_pool):
+    def test_erase_devices_concurrency_pool_size(self, mocked_pool,
+                                                 mock_safety_check):
         self.hardware.list_block_devices = mock.Mock()
         self.hardware.list_block_devices.return_value = [
             hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
@@ -1782,6 +1823,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         self.hardware.erase_devices(self.node, [])
         mocked_pool.assert_called_with(1)
+        mock_safety_check.assert_has_calls([
+            mock.call(self.node, '/dev/sdj'),
+            mock.call(self.node, '/dev/hdaa'),
+        ])
 
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     def test_erase_devices_without_disk(self, mocked_dispatch):
@@ -2441,6 +2486,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('/sys/fs/pstore/' + arg) for arg in pstore_entries
         ])
 
+    @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
     @mock.patch.object(il_utils, 'execute', autospec=True)
     @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
@@ -2449,7 +2495,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_list_erasable_devices', autospec=True)
     def test_erase_devices_express(
             self, mock_list_erasable_devices, mock_nvme_erase,
-            mock_destroy_disk_metadata, mock_execute):
+            mock_destroy_disk_metadata, mock_execute, mock_safety_check):
         block_devices = [
             hardware.BlockDevice('/dev/sda', 'sata', 65535, False),
             hardware.BlockDevice('/dev/md0', 'raid-device', 32767, False),
@@ -2466,7 +2512,44 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                          mock.call('/dev/md0', self.node['uuid'])],
                          mock_destroy_disk_metadata.call_args_list)
         mock_list_erasable_devices.assert_called_with(self.hardware)
+        mock_safety_check.assert_has_calls([
+            mock.call(self.node, '/dev/sda'),
+            mock.call(self.node, '/dev/md0'),
+            mock.call(self.node, '/dev/nvme0n1'),
+            mock.call(self.node, '/dev/nvme1n1')
+        ])
 
+    @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_nvme_erase', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_list_erasable_devices', autospec=True)
+    def test_erase_devices_express_stops_on_safety_failure(
+            self, mock_list_erasable_devices, mock_nvme_erase,
+            mock_destroy_disk_metadata, mock_execute, mock_safety_check):
+        mock_safety_check.side_effect = errors.ProtectedDeviceError(
+            device='foo',
+            what='bar')
+        block_devices = [
+            hardware.BlockDevice('/dev/sda', 'sata', 65535, False),
+            hardware.BlockDevice('/dev/md0', 'raid-device', 32767, False),
+            hardware.BlockDevice('/dev/nvme0n1', 'nvme', 32767, False),
+            hardware.BlockDevice('/dev/nvme1n1', 'nvme', 32767, False)
+        ]
+        mock_list_erasable_devices.return_value = list(block_devices)
+
+        self.assertRaises(errors.ProtectedDeviceError,
+                          self.hardware.erase_devices_express, self.node, [])
+        mock_nvme_erase.assert_not_called()
+        mock_destroy_disk_metadata.assert_not_called()
+        mock_list_erasable_devices.assert_called_with(self.hardware)
+        mock_safety_check.assert_has_calls([
+            mock.call(self.node, '/dev/sda')
+        ])
+
+    @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
     @mock.patch.object(il_utils, 'execute', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_virtual_media_device', autospec=True)
@@ -2475,7 +2558,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
     def test_erase_devices_metadata(
             self, mock_metadata, mock_list_devs, mock__is_vmedia,
-            mock_execute):
+            mock_execute, mock_safety_check):
         block_devices = [
             hardware.BlockDevice('/dev/sr0', 'vmedia', 12345, True),
             hardware.BlockDevice('/dev/sdb2', 'raid-member', 32767, False),
@@ -2509,7 +2592,62 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           mock.call(self.hardware, block_devices[2]),
                           mock.call(self.hardware, block_devices[5])],
                          mock__is_vmedia.call_args_list)
+        mock_safety_check.assert_has_calls([
+            mock.call(self.node, '/dev/sda1'),
+            mock.call(self.node, '/dev/sda'),
+            # This is kind of redundant code/pattern behavior wise
+            # but you never know what someone has done...
+            mock.call(self.node, '/dev/md0')
+        ])
 
+    @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_is_virtual_media_device', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'list_block_devices', autospec=True)
+    @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
+    def test_erase_devices_metadata_safety_check(
+            self, mock_metadata, mock_list_devs, mock__is_vmedia,
+            mock_execute, mock_safety_check):
+        block_devices = [
+            hardware.BlockDevice('/dev/sr0', 'vmedia', 12345, True),
+            hardware.BlockDevice('/dev/sdb2', 'raid-member', 32767, False),
+            hardware.BlockDevice('/dev/sda', 'small', 65535, False),
+            hardware.BlockDevice('/dev/sda1', '', 32767, False),
+            hardware.BlockDevice('/dev/sda2', 'raid-member', 32767, False),
+            hardware.BlockDevice('/dev/md0', 'raid-device', 32767, False)
+        ]
+        # NOTE(coreywright): Don't return the list, but a copy of it, because
+        # we depend on its elements' order when referencing it later during
+        # verification, but the method under test sorts the list changing it.
+        mock_list_devs.return_value = list(block_devices)
+        mock__is_vmedia.side_effect = lambda _, dev: dev.name == '/dev/sr0'
+        mock_execute.side_effect = [
+            ('sdb2 linux_raid_member host:1 f9978968', ''),
+            ('sda2 linux_raid_member host:1 f9978969', ''),
+            ('sda1', ''), ('sda', ''), ('md0', '')]
+        mock_safety_check.side_effect = [
+            None,
+            errors.ProtectedDeviceError(
+                device='foo',
+                what='bar')
+        ]
+
+        self.assertRaises(errors.ProtectedDeviceError,
+                          self.hardware.erase_devices_metadata,
+                          self.node, [])
+
+        self.assertEqual([mock.call('/dev/sda1', self.node['uuid'])],
+                         mock_metadata.call_args_list)
+        mock_list_devs.assert_called_with(self.hardware,
+                                          include_partitions=True)
+        mock_safety_check.assert_has_calls([
+            mock.call(self.node, '/dev/sda1'),
+            mock.call(self.node, '/dev/sda'),
+        ])
+
+    @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
@@ -2519,7 +2657,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
     def test_erase_devices_metadata_error(
             self, mock_metadata, mock_list_devs, mock__is_vmedia,
-            mock__is_raid_member):
+            mock__is_raid_member, mock_safety_check):
         block_devices = [
             hardware.BlockDevice('/dev/sda', 'small', 65535, False),
             hardware.BlockDevice('/dev/sdb', 'big', 10737418240, True),
@@ -2553,6 +2691,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual([mock.call(self.hardware, block_devices[1]),
                           mock.call(self.hardware, block_devices[0])],
                          mock__is_vmedia.call_args_list)
+        mock_safety_check.assert_has_calls([
+            mock.call(self.node, '/dev/sdb'),
+            mock.call(self.node, '/dev/sda')
+        ])
 
     @mock.patch.object(il_utils, 'execute', autospec=True)
     def test__is_linux_raid_member(self, mocked_execute):
@@ -4991,3 +5133,51 @@ class TestAPIClientSaveAndUse(base.IronicAgentTest):
         calls = [mock.call('list_hardware_info'),
                  mock.call('wait_for_disks')]
         mock_dispatch.assert_has_calls(calls)
+
+
+@mock.patch.object(il_utils, 'execute', autospec=True)
+class TestProtectedDiskSafetyChecks(base.IronicAgentTest):
+
+    def test_special_filesystem_guard_not_enabled(self, mock_execute):
+        CONF.set_override('guard_special_filesystems', False)
+        hardware.safety_check_block_device({}, '/dev/foo')
+        mock_execute.assert_not_called()
+
+    def test_special_filesystem_guard_node_indicates_skip(self, mock_execute):
+        node = {
+            'driver_internal_info': {
+                'wipe_special_filesystems': False
+            }
+        }
+        mock_execute.return_value = ('', '')
+        hardware.safety_check_block_device(node, '/dev/foo')
+        mock_execute.assert_not_called()
+
+    def test_special_filesystem_guard_enabled_no_results(self, mock_execute):
+        mock_execute.return_value = ('', '')
+        hardware.safety_check_block_device({}, '/dev/foo')
+
+    def test_special_filesystem_guard_raises(self, mock_execute):
+        GFS2 = 'FSTYPE="gfs2"\n'
+        GPFS1 = 'UUID="37AFFC90-EF7D-4E96-91C3-2D7AE055B174"\n'
+        GPFS2 = 'PTUUID="37AFFC90-EF7D-4E96-91C3-2D7AE055B174"\n'
+        GPFS3 = 'PARTTYPE="37AFFC90-EF7D-4E96-91C3-2D7AE055B174"\n'
+        GPFS4 = 'PARTUUID="37AFFC90-EF7D-4E96-91C3-2D7AE055B174"\n'
+        VMFS1 = 'UUID="AA31E02A-400F-11DB-9590-000C2911D1B8"\n'
+        VMFS2 = 'UUID="AA31E02A-400F-11DB-9590-000C2911D1B8"\n'
+        VMFS3 = 'UUID="AA31E02A-400F-11DB-9590-000C2911D1B8"\n'
+        VMFS4 = 'UUID="AA31E02A-400F-11DB-9590-000C2911D1B8"\n'
+        VMFS5 = 'UUID="0xfb"\n'
+        VMFS6 = 'PTUUID="0xfb"\n'
+        VMFS7 = 'PARTTYPE="0xfb"\n'
+        VMFS8 = 'PARTUUID="0xfb"\n'
+
+        expected_failures = [GFS2, GPFS1, GPFS2, GPFS3, GPFS4, VMFS1, VMFS2,
+                             VMFS3, VMFS4, VMFS5, VMFS6, VMFS7, VMFS8]
+        for failure in expected_failures:
+            mock_execute.reset_mock()
+            mock_execute.return_value = (failure, '')
+            self.assertRaises(errors.ProtectedDeviceError,
+                              hardware.safety_check_block_device,
+                              {}, '/dev/foo')
+            self.assertEqual(1, mock_execute.call_count)

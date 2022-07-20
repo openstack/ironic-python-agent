@@ -103,3 +103,23 @@ Clean steps
     Delete the RAID configuration. This step belongs to the ``raid`` interface
     and must be used through the :ironic-doc:`ironic RAID feature
     <admin/raid.html>`.
+
+Cleaning safeguards
+-------------------
+
+The stock hardware manager contains a number of safeguards to prevent
+unsafe conditions from occuring.
+
+Shared Disk Cluster Filesystems
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Commonly used shared disk cluster filesystems, when detected, causes cleaning
+processes on stock hardware manager methods to abort prior to destroying the
+contents on the disk.
+
+These filesystems include IBM General Parallel File System (GPFS),
+VmWare Virtual Machine File System (VMFS), and Red Hat Global File System
+(GFS2).
+
+For information on troubleshooting, and disabling this check,
+see :doc:`/admin/troubleshooting`.

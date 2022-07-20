@@ -1,0 +1,20 @@
+---
+fixes:
+  - |
+    Previously when the ``ironic-python-agent`` would undergo erasure of block
+    devices during cleaning, it would automatically attempt to erase the
+    contents of any "Shared Device" clustered filesystems which may be in use
+    by distinct multiple machines over a storage fabric. In particular
+    IBM GPFS, Red Hat Global File System 2, and VmWare Virtual Machine File
+    System (VMFS), are now identified and cleaning is halted. This is important
+    because should an active cluster be using the this disk, cleaning could
+    potentially cause the cluster to go down forcing restoration from backups.
+    Ideally, infrastructure operators should check their environment's storage
+    configuration and un-map any clustered filesystems from being visible to
+    Ironic nodes, unless explicitly needed and expected. Please see the
+    Ironic-Python-Agent troubleshooting documentation for more information.
+issues:
+  - |
+    Logic to guard VMFS filesystems from being destroyed *may* not recognize
+    VMFS extents. Operators with examples of partitioning for extent usage
+    are encouraged to contact the Ironic community.

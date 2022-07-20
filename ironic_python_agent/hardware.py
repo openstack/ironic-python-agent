@@ -924,6 +924,10 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
 
         :param node: Ironic node object
         :param ports: list of Ironic port objects
+        :raises: ProtectedDeviceFound if a device has been identified which
+                 may require manual intervention due to the contents and
+                 operational risk which exists as it could also be a sign
+                 of an environmental misconfiguration.
         :return: a dictionary in the form {device.name: erasure output}
         """
         erase_results = {}
@@ -937,6 +941,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         thread_pool = ThreadPool(min(max_pool_size, len(block_devices)))
         for block_device in block_devices:
             params = {'node': node, 'block_device': block_device}
+            safety_check_block_device(node, block_device.name)
             erase_results[block_device.name] = thread_pool.apply_async(
                 dispatch_to_managers, ('erase_block_device',), params)
         thread_pool.close()
@@ -1541,6 +1546,10 @@ class GenericHardwareManager(HardwareManager):
         :param ports: list of Ironic port objects
         :raises BlockDeviceEraseError: when there's an error erasing the
                 block device
+        :raises: ProtectedDeviceFound if a device has been identified which
+                 may require manual intervention due to the contents and
+                 operational risk which exists as it could also be a sign
+                 of an environmental misconfiguration.
         """
         block_devices = self.list_block_devices(include_partitions=True)
         # NOTE(coreywright): Reverse sort by device name so a partition (eg
@@ -1549,6 +1558,7 @@ class GenericHardwareManager(HardwareManager):
         block_devices.sort(key=lambda dev: dev.name, reverse=True)
         erase_errors = {}
         for dev in self._list_erasable_devices():
+            safety_check_block_device(node, dev.name)
             try:
                 disk_utils.destroy_disk_metadata(dev.name, node['uuid'])
             except processutils.ProcessExecutionError as e:
@@ -1572,6 +1582,10 @@ class GenericHardwareManager(HardwareManager):
         :param ports: list of Ironic port objects
         :raises BlockDeviceEraseError: when there's an error erasing the
                 block device
+        :raises: ProtectedDeviceFound if a device has been identified which
+                 may require manual intervention due to the contents and
+                 operational risk which exists as it could also be a sign
+                 of an environmental misconfiguration.
         """
         erase_errors = {}
         info = node.get('driver_internal_info', {})
@@ -1579,6 +1593,7 @@ class GenericHardwareManager(HardwareManager):
             LOG.debug("No erasable devices have been found.")
             return
         for dev in self._list_erasable_devices():
+            safety_check_block_device(node, dev.name)
             try:
                 if self._is_nvme(dev):
                     execute_nvme_erase = info.get(
@@ -2957,3 +2972,109 @@ def get_multipath_status():
     # as if we directly try and work with the global var, we will be racing
     # tests endlessly.
     return MULTIPATH_ENABLED
+
+
+def safety_check_block_device(node, device):
+    """Performs safety checking of a block device before destroying.
+
+    In order to guard against distruction of file systems such as
+    shared-disk file systems
+    (https://en.wikipedia.org/wiki/Clustered_file_system#SHARED-DISK)
+    or similar filesystems where multiple distinct computers may have
+    unlocked concurrent IO access to the entire block device or
+    SAN Logical Unit Number, we need to evaluate, and block cleaning
+    from occuring on these filesystems *unless* we have been explicitly
+    configured to do so.
+
+    This is because cleaning is an intentionally distructive operation,
+    and once started against such a device, given the complexities of
+    shared disk clustered filesystems where concurrent access is a design
+    element, in all likelihood the entire cluster can be negatively
+    impacted, and an operator will be forced to recover from snapshot and
+    or backups of the volume's contents.
+
+    :param node: A node, or cached node object.
+    :param device: String representing the path to the block
+                   device to be checked.
+    :raises: ProtectedDeviceError when a device is identified with
+             one of these known clustered filesystems, and the overall
+             settings have not indicated for the agent to skip such
+             safety checks.
+    """
+
+    # NOTE(TheJulia): While this seems super rare, I found out after this
+    # thread of discussion started that I have customers which have done
+    # this and wiped out SAN volumes and their contents unintentionally
+    # as a result of these filesystems not being guarded.
+    # For those not familiar with shared disk clustered filesystems, think
+    # of it as like your impacting a Ceph cluster, except your suddenly
+    # removing the underlying disks from the OSD, and the entire cluster
+    # goes down.
+
+    if not CONF.guard_special_filesystems:
+        return
+    di_info = node.get('driver_internal_info', {})
+    if not di_info.get('wipe_special_filesystems', True):
+        return
+    report, _e = il_utils.execute('lsblk', '-Pbia',
+                                  '-oFSTYPE,UUID,PTUUID,PARTTYPE,PARTUUID',
+                                  device)
+
+    lines = report.splitlines()
+
+    identified_fs_types = []
+    identified_ids = []
+    for line in lines:
+        device = {}
+        # Split into KEY=VAL pairs
+        vals = shlex.split(line)
+        if not vals:
+            continue
+        for key, val in (v.split('=', 1) for v in vals):
+            if key == 'FSTYPE':
+                identified_fs_types.append(val)
+            if key in ['UUID', 'PTUUID', 'PARTTYPE', 'PARTUUID']:
+                identified_ids.append(val)
+        # Ignore block types not specified
+
+    _check_for_special_partitions_filesystems(
+        device,
+        identified_ids,
+        identified_fs_types)
+
+
+def _check_for_special_partitions_filesystems(device, ids, fs_types):
+    """Compare supplied IDs, Types to known items, and raise if found.
+
+    :param device: The block device in use, specificially for logging.
+    :param ids: A list above IDs found to check.
+    :param fs_types: A list of FS types found to check.
+    :raises: ProtectedDeviceError should a partition label or metadata
+             be discovered which suggests a shared disk clustered filesystem
+             has been discovered.
+    """
+
+    guarded_ids = {
+        # Apparently GPFS can used shared volumes....
+        '37AFFC90-EF7D-4E96-91C3-2D7AE055B174': 'IBM GPFS Partition',
+        # Shared volume parallel filesystem
+        'AA31E02A-400F-11DB-9590-000C2911D1B8': 'VMware VMFS Partition (GPT)',
+        '0xfb': 'VMware VMFS Partition (MBR)',
+    }
+    for key, value in guarded_ids.items():
+        for id_value in ids:
+            if key == id_value:
+                raise errors.ProtectedDeviceError(
+                    device=device,
+                    what=value)
+
+    guarded_fs_types = {
+        'gfs2': 'Red Hat Global File System 2',
+    }
+
+    for key, value in guarded_fs_types.items():
+        for fs in fs_types:
+            if key == fs:
+                raise errors.ProtectedDeviceError(
+                    device=device,
+                    what=value)
