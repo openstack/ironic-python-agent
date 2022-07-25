@@ -110,6 +110,14 @@ Cleaning safeguards
 The stock hardware manager contains a number of safeguards to prevent
 unsafe conditions from occuring.
 
+Devices Skip List
+~~~~~~~~~~~~~~~~~
+
+A list of devices that Ironic does not touch during the cleaning process
+can be specified in the node properties field under
+``skip_block_devices``. This should be a list of dictionaries
+containing hints to identify the drives.
+
 Shared Disk Cluster Filesystems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
