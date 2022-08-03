@@ -3011,26 +3011,24 @@ def safety_check_block_device(node, device):
     di_info = node.get('driver_internal_info', {})
     if not di_info.get('wipe_special_filesystems', True):
         return
-    report, _e = il_utils.execute('lsblk', '-Pbia',
-                                  '-oFSTYPE,UUID,PTUUID,PARTTYPE,PARTUUID',
-                                  device)
+    lsblk_ids = ['UUID', 'PTUUID', 'PARTTYPE', 'PARTUUID']
+    report = il_utils.execute('lsblk', '-bia', '--json',
+                              '-o{}'.format(','.join(lsblk_ids)),
+                              device, check_exit_code=[0])[0]
 
-    lines = report.splitlines()
+    try:
+        report_json = json.loads(report)
+    except json.decoder.JSONDecodeError as ex:
+        LOG.error("Unable to decode lsblk output, invalid JSON: %s", ex)
 
+    device_json = report_json['blockdevices'][0]
     identified_fs_types = []
     identified_ids = []
-    for line in lines:
-        device = {}
-        # Split into KEY=VAL pairs
-        vals = shlex.split(line)
-        if not vals:
-            continue
-        for key, val in (v.split('=', 1) for v in vals):
-            if key == 'FSTYPE':
-                identified_fs_types.append(val)
-            if key in ['UUID', 'PTUUID', 'PARTTYPE', 'PARTUUID']:
-                identified_ids.append(val)
-        # Ignore block types not specified
+
+    fstype = device_json.get('fstype')
+    identified_fs_types.append(fstype)
+    for key in lsblk_ids:
+        identified_ids.append(device_json.get(key.lower()))
 
     _check_for_special_partitions_filesystems(
         device,
@@ -3048,7 +3046,6 @@ def _check_for_special_partitions_filesystems(device, ids, fs_types):
              be discovered which suggests a shared disk clustered filesystem
              has been discovered.
     """
-
     guarded_ids = {
         # Apparently GPFS can used shared volumes....
         '37AFFC90-EF7D-4E96-91C3-2D7AE055B174': 'IBM GPFS Partition',
