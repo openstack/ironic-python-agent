@@ -1842,6 +1842,21 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             mock_is_md_device,
             mock_execute, mock_dispatch):
 
+        # return success for every execute call
+        mock_execute.side_effect = [('', '')] * 21
+
+        # make grub2-install calls fail
+        grub_failure = processutils.ProcessExecutionError(
+            stdout='',
+            stderr='grub2-install: error: this utility cannot be used '
+                   'for EFI platforms because it does not support '
+                   'UEFI Secure Boot.\n',
+            exit_code=1,
+            cmd='grub2-install'
+        )
+        mock_execute.side_effect[9] = grub_failure
+        mock_execute.side_effect[10] = grub_failure
+
         mock_get_part_uuid.side_effect = [self.fake_root_part,
                                           self.fake_efi_system_part]
         environ_mock.get.return_value = '/sbin'
@@ -1853,7 +1868,10 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             efi_system_part_uuid=self.fake_efi_system_part_uuid,
             target_boot_mode='uefi')
 
-        expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+        expected = [mock.call('partx', '-a', '/dev/fake', attempts=3,
+                              delay_on_retry=True),
+                    mock.call('udevadm', 'settle'),
+                    mock.call('mount', '/dev/fake2', self.fake_dir),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/proc',
