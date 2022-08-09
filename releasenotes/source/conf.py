@@ -55,8 +55,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Ironic Python Agent Release Notes'
-copyright = u'2015, Ironic Python Agent Developers'
+project = 'Ironic Python Agent Release Notes'
+copyright = '2015, Ironic Python Agent Developers'
 
 # Release notes do not need a version number in the title, they
 # cover multiple releases.
