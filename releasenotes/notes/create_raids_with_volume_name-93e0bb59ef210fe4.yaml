@@ -1,0 +1,5 @@
+---
+features:
+  - Software RAID devices are built with the `--name` option
+    followed by volume name if it is defined in target raid config
+    and an internal ID otherwise.

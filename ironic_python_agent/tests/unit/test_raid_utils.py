@@ -57,8 +57,29 @@ class TestRaidUtils(base.IronicAgentTest):
 
         mock_execute.assert_called_once_with(
             'mdadm', '--create', '/dev/md0', '--force', '--run',
-            '--metadata=1', '--level', '1', '--raid-devices', 3,
-            '/dev/sda1', '/dev/sdb1', '/dev/sdc1')
+            '--metadata=1', '--level', '1', '--name', '/dev/md0',
+            '--raid-devices', 3, '/dev/sda1', '/dev/sdb1', '/dev/sdc1')
+
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
+                       autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_raid_device_with_volume_name(self, mock_execute,
+                                                 mocked_components):
+        logical_disk = {
+            "block_devices": ['/dev/sda', '/dev/sdb', '/dev/sdc'],
+            "raid_level": "1",
+            "volume_name": "diskname"
+        }
+        mocked_components.return_value = ['/dev/sda1',
+                                          '/dev/sdb1',
+                                          '/dev/sdc1']
+
+        raid_utils.create_raid_device(0, logical_disk)
+
+        mock_execute.assert_called_once_with(
+            'mdadm', '--create', '/dev/md0', '--force', '--run',
+            '--metadata=1', '--level', '1', '--name', 'diskname',
+            '--raid-devices', 3, '/dev/sda1', '/dev/sdb1', '/dev/sdc1')
 
     @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
@@ -76,8 +97,9 @@ class TestRaidUtils(base.IronicAgentTest):
 
         expected_calls = [
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
-                      '--metadata=1', '--level', '1', '--raid-devices', 3,
-                      '/dev/sda1', '/dev/sdb1', '/dev/sdc1'),
+                      '--metadata=1', '--level', '1', '--name', '/dev/md0',
+                      '--raid-devices', 3, '/dev/sda1', '/dev/sdb1',
+                      '/dev/sdc1'),
             mock.call('mdadm', '--add', '/dev/md0', '/dev/sdb1',
                       attempts=3, delay_on_retry=True)
         ]

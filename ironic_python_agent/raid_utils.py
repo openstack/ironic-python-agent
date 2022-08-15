@@ -223,13 +223,19 @@ def create_raid_device(index, logical_disk):
     # The schema check allows '1+0', but mdadm knows it as '10'.
     if raid_level == '1+0':
         raid_level = '10'
+    volume_name = logical_disk.get('volume_name')
     try:
-        LOG.debug("Creating md device %(dev)s on %(comp)s",
-                  {'dev': md_device, 'comp': component_devices})
+        if volume_name is None:
+            volume_name = md_device
+        LOG.debug("Creating md device %(dev)s with name %(name)s"
+                  "on %(comp)s",
+                  {'dev': md_device, 'name': volume_name,
+                   'comp': component_devices})
         utils.execute('mdadm', '--create', md_device, '--force',
                       '--run', '--metadata=1', '--level', raid_level,
-                      '--raid-devices', len(component_devices),
-                      *component_devices)
+                      '--name', volume_name, '--raid-devices',
+                      len(component_devices), *component_devices)
+
     except processutils.ProcessExecutionError as e:
         msg = "Failed to create md device {} on {}: {}".format(
             md_device, ' '.join(component_devices), e)
