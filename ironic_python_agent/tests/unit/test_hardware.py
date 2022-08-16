@@ -1232,6 +1232,103 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(1, mock_cached_node.call_count)
         mock_dev.assert_called_once_with()
 
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_get_os_install_device_skip_list_non_exist(
+            self, mock_cached_node, mock_dev):
+        mock_cached_node.return_value = {
+            'instance_info': {},
+            'properties': {
+                'skip_block_devices': [
+                    {'vendor': 'vendor that does not exist'}
+                ]
+            },
+            'uuid': 'node1'
+        }
+        mock_dev.return_value = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False,
+                                 vendor='vendor0',
+                                 wwn='wwn0',
+                                 serial='serial0'),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='Another Model',
+                                 size=10737418240,
+                                 rotational=False,
+                                 vendor='vendor1',
+                                 wwn='fake-wwn',
+                                 serial='fake-serial'),
+        ]
+        self.assertEqual('/dev/sdb',
+                         self.hardware.get_os_install_device())
+        mock_cached_node.assert_called_once_with()
+        mock_dev.assert_called_once_with()
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_get_os_install_device_complete_skip_list(
+            self, mock_cached_node, mock_dev):
+        mock_cached_node.return_value = {
+            'instance_info': {},
+            'properties': {
+                'skip_block_devices': [{'vendor': 'basic vendor'}]
+            }
+        }
+        mock_dev.return_value = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False,
+                                 vendor='basic vendor',
+                                 wwn='wwn0',
+                                 serial='serial0'),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='Another Model',
+                                 size=10737418240,
+                                 rotational=False,
+                                 vendor='basic vendor',
+                                 wwn='fake-wwn',
+                                 serial='fake-serial'),
+        ]
+        self.assertRaises(errors.DeviceNotFound,
+                          self.hardware.get_os_install_device)
+        mock_cached_node.assert_called_once_with()
+        mock_dev.assert_called_once_with()
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_get_os_install_device_root_device_hints_skip_list(
+            self, mock_cached_node, mock_dev):
+        mock_cached_node.return_value = {
+            'instance_info': {},
+            'properties': {
+                'root_device': {'wwn': 'fake-wwn'},
+                'skip_block_devices': [{'vendor': 'fake-vendor'}]
+            }
+        }
+        mock_dev.return_value = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 wwn='wwn0',
+                                 serial='serial0'),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='Another Model',
+                                 size=10737418240,
+                                 rotational=False,
+                                 vendor='fake-vendor',
+                                 wwn='fake-wwn',
+                                 serial='fake-serial'),
+        ]
+        self.assertRaises(errors.DeviceNotFound,
+                          self.hardware.get_os_install_device)
+        mock_cached_node.assert_called_once_with()
+        mock_dev.assert_called_once_with()
+
     def test__get_device_info(self):
         fileobj = mock.mock_open(read_data='fake-vendor')
         with mock.patch(
@@ -1444,6 +1541,104 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual([mock.call(), mock.call(block_type='part',
                                                  ignore_raid=True)],
                          list_mock.call_args_list)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'list_block_devices', autospec=True)
+    def test_list_block_devices_check_skip_list_with_skip_list(self,
+                                                               mock_list_devs):
+        mock_list_devs.return_value = [
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
+        ]
+        device = hardware.BlockDevice('/dev/hdaa', 'small', 65535, False)
+        node = self.node
+
+        node['properties'] = {
+            'skip_block_devices': [{
+                'name': '/dev/sdj'
+            }]
+        }
+
+        returned_devices = self.hardware.list_block_devices_check_skip_list(
+            node)
+
+        self.assertEqual([device], returned_devices)
+
+        mock_list_devs.assert_called_once_with(self.hardware,
+                                               include_partitions=False)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'list_block_devices', autospec=True)
+    def test_list_block_devices_check_skip_list_no_skip_list(self,
+                                                             mock_list_devs):
+        devices = [
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
+        ]
+
+        mock_list_devs.return_value = devices
+
+        returned_devices = self.hardware.list_block_devices_check_skip_list(
+            self.node)
+
+        self.assertEqual(devices, returned_devices)
+
+        mock_list_devs.assert_called_once_with(self.hardware,
+                                               include_partitions=False)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'list_block_devices', autospec=True)
+    def test_list_block_devices_check_skip_list_with_skip_list_non_exist(
+            self, mock_list_devs):
+        devices = [
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
+        ]
+
+        node = self.node
+
+        node['properties'] = {
+            'skip_block_devices': [{
+                'name': '/this/device/does/not/exist'
+            }]
+        }
+
+        mock_list_devs.return_value = devices
+
+        returned_devices = self.hardware.list_block_devices_check_skip_list(
+            self.node)
+
+        self.assertEqual(devices, returned_devices)
+
+        mock_list_devs.assert_called_once_with(self.hardware,
+                                               include_partitions=False)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'list_block_devices', autospec=True)
+    def test_list_block_devices_check_skip_list_with_complete_skip_list(
+            self, mock_list_devs):
+        mock_list_devs.return_value = [
+            hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
+            hardware.BlockDevice('/dev/hdaa', 'small', 65535, False),
+        ]
+
+        node = self.node
+
+        node['properties'] = {
+            'skip_block_devices': [{
+                'name': '/dev/sdj'
+            }, {
+                'name': '/dev/hdaa'
+            }]
+        }
+
+        returned_devices = self.hardware.list_block_devices_check_skip_list(
+            self.node)
+
+        self.assertEqual([], returned_devices)
+
+        mock_list_devs.assert_called_once_with(self.hardware,
+                                               include_partitions=False)
 
     @mock.patch.object(hardware, 'get_multipath_status', lambda *_: True)
     @mock.patch.object(os, 'readlink', autospec=True)
@@ -2511,7 +2706,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual([mock.call('/dev/sda', self.node['uuid']),
                          mock.call('/dev/md0', self.node['uuid'])],
                          mock_destroy_disk_metadata.call_args_list)
-        mock_list_erasable_devices.assert_called_with(self.hardware)
+        mock_list_erasable_devices.assert_called_with(self.hardware,
+                                                      self.node)
         mock_safety_check.assert_has_calls([
             mock.call(self.node, '/dev/sda'),
             mock.call(self.node, '/dev/md0'),
@@ -2544,7 +2740,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware.erase_devices_express, self.node, [])
         mock_nvme_erase.assert_not_called()
         mock_destroy_disk_metadata.assert_not_called()
-        mock_list_erasable_devices.assert_called_with(self.hardware)
+        mock_list_erasable_devices.assert_called_with(self.hardware,
+                                                      self.node)
         mock_safety_check.assert_has_calls([
             mock.call(self.node, '/dev/sda')
         ])

@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Users can specify a list of devices to be skipped during the cleaning
+    process or be chosen as the root device in property field
+    ``skip_block_devices``.

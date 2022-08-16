@@ -862,6 +862,18 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         """
         raise errors.IncompatibleHardwareMethodError
 
+    def list_block_devices_check_skip_list(self, node,
+                                           include_partitions=False):
+        """List physical block devices without the ones listed in
+
+        properties/skip_block_devices list
+
+        :param node: A node used to check the skip list
+        :param include_partitions: If to include partitions
+        :return: A list of BlockDevices
+        """
+        raise errors.IncompatibleHardwareMethodError
+
     def get_memory(self):
         raise errors.IncompatibleHardwareMethodError
 
@@ -931,7 +943,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         :return: a dictionary in the form {device.name: erasure output}
         """
         erase_results = {}
-        block_devices = self.list_block_devices()
+        block_devices = self.list_block_devices_check_skip_list(node)
         if not len(block_devices):
             return {}
 
@@ -1378,6 +1390,36 @@ class GenericHardwareManager(HardwareManager):
             )
         return block_devices
 
+    def list_block_devices_check_skip_list(self, node,
+                                           include_partitions=False):
+        block_devices = self.list_block_devices(
+            include_partitions=include_partitions)
+        properties = node.get('properties', {})
+        skip_list_hints = properties.get("skip_block_devices", [])
+        if skip_list_hints is not None:
+            skip_list = None
+            serialized_devs = [dev.serialize() for dev in block_devices]
+            for hint in skip_list_hints:
+                found_devs = il_utils.find_devices_by_hints(serialized_devs,
+                                                            hint)
+                excluded_devs = {dev['name'] for dev in found_devs}
+                skipped_devices = None
+                if skip_list is None:
+                    skip_list = excluded_devs
+                    skipped_devices = excluded_devs
+                else:
+                    skipped_devices = excluded_devs.difference(skip_list)
+                    skip_list = skip_list.union(excluded_devs)
+                if skipped_devices is not None and len(skipped_devices) > 0:
+                    for d in skipped_devices:
+                        LOG.warning("Skipping device %(device)s "
+                                    "using hint %(hint)s",
+                                    {'device': d, 'hint': hint})
+            if skip_list is not None:
+                block_devices = [d for d in block_devices
+                                 if d.name not in skip_list]
+        return block_devices
+
     def get_os_install_device(self, permit_refresh=False):
         cached_node = get_cached_node()
         root_device_hints = None
@@ -1392,8 +1434,10 @@ class GenericHardwareManager(HardwareManager):
                     or cached_node['properties'].get('root_device'))
             LOG.debug('Looking for a device matching root hints %s',
                       root_device_hints)
-
-        block_devices = self.list_block_devices()
+            block_devices = self.list_block_devices_check_skip_list(
+                cached_node)
+        else:
+            block_devices = self.list_block_devices()
         if not root_device_hints:
             dev_name = utils.guess_root_disk(block_devices).name
         else:
@@ -1515,8 +1559,9 @@ class GenericHardwareManager(HardwareManager):
         LOG.error(msg)
         raise errors.IncompatibleHardwareMethodError(msg)
 
-    def _list_erasable_devices(self):
-        block_devices = self.list_block_devices(include_partitions=True)
+    def _list_erasable_devices(self, node):
+        block_devices = self.list_block_devices_check_skip_list(
+            node, include_partitions=True)
         # NOTE(coreywright): Reverse sort by device name so a partition (eg
         # sda1) is processed before it disappears when its associated disk (eg
         # sda) has its partition table erased and the kernel notified.
@@ -1552,7 +1597,7 @@ class GenericHardwareManager(HardwareManager):
                  of an environmental misconfiguration.
         """
         erase_errors = {}
-        for dev in self._list_erasable_devices():
+        for dev in self._list_erasable_devices(node):
             safety_check_block_device(node, dev.name)
             try:
                 disk_utils.destroy_disk_metadata(dev.name, node['uuid'])
@@ -1587,7 +1632,7 @@ class GenericHardwareManager(HardwareManager):
         if not self._list_erasable_devices:
             LOG.debug("No erasable devices have been found.")
             return
-        for dev in self._list_erasable_devices():
+        for dev in self._list_erasable_devices(node):
             safety_check_block_device(node, dev.name)
             try:
                 if self._is_nvme(dev):
