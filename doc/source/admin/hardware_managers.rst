@@ -113,10 +113,13 @@ unsafe conditions from occuring.
 Devices Skip List
 ~~~~~~~~~~~~~~~~~
 
-A list of devices that Ironic does not touch during the cleaning process
-can be specified in the node properties field under
+A list of devices that Ironic does not touch during the cleaning and deployment
+process can be specified in the node properties field under
 ``skip_block_devices``. This should be a list of dictionaries
-containing hints to identify the drives.
+containing hints to identify the drives. For example::
+
+    'skip_block_devices': [{'name': '/dev/vda', 'vendor': '0x1af4'}]
+
 
 Shared Disk Cluster Filesystems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

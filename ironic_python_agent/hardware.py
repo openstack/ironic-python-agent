@@ -1396,28 +1396,20 @@ class GenericHardwareManager(HardwareManager):
             include_partitions=include_partitions)
         properties = node.get('properties', {})
         skip_list_hints = properties.get("skip_block_devices", [])
-        if skip_list_hints is not None:
-            skip_list = None
-            serialized_devs = [dev.serialize() for dev in block_devices]
-            for hint in skip_list_hints:
-                found_devs = il_utils.find_devices_by_hints(serialized_devs,
-                                                            hint)
-                excluded_devs = {dev['name'] for dev in found_devs}
-                skipped_devices = None
-                if skip_list is None:
-                    skip_list = excluded_devs
-                    skipped_devices = excluded_devs
-                else:
-                    skipped_devices = excluded_devs.difference(skip_list)
-                    skip_list = skip_list.union(excluded_devs)
-                if skipped_devices is not None and len(skipped_devices) > 0:
-                    for d in skipped_devices:
-                        LOG.warning("Skipping device %(device)s "
-                                    "using hint %(hint)s",
-                                    {'device': d, 'hint': hint})
-            if skip_list is not None:
-                block_devices = [d for d in block_devices
-                                 if d.name not in skip_list]
+        if not skip_list_hints:
+            return block_devices
+        skip_list = set()
+        serialized_devs = [dev.serialize() for dev in block_devices]
+        for hint in skip_list_hints:
+            found_devs = il_utils.find_devices_by_hints(serialized_devs, hint)
+            excluded_devs = {dev['name'] for dev in found_devs}
+            skipped_devices = excluded_devs.difference(skip_list)
+            skip_list = skip_list.union(excluded_devs)
+            if skipped_devices:
+                LOG.warning("Using hint %(hint)s skipping devices: %(devs)s",
+                            {'hint': hint, 'devs': ','.join(skipped_devices)})
+        block_devices = [d for d in block_devices
+                         if d.name not in skip_list]
         return block_devices
 
     def get_os_install_device(self, permit_refresh=False):
