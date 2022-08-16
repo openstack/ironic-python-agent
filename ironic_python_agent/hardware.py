@@ -657,17 +657,28 @@ def list_all_block_devices(block_type='disk',
                         "skipping... Error: %(error)s",
                         {'dev': name, 'error': e})
         else:
-            # TODO(lucasagomes): Since lsblk only supports
-            # returning the short serial we are using
-            # ID_SERIAL_SHORT first to keep compatibility with the
-            # bash deploy ramdisk
-            for key, udev_key in [
-                ('serial', 'SERIAL_SHORT'),
-                ('serial', 'SERIAL'),
+            # There could a situation arise based on emperical data when
+	    # the serial number is not present in ID_SERIAL_SHORT but instead it is
+	    # present in some other harwdware specific variable.
+            serial_search_mode = os.getenv("IPA_SERIAL_SEARCH_MODE")
+	    udev_property_mappings = [
                 ('wwn', 'WWN'),
                 ('wwn_with_extension', 'WWN_WITH_EXTENSION'),
                 ('wwn_vendor_extension', 'WWN_VENDOR_EXTENSION')
-            ]:
+            ]
+
+            if serial_search_mode == "AGRESSIVE":
+                serials = ""
+                for prop in udev.properties:
+                    if prop.__contains__("SERIAL"):
+                        serials = serials + ":" + udev.get(prop)
+                extra['serial'] = serials
+	    else:
+                udev_property_mappings = [
+                    ('serial', 'SERIAL_SHORT'),
+                    ('serial', 'SERIAL')] + udev_property_mappings
+
+	    for key, udev_key in udev_property_mappings:
                 if key in extra:
                     continue
                 value = (udev.get(f'ID_{udev_key}')
