@@ -28,7 +28,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-copyright = u'OpenStack Foundation'
+copyright = 'OpenStack Foundation'
 
 # A list of ignored prefixes for module index sorting.
 modindex_common_prefix = ['ironic_python_agent']
@@ -75,8 +75,8 @@ latex_documents = [
     (
         'index',
         'doc-ironic-python-agent.tex',
-        u'Ironic Python Agent Documentation',
-        u'OpenStack Foundation',
+        'Ironic Python Agent Documentation',
+        'OpenStack Foundation',
         'manual'
     ),
 ]

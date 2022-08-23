@@ -55,8 +55,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Ironic Python Agent Release Notes'
-copyright = u'2015, Ironic Python Agent Developers'
+project = 'Ironic Python Agent Release Notes'
+copyright = '2015, Ironic Python Agent Developers'
 
 # Release notes do not need a version number in the title, they
 # cover multiple releases.
@@ -212,8 +212,8 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     ('index', 'IronicPythonAgentReleaseNotes.tex',
-     u'Ironic Python Agent Release Notes Documentation',
-     u'Ironic Python Agent Developers', 'manual'),
+     'Ironic Python Agent Release Notes Documentation',
+     'Ironic Python Agent Developers', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -243,8 +243,8 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'ironicpythonagentreleasenotes',
-     u'Ironic Python Agent Release Notes Documentation',
-     [u'Ironic Python Agent Developers'], 1)
+     'Ironic Python Agent Release Notes Documentation',
+     ['Ironic Python Agent Developers'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -258,8 +258,8 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     ('index', 'IronicPythonAgentReleaseNotes',
-     u'Ironic Python Agent Release Notes Documentation',
-     u'Ironic Python Agent Developers', 'IronicPythonAgentReleaseNotes',
+     'Ironic Python Agent Release Notes Documentation',
+     'Ironic Python Agent Developers', 'IronicPythonAgentReleaseNotes',
      'One line description of project.',
      'Miscellaneous'),
 ]
