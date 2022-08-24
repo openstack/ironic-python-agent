@@ -369,9 +369,10 @@ def get_holder_disks(raid_device):
 
     holder_parts = []
     for line in lines[1:]:
+        if 'Events' in line or 'Name' in line:
+            continue
         device = re.findall(r'/dev/\w+', line)
         holder_parts += device
-
     for part in holder_parts:
         # NOTE(mnaser): If the last character is not a digit and it is a valid
         #               device, this means that instead of a partition, it's a
