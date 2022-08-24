@@ -1,0 +1,6 @@
+---
+features:
+  - The node property ``skip_block_devices`` supports
+    specifying volume names of software RAID devices.
+    These devices are not cleaned during cleaning and
+    are not created provided they already exist.

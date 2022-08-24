@@ -267,8 +267,42 @@ def get_next_free_raid_device():
         name = f'/dev/md{idx}'
         if name not in names:
             return name
-
     raise errors.SoftwareRAIDError("No free md (RAID) devices are left")
+
+
+def get_volume_name_of_raid_device(raid_device):
+    """Get the volume name of a RAID device
+
+    :param raid_device: A Software RAID block device name.
+    :returns: volume name of the device, or None
+    """
+    if not raid_device:
+        return None
+    try:
+        out, _ = utils.execute('mdadm', '--detail', raid_device,
+                               use_standard_locale=True)
+    except processutils.ProcessExecutionError as e:
+        LOG.warning('Could not retrieve the volume name of %(dev)s: %(err)s',
+                    {'dev': raid_device, 'err': e})
+        return None
+    lines = out.splitlines()
+    for line in lines:
+        if re.search(r'Name', line) is not None:
+            split_array = line.split(':')
+            # expecting format:
+            # Name : <host>:name (optional comment)
+            if len(split_array) == 3:
+                candidate = split_array[2]
+            else:
+                return None
+            # if name is followed by some other text
+            # such as (local to host <domain>) remove
+            # everything after " "
+            if " " in candidate:
+                candidate = candidate.split(" ")[0]
+            volume_name = candidate
+            return volume_name
+    return None
 
 
 # TODO(rg): handle PreP boot parts relocation as well

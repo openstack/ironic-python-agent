@@ -651,6 +651,22 @@ def extract_device(part):
     return (m.group(1) or m.group(2))
 
 
+def split_device_and_partition_number(part):
+    """Extract the partition number from a partition name or path.
+
+    :param part: the partition
+    :return: device and partition number if success, None otherwise
+    """
+
+    device = extract_device(part)
+    if not device:
+        return None
+    partition_number = part.replace(device, '')
+    if 'nvme' in device and partition_number[0] == 'p':
+        partition_number = partition_number[1:]
+    return (device, partition_number)
+
+
 # See ironic.drivers.utils.get_node_capability
 def _parse_capabilities_str(cap_str):
     """Extract capabilities from string.

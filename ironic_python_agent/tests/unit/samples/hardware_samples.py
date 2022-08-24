@@ -1031,6 +1031,61 @@ Working Devices : 2
        1     259        3        1      active sync   /dev/nvme1n1p1
 """)
 
+MDADM_DETAIL_OUTPUT_VOLUME_NAME = ("""/dev/md0:
+           Version : 1.0
+     Creation Time : Fri Feb 15 12:37:44 2019
+        Raid Level : raid1
+        Array Size : 1048512 (1023.94 MiB 1073.68 MB)
+     Used Dev Size : 1048512 (1023.94 MiB 1073.68 MB)
+      Raid Devices : 2
+     Total Devices : 2
+       Persistence : Superblock is persistent
+
+       Update Time : Fri Feb 15 12:38:02 2019
+             State : clean
+    Active Devices : 2
+   Working Devices : 2
+    Failed Devices : 0
+     Spare Devices : 0
+
+Consistency Policy : resync
+
+              Name : abc.xyz.com:this_name  (local to host abc.xyz.com)
+              UUID : 83143055:2781ddf5:2c8f44c7:9b45d92e
+            Events : 17
+
+    Number   Major   Minor   RaidDevice State
+       0     253       64        0      active sync   /dev/vde1
+       1     253       80        1      active sync   /dev/vdf1
+""")
+
+MDADM_DETAIL_OUTPUT_VOLUME_NAME_INVALID = ("""/dev/md0:
+           Version : 1.0
+     Creation Time : Fri Feb 15 12:37:44 2019
+        Raid Level : raid1
+        Array Size : 1048512 (1023.94 MiB 1073.68 MB)
+     Used Dev Size : 1048512 (1023.94 MiB 1073.68 MB)
+      Raid Devices : 2
+     Total Devices : 2
+       Persistence : Superblock is persistent
+
+       Update Time : Fri Feb 15 12:38:02 2019
+             State : clean
+    Active Devices : 2
+   Working Devices : 2
+    Failed Devices : 0
+     Spare Devices : 0
+
+Consistency Policy : resync
+
+              UUID : 83143055:2781ddf5:2c8f44c7:9b45d92e
+            Events : 17
+
+    Number   Major   Minor   RaidDevice State
+       0     253       64        0      active sync   /dev/vde1
+       1     253       80        1      active sync   /dev/vdf1
+""")
+
 MDADM_DETAIL_OUTPUT_BROKEN_RAID0 = ("""/dev/md126:
            Version : 1.2
         Raid Level : raid0

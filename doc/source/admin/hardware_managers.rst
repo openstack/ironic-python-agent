@@ -121,6 +121,15 @@ containing hints to identify the drives. For example::
     'skip_block_devices': [{'name': '/dev/vda', 'vendor': '0x1af4'}]
 
 
+To prevent software RAID devices from being deleted, put their volume name
+(defined in the ``target_raid_config``) to the list.
+
+Note: one dictionary with one value for each of the logical disks.
+For example::
+
+    'skip_block_devices': [{'volume_name': 'large'}, {'volume_name': 'temp'}]
+
+
 Shared Disk Cluster Filesystems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
