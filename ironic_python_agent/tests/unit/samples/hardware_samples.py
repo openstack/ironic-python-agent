@@ -1027,6 +1027,33 @@ MDADM_DETAIL_OUTPUT_BROKEN_RAID0 = ("""/dev/md126:
        -       8        2        -        /dev/sda2
 """)
 
+# NOTE(TheJulia): The name and events field, in some cases can
+# match the regex causing parsing of the text to fail.
+MDADM_DETAIL_POISONED = ("""/dev/md0:
+        Version : 1.2
+  Creation Time : Wed Aug 17 16:09:19 2022
+     Raid Level : raid1
+     Array Size : 4673536 (4.46 GiB 4.79 GB)
+  Used Dev Size : 4673536 (4.46 GiB 4.79 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Wed Aug 17 16:10:03 2022
+          State : clean
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+           Name : box:/dev/md0  (local to host box)
+           UUID : e50fb152:aa80db1d:3c901b03:dd280e35
+         Events : 21/dev/md/dev/md
+
+    Number   Major   Minor   RaidDevice State
+       0     251        1        0      active sync   /dev/vda1
+       1     251       17        1      active sync   /dev/vdb1
+""")
 
 MDADM_EXAMINE_OUTPUT_MEMBER = ("""/dev/sda1:
           Magic : a92b4efc

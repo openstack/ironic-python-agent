@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes handling of Software RAID device discovery so RAID device ``Names``
+    and ``Events`` field values do not inadvertently cause the command to
+    return unexpected output. Previously this could cause a deployment to
+    when handling UEFI partitions.
