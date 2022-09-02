@@ -2641,12 +2641,22 @@ class GenericHardwareManager(HardwareManager):
                    "two logical disks")
             raid_errors.append(msg)
 
+        volume_names = []
         # All disks need to be flagged for Software RAID
         for logical_disk in logical_disks:
             if logical_disk.get('controller') != 'software':
                 msg = ("Software RAID configuration requires all logical "
                        "disks to have 'controller'='software'")
                 raid_errors.append(msg)
+
+            volume_name = logical_disk.get('volume_name')
+            if volume_name is not None:
+                if volume_name in volume_names:
+                    msg = ("Duplicate software RAID device name %s "
+                           "detected" % volume_name)
+                    raid_errors.append(msg)
+                else:
+                    volume_names.append(volume_name)
 
             physical_disks = logical_disk.get('physical_disks')
             if physical_disks is not None:
