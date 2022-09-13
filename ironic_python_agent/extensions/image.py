@@ -425,6 +425,7 @@ def _mount_for_chroot(path):
     LOG.debug('Mounting Linux standard partitions for bootloader '
               'configuration generation')
     for fs in BIND_MOUNTS:
+        utils.execute('mkdir', '-p', path + fs)
         utils.execute('mount', '-o', 'bind', fs, path + fs)
     utils.execute('mount', '-t', 'sysfs', 'none', path + '/sys')
 
