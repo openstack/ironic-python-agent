@@ -62,6 +62,7 @@
     parent: ironic-ipa-base
     required-projects:
       - opendev.org/openstack/sushy-tools
+      - opendev.org/openstack/ironic-python-agent-builder
     vars:
       devstack_services:
         s-account: True
