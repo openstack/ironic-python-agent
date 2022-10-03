@@ -29,7 +29,6 @@
         - ipa-tox-bandit:
             voting: false
     gate:
-      queue: ironic
       jobs:
         - ipa-tempest-partition-bios-ipmi-direct-tinyipa-src
         - ipa-tempest-partition-bios-ipmi-iscsi-tinyipa-src

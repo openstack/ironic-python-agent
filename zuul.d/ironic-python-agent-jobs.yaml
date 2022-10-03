@@ -155,6 +155,10 @@
         # NOTE(dtantsur): the ansible deploy doesn't depend on IPA code,
         # excluding it from the enabled list to save gate time.
         IRONIC_ENABLED_DEPLOY_INTERFACES: "iscsi,direct"
+        # NOTE(TheJulia): Software RAID was a work in progress in Train,
+        # Setting this as such prevents the tempest test from running
+        # needlessly.
+        IRONIC_ENABLED_RAID_INTERFACES: "fake,no-raid"
 
 - job:
     name: metalsmith-integration-ipa-src
