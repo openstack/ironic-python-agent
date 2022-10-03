@@ -39,7 +39,6 @@
         - ipa-tox-bandit:
             voting: false
     gate:
-      queue: ironic
       jobs:
         - openstack-tox-functional
         - ipa-tempest-bios-ipmi-direct-src
