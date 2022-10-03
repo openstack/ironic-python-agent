@@ -33,7 +33,6 @@
         - ipa-tox-bandit:
             voting: false
     gate:
-      queue: ironic
       jobs:
         - openstack-tox-functional:
             required-projects:
