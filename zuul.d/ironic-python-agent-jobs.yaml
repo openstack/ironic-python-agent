@@ -72,8 +72,6 @@
         # result and makes this job VERY sensitive to heavy disk IO of the
         # underlying hypervisor/cloud.
         IRONIC_CALLBACK_TIMEOUT: 800
-        SWIFT_ENABLE_TEMPURLS: True
-        SWIFT_TEMPURL_KEY: secretkey
 
 # used by ironic-python-agent-builder
 - job:

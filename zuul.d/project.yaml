@@ -18,7 +18,11 @@
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
         - ipa-tempest-bios-ipmi-direct-src
-        - ipa-tempest-uefi-redfish-vmedia-src
+        - ipa-tempest-uefi-redfish-vmedia-src:
+            voting: false
+            # NOTE(TheJulia) Disabling voting for redfish due to issues
+            # running swift tests. There *is* no override for non-swift
+            # in much older versions.
         - ironic-standalone-ipa-src
         - metalsmith-integration-ipa-src
         - metalsmith-integration-ipa-src-uefi:
@@ -35,7 +39,6 @@
         - ipa-tox-bandit:
             voting: false
     gate:
-      queue: ironic
       jobs:
         - openstack-tox-functional:
             required-projects:
@@ -46,7 +49,9 @@
                 - name: openstack/requirements
                   override-checkout: stable/xena
         - ipa-tempest-bios-ipmi-direct-src
-        - ipa-tempest-uefi-redfish-vmedia-src
+        # - ipa-tempest-uefi-redfish-vmedia-src
+        # NOTE(TheJulia): Disabling for now, since
+        # we don't support non-swift on this branch.
         - metalsmith-integration-ipa-src
         - ironic-standalone-ipa-src
     post:
