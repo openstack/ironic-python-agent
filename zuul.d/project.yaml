@@ -1,14 +1,20 @@
 - project:
     templates:
       - check-requirements
-      - openstack-cover-jobs
-      - openstack-lower-constraints-master-branch-jobs
-      - openstack-python3-zed-jobs
+      - openstack-cover-jobs-ipa-bugfix86
+      - openstack-python3-zed-jobs-ipa-bugfix86
       - publish-openstack-docs-pti
       - release-notes-jobs-python3
     check:
       jobs:
-        - openstack-tox-functional
+        - openstack-tox-functional:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+        - openstack-tox-cover:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
         - ipa-tox-examples
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
@@ -31,7 +37,14 @@
             voting: false
     gate:
       jobs:
-        - openstack-tox-functional
+        - openstack-tox-functional:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+        - openstack-tox-cover:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src-uefi

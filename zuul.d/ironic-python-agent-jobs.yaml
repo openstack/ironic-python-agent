@@ -13,8 +13,10 @@
       - ^setup.cfg$
       - ^tools/.*$
       - ^tox.ini$
+    override-checkout: stable/zed
     required-projects:
-      - openstack/ironic-lib
+      - name: openstack/ironic
+        override-checkout: bugfix/20.2
     vars:
       # The default is 1GB, we need a little more to prevent OOMs killing the jobs
       configure_swap_size: 8192
@@ -77,7 +79,8 @@
     parent: ironic-ipa-base
     required-projects:
       # These are in addition to what is in ironic-ipa-base
-      - openstack/ironic-inspector
+      - name: openstack/ironic-inspector
+        override-checkout: bugfix/10.12
       - openstack/python-ironic-inspector-client
     vars:
       devstack_localrc:
@@ -130,6 +133,15 @@
     name: ironic-standalone-ipa-src
     parent: ironic-standalone
     description: Test ironic standalone with IPA from source
+    required-projects:
+      - name: openstack/devstack
+        override-checkout: stable/zed
+      - name: openstack/requirements
+        override-checkout: stable/zed
+      - name: openstack/ironic
+        override-checkout: bugfix/20.2
+      - name: openstack/ironic-lib
+        override-checkout: stable/zed
     vars:
       devstack_localrc:
         IRONIC_BUILD_DEPLOY_RAMDISK: True
@@ -142,9 +154,21 @@
     name: metalsmith-integration-ipa-src-uefi
     parent: metalsmith-integration-glance-localboot-centos8-uefi
     required-projects:
+      - name: openstack/devstack
+        override-checkout: stable/zed
+      - name: openstack/requirements
+        override-checkout: stable/zed
+      - name: openstack/ironic
+        override-checkout: bugfix/20.2
+      - name: openstack/metalsmith
+        override-checkout: stable/zed
       - openstack/ironic-python-agent
-      - openstack/ironic-python-agent-builder
-      - openstack/ironic-lib
+      - name: openstack/ironic-python-agent-builder
+        override-checkout: stable/zed
+      - name: openstack/neutron
+        override-checkout: stable/zed
+      - name: openstack/ironic-lib
+        override-checkout: stable/zed
     vars:
       devstack_localrc:
         # Don't waste time on cleaning, it's checked everywhere else
@@ -159,3 +183,63 @@
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 1024
+
+- project-template:
+    name: openstack-python3-zed-jobs-ipa-bugfix86
+    description: |
+      Runs unit tests for an OpenStack Python project under the CPython
+      version 3 releases designated for testing in the Yoga release.
+    check:
+      jobs:
+        - openstack-tox-pep8:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+        - openstack-tox-py38:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+        - openstack-tox-py39:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+        - openstack-tox-py310:
+            voting: false
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+    gate:
+      jobs:
+        - openstack-tox-pep8:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+        - openstack-tox-py38:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+        - openstack-tox-py39:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+    post:
+      jobs:
+        - publish-openstack-python-branch-tarball
+
+- project-template:
+    name: openstack-cover-jobs-ipa-bugfix86
+    description: |
+                Runs openstack-tox-cover in only the check pipeline using
+                yoga upper-constraints.
+    check:
+      jobs:
+        - openstack-tox-cover:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
+    gate:
+      jobs:
+        - openstack-tox-cover:
+            required-projects:
+                - name: openstack/requirements
+                  override-checkout: stable/zed
