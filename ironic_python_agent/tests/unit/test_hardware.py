@@ -3924,6 +3924,12 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         holder_disks = hardware.get_holder_disks('/dev/md126')
         self.assertEqual(['/dev/sda'], holder_disks)
 
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_holder_disks_poisoned_output(self, mocked_execute):
+        mocked_execute.side_effect = [(hws.MDADM_DETAIL_POISONED, '')]
+        holder_disks = hardware.get_holder_disks('/dev/md0')
+        self.assertEqual(['/dev/vda', '/dev/vdb'], holder_disks)
+
     @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
     @mock.patch.object(hardware, '_get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
