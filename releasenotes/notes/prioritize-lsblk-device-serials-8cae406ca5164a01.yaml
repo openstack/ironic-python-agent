@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    When detecting a serial number of a block device, the agent now tries
+    to use lsblk first and only falls back to udev if lsblk does not return
+    a serial number. Based on experience it looks like lsblk might be a better
+    source of truth than udev in regerard to serial number information.
+

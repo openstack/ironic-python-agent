@@ -648,6 +648,9 @@ def list_all_block_devices(block_type='disk',
         name = os.path.join('/dev', device_raw['kname'])
 
         extra = {}
+        lsblk_serial = device_raw.get('serial')
+        if lsblk_serial:
+            extra['serial'] = lsblk_serial
         try:
             udev = pyudev.Devices.from_device_file(context, name)
         except pyudev.DeviceNotFoundByFileError as e:
@@ -658,17 +661,21 @@ def list_all_block_devices(block_type='disk',
                         "skipping... Error: %(error)s",
                         {'dev': name, 'error': e})
         else:
-            # TODO(lucasagomes): Since lsblk only supports
-            # returning the short serial we are using
-            # ID_SERIAL_SHORT first to keep compatibility with the
-            # bash deploy ramdisk
-            for key, udev_key in [
-                ('serial', 'SERIAL_SHORT'),
-                ('serial', 'SERIAL'),
+            # lsblk serial information is prioritized over
+            # udev serial information
+            udev_property_mappings = [
                 ('wwn', 'WWN'),
                 ('wwn_with_extension', 'WWN_WITH_EXTENSION'),
                 ('wwn_vendor_extension', 'WWN_VENDOR_EXTENSION')
-            ]:
+            ]
+            # Only check device serial information from udev
+            # when lsblk returned None
+            if not lsblk_serial:
+                udev_property_mappings += [
+                    ('serial', 'SERIAL_SHORT'),
+                    ('serial', 'SERIAL')
+                ]
+            for key, udev_key in udev_property_mappings:
                 if key in extra:
                     continue
                 value = (udev.get(f'ID_{udev_key}')
