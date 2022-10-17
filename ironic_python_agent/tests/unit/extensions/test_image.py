@@ -538,10 +538,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         image._install_grub2(self.fake_dev, self.fake_root_uuid)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -601,10 +604,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                              prep_boot_part_uuid=self.fake_prep_boot_part_uuid)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -674,10 +680,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             target_boot_mode='uefi')
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -775,10 +784,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             mock_open.assert_has_calls(write_calls)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -884,10 +896,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             mock_open.assert_has_calls(write_calls)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -1003,10 +1018,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                       self.fake_dir + '/boot/efi/EFI')])
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -1089,10 +1107,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                       self.fake_dir + '/boot/efi/EFI')])
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -1170,10 +1191,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         self.assertFalse(mock_efi_setup.called)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -1291,10 +1315,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
         self.assertFalse(mock_efi_setup.called)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -1416,10 +1443,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                       self.fake_dir + '/boot/efi/EFI')])
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -1496,10 +1526,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             target_boot_mode='uefi')
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -1593,10 +1626,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                           efi_system_part_uuid=self.fake_efi_system_part_uuid)
 
         expected = [mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -1707,7 +1743,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             mock_execute, mock_dispatch):
 
         # return success for every execute call
-        mock_execute.side_effect = [('', '')] * 21
+        mock_execute.side_effect = [('', '')] * 24
 
         # make grub2-install calls fail
         grub_failure = processutils.ProcessExecutionError(
@@ -1718,8 +1754,8 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
             exit_code=1,
             cmd='grub2-install'
         )
-        mock_execute.side_effect[9] = grub_failure
-        mock_execute.side_effect[10] = grub_failure
+        mock_execute.side_effect[12] = grub_failure
+        mock_execute.side_effect[13] = grub_failure
 
         mock_get_part_uuid.side_effect = [self.fake_root_part,
                                           self.fake_efi_system_part]
@@ -1736,10 +1772,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                               delay_on_retry=True),
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', '/dev/fake2', self.fake_dir),
+                    mock.call('mkdir', '-p', self.fake_dir + '/dev'),
                     mock.call('mount', '-o', 'bind', '/dev',
                               self.fake_dir + '/dev'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/proc'),
                     mock.call('mount', '-o', 'bind', '/proc',
                               self.fake_dir + '/proc'),
+                    mock.call('mkdir', '-p', self.fake_dir + '/run'),
                     mock.call('mount', '-o', 'bind', '/run',
                               self.fake_dir + '/run'),
                     mock.call('mount', '-t', 'sysfs', 'none',
@@ -1837,10 +1876,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
         expected = [
             mock.call('mount', '/dev/fake2', self.fake_dir),
+            mock.call('mkdir', '-p', self.fake_dir + '/dev'),
             mock.call('mount', '-o', 'bind', '/dev',
                       self.fake_dir + '/dev'),
+            mock.call('mkdir', '-p', self.fake_dir + '/proc'),
             mock.call('mount', '-o', 'bind', '/proc',
                       self.fake_dir + '/proc'),
+            mock.call('mkdir', '-p', self.fake_dir + '/run'),
             mock.call('mount', '-o', 'bind', '/run',
                       self.fake_dir + '/run'),
             mock.call('mount', '-t', 'sysfs', 'none',
