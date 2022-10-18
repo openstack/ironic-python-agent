@@ -286,8 +286,14 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
                       'File: %s', v_bl)
             # These files are always UTF-16 encoded, sometimes have a header.
             # Positive bonus is python silently drops the FEFF header.
-            with open(mount_point + '/' + v_bl, 'r', encoding='utf-16') as csv:
-                contents = str(csv.read())
+            try:
+                with open(mount_point + '/' + v_bl, 'r',
+                          encoding='utf-16') as csv:
+                    contents = str(csv.read())
+            except UnicodeError:
+                with open(mount_point + '/' + v_bl, 'r',
+                          encoding='utf-16-le') as csv:
+                    contents = str(csv.read())
             csv_contents = contents.split(',', maxsplit=3)
             csv_filename = v_bl.split('/')[-1]
             v_efi_bl_path = v_bl.replace(csv_filename, str(csv_contents[0]))
