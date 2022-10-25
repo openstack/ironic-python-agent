@@ -13,7 +13,8 @@
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
         - ipa-tempest-bios-ipmi-direct-src
-        - ipa-tempest-uefi-redfish-vmedia-src
+        - ipa-tempest-uefi-redfish-vmedia-src:
+            voting: false
         - ironic-standalone-ipa-src
         - metalsmith-integration-ipa-src
         - metalsmith-integration-ipa-src-uefi:
@@ -33,7 +34,6 @@
       jobs:
         - openstack-tox-functional
         - ipa-tempest-bios-ipmi-direct-src
-        - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src
         - ironic-standalone-ipa-src
     post:
