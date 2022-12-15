@@ -4492,6 +4492,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                self.hardware.create_configuration,
                                self.node, [])
 
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(raid_utils, 'get_volume_name_of_raid_device',
                        autospec=True)
     @mock.patch.object(raid_utils, '_get_actual_component_devices',
@@ -4626,6 +4627,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.assert_called_once_with(
             'mdadm', '--examine', '/dev/md0', use_standard_locale=True)
 
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
