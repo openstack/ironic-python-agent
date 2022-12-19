@@ -98,6 +98,7 @@
     # Security testing for known issues
     name: ipa-tox-bandit
     parent: openstack-tox
+    nodeset: ubuntu-focal
     timeout: 2400
     vars:
       tox_envlist: bandit
@@ -115,6 +116,7 @@
 - job:
     name: ipa-tox-examples
     parent: openstack-tox
+    nodeset: ubuntu-focal
     timeout: 600
     vars:
       tox_envlist: examples
@@ -192,14 +194,17 @@
     check:
       jobs:
         - openstack-tox-pep8:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
         - openstack-tox-py38:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
         - openstack-tox-py39:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
@@ -211,14 +216,17 @@
     gate:
       jobs:
         - openstack-tox-pep8:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
         - openstack-tox-py38:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
         - openstack-tox-py39:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
@@ -234,12 +242,14 @@
     check:
       jobs:
         - openstack-tox-cover:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
     gate:
       jobs:
         - openstack-tox-cover:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed

@@ -4,14 +4,15 @@
       - openstack-cover-jobs-ipa-bugfix86
       - openstack-python3-zed-jobs-ipa-bugfix86
       - publish-openstack-docs-pti
-      - release-notes-jobs-python3
     check:
       jobs:
         - openstack-tox-functional:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
         - openstack-tox-cover:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
@@ -38,10 +39,12 @@
     gate:
       jobs:
         - openstack-tox-functional:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
         - openstack-tox-cover:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/zed
