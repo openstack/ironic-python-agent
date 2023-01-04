@@ -196,7 +196,7 @@ I'm okay with deleting, how do I tell IPA to clean the disk(s)?
 ---------------------------------------------------------------
 
 Four potential ways exist to signal to IPA. Please note, all of these options
-require access either to the ndoe in Ironic's API or ability to modify Ironic
+require access either to the node in Ironic's API or ability to modify Ironic
 configuration.
 
 Via Ironic
