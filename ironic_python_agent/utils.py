@@ -33,7 +33,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
-import pyudev
 import requests
 import tenacity
 
@@ -61,21 +60,6 @@ AGENT_PARAMS_CACHED = dict()
 
 LSBLK_COLUMNS = ['KNAME', 'MODEL', 'SIZE', 'ROTA',
                  'TYPE', 'UUID', 'PARTUUID', 'SERIAL']
-
-
-COLLECT_LOGS_COMMANDS = {
-    'ps': ['ps', 'au'],
-    'df': ['df', '-a'],
-    'iptables': ['iptables', '-L'],
-    'ip_addr': ['ip', 'addr'],
-    'lshw': ['lshw', '-quiet', '-json'],
-    'lsblk': ['lsblk', '--all', '-o%s' % ','.join(LSBLK_COLUMNS)],
-    'lsblk-full': ['lsblk', '--all', '--bytes', '--output-all', '--pairs'],
-    'mdstat': ['cat', '/proc/mdstat'],
-    'mount': ['mount'],
-    'parted': ['parted', '-l'],
-    'multipath': ['multipath', '-ll'],
-}
 
 
 DEVICE_EXTRACTOR = re.compile(r'^(?:(.*\d)p|(.*\D))(?:\d+)$')
@@ -540,40 +524,12 @@ def gzip_and_b64encode(io_dict=None, file_list=None):
         return _encode_as_text(fp.getvalue())
 
 
-def _collect_udev(io_dict):
-    """Collect device properties from udev."""
+def try_collect_command_output(io_dict, file_name, command):
+    LOG.debug('Collecting command output: %s', command)
     try:
-        out, _e = ironic_utils.execute('lsblk', '-no', 'KNAME')
-    except processutils.ProcessExecutionError as exc:
-        LOG.warning('Could not list block devices: %s', exc)
-        return
-
-    context = pyudev.Context()
-
-    for kname in out.splitlines():
-        kname = kname.strip()
-        if not kname:
-            continue
-
-        name = os.path.join('/dev', kname)
-
-        try:
-            udev = pyudev.Devices.from_device_file(context, name)
-        except Exception as e:
-            LOG.warning("Device %(dev)s is inaccessible, skipping... "
-                        "Error: %(error)s", {'dev': name, 'error': e})
-            continue
-
-        try:
-            props = dict(udev.properties)
-        except AttributeError:  # pyudev < 0.20
-            props = dict(udev)
-
-        fp = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
-        json.dump(props, fp)
-        buf = fp.detach()
-        buf.seek(0)
-        io_dict[f'udev/{kname}'] = buf
+        io_dict[file_name] = get_command_output(command)
+    except errors.CommandExecutionError:
+        LOG.debug('Collecting logs from command %s has failed', command)
 
 
 def collect_system_logs(journald_max_lines=None):
@@ -589,12 +545,6 @@ def collect_system_logs(journald_max_lines=None):
     """
     LOG.info('Collecting system logs and debugging information')
 
-    def try_get_command_output(io_dict, file_name, command):
-        try:
-            io_dict[file_name] = get_command_output(command)
-        except errors.CommandExecutionError:
-            LOG.debug('Collecting logs from command %s has failed', command)
-
     io_dict = {}
     file_list = []
     log_locations = [CONF.log_file, CONF.log_dir]
@@ -604,20 +554,19 @@ def collect_system_logs(journald_max_lines=None):
             if log_loc and os.path.exists(log_loc):
                 file_list.append(log_loc)
     else:
-        try_get_command_output(io_dict, 'dmesg', ['dmesg'])
         file_list.append('/var/log')
         for log_loc in log_locations:
             if (log_loc and os.path.exists(log_loc)
                     and not log_loc.startswith('/var/log')):
                 file_list.append(log_loc)
 
-    for name, cmd in COLLECT_LOGS_COMMANDS.items():
-        try_get_command_output(io_dict, name, cmd)
-
+    # Avoid circular imports
+    from ironic_python_agent import hardware
     try:
-        _collect_udev(io_dict)
-    except Exception:
-        LOG.exception('Unexpected error when collecting udev properties')
+        hardware.dispatch_to_all_managers('collect_system_logs',
+                                          io_dict, file_list)
+    except errors.HardwareManagerMethodNotFound:
+        LOG.warning('All hardware managers failed to collect logs')
 
     return gzip_and_b64encode(io_dict=io_dict, file_list=file_list)
 

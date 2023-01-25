@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import binascii
+import json
 import os
 import shutil
 import stat
@@ -5916,3 +5917,53 @@ class TestProtectedDiskSafetyChecks(base.IronicAgentTest):
                               hardware.safety_check_block_device,
                               {}, '/dev/foo')
             self.assertEqual(1, mock_execute.call_count)
+
+
+@mock.patch.object(il_utils, 'execute', autospec=True)
+class TestCollectSystemLogs(base.IronicAgentTest):
+
+    def setUp(self):
+        super().setUp()
+        self.hardware = hardware.GenericHardwareManager()
+
+    @mock.patch('pyudev.Context', lambda: mock.sentinel.context)
+    @mock.patch('pyudev.Devices.from_device_file', autospec=True)
+    def test__collect_udev(self, mock_from_dev, mock_execute):
+        mock_execute.return_value = """
+            fake0
+            fake1
+            fake42
+        """, ""
+        mock_from_dev.side_effect = [
+            mock.Mock(properties={'ID_UUID': '0'}),
+            RuntimeError('nope'),
+            {'ID_UUID': '42'}
+        ]
+
+        result = {}
+        hardware._collect_udev(result)
+        self.assertEqual({'udev/fake0', 'udev/fake42'}, set(result))
+        for i in ('0', '42'):
+            buf = result[f'udev/fake{i}']
+            # Avoiding getvalue on purpose - checking that the IO is not closed
+            val = json.loads(buf.read().decode('utf-8'))
+            self.assertEqual({'ID_UUID': i}, val)
+
+    @mock.patch.object(hardware, '_collect_udev', autospec=True)
+    def test_collect_system_logs(self, mock_udev, mock_execute):
+        commands = set()
+        expected = {'df', 'dmesg', 'iptables', 'ip', 'lsblk',
+                    'lshw', 'cat', 'mount', 'multipath', 'parted', 'ps'}
+
+        def fake_execute(cmd, *args, **kwargs):
+            commands.add(cmd)
+            return cmd.encode(), ''
+
+        mock_execute.side_effect = fake_execute
+
+        io_dict = {}
+        file_list = []
+        self.hardware.collect_system_logs(io_dict, file_list)
+
+        self.assertEqual(commands, expected)
+        self.assertGreaterEqual(len(io_dict), len(expected))

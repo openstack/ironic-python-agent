@@ -16,6 +16,7 @@ import abc
 import binascii
 import collections
 import functools
+import io
 import ipaddress
 import json
 from multiprocessing.pool import ThreadPool
@@ -1172,6 +1173,18 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
                             type(self).__name__),
             'version': getattr(self, 'HARDWARE_MANAGER_VERSION', '1.0')
         }
+
+    def collect_system_logs(self, io_dict, file_list):
+        """Collect logs from the system.
+
+        Implementations should update `io_dict` and `file_list` with logs
+        to send to Ironic and Inspector.
+
+        :param io_dict: Dictionary mapping file names to binary IO objects
+            with corresponding data.
+        :param file_list: List of full file paths to include.
+        """
+        raise errors.IncompatibleHardwareMethodError()
 
 
 class GenericHardwareManager(HardwareManager):
@@ -2885,6 +2898,64 @@ class GenericHardwareManager(HardwareManager):
         :param verify_ca: Whether to verify TLS certificate.
         """
         return inject_files.inject_files(node, ports, files, verify_ca)
+
+    def collect_system_logs(self, io_dict, file_list):
+        commands = {
+            'df': ['df', '-a'],
+            'dmesg': ['dmesg'],
+            'iptables': ['iptables', '-L'],
+            'ip_addr': ['ip', 'addr'],
+            'lsblk': ['lsblk', '--all',
+                      '-o%s' % ','.join(utils.LSBLK_COLUMNS)],
+            'lsblk-full': ['lsblk', '--all', '--bytes',
+                           '--output-all', '--pairs'],
+            'lshw': ['lshw', '-quiet', '-json'],
+            'mdstat': ['cat', '/proc/mdstat'],
+            'mount': ['mount'],
+            'multipath': ['multipath', '-ll'],
+            'parted': ['parted', '-l'],
+            'ps': ['ps', 'au'],
+        }
+        for name, cmd in commands.items():
+            utils.try_collect_command_output(io_dict, name, cmd)
+
+        _collect_udev(io_dict)
+
+
+def _collect_udev(io_dict):
+    """Collect device properties from udev."""
+    try:
+        out, _e = il_utils.execute('lsblk', '-no', 'KNAME')
+    except processutils.ProcessExecutionError as exc:
+        LOG.warning('Could not list block devices: %s', exc)
+        return
+
+    context = pyudev.Context()
+
+    for kname in out.splitlines():
+        kname = kname.strip()
+        if not kname:
+            continue
+
+        name = os.path.join('/dev', kname)
+
+        try:
+            udev = pyudev.Devices.from_device_file(context, name)
+        except Exception as e:
+            LOG.warning("Device %(dev)s is inaccessible, skipping... "
+                        "Error: %(error)s", {'dev': name, 'error': e})
+            continue
+
+        try:
+            props = dict(udev.properties)
+        except AttributeError:  # pyudev < 0.20
+            props = dict(udev)
+
+        fp = io.TextIOWrapper(io.BytesIO(), encoding='utf-8')
+        json.dump(props, fp)
+        buf = fp.detach()
+        buf.seek(0)
+        io_dict[f'udev/{kname}'] = buf
 
 
 def _compare_extensions(ext1, ext2):

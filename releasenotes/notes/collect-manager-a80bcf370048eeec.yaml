@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Ramdisk log collection now uses the hardware managers mechanism. You can
+    provide a `collect_system_logs` call to extend the collection process.
