@@ -1,0 +1,2 @@
+---
+closed_branch_tag_re: 'r"(?!^bugfix.*-eol$).+-eol"'
