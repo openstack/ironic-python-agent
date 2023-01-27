@@ -4,7 +4,6 @@
       - openstack-cover-jobs-ipa-bugfix90
       - openstack-python3-zed-jobs-ipa-bugfix90
       - publish-openstack-docs-pti
-      - release-notes-jobs-python3
     check:
       jobs:
         - openstack-tox-functional:
