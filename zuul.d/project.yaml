@@ -3,7 +3,6 @@
       - openstack-python3-xena-jobs-ironic-bugfix
       - publish-openstack-docs-pti
       - check-requirements
-      - release-notes-jobs-python3
     check:
       jobs:
         - openstack-tox-functional:
