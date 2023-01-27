@@ -3,14 +3,15 @@
       - check-requirements
       - openstack-python3-yoga-jobs-ironic-bugfix
       - publish-openstack-docs-pti
-      - release-notes-jobs-python3
     check:
       jobs:
         - openstack-tox-functional:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/yoga
         - openstack-tox-cover:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/yoga
@@ -35,10 +36,12 @@
     gate:
       jobs:
         - openstack-tox-functional:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/yoga
         - openstack-tox-cover:
+            nodeset: ubuntu-focal
             required-projects:
                 - name: openstack/requirements
                   override-checkout: stable/yoga
