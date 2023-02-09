@@ -57,6 +57,10 @@ def _time():
     """Wraps time.time() for simpler testing."""
     return time.time()
 
+class FakeInterfaces:
+    def __init__(self):
+        self.mac_address = None
+
 
 class IronicPythonAgentStatus(encoding.Serializable):
     """Represents the status of an agent."""
@@ -448,7 +452,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         utils.sync_clock(ignore_errors=True)
 
         # Cached hw managers at runtime, not load time. See bug 1490008.
-        hardware.get_managers()
+        # hardware.get_managers()
         # Operator-settable delay before hardware actually comes up.
         # Helps with slow RAID drivers - see bug 1582797.
         if self.hardware_initialization_delay > 0:
@@ -462,7 +466,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             uuid = None
             # We can't try to inspect or heartbeat until we have valid
             # interfaces to perform those actions over.
-            self._wait_for_interface()
+            # self._wait_for_interface()
 
             if cfg.CONF.inspection_callback_url:
                 try:
@@ -474,12 +478,13 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
             if self.api_url:
                 content = self.api_client.lookup_node(
-                    hardware_info=hardware.list_hardware_info(use_cache=True),
+                    hardware_info={'interfaces': [FakeInterfaces()]},
+                    # hardware_info=hardware.list_hardware_info(use_cache=True),
                     timeout=self.lookup_timeout,
                     starting_interval=self.lookup_interval,
                     node_uuid=uuid)
                 LOG.debug('Received lookup results: %s', content)
-                self.process_lookup_data(content)
+                # self.process_lookup_data(content)
                 # Save the API url in case we need it later.
                 hardware.save_api_client(
                     self.api_client, self.lookup_timeout,
