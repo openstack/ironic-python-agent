@@ -63,7 +63,7 @@ def get_partition_path_by_number(device, part_num):
 def manage_uefi(device, efi_system_part_uuid=None):
     """Manage the device looking for valid efi bootloaders to update the nvram.
 
-    This method checks for valid efi bootloaders in the device, if they exists
+    This method checks for valid efi bootloaders in the device, if they exist
     it updates the nvram using the efibootmgr.
 
     :param device: the device to be checked.
