@@ -198,7 +198,9 @@ fields:
 
 ``system_vendor``
     system vendor information from SMBIOS as reported by ``dmidecode``:
-    ``product_name``, ``serial_number`` and ``manufacturer``.
+    ``product_name``, ``serial_number`` and ``manufacturer``, as well as
+    a ``firmware`` structure with fields ``vendor``, ``version`` and
+    ``build_date``.
 
 ``boot``
     boot information with fields: ``current_boot_mode`` (boot mode used for

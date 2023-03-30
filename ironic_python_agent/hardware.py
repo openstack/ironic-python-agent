@@ -339,22 +339,16 @@ def get_component_devices(raid_device):
 
 def _calc_memory(sys_dict):
     physical = 0
-    for sys_child in sys_dict['children']:
-        if sys_child['id'] != 'core':
-            continue
-        for core_child in sys_child['children']:
-            if not _MEMORY_ID_RE.match(core_child['id']):
-                continue
-            if core_child.get('size'):
-                value = ("%(size)s %(units)s" % core_child)
-                physical += int(UNIT_CONVERTER(value).to
-                                ('MB').magnitude)
-            else:
-                for bank in core_child.get('children', ()):
-                    if bank.get('size'):
-                        value = ("%(size)s %(units)s" % bank)
-                        physical += int(UNIT_CONVERTER(value).to
-                                        ('MB').magnitude)
+    core_dict = next(utils.find_in_lshw(sys_dict, 'core'), {})
+    for core_child in utils.find_in_lshw(core_dict, _MEMORY_ID_RE):
+        if core_child.get('size'):
+            value = ("%(size)s %(units)s" % core_child)
+            physical += int(UNIT_CONVERTER(value).to('MB').magnitude)
+        else:
+            for bank in core_child.get('children', ()):
+                if bank.get('size'):
+                    value = ("%(size)s %(units)s" % bank)
+                    physical += int(UNIT_CONVERTER(value).to('MB').magnitude)
     return physical
 
 
@@ -835,13 +829,24 @@ class Memory(encoding.SerializableComparable):
         self.physical_mb = physical_mb
 
 
-class SystemVendorInfo(encoding.SerializableComparable):
-    serializable_fields = ('product_name', 'serial_number', 'manufacturer')
+class SystemFirmware(encoding.SerializableComparable):
+    serializable_fields = ('vendor', 'version', 'build_date')
 
-    def __init__(self, product_name, serial_number, manufacturer):
+    def __init__(self, vendor, version, build_date):
+        self.version = version
+        self.build_date = build_date
+        self.vendor = vendor
+
+
+class SystemVendorInfo(encoding.SerializableComparable):
+    serializable_fields = ('product_name', 'serial_number', 'manufacturer',
+                           'firmware')
+
+    def __init__(self, product_name, serial_number, manufacturer, firmware):
         self.product_name = product_name
         self.serial_number = serial_number
         self.manufacturer = manufacturer
+        self.firmware = firmware
 
 
 class BootInfo(encoding.SerializableComparable):
@@ -1512,9 +1517,17 @@ class GenericHardwareManager(HardwareManager):
         except (processutils.ProcessExecutionError, OSError, ValueError) as e:
             LOG.warning('Could not retrieve vendor info from lshw: %s', e)
             sys_dict = {}
+
+        core_dict = next(utils.find_in_lshw(sys_dict, 'core'), {})
+        fw_dict = next(utils.find_in_lshw(core_dict, 'firmware'), {})
+
+        firmware = SystemFirmware(vendor=fw_dict.get('vendor', ''),
+                                  version=fw_dict.get('version', ''),
+                                  build_date=fw_dict.get('date', ''))
         return SystemVendorInfo(product_name=sys_dict.get('product', ''),
                                 serial_number=sys_dict.get('serial', ''),
-                                manufacturer=sys_dict.get('vendor', ''))
+                                manufacturer=sys_dict.get('vendor', ''),
+                                firmware=firmware)
 
     def get_boot_info(self):
         boot_mode = 'uefi' if os.path.isdir('/sys/firmware/efi') else 'bios'

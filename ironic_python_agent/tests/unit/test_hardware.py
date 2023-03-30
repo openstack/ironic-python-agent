@@ -5247,6 +5247,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('ABC123 (GENERIC_SERVER)', vendor_info.product_name)
         self.assertEqual('1234567', vendor_info.serial_number)
         self.assertEqual('GENERIC', vendor_info.manufacturer)
+        # This sample does not have firmware information
+        self.assertEqual('', vendor_info.firmware.vendor)
+        self.assertEqual('', vendor_info.firmware.build_date)
+        self.assertEqual('', vendor_info.firmware.version)
 
     @mock.patch.object(il_utils, 'execute', autospec=True)
     def test_get_system_vendor_info_lshw_list(self, mocked_execute):
@@ -5255,6 +5259,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('ABCD', vendor_info.product_name)
         self.assertEqual('1234', vendor_info.serial_number)
         self.assertEqual('ABCD', vendor_info.manufacturer)
+        self.assertEqual('BIOSVNDR', vendor_info.firmware.vendor)
+        self.assertEqual('03/30/2023', vendor_info.firmware.build_date)
+        self.assertEqual('1.2.3', vendor_info.firmware.version)
 
     @mock.patch.object(il_utils, 'execute', autospec=True)
     def test_get_system_vendor_info_failure(self, mocked_execute):
@@ -5263,6 +5270,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('', vendor_info.product_name)
         self.assertEqual('', vendor_info.serial_number)
         self.assertEqual('', vendor_info.manufacturer)
+        self.assertEqual('', vendor_info.firmware.vendor)
+        self.assertEqual('', vendor_info.firmware.build_date)
+        self.assertEqual('', vendor_info.firmware.version)
 
     @mock.patch.object(utils, 'get_agent_params',
                        lambda: {'BOOTIF': 'boot:if'})

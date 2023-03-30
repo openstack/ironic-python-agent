@@ -917,3 +917,15 @@ def rescan_device(device):
     except processutils.ProcessExecutionError as e:
         LOG.warning('Something went wrong when waiting for udev '
                     'to settle. Error: %s', e)
+
+
+def find_in_lshw(lshw, by_id):
+    """Yield all suitable records from lshw."""
+    for child in lshw.get('children', ()):
+        lshw_id = child.get('id', '')
+        if isinstance(by_id, re.Pattern):
+            if by_id.match(lshw_id) is not None:
+                yield child
+        else:
+            if by_id == lshw_id:
+                yield child

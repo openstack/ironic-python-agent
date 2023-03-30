@@ -491,6 +491,34 @@ LSHW_JSON_OUTPUT_V2 = ("""
       "slot" : "NULL",
       "children" : [
         {
+          "id": "firmware",
+          "class": "memory",
+          "claimed": true,
+          "description": "BIOS",
+          "vendor": "BIOSVNDR",
+          "physid": "0",
+          "version": "1.2.3",
+          "date": "03/30/2023",
+          "units": "bytes",
+          "size": 65536,
+          "capacity": 16777216,
+          "capabilities": {
+            "isa": "ISA bus",
+            "pci": "PCI bus",
+            "pnp": "Plug-and-Play",
+            "upgrade": "BIOS EEPROM can be upgraded",
+            "shadowing": "BIOS shadowing",
+            "cdboot": "Booting from CD-ROM/DVD",
+            "bootselect": "Selectable boot path",
+            "edd": "Enhanced Disk Drive extensions",
+            "acpi": "ACPI",
+            "usb": "USB legacy emulation",
+            "biosbootspecification": "BIOS boot specification",
+            "netboot": "Function-key initiated network service boot",
+            "uefi": "UEFI specification is supported"
+          }
+        },
+        {
           "id" : "memory:0",
           "class" : "memory",
           "claimed" : true,

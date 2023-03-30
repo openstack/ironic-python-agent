@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The hardware inventory now contains information about the system firmware:
+    vendor, version and the build date.
