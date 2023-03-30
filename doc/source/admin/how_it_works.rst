@@ -191,7 +191,7 @@ fields:
 ``interfaces``
     list of network interfaces with fields: ``name``, ``mac_address``,
     ``ipv4_address``, ``lldp``, ``vendor``, ``product``, and optionally
-    ``biosdevname``(BIOS given NIC name). If configuration option
+    ``biosdevname`` (BIOS given NIC name). If configuration option
     ``collect_lldp`` is set to True the ``lldp`` field will be populated
     by a list of type-length-value(TLV) fields retrieved using the
     Link Layer Discovery Protocol (LLDP).
