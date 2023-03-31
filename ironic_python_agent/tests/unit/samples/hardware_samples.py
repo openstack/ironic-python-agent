@@ -661,6 +661,60 @@ LSHW_JSON_OUTPUT_V2 = ("""
           "id" : "memory:5",
           "class" : "memory",
           "physid" : "2"
+        },
+        {
+          "id" : "network:0",
+          "class" : "network",
+          "handle" : "PCI:0000:00:14.3",
+          "description" : "Wireless interface",
+          "product" : "ABCD",
+          "vendor" : "ABCD",
+          "physid" : "14.3",
+          "businfo" : "pci@0000:00:14.3",
+          "logicalname" : "wlp0s20f3",
+          "width" : 64,
+          "clock" : 33000000,
+          "capabilities" : {
+            "pm" : "Power Management",
+            "msi" : "Message Signalled Interrupts",
+            "pciexpress" : "PCI Express",
+            "msix" : "MSI-X",
+            "bus_master" : "bus mastering",
+            "cap_list" : "PCI capabilities listing",
+            "ethernet" : true,
+            "physical" : "Physical interface",
+            "wireless" : "Wireless-LAN"
+          }
+        },
+        {
+          "id" : "network:1",
+          "class" : "network",
+          "handle" : "PCI:0000:00:1f.6",
+          "description" : "Ethernet interface",
+          "product" : "DCBA",
+          "vendor" : "DCBA",
+          "physid" : "1f.6",
+          "businfo" : "pci@0000:00:1f.6",
+          "logicalname" : "eth0",
+          "units" : "bit/s",
+          "capacity" : 1000000000,
+          "width" : 32,
+          "clock" : 33000000,
+          "capabilities" : {
+            "pm" : "Power Management",
+            "msi" : "Message Signalled Interrupts",
+            "bus_master" : "bus mastering",
+            "cap_list" : "PCI capabilities listing",
+            "ethernet" : true,
+            "physical" : "Physical interface",
+            "tp" : "twisted pair",
+            "10bt" : "10Mbit/s",
+            "10bt-fd" : "10Mbit/s (full duplex)",
+            "100bt" : "100Mbit/s",
+            "100bt-fd" : "100Mbit/s (full duplex)",
+            "1000bt-fd" : "1Gbit/s (full duplex)",
+            "autonegotiation" : "Auto-negotiation"
+          }
         }
       ]
     }

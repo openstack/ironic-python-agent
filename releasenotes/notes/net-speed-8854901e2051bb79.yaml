@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The hardware inventory now contains supported network interface speed in
+    Mbit/s.
