@@ -275,8 +275,15 @@ def get_boot_records():
 
     :return: an iterator yielding pairs (boot number, boot record).
     """
-    efi_output = utils.execute('efibootmgr', '-v')
-    for line in efi_output[0].split('\n'):
+    # Invokes binary=True so we get a bytestream back.
+    efi_output = utils.execute('efibootmgr', '-v', binary=True)
+    # Bytes must be decoded before regex can be run and
+    # matching to work as intended.
+    # Also ignore errors on decoding, as we can basically get
+    # garbage out of the nvram record, this way we don't fail
+    # hard on unrelated records.
+    cmd_output = efi_output[0].decode('utf-16', errors='ignore')
+    for line in cmd_output.split('\n'):
         match = _ENTRY_LABEL.match(line)
         if match is not None:
             yield (match[1], match[2])
@@ -293,7 +300,7 @@ def add_boot_record(device, efi_partition, loader, label):
     # https://linux.die.net/man/8/efibootmgr
     utils.execute('efibootmgr', '-v', '-c', '-d', device,
                   '-p', str(efi_partition), '-w', '-L', label,
-                  '-l', loader)
+                  '-l', loader, binary=True)
 
 
 def remove_boot_record(boot_num):
@@ -301,7 +308,7 @@ def remove_boot_record(boot_num):
 
     :param boot_num: the number of the boot record
     """
-    utils.execute('efibootmgr', '-b', boot_num, '-B')
+    utils.execute('efibootmgr', '-b', boot_num, '-B', binary=True)
 
 
 def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
