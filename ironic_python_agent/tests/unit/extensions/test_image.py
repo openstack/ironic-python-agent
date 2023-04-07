@@ -32,6 +32,9 @@ from ironic_python_agent.tests.unit import base
 from ironic_python_agent.tests.unit.samples import hardware_samples as hws
 
 
+EFI_RESULT = ''.encode('utf-16')
+
+
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
 @mock.patch.object(ilib_utils, 'execute', autospec=True)
 @mock.patch.object(tempfile, 'mkdtemp', lambda *_: '/tmp/fake-dir')
@@ -231,7 +234,7 @@ class TestImageExtension(base.IronicAgentTest):
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
+                                         (EFI_RESULT, ''), (EFI_RESULT, ''),
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
@@ -240,11 +243,11 @@ class TestImageExtension(base.IronicAgentTest):
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                              '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -279,7 +282,7 @@ class TestImageExtension(base.IronicAgentTest):
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
+                                         (EFI_RESULT, ''), (EFI_RESULT, ''),
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
@@ -288,11 +291,11 @@ class TestImageExtension(base.IronicAgentTest):
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                              '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -333,10 +336,11 @@ Boot0000 ironic1 HD(1,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BO
 Boot0001 ironic2 HD(1,GPT,4f3c6294-bf9b-4208-9808-111111111112)File(\EFI\Boot\BOOTX64.EFI)
 Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
 """  # noqa This is a giant literal string for testing.
+        stdout_msg = stdout_msg.encode('utf-16')
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
-                                         (stdout_msg, ''), ('', ''),
-                                         ('', ''), ('', ''),
+                                         (stdout_msg, ''), (EFI_RESULT, ''),
+                                         (EFI_RESULT, ''), (EFI_RESULT, ''),
                                          ('', ''), ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
@@ -345,12 +349,12 @@ Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
-                    mock.call('efibootmgr', '-b', '0000', '-B'),
+                    mock.call('efibootmgr', '-v', binary=True),
+                    mock.call('efibootmgr', '-b', '0000', '-B', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                              '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -396,6 +400,7 @@ Boot0002* Hard Disk     VenHw(1fad3248-0000-7950-2166-a1e506fdb83a,01000000)..GO
 Boot0003* Network       VenHw(1fad3248-0000-7950-2166-a1e506fdb83a,05000000)..GO..NO............U.E.F.I.:. . . .S.L.O.T.2. .(.2.F./.0./.0.). .P.X.E. .I.P.4. . .Q.L.o.g.i.c. .Q.L.4.1.2.6.2. .P.C.I.e. .2.5.G.b. .2.-.P.o.r.t. .S.F.P.2.8. .E.t.h.e.r.n.e.t. .A.d.a.p.t.e.r. .-. .P.X.E........A....................%.4..Z...............................................................Gd-.;.A..MQ..L.P.X.E. .I.P.4. .Q.L.o.g.i.c. .Q.L.4.1.2.6.2. .P.C.I.e. .2.5.G.b. .2.-.P.o.r.t. .S.F.P.2.8. .E.t.h.e.r.n.e.t. .A.d.a.p.t.e.r. .-. .P.X.E.......BO..NO............U.E.F.I.:. . . .S.L.O.T.1. .(.3.0./.0./.0.). .P.X.E. .I.P.4. . .Q.L.o.g.i.c. .Q.L.4.1.2.6.2. .P.C.I.e. .2.5.G.b. .2.-.P.o.r.t. .S.F.P.2.8. .E.t.h.e.r.n.e.t. .A.d.a.p.t.e.r. .-.
 Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x64000)/File(\EFI\boot\shimx64.efi)
 """  # noqa This is a giant literal string for testing.
+        stdout_msg = stdout_msg.encode('utf-16')
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
                                          (stdout_msg, ''), ('', ''),
@@ -407,13 +412,13 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
-                    mock.call('efibootmgr', '-b', '0000', '-B'),
-                    mock.call('efibootmgr', '-b', '0004', '-B'),
+                    mock.call('efibootmgr', '-v', binary=True),
+                    mock.call('efibootmgr', '-b', '0000', '-B', binary=True),
+                    mock.call('efibootmgr', '-b', '0004', '-B', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                              '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -450,8 +455,8 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
 
         mock_execute.side_effect = iter([('', ''), ('', ''),
                                          ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
+                                         (EFI_RESULT, ''), (EFI_RESULT, ''),
+                                         (EFI_RESULT, ''), ('', ''),
                                          ('', '')])
 
         expected = [mock.call('efibootmgr', '--version'),
@@ -460,15 +465,15 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                     mock.call('udevadm', 'settle'),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                              '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'ironic2', '-l',
-                              '\\WINDOWS\\system32\\winload.efi'),
+                              '\\WINDOWS\\system32\\winload.efi', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
