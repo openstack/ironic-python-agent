@@ -275,7 +275,15 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
 
     # Before updating let's get information about the bootorder
     LOG.debug("Getting information about boot order.")
-    original_efi_output = utils.execute('efibootmgr', '-v')
+    # Invokes binary=True so we get a bytestream back.
+    original_efi_output = utils.execute('efibootmgr', '-v', binary=True)
+    # Bytes must be decoded before regex can be run and
+    # matching to work as intended.
+    # Also ignore errors on decoding, as we can basically get
+    # garbage out of the nvram record, this way we don't fail
+    # hard on unrelated records.
+    original_efi_output = original_efi_output[0].decode(
+        'utf-16', errors='ignore')
     # NOTE(TheJulia): regex used to identify entries in the efibootmgr
     # output on stdout.
     entry_label = re.compile(r'Boot([0-9a-f-A-F]+)\*?\s(.*).*$')
@@ -304,7 +312,7 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
             label = 'ironic' + str(label_id)
 
         # Iterate through standard out, and look for duplicates
-        for line in original_efi_output[0].split('\n'):
+        for line in original_efi_output.split('\n'):
             match = entry_label.match(line)
             # Look for the base label in the string if a line match
             # occurs, so we can identify if we need to eliminate the
