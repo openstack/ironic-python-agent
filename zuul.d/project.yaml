@@ -9,6 +9,7 @@
     check:
       jobs:
         - openstack-tox-functional
+        - ipa-tox-bandit
         - ipa-tox-examples
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
@@ -26,11 +27,10 @@
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
-        - ipa-tox-bandit:
-            voting: false
     gate:
       jobs:
         - openstack-tox-functional
+        - ipa-tox-bandit
         - ipa-tox-examples
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
