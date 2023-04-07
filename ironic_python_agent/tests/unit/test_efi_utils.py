@@ -28,6 +28,9 @@ from ironic_python_agent.tests.unit.samples import hardware_samples
 from ironic_python_agent import utils
 
 
+EFI_RESULT = ''.encode('utf-16')
+
+
 @mock.patch.object(os, 'walk', autospec=True)
 @mock.patch.object(os, 'access', autospec=False)
 class TestGetEfiBootloaders(base.IronicAgentTest):
@@ -115,16 +118,16 @@ class TestRunEfiBootmgr(base.IronicAgentTest):
         mock_execute.assert_has_calls(expected)
 
     def test__run_efibootmgr(self, mock_execute):
-        mock_execute.return_value = ('', '')
+        mock_execute.return_value = (''.encode('utf-16'), '')
         result = efi_utils._run_efibootmgr(['EFI/BOOT/BOOTX64.EFI'],
                                            self.fake_dev,
                                            self.fake_efi_system_part,
                                            self.fake_dir)
-        expected = [mock.call('efibootmgr', '-v'),
+        expected = [mock.call('efibootmgr', '-v', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', self.fake_efi_system_part, '-w',
                               '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI')]
+                              '\\EFI\\BOOT\\BOOTX64.EFI', binary=True)]
         self.assertIsNone(result)
         mock_execute.assert_has_calls(expected)
 
@@ -176,19 +179,18 @@ class TestManageUefi(base.IronicAgentTest):
         mock_is_md_device.return_value = False
 
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-
-        mock_execute.side_effect = iter([('', ''), ('', ''),
-                                         ('', ''), ('', ''),
+        mock_execute.side_effect = iter([('', ''), (EFI_RESULT, ''),
+                                         (EFI_RESULT, ''), ('', ''),
                                          ('', ''), ('', ''),
                                          ('', '')])
 
         expected = [mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                              '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -219,30 +221,34 @@ class TestManageUefi(base.IronicAgentTest):
         # at the start of the file, where as Red Hat *does*
         csv_file_data = u'shimx64.efi,Vendor String,,Grub2MadeUSDoThis\n'
         # This test also handles deleting a pre-existing matching vendor
-        # string in advance.
+        # string in advance. This string also includes a UTF16 character
+        # *on* purpose, to force proper decoding to be tested and garbage
+        # characters which can be found in OVMF test VM NVRAM records.
         dupe_entry = """
 BootCurrent: 0001
 Timeout: 0 seconds
 BootOrder: 0000,00001
-Boot0000* Vendor String HD(1,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
-Boot0001 Vendor String HD(2,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
-Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
+Boot0000 UTF16ÿ HD(1,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
+Boot0001* Vendor String HD(1,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
+Boot0002 Vendor String HD(2,GPT,4f3c6294-bf9b-4208-9808-be45dfc34b5c)File(\EFI\Boot\BOOTX64.EFI)
+Boot0003: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)N.....YM....R,Y.
 """  # noqa This is a giant literal string for testing.
-
-        mock_execute.side_effect = iter([('', ''), (dupe_entry, ''),
+        dupe_entry = dupe_entry.encode('utf-16')
+        mock_execute.side_effect = iter([('', ''),
+                                         (dupe_entry, ''),
                                          ('', ''), ('', ''),
                                          ('', ''), ('', ''),
                                          ('', '')])
 
         expected = [mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
-                    mock.call('efibootmgr', '-b', '0000', '-B'),
-                    mock.call('efibootmgr', '-b', '0001', '-B'),
+                    mock.call('efibootmgr', '-v', binary=True),
+                    mock.call('efibootmgr', '-b', '0001', '-B', binary=True),
+                    mock.call('efibootmgr', '-b', '0002', '-B', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'Vendor String', '-l',
-                              '\\EFI\\vendor\\shimx64.efi'),
+                              '\\EFI\\vendor\\shimx64.efi', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -266,19 +272,18 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
         mock_is_md_device.return_value = False
 
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-
-        mock_execute.side_effect = iter([('', ''), ('', ''),
-                                         ('', ''), ('', ''),
+        mock_execute.side_effect = iter([('', ''), (EFI_RESULT, ''),
+                                         (EFI_RESULT, ''), ('', ''),
                                          ('', ''), ('', ''),
                                          ('', '')])
 
         expected = [mock.call('mount', '/dev/fakenvme0p1',
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', '/dev/fakenvme0',
                               '-p', '1', '-w',
                               '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                              '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -301,19 +306,18 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
         mock_is_md_device.return_value = False
 
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-
-        mock_execute.side_effect = iter([('', ''), ('', ''),
-                                         ('', ''), ('', ''),
+        mock_execute.side_effect = iter([('', ''), (EFI_RESULT, ''),
+                                         (EFI_RESULT, ''), ('', ''),
                                          ('', ''), ('', ''),
                                          ('', '')])
 
         expected = [mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', self.fake_dev,
                               '-p', '1', '-w',
                               '-L', 'ironic1', '-l',
-                              '\\EFI\\BOOT\\BOOTX64.EFI'),
+                              '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -347,11 +351,14 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
         mock_get_component_devices.return_value = ['/dev/sda3', '/dev/sdb3']
 
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-
-        mock_execute.side_effect = iter([('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
-                                         ('', ''), ('', ''),
+        mock_execute.side_effect = iter([('', ''),
+                                         ('', ''),
+                                         ('', ''),
+                                         (EFI_RESULT, ''),
+                                         (EFI_RESULT, ''),
+                                         (EFI_RESULT, ''),
+                                         (EFI_RESULT, ''),
+                                         ('', ''),
                                          ('', '')])
 
         expected = [mock.call('mount', self.fake_efi_system_part,
@@ -360,14 +367,14 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
                               attempts=3, delay_on_retry=True),
                     mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', '/dev/sda3',
                               '-p', '3', '-w', '-L', 'ironic1 (RAID, part0)',
-                              '-l', '\\EFI\\BOOT\\BOOTX64.EFI'),
-                    mock.call('efibootmgr', '-v'),
+                              '-l', '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('efibootmgr', '-v', '-c', '-d', '/dev/sdb3',
                               '-p', '3', '-w', '-L', 'ironic1 (RAID, part1)',
-                              '-l', '\\EFI\\BOOT\\BOOTX64.EFI'),
+                              '-l', '\\EFI\\BOOT\\BOOTX64.EFI', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -425,7 +432,7 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
 
         expected = [mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
                     mock.call('sync')]
@@ -462,7 +469,7 @@ Boot0002: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
 
         expected = [mock.call('mount', self.fake_efi_system_part,
                               self.fake_dir + '/boot/efi'),
-                    mock.call('efibootmgr', '-v'),
+                    mock.call('efibootmgr', '-v', binary=True),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True)]
 
