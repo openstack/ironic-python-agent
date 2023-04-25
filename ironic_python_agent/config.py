@@ -149,7 +149,9 @@ cli_opts = [
                 help='Whether IPA should attempt to receive LLDP packets for '
                      'each network interface it discovers in the inventory. '
                      'Can be supplied as "ipa-collect-lldp" '
-                     'kernel parameter.'),
+                     'kernel parameter.',
+                deprecated_for_removal=True,
+                deprecated_reason="Use the lldp collector instead"),
 
     cfg.StrOpt('inspection_callback_url',
                default=APARAMS.get('ipa-inspection-callback-url'),

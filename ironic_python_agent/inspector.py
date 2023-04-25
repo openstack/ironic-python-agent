@@ -364,3 +364,12 @@ def collect_pci_devices_info(data, failures):
                                  'revision': pci_revision,
                                  'bus': subdir})
     data['pci_devices'] = pci_devices_info
+
+
+def collect_lldp(data, failures):
+    """Collect LLDP information for network interfaces.
+
+    :param data: mutable data that we'll send to inspector
+    :param failures: AccumulatedFailures object
+    """
+    data['lldp_raw'] = hardware.dispatch_to_managers('collect_lldp_data')

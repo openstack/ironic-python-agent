@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Adds a new inspection collector ``lldp`` that collects LLDP information
+    into the ``lldp_raw`` field.
+deprecations:
+  - |
+    The LLDP information as part of the general inventory is deprecated.
+    Use the new ``lldp`` inspection collector to retrieve it.
+  - |
+    The ``ipa-collect-lldp`` kernel parameter and the corresponding option are
+    now deprecated.
