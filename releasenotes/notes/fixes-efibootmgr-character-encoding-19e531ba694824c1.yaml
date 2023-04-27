@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixes UEFI NVRAM record handling with efibootmgr so we can accept and
+    handle UTF-16 encoded data which is to be expected in UEFI NVRAM as
+    the records are UTF-16 encoded.
+  - |
+    Fixes handling of UEFI NVRAM records to allow for unexpected characters
+    in the response, so it is non-fatal to Ironic.
