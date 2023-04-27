@@ -145,8 +145,16 @@ collectors are:
       * ``nics`` - list of objects with keys ``name`` (NIC name) and
         ``numa_node`` (node ID).
 
+``lldp``
+    Collects information about the network connectivity using LLDP_. Provides
+    one key:
+
+    * ``lldp_raw`` - mapping of interface names to lists of raw
+      type-length-value (TLV) records.
+
 .. _hardware: https://pypi.org/project/hardware/
 .. _NUMA: https://en.wikipedia.org/wiki/Non-uniform_memory_access
+.. _LLDP: https://en.wikipedia.org/wiki/Link_Layer_Discovery_Protocol
 
 .. _hardware-inventory:
 
@@ -191,10 +199,12 @@ fields:
 ``interfaces``
     list of network interfaces with fields: ``name``, ``mac_address``,
     ``ipv4_address``, ``lldp``, ``vendor``, ``product``, and optionally
-    ``biosdevname`` (BIOS given NIC name). If configuration option
-    ``collect_lldp`` is set to True the ``lldp`` field will be populated
-    by a list of type-length-value(TLV) fields retrieved using the
-    Link Layer Discovery Protocol (LLDP).
+    ``biosdevname`` (BIOS given NIC name).
+
+    .. note::
+       For backward compatibility, interfaces may contain ``lldp`` fields.
+       They are deprecated, consumers should rely on the ``lldp`` inspection
+       collector instead.
 
 ``system_vendor``
     system vendor information from SMBIOS as reported by ``dmidecode``:

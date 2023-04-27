@@ -865,6 +865,9 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
     def list_network_interfaces(self):
         raise errors.IncompatibleHardwareMethodError
 
+    def collect_lldp_data(self, interface_names=None):
+        raise errors.IncompatibleHardwareMethodError
+
     def get_cpus(self):
         raise errors.IncompatibleHardwareMethodError
 
@@ -1198,7 +1201,6 @@ class GenericHardwareManager(HardwareManager):
     HARDWARE_MANAGER_VERSION = '1.1'
 
     def __init__(self):
-        self.sys_path = '/sys'
         self.lldp_data = {}
 
     def evaluate_hardware_support(self):
@@ -1213,7 +1215,7 @@ class GenericHardwareManager(HardwareManager):
         self.wait_for_disks()
         return HardwareSupport.GENERIC
 
-    def collect_lldp_data(self, interface_names):
+    def collect_lldp_data(self, interface_names=None):
         """Collect and convert LLDP info from the node.
 
         In order to process the LLDP information later, the raw data needs to
@@ -1222,7 +1224,8 @@ class GenericHardwareManager(HardwareManager):
         :param interface_names: list of names of node's interfaces.
         :return: a dict, containing the lldp data from every interface.
         """
-
+        if interface_names is None:
+            interface_names = netutils.list_interfaces()
         interface_names = [name for name in interface_names if name != 'lo']
         lldp_data = {}
         try:
@@ -1292,7 +1295,7 @@ class GenericHardwareManager(HardwareManager):
         """
         global WARN_BIOSDEVNAME_NOT_FOUND
 
-        if self._is_vlan(interface_name):
+        if netutils.is_vlan(interface_name):
             LOG.debug('Interface %s is a VLAN, biosdevname not called',
                       interface_name)
             return
@@ -1313,35 +1316,14 @@ class GenericHardwareManager(HardwareManager):
             else:
                 LOG.warning('Biosdevname returned exit code %s', e.exit_code)
 
-    def _is_device(self, interface_name):
-        device_path = '{}/class/net/{}/device'.format(self.sys_path,
-                                                      interface_name)
-        return os.path.exists(device_path)
-
-    def _is_vlan(self, interface_name):
-        # A VLAN interface does not have /device, check naming convention
-        # used when adding VLAN interface
-
-        interface, sep, vlan = interface_name.partition('.')
-
-        return vlan.isdigit()
-
-    def _is_bond(self, interface_name):
-        device_path = '{}/class/net/{}/bonding'.format(self.sys_path,
-                                                       interface_name)
-        return os.path.exists(device_path)
-
     def list_network_interfaces(self):
-        network_interfaces_list = []
-        iface_names = os.listdir('{}/class/net'.format(self.sys_path))
-        iface_names = [name for name in iface_names
-                       if self._is_vlan(name) or self._is_device(name)
-                       or self._is_bond(name)]
+        iface_names = netutils.list_interfaces()
 
         if CONF.collect_lldp:
             self.lldp_data = dispatch_to_managers('collect_lldp_data',
                                                   interface_names=iface_names)
 
+        network_interfaces_list = []
         for iface_name in iface_names:
             try:
                 result = dispatch_to_managers(

@@ -14,6 +14,7 @@
 
 import ctypes
 import fcntl
+import os
 import select
 import socket
 import struct
@@ -245,6 +246,29 @@ def get_mac_addr(interface_id):
 # 2. import platform; platform.node()
 def get_hostname():
     return socket.gethostname()
+
+
+def is_network_device(interface_name):
+    device_path = f'/sys/class/net/{interface_name}/device'
+    return os.path.exists(device_path)
+
+
+def is_vlan(interface_name):
+    # A VLAN interface does not have /device, check naming convention
+    # used when adding VLAN interface
+    interface, sep, vlan = interface_name.partition('.')
+    return vlan.isdigit()
+
+
+def is_bond(interface_name):
+    device_path = f'/sys/class/net/{interface_name}/bonding'
+    return os.path.exists(device_path)
+
+
+def list_interfaces():
+    iface_names = os.listdir('/sys/class/net')
+    return [name for name in iface_names
+            if is_vlan(name) or is_network_device(name) or is_bond(name)]
 
 
 def interface_has_carrier(interface_name):
