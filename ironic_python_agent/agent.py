@@ -408,6 +408,8 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         if config.get('metrics_statsd'):
             for opt, val in config.items():
                 setattr(cfg.CONF.metrics_statsd, opt, val)
+        if config.get('agent_md5_checksum_enable'):
+            cfg.set_override('md5_enabled', True)
         if config.get('agent_token_required'):
             self.agent_token_required = True
         token = config.get('agent_token')

@@ -99,9 +99,17 @@ def _download_with_proxy(image_info, url, image_id):
     return resp
 
 
+def _is_checksum_url(checksum):
+    """Identify if checksum is not a url"""
+    if (checksum.startswith('http://') or checksum.startswith('https://')):
+        return True
+    else:
+        return False
+
+
 def _fetch_checksum(checksum, image_info):
     """Fetch checksum from remote location, if needed."""
-    if not (checksum.startswith('http://') or checksum.startswith('https://')):
+    if not _is_checksum_url(checksum):
         # Not a remote checksum, return as it is.
         return checksum
 
@@ -263,6 +271,47 @@ def _message_format(msg, image_info, device, partition_uuids):
     return message
 
 
+def _get_algorithm_by_length(checksum):
+    """Determine the SHA-2 algorithm by checksum length.
+
+    :param checksum: The requested checksum.
+    :returns: A hashlib object based upon the checksum
+              or ValueError if the algorthm could not be
+              identified.
+    """
+    # NOTE(TheJulia): This is all based on SHA-2 lengths.
+    # SHA-3 would require a hint, thus ValueError because
+    # it may not be a fixed length. That said, SHA-2 is not
+    # as of this not being added, being withdrawn standards wise.
+    checksum_len = len(checksum)
+    if checksum_len == 128:
+        # Sha512 is 512 bits, or 128 characters
+        return hashlib.new('sha512')
+    elif checksum_len == 64:
+        # SHA256 is 256 bits, or 64 characters
+        return hashlib.new('sha256')
+    elif checksum_len == 32:
+        check_md5_enabled()
+        # This is not super great, but opt-in only.
+        return hashlib.new('md5')  # nosec
+    else:
+        # Previously, we would have just assumed the value was
+        # md5 by default. This way we are a little smarter and
+        # gracefully handle things better when md5 is explicitly
+        # disabled.
+        raise ValueError('Unable to identify checksum algorithm '
+                         'used, and a value is not specified in '
+                         'the os_hash_algo setting.')
+
+
+def check_md5_enabled():
+    """Checks if md5 is permitted, otherwise raises ValueError."""
+    if not CONF.md5_enabled:
+        raise ValueError('MD5 support is disabled, and support '
+                         'will be removed in a 2024 version of '
+                         'Ironic.')
+
+
 class ImageDownload(object):
     """Helper class that opens a HTTP connection to download an image.
 
@@ -292,6 +341,8 @@ class ImageDownload(object):
         self._time = time_obj or time.time()
         self._image_info = image_info
         self._request = None
+        checksum = image_info.get('checksum')
+        retrieved_checksum = False
 
         # Determine the hash algorithm and value will be used for calculation
         # and verification, fallback to md5 if algorithm is not set or not
@@ -300,18 +351,37 @@ class ImageDownload(object):
         if algo and algo in hashlib.algorithms_available:
             self._hash_algo = hashlib.new(algo)
             self._expected_hash_value = image_info.get('os_hash_value')
-        elif image_info.get('checksum'):
+        elif checksum and _is_checksum_url(checksum):
+            # Treat checksum urls as first class request citizens, else
+            # fallback to legacy handling.
+            self._expected_hash_value = _fetch_checksum(
+                checksum,
+                image_info)
+            retrieved_checksum = True
+            if not algo:
+                # Override algorithm not suppied as os_hash_algo
+                self._hash_algo = _get_algorithm_by_length(
+                    self._expected_hash_value)
+        elif checksum:
+            # Fallback to md5 path.
             try:
-                self._hash_algo = hashlib.md5()
+                new_algo = _get_algorithm_by_length(checksum)
+
+                if not new_algo:
+                    # Realistically, this should never happen, but for
+                    # compatability...
+                    # TODO(TheJulia): Remove for a 2024 release.
+                    self._hash_algo = hashlib.new('md5')
+                else:
+                    self._hash_algo = new_algo
             except ValueError as e:
-                message = ('Unable to proceed with image {} as the legacy '
-                           'checksum indicator has been used, which makes use '
-                           'the MD5 algorithm. This algorithm failed to load '
-                           'due to the underlying operating system. Error: '
+                message = ('Unable to proceed with image {} as the '
+                           'checksum indicator has been used but the '
+                           'algorithm could not be identified. Error: '
                            '{}').format(image_info['id'], str(e))
                 LOG.error(message)
                 raise errors.RESTError(details=message)
-            self._expected_hash_value = image_info['checksum']
+            self._expected_hash_value = checksum
         else:
             message = ('Unable to verify image {} with available checksums. '
                        'Please make sure the specified \'os_hash_algo\' '
@@ -322,8 +392,12 @@ class ImageDownload(object):
             LOG.error(message)
             raise errors.RESTError(details=message)
 
-        self._expected_hash_value = _fetch_checksum(self._expected_hash_value,
-                                                    image_info)
+        if not retrieved_checksum:
+            # Fallback to retrieve the checksum if we didn't retrieve it
+            # earlier on.
+            self._expected_hash_value = _fetch_checksum(
+                self._expected_hash_value,
+                image_info)
 
         details = []
         for url in image_info['urls']:
@@ -363,7 +437,10 @@ class ImageDownload(object):
             # this code.
             if chunk:
                 self._last_chunk_time = time.time()
-                self._hash_algo.update(chunk)
+                if isinstance(chunk, str):
+                    self._hash_algo.update(chunk.encode())
+                else:
+                    self._hash_algo.update(chunk)
                 yield chunk
             elif (time.time() - self._last_chunk_time
                   > CONF.image_download_connection_timeout):
@@ -476,7 +553,8 @@ def _validate_image_info(ext, image_info=None, **kwargs):
                 or not image_info['checksum']):
             raise errors.InvalidCommandParamsError(
                 'Image \'checksum\' must be a non-empty string.')
-        md5sum_avail = True
+        if CONF.md5_enabled:
+            md5sum_avail = True
 
     os_hash_algo = image_info.get('os_hash_algo')
     os_hash_value = image_info.get('os_hash_value')

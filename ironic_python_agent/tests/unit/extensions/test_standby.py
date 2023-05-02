@@ -19,6 +19,7 @@ from unittest import mock
 
 from ironic_lib import exception
 from oslo_concurrency import processutils
+from oslo_config import cfg
 import requests
 
 from ironic_python_agent import errors
@@ -29,13 +30,17 @@ from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
+CONF = cfg.CONF
+
+
 def _build_fake_image_info(url='http://example.org'):
     return {
         'id': 'fake_id',
         'node_uuid': '1be26c0b-03f2-4d2e-ae87-c02d7f33c123',
         'urls': [url],
-        'checksum': 'abc123',
         'image_type': 'whole-disk-image',
+        'os_hash_algo': 'sha256',
+        'os_hash_value': 'fake-checksum',
     }
 
 
@@ -46,7 +51,6 @@ def _build_fake_partition_image_info():
             'http://example.org',
         ],
         'node_uuid': 'node_uuid',
-        'checksum': 'abc123',
         'root_mb': '10',
         'swap_mb': '10',
         'ephemeral_mb': '10',
@@ -54,7 +58,9 @@ def _build_fake_partition_image_info():
         'preserve_ephemeral': 'False',
         'image_type': 'partition',
         'disk_label': 'msdos',
-        'deploy_boot_mode': 'bios'}
+        'deploy_boot_mode': 'bios',
+        'os_hash_algo': 'sha256',
+        'os_hash_value': 'fake-checksum'}
 
 
 class TestStandbyExtension(base.IronicAgentTest):
@@ -83,7 +89,6 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     def test_validate_image_info_success_without_md5(self):
         image_info = _build_fake_image_info()
-        del image_info['checksum']
         image_info['os_hash_algo'] = 'sha512'
         image_info['os_hash_value'] = 'fake-checksum'
         standby._validate_image_info(None, image_info)
@@ -95,8 +100,27 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_info['os_hash_value'] = 'fake-checksum'
         standby._validate_image_info(None, image_info)
 
+    def test_validate_image_info_legacy_md5_checksum_enabled(self):
+        image_info = _build_fake_image_info()
+        CONF.set_override('md5_enabled', True)
+        image_info['checksum'] = 'fake-checksum'
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        standby._validate_image_info(None, image_info)
+
+    def test_validate_image_info_legacy_md5_checksum(self):
+        image_info = _build_fake_image_info()
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        image_info['checksum'] = 'fake-checksum'
+        self.assertRaisesRegex(errors.InvalidCommandParamsError,
+                               'Image checksum is not',
+                               standby._validate_image_info,
+                               None,
+                               image_info)
+
     def test_validate_image_info_missing_field(self):
-        for field in ['id', 'urls', 'checksum']:
+        for field in ['id', 'urls', 'os_hash_value']:
             invalid_info = _build_fake_image_info()
             del invalid_info[field]
 
@@ -373,10 +397,10 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
 
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
-    def test_download_image(self, requests_mock, open_mock, md5_mock):
+    def test_download_image(self, requests_mock, open_mock, hash_mock):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
@@ -384,8 +408,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         file_mock = mock.Mock()
         open_mock.return_value.__enter__.return_value = file_mock
         file_mock.read.return_value = None
-        hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['checksum']
+        hexdigest_mock = hash_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['os_hash_value']
 
         standby._download_image(image_info)
         requests_mock.assert_called_once_with(image_info['urls'][0],
@@ -397,26 +421,27 @@ class TestStandbyExtension(base.IronicAgentTest):
         write.assert_any_call('content')
         self.assertEqual(2, write.call_count)
 
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     @mock.patch.dict(os.environ, {})
     def test_download_image_proxy(
-            self, requests_mock, open_mock, md5_mock):
+            self, requests_mock, open_mock, hash_mock):
         image_info = _build_fake_image_info()
         proxies = {'http': 'http://a.b.com',
                    'https': 'https://secure.a.b.com'}
         no_proxy = '.example.org,.b.com'
         image_info['proxies'] = proxies
         image_info['no_proxy'] = no_proxy
+        image_info['os_hash_value'] = 'fake-checksum'
         response = requests_mock.return_value
         response.status_code = 200
         response.iter_content.return_value = ['some', 'content']
         file_mock = mock.Mock()
         open_mock.return_value.__enter__.return_value = file_mock
         file_mock.read.return_value = None
-        hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['checksum']
+        hexdigest_mock = hash_mock.return_value.hexdigest
+        hexdigest_mock.return_value = 'fake-checksum'
 
         standby._download_image(image_info)
         self.assertEqual(no_proxy, os.environ['no_proxy'])
@@ -428,6 +453,11 @@ class TestStandbyExtension(base.IronicAgentTest):
         write.assert_any_call('some')
         write.assert_any_call('content')
         self.assertEqual(2, write.call_count)
+        hash_mock.assert_has_calls([
+            mock.call('sha256'),
+            mock.call().update(b'some'),
+            mock.call().update(b'content'),
+            mock.call().hexdigest()])
 
     @mock.patch('requests.get', autospec=True)
     def test_download_image_bad_status(self, requests_mock):
@@ -439,29 +469,29 @@ class TestStandbyExtension(base.IronicAgentTest):
                           standby._download_image,
                           image_info)
 
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_download_image_verify_fails(self, requests_mock, open_mock,
-                                         md5_mock):
+                                         hash_mock):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
-        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock = hash_mock.return_value.hexdigest
         hexdigest_mock.return_value = 'invalid-checksum'
         self.assertRaises(errors.ImageChecksumError,
                           standby._download_image,
                           image_info)
 
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
-    def test_verify_image_success(self, requests_mock, open_mock, md5_mock):
+    def test_verify_image_success(self, requests_mock, open_mock, hash_mock):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
-        hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['checksum']
+        hexdigest_mock = hash_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['os_hash_value']
         image_location = '/foo/bar'
         image_download = standby.ImageDownload(image_info)
         image_download.verify_image(image_location)
@@ -490,7 +520,6 @@ class TestStandbyExtension(base.IronicAgentTest):
     def test_verify_image_success_without_md5(self, requests_mock,
                                               open_mock, hashlib_mock):
         image_info = _build_fake_image_info()
-        del image_info['checksum']
         image_info['os_hash_algo'] = 'sha512'
         image_info['os_hash_value'] = 'fake-sha512-value'
         response = requests_mock.return_value
@@ -502,21 +531,46 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_download.verify_image(image_location)
         hashlib_mock.assert_called_with('sha512')
 
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_verify_image_success_with_md5_fallback(self, requests_mock,
-                                                    open_mock, md5_mock):
+                                                    open_mock, hash_mock):
+        CONF.set_override('md5_enabled', True)
         image_info = _build_fake_image_info()
         image_info['os_hash_algo'] = 'algo-beyond-milky-way'
         image_info['os_hash_value'] = 'mysterious-alien-codes'
+        image_info['checksum'] = 'd41d8cd98f00b204e9800998ecf8427e'
         response = requests_mock.return_value
         response.status_code = 200
-        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock = hash_mock.return_value.hexdigest
         hexdigest_mock.return_value = image_info['checksum']
         image_location = '/foo/bar'
         image_download = standby.ImageDownload(image_info)
         image_download.verify_image(image_location)
+        # NOTE(TheJulia): This is the one test which falls all the
+        # way back to md5 as the default, legacy logic because it
+        # got bad input to start with.
+        hash_mock.assert_has_calls([
+            mock.call('md5'),
+            mock.call().__bool__(),
+            mock.call().hexdigest()])
+
+    @mock.patch('hashlib.new', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_verify_image_fails_if_unknown_is_used(self, requests_mock,
+                                                   open_mock, hash_mock):
+        image_info = _build_fake_image_info()
+        image_info['os_hash_algo'] = 'algo-beyond-milky-way'
+        image_info['os_hash_value'] = 'mysterious-alien-codes'
+        self.assertRaisesRegex(
+            errors.RESTError,
+            'An error occurred: Unable to verify image fake_id with '
+            'available checksums.',
+            standby.ImageDownload,
+            image_info)
+        hash_mock.assert_not_called()
 
     @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
@@ -538,16 +592,16 @@ class TestStandbyExtension(base.IronicAgentTest):
                           image_location)
         hashlib_mock.assert_called_with('sha512')
 
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
-    def test_verify_image_failure(self, requests_mock, open_mock, md5_mock):
+    def test_verify_image_failure(self, requests_mock, open_mock, hash_mock):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
         image_download = standby.ImageDownload(image_info)
         image_location = '/foo/bar'
-        hexdigest_mock = md5_mock.return_value.hexdigest
+        hexdigest_mock = hash_mock.return_value.hexdigest
         hexdigest_mock.return_value = 'invalid-checksum'
         self.assertRaises(errors.ImageChecksumError,
                           image_download.verify_image,
@@ -559,7 +613,6 @@ class TestStandbyExtension(base.IronicAgentTest):
     def test_verify_image_failure_without_fallback(self, requests_mock,
                                                    open_mock, hashlib_mock):
         image_info = _build_fake_image_info()
-        del image_info['checksum']
         image_info['os_hash_algo'] = 'unsupported-algorithm'
         image_info['os_hash_value'] = 'fake-value'
         response = requests_mock.return_value
@@ -1201,11 +1254,11 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_lib.disk_utils.block_uuid', autospec=True)
     @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device(self, requests_mock, open_mock,
-                                          md5_mock, fix_gpt_mock,
+                                          hash_mock, fix_gpt_mock,
                                           block_uuid_mock):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
@@ -1214,14 +1267,19 @@ class TestStandbyExtension(base.IronicAgentTest):
         file_mock = mock.Mock()
         open_mock.return_value.__enter__.return_value = file_mock
         file_mock.read.return_value = None
-        hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['checksum']
+        hexdigest_mock = hash_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['os_hash_value']
         self.agent_extension.partition_uuids = {}
 
         block_uuid_mock.return_value = 'aaaabbbb'
-
         self.agent_extension._stream_raw_image_onto_device(image_info,
                                                            '/dev/foo')
+        hash_mock.assert_has_calls([
+            mock.call('sha256'),
+            mock.call().update(b'some'),
+            mock.call().update(b'content'),
+            mock.call().hexdigest()])
+
         requests_mock.assert_called_once_with(image_info['urls'][0],
                                               cert=None, verify=True,
                                               stream=True, proxies={},
@@ -1235,22 +1293,22 @@ class TestStandbyExtension(base.IronicAgentTest):
             self.agent_extension.partition_uuids['root uuid']
         )
 
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device_write_error(self, requests_mock,
-                                                      open_mock, md5_mock):
+                                                      open_mock, hash_mock):
         self.config(image_download_connection_timeout=1)
         self.config(image_download_connection_retry_interval=0)
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
-        response.iter_content.return_value = ['some', 'content']
+        response.iter_content.return_value = [b'some', b'content']
         file_mock = mock.Mock()
         open_mock.return_value.__enter__.return_value = file_mock
         file_mock.write.side_effect = Exception('Surprise!!!1!')
-        hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['checksum']
+        hexdigest_mock = hash_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['os_hash_value']
 
         self.assertRaises(errors.ImageDownloadError,
                           self.agent_extension._stream_raw_image_onto_device,
@@ -1265,17 +1323,17 @@ class TestStandbyExtension(base.IronicAgentTest):
                            stream=True, timeout=1, verify=True),
                  mock.call().iter_content(mock.ANY)]
         requests_mock.assert_has_calls(calls)
-        write_calls = [mock.call('some'),
-                       mock.call('some'),
-                       mock.call('some')]
+        write_calls = [mock.call(b'some'),
+                       mock.call(b'some'),
+                       mock.call(b'some')]
         file_mock.write.assert_has_calls(write_calls)
 
     @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
-    @mock.patch('hashlib.md5', autospec=True)
+    @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device_socket_read_timeout(
-            self, requests_mock, open_mock, md5_mock, fix_gpt_mock):
+            self, requests_mock, open_mock, hash_mock, fix_gpt_mock):
 
         class create_timeout(object):
             status_code = 200
@@ -1291,7 +1349,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                     time.sleep(0.1)
                     return None
                 self.count += 1
-                return "meow"
+                return b"meow"
 
             def iter_content(self, chunk_size):
                 return self
@@ -1303,8 +1361,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         file_mock = mock.Mock()
         open_mock.return_value.__enter__.return_value = file_mock
         file_mock.read.return_value = None
-        hexdigest_mock = md5_mock.return_value.hexdigest
-        hexdigest_mock.return_value = image_info['checksum']
+        hexdigest_mock = hash_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['os_hash_value']
         requests_mock.side_effect = create_timeout
         self.assertRaisesRegex(
             errors.ImageDownloadError,
@@ -1321,9 +1379,9 @@ class TestStandbyExtension(base.IronicAgentTest):
                            stream=True, proxies={}, timeout=1)]
         requests_mock.assert_has_calls(calls)
 
-        write_calls = [mock.call('meow'),
-                       mock.call('meow'),
-                       mock.call('meow')]
+        write_calls = [mock.call(b'meow'),
+                       mock.call(b'meow'),
+                       mock.call(b'meow')]
         file_mock.write.assert_has_calls(write_calls)
         fix_gpt_mock.assert_not_called()
 
@@ -1436,18 +1494,19 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertIsNone(node_uuid)
 
 
-@mock.patch('hashlib.md5', autospec=True)
+@mock.patch('hashlib.new', autospec=True)
 @mock.patch('requests.get', autospec=True)
 class TestImageDownload(base.IronicAgentTest):
 
-    def test_download_image(self, requests_mock, md5_mock):
+    def test_download_image(self, requests_mock, hash_mock):
         content = ['SpongeBob', 'SquarePants']
         response = requests_mock.return_value
         response.status_code = 200
         response.iter_content.return_value = content
 
         image_info = _build_fake_image_info()
-        md5_mock.return_value.hexdigest.return_value = image_info['checksum']
+        hash_mock.return_value.hexdigest.return_value = image_info[
+            'os_hash_value']
         image_download = standby.ImageDownload(image_info)
 
         self.assertEqual(content, list(image_download))
@@ -1455,7 +1514,7 @@ class TestImageDownload(base.IronicAgentTest):
                                               cert=None, verify=True,
                                               stream=True, proxies={},
                                               timeout=60)
-        self.assertEqual(image_info['checksum'],
+        self.assertEqual(image_info['os_hash_value'],
                          image_download._hash_algo.hexdigest())
 
     @mock.patch('time.sleep', autospec=True)
@@ -1502,7 +1561,7 @@ class TestImageDownload(base.IronicAgentTest):
 
     @mock.patch('time.sleep', autospec=True)
     def test_download_image_retries_success(self, sleep_mock, requests_mock,
-                                            md5_mock):
+                                            hash_mock):
         content = ['SpongeBob', 'SquarePants']
         fail_response = mock.Mock()
         fail_response.status_code = 500
@@ -1513,7 +1572,8 @@ class TestImageDownload(base.IronicAgentTest):
         requests_mock.side_effect = [requests.Timeout, fail_response, response]
 
         image_info = _build_fake_image_info()
-        md5_mock.return_value.hexdigest.return_value = image_info['checksum']
+        hash_mock.return_value.hexdigest.return_value = image_info[
+            'os_hash_value']
         image_download = standby.ImageDownload(image_info)
 
         self.assertEqual(content, list(image_download))
@@ -1525,7 +1585,7 @@ class TestImageDownload(base.IronicAgentTest):
         sleep_mock.assert_called_with(10)
         self.assertEqual(2, sleep_mock.call_count)
 
-    def test_download_image_and_checksum(self, requests_mock, md5_mock):
+    def test_download_image_and_checksum(self, requests_mock, hash_mock):
         content = ['SpongeBob', 'SquarePants']
         fake_cs = "019fe036425da1c562f2e9f5299820bf"
         cs_response = mock.Mock()
@@ -1537,8 +1597,9 @@ class TestImageDownload(base.IronicAgentTest):
         requests_mock.side_effect = [cs_response, response]
 
         image_info = _build_fake_image_info()
-        image_info['checksum'] = 'http://example.com/checksum'
-        md5_mock.return_value.hexdigest.return_value = fake_cs
+        image_info['os_hash_algo'] = 'sha512'
+        image_info['os_hash_value'] = 'http://example.com/checksum'
+        hash_mock.return_value.hexdigest.return_value = fake_cs
         image_download = standby.ImageDownload(image_info)
 
         self.assertEqual(content, list(image_download))
@@ -1550,8 +1611,39 @@ class TestImageDownload(base.IronicAgentTest):
         ])
         self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
 
-    def test_download_image_and_checksum_multiple(self, requests_mock,
-                                                  md5_mock):
+    def test_download_image_and_checksum_md5(self, requests_mock, hash_mock):
+
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = "019fe036425da1c562f2e9f5299820bf"
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = fake_cs + '\n'
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info()
+        del image_info['os_hash_value']
+        del image_info['os_hash_algo']
+        CONF.set_override('md5_enabled', True)
+        image_info['checksum'] = 'http://example.com/checksum'
+        hash_mock.return_value.hexdigest.return_value = fake_cs
+        image_download = standby.ImageDownload(image_info)
+
+        self.assertEqual(content, list(image_download))
+        requests_mock.assert_has_calls([
+            mock.call('http://example.com/checksum', cert=None, verify=True,
+                      stream=True, proxies={}, timeout=60),
+            mock.call(image_info['urls'][0], cert=None, verify=True,
+                      stream=True, proxies={}, timeout=60),
+        ])
+        self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
+        hash_mock.assert_has_calls([
+            mock.call('md5')])
+
+    def test_download_image_and_checksum_multiple_md5(self, requests_mock,
+                                                      hash_mock):
         content = ['SpongeBob', 'SquarePants']
         fake_cs = "019fe036425da1c562f2e9f5299820bf"
         cs_response = mock.Mock()
@@ -1568,7 +1660,10 @@ foobar  irrelevant file.img
         image_info = _build_fake_image_info(
             'http://example.com/path/image.img')
         image_info['checksum'] = 'http://example.com/checksum'
-        md5_mock.return_value.hexdigest.return_value = fake_cs
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        CONF.set_override('md5_enabled', True)
+        hash_mock.return_value.hexdigest.return_value = fake_cs
         image_download = standby.ImageDownload(image_info)
 
         self.assertEqual(content, list(image_download))
@@ -1580,8 +1675,105 @@ foobar  irrelevant file.img
         ])
         self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
 
+    def test_download_image_and_checksum_multiple_sha256(self, requests_mock,
+                                                         hash_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = ('3b678e4fb651d450f4970e1647abc9b0a38bff3febd3d558753'
+                   '623c66369a633')
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = """
+foobar  irrelevant file.img
+%s  image.img
+""" % fake_cs
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = iter(content)
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['checksum'] = 'http://example.com/checksum'
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        hash_mock.return_value.hexdigest.return_value = fake_cs
+        image_download = standby.ImageDownload(image_info)
+
+        self.assertEqual(content, list(image_download))
+        requests_mock.assert_has_calls([
+            mock.call('http://example.com/checksum', cert=None, verify=True,
+                      stream=True, proxies={}, timeout=60),
+            mock.call(image_info['urls'][0], cert=None, verify=True,
+                      stream=True, proxies={}, timeout=60),
+        ])
+        self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
+        hash_mock.assert_has_calls([
+            mock.call('sha256')])
+
+    def test_download_image_and_checksum_multiple_sha512(self, requests_mock,
+                                                         hash_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = ('3b678e4fb651d450f4970e1647abc9b0a38bff3febd3d558753'
+                   '623c66369a6333b678e4fb651d450f4970e1647abc9b0a38b'
+                   'ff3febd3d558753623c66369a633')
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = """
+foobar  irrelevant file.img
+%s  image.img
+""" % fake_cs
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = iter(content)
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['checksum'] = 'http://example.com/checksum'
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        hash_mock.return_value.hexdigest.return_value = fake_cs
+        image_download = standby.ImageDownload(image_info)
+
+        self.assertEqual(content, list(image_download))
+        requests_mock.assert_has_calls([
+            mock.call('http://example.com/checksum', cert=None, verify=True,
+                      stream=True, proxies={}, timeout=60),
+            mock.call(image_info['urls'][0], cert=None, verify=True,
+                      stream=True, proxies={}, timeout=60),
+        ])
+        self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
+        hash_mock.assert_has_calls([
+            mock.call('sha512')])
+
     def test_download_image_and_checksum_unknown_file(self, requests_mock,
-                                                      md5_mock):
+                                                      hash_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = "019fe036425da1c562f2e9f5299820bf"
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = """
+foobar  irrelevant file.img
+%s  not-my-image.img
+""" % fake_cs
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['os_hash_algo'] = 'sha512'
+        image_info['os_hash_value'] = 'http://example.com/checksum'
+        hash_mock.return_value.hexdigest.return_value = fake_cs
+        self.assertRaisesRegex(errors.ImageDownloadError,
+                               'Checksum file does not contain name image.img',
+                               standby.ImageDownload, image_info)
+
+    def test_download_image_and_checksum_unknown_file_md5(self,
+                                                          requests_mock,
+                                                          hash_mock):
+        CONF.set_override('md5_enabled', True)
         content = ['SpongeBob', 'SquarePants']
         fake_cs = "019fe036425da1c562f2e9f5299820bf"
         cs_response = mock.Mock()
@@ -1598,13 +1790,16 @@ foobar  irrelevant file.img
         image_info = _build_fake_image_info(
             'http://example.com/path/image.img')
         image_info['checksum'] = 'http://example.com/checksum'
-        md5_mock.return_value.hexdigest.return_value = fake_cs
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        hash_mock.return_value.hexdigest.return_value = fake_cs
         self.assertRaisesRegex(errors.ImageDownloadError,
                                'Checksum file does not contain name image.img',
                                standby.ImageDownload, image_info)
 
-    def test_download_image_and_checksum_empty_file(self, requests_mock,
-                                                    md5_mock):
+    def test_download_image_and_checksum_empty_file_md5(self, requests_mock,
+                                                        hash_mock):
+        CONF.set_override('md5_enabled', True)
         content = ['SpongeBob', 'SquarePants']
         cs_response = mock.Mock()
         cs_response.status_code = 200
@@ -1617,11 +1812,58 @@ foobar  irrelevant file.img
         image_info = _build_fake_image_info(
             'http://example.com/path/image.img')
         image_info['checksum'] = 'http://example.com/checksum'
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
         self.assertRaisesRegex(errors.ImageDownloadError,
                                'Empty checksum file',
                                standby.ImageDownload, image_info)
 
-    def test_download_image_and_checksum_failed(self, requests_mock, md5_mock):
+    def test_download_image_and_checksum_empty_file(self, requests_mock,
+                                                    hash_mock):
+        content = ['SpongeBob', 'SquarePants']
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = " "
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['os_hash_algo'] = 'sha512'
+        image_info['os_hash_value'] = 'http://example.com/checksum'
+        self.assertRaisesRegex(errors.ImageDownloadError,
+                               'Empty checksum file',
+                               standby.ImageDownload, image_info)
+
+    def test_download_image_and_checksum_failed(self, requests_mock,
+                                                hash_mock):
+        self.config(image_download_connection_retry_interval=0)
+        content = ['SpongeBob', 'SquarePants']
+        cs_response = mock.Mock()
+        cs_response.status_code = 400
+        cs_response.text = " "
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        # 3 retries on status code
+        requests_mock.side_effect = [cs_response, cs_response, cs_response,
+                                     response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['os_hash_value'] = 'http://example.com/checksum'
+        image_info['os_hash_algo'] = 'sha512'
+        self.assertRaisesRegex(errors.ImageDownloadError,
+                               'Received status code 400 from '
+                               'http://example.com/checksum',
+                               standby.ImageDownload, image_info)
+
+    def test_download_image_and_checksum_failed_md5(self,
+                                                    requests_mock,
+                                                    hash_mock):
+        CONF.set_override('md5_enabled', True)
         self.config(image_download_connection_retry_interval=0)
         content = ['SpongeBob', 'SquarePants']
         cs_response = mock.Mock()
@@ -1637,6 +1879,8 @@ foobar  irrelevant file.img
         image_info = _build_fake_image_info(
             'http://example.com/path/image.img')
         image_info['checksum'] = 'http://example.com/checksum'
+        del image_info['os_hash_value']
+        del image_info['os_hash_algo']
         self.assertRaisesRegex(errors.ImageDownloadError,
                                'Received status code 400 from '
                                'http://example.com/checksum',
