@@ -108,6 +108,20 @@ class TestStandbyExtension(base.IronicAgentTest):
         del image_info['os_hash_value']
         standby._validate_image_info(None, image_info)
 
+    def test_validate_image_info_url(self):
+        image_info = _build_fake_image_info()
+        image_info['checksum'] = 'https://fake.url'
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        standby._validate_image_info(None, image_info)
+
+    def test_validate_image_info_sha256(self):
+        image_info = _build_fake_image_info()
+        image_info['checksum'] = 'a' * 64
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        standby._validate_image_info(None, image_info)
+
     def test_validate_image_info_legacy_md5_checksum(self):
         image_info = _build_fake_image_info()
         del image_info['os_hash_algo']

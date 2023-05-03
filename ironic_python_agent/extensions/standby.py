@@ -535,6 +535,7 @@ def _validate_image_info(ext, image_info=None, **kwargs):
     """
     image_info = image_info or {}
 
+    checksum_avail = False
     md5sum_avail = False
     os_hash_checksum_avail = False
 
@@ -553,7 +554,12 @@ def _validate_image_info(ext, image_info=None, **kwargs):
                 or not image_info['checksum']):
             raise errors.InvalidCommandParamsError(
                 'Image \'checksum\' must be a non-empty string.')
-        if CONF.md5_enabled:
+        if _is_checksum_url(checksum) or len(checksum) > 32:
+            # Checksum is a URL *or* a greater than 32 characters,
+            # putting it into the realm of sha256 or sha512 and not
+            # the MD5 algorithm.
+            checksum_avail = True
+        elif CONF.md5_enabled:
             md5sum_avail = True
 
     os_hash_algo = image_info.get('os_hash_algo')
@@ -569,7 +575,7 @@ def _validate_image_info(ext, image_info=None, **kwargs):
                 'Image \'os_hash_value\' must be a non-empty string.')
         os_hash_checksum_avail = True
 
-    if not (md5sum_avail or os_hash_checksum_avail):
+    if not (checksum_avail or md5sum_avail or os_hash_checksum_avail):
         raise errors.InvalidCommandParamsError(
             'Image checksum is not available, either the \'checksum\' field '
             'or the \'os_hash_algo\' and \'os_hash_value\' fields pair must '
