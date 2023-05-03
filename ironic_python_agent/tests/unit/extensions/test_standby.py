@@ -1675,6 +1675,113 @@ foobar  irrelevant file.img
         ])
         self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
 
+    def test_download_image_and_centos_checksum_md5(self, requests_mock,
+                                                    hash_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = "019fe036425da1c562f2e9f5299820bf"
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = """
+# centos-image.img: 1005593088 bytes
+MD5 (centos-image.img) = %s
+""" % fake_cs
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/centos-image.img')
+        image_info['checksum'] = 'http://example.com/checksum'
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        CONF.set_override('md5_enabled', True)
+        hash_mock.return_value.hexdigest.return_value = fake_cs
+        image_download = standby.ImageDownload(image_info)
+
+        self.assertEqual(content, list(image_download))
+        requests_mock.assert_has_calls([
+            mock.call('http://example.com/checksum', cert=None,
+                      verify=True,
+                      stream=True, proxies={}, timeout=60),
+            mock.call(image_info['urls'][0], cert=None, verify=True,
+                      stream=True, proxies={}, timeout=60),
+        ])
+        self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
+
+    def test_download_image_and_centos_checksum_sha256(self, requests_mock,
+                                                       hash_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = ('3b678e4fb651d450f4970e1647abc9b0a38bff3febd3d558753'
+                   '623c66369a633')
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = """
+# centos-image.img: 1005593088 bytes
+SHA256 (centos-image.img) = %s
+""" % fake_cs
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = iter(content)
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/centos-image.img')
+        image_info['checksum'] = 'http://example.com/checksum'
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        hash_mock.return_value.hexdigest.return_value = fake_cs
+        image_download = standby.ImageDownload(image_info)
+
+        self.assertEqual(content, list(image_download))
+        requests_mock.assert_has_calls([
+            mock.call('http://example.com/checksum', cert=None,
+                      verify=True,
+                      stream=True, proxies={}, timeout=60),
+            mock.call(image_info['urls'][0], cert=None, verify=True,
+                      stream=True, proxies={}, timeout=60),
+        ])
+        self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
+        hash_mock.assert_has_calls([
+            mock.call('sha256')])
+
+    def test_download_image_and_centos_checksum_sha512(self, requests_mock,
+                                                       hash_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = ('3b678e4fb651d450f4970e1647abc9b0a38bff3febd3d558753'
+                   '623c66369a6333b678e4fb651d450f4970e1647abc9b0a38b'
+                   'ff3febd3d558753623c66369a633')
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = """
+# centos-image.img: 1005593088 bytes
+SHA512 (centos-image.img) = %s
+""" % fake_cs
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = iter(content)
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/centos-image.img')
+        image_info['checksum'] = 'http://example.com/checksum'
+        del image_info['os_hash_algo']
+        del image_info['os_hash_value']
+        hash_mock.return_value.hexdigest.return_value = fake_cs
+        image_download = standby.ImageDownload(image_info)
+
+        self.assertEqual(content, list(image_download))
+        requests_mock.assert_has_calls([
+            mock.call('http://example.com/checksum', cert=None,
+                      verify=True,
+                      stream=True, proxies={}, timeout=60),
+            mock.call(image_info['urls'][0], cert=None, verify=True,
+                      stream=True, proxies={}, timeout=60),
+        ])
+        self.assertEqual(fake_cs, image_download._hash_algo.hexdigest())
+        hash_mock.assert_has_calls([
+            mock.call('sha512')])
+
     def test_download_image_and_checksum_multiple_sha256(self, requests_mock,
                                                          hash_mock):
         content = ['SpongeBob', 'SquarePants']
@@ -1885,3 +1992,24 @@ foobar  irrelevant file.img
                                'Received status code 400 from '
                                'http://example.com/checksum',
                                standby.ImageDownload, image_info)
+
+    def test_download_image_and_invalid_checksum(self, requests_mock,
+                                                 hash_mock):
+        content = ['SpongeBob', 'SquarePants']
+        fake_cs = "invalid"
+        cs_response = mock.Mock()
+        cs_response.status_code = 200
+        cs_response.text = fake_cs + '\n'
+        response = mock.Mock()
+        response.status_code = 200
+        response.iter_content.return_value = content
+        requests_mock.side_effect = [cs_response, response]
+
+        image_info = _build_fake_image_info(
+            'http://example.com/path/image.img')
+        image_info['os_hash_algo'] = 'sha512'
+        image_info['os_hash_value'] = 'http://example.com/checksum'
+        self.assertRaisesRegex(
+            errors.ImageDownloadError,
+            r"Invalid checksum file \(No valid checksum found\) \['invalid'\]",
+            standby.ImageDownload, image_info)
