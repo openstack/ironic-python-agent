@@ -919,13 +919,28 @@ def rescan_device(device):
                     'to settle. Error: %s', e)
 
 
-def find_in_lshw(lshw, by_id):
+def _lshw_matches(item, by_id, fields):
+    lshw_id = item.get('id', '')
+    if isinstance(by_id, re.Pattern):
+        if by_id.match(lshw_id) is None:
+            return False
+    elif by_id is not None and by_id != lshw_id:
+        return False
+
+    for key, value in fields.items():
+        if item.get(key) != value:
+            return False
+
+    return True
+
+
+def find_in_lshw(lshw, by_id=None, by_class=None, recursive=False, **fields):
     """Yield all suitable records from lshw."""
+    # Cannot really pass class=... in Python
+    if by_class is not None:
+        fields['class'] = by_class
     for child in lshw.get('children', ()):
-        lshw_id = child.get('id', '')
-        if isinstance(by_id, re.Pattern):
-            if by_id.match(lshw_id) is not None:
-                yield child
-        else:
-            if by_id == lshw_id:
-                yield child
+        if _lshw_matches(child, by_id, fields):
+            yield child
+        if recursive:
+            yield from find_in_lshw(child, by_id, recursive=True, **fields)

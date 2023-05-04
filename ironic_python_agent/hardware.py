@@ -15,6 +15,7 @@
 import abc
 import binascii
 import collections
+import contextlib
 import functools
 import io
 import ipaddress
@@ -58,6 +59,9 @@ WARN_BIOSDEVNAME_NOT_FOUND = False
 UNIT_CONVERTER = pint.UnitRegistry(filename=None)
 UNIT_CONVERTER.define('bytes = []')
 UNIT_CONVERTER.define('MB = 1048576 bytes')
+UNIT_CONVERTER.define('bit_s = []')
+UNIT_CONVERTER.define('Mbit_s = 1000000 * bit_s')
+UNIT_CONVERTER.define('Gbit_s = 1000 * Mbit_s')
 _MEMORY_ID_RE = re.compile(r'^memory(:\d+)?$')
 NODE = None
 API_CLIENT = None
@@ -93,26 +97,9 @@ def _get_device_info(dev, devclass, field):
                   'r') as f:
             return f.read().strip()
     except IOError:
-        LOG.warning("Can't find field %(field)s for"
+        LOG.warning("Can't find field %(field)s for "
                     "device %(dev)s in device class %(class)s",
                     {'field': field, 'dev': dev, 'class': devclass})
-
-
-def _get_system_lshw_dict():
-    """Get a dict representation of the system from lshw
-
-    Retrieves a json representation of the system from lshw and converts
-    it to a python dict
-
-    :return: A python dict from the lshw json output
-    """
-    out, _e = il_utils.execute('lshw', '-quiet', '-json', log_stdout=False)
-    out = json.loads(out)
-    # Depending on lshw version, output might be a list, starting with
-    # https://github.com/lyonel/lshw/commit/135a853c60582b14c5b67e5cd988a8062d9896f4  # noqa
-    if isinstance(out, list):
-        return out[0]
-    return out
 
 
 def _udev_settle():
@@ -787,11 +774,11 @@ class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'ipv4_address',
                            'ipv6_address', 'has_carrier', 'lldp',
                            'vendor', 'product', 'client_id',
-                           'biosdevname')
+                           'biosdevname', 'speed_mbps')
 
     def __init__(self, name, mac_addr, ipv4_address=None, ipv6_address=None,
                  has_carrier=True, lldp=None, vendor=None, product=None,
-                 client_id=None, biosdevname=None):
+                 client_id=None, biosdevname=None, speed_mbps=None):
         self.name = name
         self.mac_address = mac_addr
         self.ipv4_address = ipv4_address
@@ -801,6 +788,7 @@ class NetworkInterface(encoding.SerializableComparable):
         self.vendor = vendor
         self.product = product
         self.biosdevname = biosdevname
+        self.speed_mbps = speed_mbps
         # client_id is used for InfiniBand only. we calculate the DHCP
         # client identifier Option to allow DHCP to work over InfiniBand.
         # see https://tools.ietf.org/html/rfc4390
@@ -1202,6 +1190,7 @@ class GenericHardwareManager(HardwareManager):
 
     def __init__(self):
         self.lldp_data = {}
+        self._lshw_cache = None
 
     def evaluate_hardware_support(self):
         # Do some initialization before we declare ourself ready
@@ -1214,6 +1203,48 @@ class GenericHardwareManager(HardwareManager):
 
         self.wait_for_disks()
         return HardwareSupport.GENERIC
+
+    def list_hardware_info(self):
+        """Return full hardware inventory as a serializable dict.
+
+        This inventory is sent to Ironic on lookup and to Inspector on
+        inspection.
+
+        :return: a dictionary representing inventory
+        """
+        with self._cached_lshw():
+            return super().list_hardware_info()
+
+    @contextlib.contextmanager
+    def _cached_lshw(self):
+        if self._lshw_cache:
+            yield  # make this context manager reentrant without purging cache
+            return
+
+        self._lshw_cache = self._get_system_lshw_dict()
+        try:
+            yield
+        finally:
+            self._lshw_cache = None
+
+    def _get_system_lshw_dict(self):
+        """Get a dict representation of the system from lshw
+
+        Retrieves a json representation of the system from lshw and converts
+        it to a python dict
+
+        :return: A python dict from the lshw json output
+        """
+        if self._lshw_cache:
+            return self._lshw_cache
+
+        out, _e = il_utils.execute('lshw', '-quiet', '-json', log_stdout=False)
+        out = json.loads(out)
+        # Depending on lshw version, output might be a list, starting with
+        # https://github.com/lyonel/lshw/commit/135a853c60582b14c5b67e5cd988a8062d9896f4  # noqa
+        if isinstance(out, list):
+            return out[0]
+        return out
 
     def collect_lldp_data(self, interface_names=None):
         """Collect and convert LLDP info from the node.
@@ -1254,8 +1285,31 @@ class GenericHardwareManager(HardwareManager):
         if self.lldp_data:
             return self.lldp_data.get(interface_name)
 
-    def get_interface_info(self, interface_name):
+    def _get_network_speed(self, interface_name):
+        sys_dict = self._get_system_lshw_dict()
+        try:
+            iface_dict = next(
+                utils.find_in_lshw(sys_dict, by_class='network',
+                                   logicalname=interface_name,
+                                   recursive=True)
+            )
+        except StopIteration:
+            LOG.warning('Cannot find detailed information about interface %s',
+                        interface_name)
+            return None
 
+        # speed is the current speed, capacity is the maximum speed
+        speed = iface_dict.get('capacity') or iface_dict.get('speed')
+        if not speed:
+            LOG.debug('No speed information about in %s', iface_dict)
+            return None
+
+        units = iface_dict.get('units', 'bit_s').replace('/', '_')
+        return int(UNIT_CONVERTER(f'{speed} {units}')
+                   .to(UNIT_CONVERTER.Mbit_s)
+                   .magnitude)
+
+    def get_interface_info(self, interface_name):
         mac_addr = netutils.get_mac_addr(interface_name)
         if mac_addr is None:
             raise errors.IncompatibleHardwareMethodError()
@@ -1267,7 +1321,8 @@ class GenericHardwareManager(HardwareManager):
             has_carrier=netutils.interface_has_carrier(interface_name),
             vendor=_get_device_info(interface_name, 'net', 'vendor'),
             product=_get_device_info(interface_name, 'net', 'device'),
-            biosdevname=self.get_bios_given_nic_name(interface_name))
+            biosdevname=self.get_bios_given_nic_name(interface_name),
+            speed_mbps=self._get_network_speed(interface_name))
 
     def get_ipv4_addr(self, interface_id):
         return netutils.get_ipv4_addr(interface_id)
@@ -1324,26 +1379,27 @@ class GenericHardwareManager(HardwareManager):
                                                   interface_names=iface_names)
 
         network_interfaces_list = []
-        for iface_name in iface_names:
-            try:
-                result = dispatch_to_managers(
-                    'get_interface_info', interface_name=iface_name)
-            except errors.HardwareManagerMethodNotFound:
-                LOG.warning('No hardware manager was able to handle '
-                            'interface %s', iface_name)
-                continue
-            result.lldp = self._get_lldp_data(iface_name)
-            network_interfaces_list.append(result)
-
-        # If configured, bring up vlan interfaces. If the actual vlans aren't
-        # defined they are derived from LLDP data
-        if CONF.enable_vlan_interfaces:
-            vlan_iface_names = netutils.bring_up_vlan_interfaces(
-                network_interfaces_list)
-            for vlan_iface_name in vlan_iface_names:
-                result = dispatch_to_managers(
-                    'get_interface_info', interface_name=vlan_iface_name)
+        with self._cached_lshw():
+            for iface_name in iface_names:
+                try:
+                    result = dispatch_to_managers(
+                        'get_interface_info', interface_name=iface_name)
+                except errors.HardwareManagerMethodNotFound:
+                    LOG.warning('No hardware manager was able to handle '
+                                'interface %s', iface_name)
+                    continue
+                result.lldp = self._get_lldp_data(iface_name)
                 network_interfaces_list.append(result)
+
+            # If configured, bring up vlan interfaces. If the actual vlans
+            # aren't defined they are derived from LLDP data
+            if CONF.enable_vlan_interfaces:
+                vlan_iface_names = netutils.bring_up_vlan_interfaces(
+                    network_interfaces_list)
+                for vlan_iface_name in vlan_iface_names:
+                    result = dispatch_to_managers(
+                        'get_interface_info', interface_name=vlan_iface_name)
+                    network_interfaces_list.append(result)
 
         return network_interfaces_list
 
@@ -1388,7 +1444,7 @@ class GenericHardwareManager(HardwareManager):
             LOG.exception(("Cannot fetch total memory size using psutil "
                            "version %s"), psutil.version_info[0])
         try:
-            sys_dict = _get_system_lshw_dict()
+            sys_dict = self._get_system_lshw_dict()
         except (processutils.ProcessExecutionError, OSError, ValueError) as e:
             LOG.warning('Could not get real physical RAM from lshw: %s', e)
             physical = None
@@ -1495,7 +1551,7 @@ class GenericHardwareManager(HardwareManager):
 
     def get_system_vendor_info(self):
         try:
-            sys_dict = _get_system_lshw_dict()
+            sys_dict = self._get_system_lshw_dict()
         except (processutils.ProcessExecutionError, OSError, ValueError) as e:
             LOG.warning('Could not retrieve vendor info from lshw: %s', e)
             sys_dict = {}

@@ -199,7 +199,8 @@ fields:
 ``interfaces``
     list of network interfaces with fields: ``name``, ``mac_address``,
     ``ipv4_address``, ``lldp``, ``vendor``, ``product``, and optionally
-    ``biosdevname`` (BIOS given NIC name).
+    ``biosdevname`` (BIOS given NIC name) and ``speed_mbps`` (maximum supported
+    speed).
 
     .. note::
        For backward compatibility, interfaces may contain ``lldp`` fields.

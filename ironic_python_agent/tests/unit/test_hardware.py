@@ -269,91 +269,6 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertIn(if_names[0], result)
         self.assertEqual(expected_lldp_data, result)
 
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    def test_list_network_interfaces(self,
-                                     mock_has_carrier,
-                                     mock_get_mac,
-                                     mocked_execute,
-                                     mocked_open,
-                                     mocked_exists,
-                                     mocked_listdir,
-                                     mocked_ifaddresses,
-                                     mockedget_managers):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        mocked_listdir.return_value = ['lo', 'eth0', 'foobar']
-        mocked_exists.side_effect = [False, False, True, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['1']
-        mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
-            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
-        }
-        mocked_execute.return_value = ('em0\n', '')
-        mock_has_carrier.return_value = True
-        mock_get_mac.side_effect = [
-            '00:0c:29:8c:11:b1',
-            None,
-        ]
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(1, len(interfaces))
-        self.assertEqual('eth0', interfaces[0].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
-        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
-        self.assertIsNone(interfaces[0].lldp)
-        self.assertTrue(interfaces[0].has_carrier)
-        self.assertEqual('em0', interfaces[0].biosdevname)
-
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    def test_list_network_interfaces_with_biosdevname(self,
-                                                      mock_has_carrier,
-                                                      mock_get_mac,
-                                                      mocked_execute,
-                                                      mocked_open,
-                                                      mocked_exists,
-                                                      mocked_listdir,
-                                                      mocked_ifaddresses,
-                                                      mockedget_managers):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['1']
-        mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
-            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
-        }
-        mocked_execute.return_value = ('em0\n', '')
-        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
-        mock_has_carrier.return_value = True
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(1, len(interfaces))
-        self.assertEqual('eth0', interfaces[0].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
-        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
-        self.assertIsNone(interfaces[0].lldp)
-        self.assertTrue(interfaces[0].has_carrier)
-        self.assertEqual('em0', interfaces[0].biosdevname)
-
     @mock.patch.object(il_utils, 'execute', autospec=True)
     def test_get_bios_given_nic_name_ok(self, mock_execute):
         interface_name = 'eth0'
@@ -404,410 +319,6 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertIsNone(result)
         mock_execute.assert_called_once_with('biosdevname', '-i',
                                              interface_name)
-
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('ironic_python_agent.netutils.get_lldp_info', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    def test_list_network_interfaces_with_lldp(self,
-                                               mock_has_carrier,
-                                               mock_get_mac,
-                                               mocked_execute,
-                                               mocked_open,
-                                               mocked_exists,
-                                               mocked_listdir,
-                                               mocked_ifaddresses,
-                                               mocked_lldp_info,
-                                               mockedget_managers):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        CONF.set_override('collect_lldp', True)
-        mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['1']
-        mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
-            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
-        }
-        mocked_lldp_info.return_value = {'eth0': [
-            (0, b''),
-            (1, b'\x04\x88Z\x92\xecTY'),
-            (2, b'\x05Ethernet1/18'),
-            (3, b'\x00x')]
-        }
-        mock_has_carrier.return_value = True
-        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
-        mocked_execute.return_value = ('em0\n', '')
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(1, len(interfaces))
-        self.assertEqual('eth0', interfaces[0].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
-        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
-        expected_lldp_info = [
-            (0, ''),
-            (1, '04885a92ec5459'),
-            (2, '0545746865726e6574312f3138'),
-            (3, '0078'),
-        ]
-        self.assertEqual(expected_lldp_info, interfaces[0].lldp)
-        self.assertTrue(interfaces[0].has_carrier)
-        self.assertEqual('em0', interfaces[0].biosdevname)
-
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('ironic_python_agent.netutils.get_lldp_info', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    def test_list_network_interfaces_with_lldp_error(
-            self, mocked_execute, mocked_open, mocked_exists, mocked_listdir,
-            mocked_ifaddresses, mocked_lldp_info, mockedget_managers,
-            mock_get_mac, mock_has_carrier):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        CONF.set_override('collect_lldp', True)
-        mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['1']
-        mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
-            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
-        }
-        mocked_lldp_info.side_effect = Exception('Boom!')
-        mocked_execute.return_value = ('em0\n', '')
-        mock_has_carrier.return_value = True
-        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(1, len(interfaces))
-        self.assertEqual('eth0', interfaces[0].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
-        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
-        self.assertIsNone(interfaces[0].lldp)
-        self.assertTrue(interfaces[0].has_carrier)
-        self.assertEqual('em0', interfaces[0].biosdevname)
-
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    def test_list_network_interfaces_no_carrier(self,
-                                                mock_has_carrier,
-                                                mock_get_mac,
-                                                mocked_execute,
-                                                mocked_open,
-                                                mocked_exists,
-                                                mocked_listdir,
-                                                mocked_ifaddresses,
-                                                mockedget_managers):
-
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = [OSError('boom')]
-        mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
-            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
-        }
-        mocked_execute.return_value = ('em0\n', '')
-        mock_has_carrier.return_value = False
-        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(1, len(interfaces))
-        self.assertEqual('eth0', interfaces[0].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
-        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
-        self.assertFalse(interfaces[0].has_carrier)
-        self.assertIsNone(interfaces[0].vendor)
-        self.assertEqual('em0', interfaces[0].biosdevname)
-
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    def test_list_network_interfaces_with_vendor_info(self,
-                                                      mock_has_carrier,
-                                                      mock_get_mac,
-                                                      mocked_execute,
-                                                      mocked_open,
-                                                      mocked_exists,
-                                                      mocked_listdir,
-                                                      mocked_ifaddresses,
-                                                      mockedget_managers):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        mac = '00:0c:29:8c:11:b1'
-        read_mock.side_effect = ['0x15b3\n', '0x1014\n']
-        mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
-            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
-        }
-        mocked_execute.return_value = ('em0\n', '')
-        mock_has_carrier.return_value = True
-        mock_get_mac.return_value = mac
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(1, len(interfaces))
-        self.assertEqual('eth0', interfaces[0].name)
-        self.assertEqual(mac, interfaces[0].mac_address)
-        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
-        self.assertTrue(interfaces[0].has_carrier)
-        self.assertEqual('0x15b3', interfaces[0].vendor)
-        self.assertEqual('0x1014', interfaces[0].product)
-        self.assertEqual('em0', interfaces[0].biosdevname)
-
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    def test_list_network_interfaces_with_bond(self,
-                                               mock_has_carrier,
-                                               mock_get_mac,
-                                               mocked_execute,
-                                               mocked_open,
-                                               mocked_exists,
-                                               mocked_listdir,
-                                               mocked_ifaddresses,
-                                               mockedget_managers):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        mocked_listdir.return_value = ['lo', 'bond0']
-        mocked_exists.side_effect = [False, False, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['1']
-        mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
-            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
-        }
-        mocked_execute.return_value = ('\n', '')
-        mock_has_carrier.return_value = True
-        mock_get_mac.side_effect = [
-            '00:0c:29:8c:11:b1',
-            None,
-        ]
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(1, len(interfaces))
-        self.assertEqual('bond0', interfaces[0].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
-        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
-        self.assertIsNone(interfaces[0].lldp)
-        self.assertTrue(interfaces[0].has_carrier)
-        self.assertEqual('', interfaces[0].biosdevname)
-
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    def test_list_network_vlan_interfaces(self,
-                                          mock_has_carrier,
-                                          mock_get_mac,
-                                          mocked_execute,
-                                          mocked_open,
-                                          mocked_exists,
-                                          mocked_listdir,
-                                          mocked_ifaddresses,
-                                          mockedget_managers):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        CONF.set_override('enable_vlan_interfaces', 'eth0.100')
-        mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['1']
-        mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
-            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
-        }
-        mocked_execute.return_value = ('em0\n', '')
-        mock_get_mac.mock_has_carrier = True
-        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(2, len(interfaces))
-        self.assertEqual('eth0', interfaces[0].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
-        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
-        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
-        self.assertIsNone(interfaces[0].lldp)
-        self.assertEqual('eth0.100', interfaces[1].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[1].mac_address)
-        self.assertIsNone(interfaces[1].lldp)
-
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('ironic_python_agent.netutils.get_lldp_info', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    def test_list_network_vlan_interfaces_using_lldp(self,
-                                                     mock_has_carrier,
-                                                     mock_get_mac,
-                                                     mocked_execute,
-                                                     mocked_open,
-                                                     mocked_exists,
-                                                     mocked_listdir,
-                                                     mocked_ifaddresses,
-                                                     mocked_lldp_info,
-                                                     mockedget_managers):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        CONF.set_override('collect_lldp', True)
-        CONF.set_override('enable_vlan_interfaces', 'eth0')
-        mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_execute.return_value = ('em0\n', '')
-        mocked_exists.side_effect = [False, False, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['1']
-        mocked_lldp_info.return_value = {'eth0': [
-            (0, b''),
-            (127, b'\x00\x80\xc2\x03\x00d\x08vlan-100'),
-            (127, b'\x00\x80\xc2\x03\x00e\x08vlan-101')]
-        }
-        mock_has_carrier.return_value = True
-        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(3, len(interfaces))
-        self.assertEqual('eth0', interfaces[0].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
-        expected_lldp_info = [
-            (0, ''),
-            (127, "0080c203006408766c616e2d313030"),
-            (127, "0080c203006508766c616e2d313031")
-        ]
-        self.assertEqual(expected_lldp_info, interfaces[0].lldp)
-        self.assertEqual('eth0.100', interfaces[1].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[1].mac_address)
-        self.assertIsNone(interfaces[1].lldp)
-        self.assertEqual('eth0.101', interfaces[2].name)
-        self.assertEqual('00:0c:29:8c:11:b1', interfaces[2].mac_address)
-        self.assertIsNone(interfaces[2].lldp)
-
-    @mock.patch.object(netutils, 'LOG', autospec=True)
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('netifaces.ifaddresses', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
-    def test_list_network_vlan_invalid_int(self,
-                                           mock_has_carrier,
-                                           mock_get_mac,
-                                           mocked_execute,
-                                           mocked_open,
-                                           mocked_exists,
-                                           mocked_listdir,
-                                           mocked_ifaddresses,
-                                           mockedget_managers,
-                                           mocked_log):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        CONF.set_override('collect_lldp', True)
-        CONF.set_override('enable_vlan_interfaces', 'enp0s1')
-        mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['1']
-        mocked_ifaddresses.return_value = {
-            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
-            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
-        }
-        mocked_execute.return_value = ('em0\n', '')
-        mock_get_mac.mock_has_carrier = True
-        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
-
-        self.hardware.list_network_interfaces()
-        mocked_log.warning.assert_called_once_with(
-            'Provided interface name %s was not found', 'enp0s1')
-
-    @mock.patch('ironic_python_agent.hardware.get_managers', autospec=True)
-    @mock.patch('ironic_python_agent.netutils.get_lldp_info', autospec=True)
-    @mock.patch('os.listdir', autospec=True)
-    @mock.patch('os.path.exists', autospec=True)
-    @mock.patch('builtins.open', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    @mock.patch.object(netutils, 'get_mac_addr', autospec=True)
-    def test_list_network_vlan_interfaces_using_lldp_all(self,
-                                                         mock_get_mac,
-                                                         mocked_execute,
-                                                         mocked_open,
-                                                         mocked_exists,
-                                                         mocked_listdir,
-                                                         mocked_lldp_info,
-                                                         mockedget_managers):
-        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
-        CONF.set_override('collect_lldp', True)
-        CONF.set_override('enable_vlan_interfaces', 'all')
-        mocked_listdir.return_value = ['lo', 'eth0', 'eth1']
-        mocked_execute.return_value = ('em0\n', '')
-        mocked_exists.side_effect = [False, False, True, True]
-        mocked_open.return_value.__enter__ = lambda s: s
-        mocked_open.return_value.__exit__ = mock.Mock()
-        read_mock = mocked_open.return_value.read
-        read_mock.side_effect = ['1']
-        mocked_lldp_info.return_value = {'eth0': [
-            (0, b''),
-            (127, b'\x00\x80\xc2\x03\x00d\x08vlan-100'),
-            (127, b'\x00\x80\xc2\x03\x00e\x08vlan-101')],
-            'eth1': [
-            (0, b''),
-            (127, b'\x00\x80\xc2\x03\x00f\x08vlan-102'),
-            (127, b'\x00\x80\xc2\x03\x00g\x08vlan-103')]
-        }
-
-        interfaces = self.hardware.list_network_interfaces()
-        self.assertEqual(6, len(interfaces))
-        self.assertEqual('eth0', interfaces[0].name)
-        self.assertEqual('eth1', interfaces[1].name)
-        self.assertEqual('eth0.100', interfaces[2].name)
-        self.assertEqual('eth0.101', interfaces[3].name)
-        self.assertEqual('eth1.102', interfaces[4].name)
-        self.assertEqual('eth1.103', interfaces[5].name)
 
     @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
     @mock.patch.object(os, 'readlink', autospec=True)
@@ -1480,8 +991,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(3952 * 1024 * 1024, mem.total)
         self.assertEqual(65536, mem.physical_mb)
 
-    @mock.patch('ironic_python_agent.netutils.get_hostname', autospec=True)
-    def test_list_hardware_info(self, mocked_get_hostname):
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_get_system_lshw_dict', autospec=True,
+                       return_value={'id': 'host'})
+    @mock.patch.object(netutils, 'get_hostname', autospec=True)
+    def test_list_hardware_info(self, mocked_get_hostname, mocked_lshw):
         self.hardware.list_network_interfaces = mock.Mock()
         self.hardware.list_network_interfaces.return_value = [
             hardware.NetworkInterface('eth0', '00:0c:29:8c:11:b1'),
@@ -1525,6 +1039,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(self.hardware.get_boot_info(),
                          hardware_info['boot'])
         self.assertEqual('mock_hostname', hardware_info['hostname'])
+        mocked_lshw.assert_called_once_with(self.hardware)
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     def test_list_block_devices(self, list_mock):
@@ -5977,3 +5492,428 @@ class TestCollectSystemLogs(base.IronicAgentTest):
 
         self.assertEqual(commands, expected)
         self.assertGreaterEqual(len(io_dict), len(expected))
+
+
+@mock.patch.object(hardware.GenericHardwareManager, '_get_system_lshw_dict',
+                   autospec=True, return_value={'id': 'host'})
+@mock.patch.object(hardware, 'get_managers', autospec=True,
+                   return_value=[hardware.GenericHardwareManager()])
+@mock.patch('netifaces.ifaddresses', autospec=True)
+@mock.patch('os.listdir', autospec=True)
+@mock.patch('os.path.exists', autospec=True)
+@mock.patch('builtins.open', autospec=True)
+@mock.patch.object(il_utils, 'execute', autospec=True)
+@mock.patch.object(netutils, 'get_mac_addr', autospec=True)
+@mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
+class TestListNetworkInterfaces(base.IronicAgentTest):
+    def setUp(self):
+        super().setUp()
+        self.hardware = hardware.GenericHardwareManager()
+
+    def test_list_network_interfaces(self,
+                                     mock_has_carrier,
+                                     mock_get_mac,
+                                     mocked_execute,
+                                     mocked_open,
+                                     mocked_exists,
+                                     mocked_listdir,
+                                     mocked_ifaddresses,
+                                     mockedget_managers,
+                                     mocked_lshw):
+        mocked_lshw.return_value = json.loads(hws.LSHW_JSON_OUTPUT_V2[0])
+        mocked_listdir.return_value = ['lo', 'eth0', 'foobar']
+        mocked_exists.side_effect = [False, False, True, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = True
+        mock_get_mac.side_effect = [
+            '00:0c:29:8c:11:b1',
+            None,
+        ]
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertIsNone(interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('em0', interfaces[0].biosdevname)
+        self.assertEqual(1000, interfaces[0].speed_mbps)
+
+    def test_list_network_interfaces_with_biosdevname(self,
+                                                      mock_has_carrier,
+                                                      mock_get_mac,
+                                                      mocked_execute,
+                                                      mocked_open,
+                                                      mocked_exists,
+                                                      mocked_listdir,
+                                                      mocked_ifaddresses,
+                                                      mockedget_managers,
+                                                      mocked_lshw):
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_execute.return_value = ('em0\n', '')
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
+        mock_has_carrier.return_value = True
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertIsNone(interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('em0', interfaces[0].biosdevname)
+        self.assertIsNone(interfaces[0].speed_mbps)
+
+    @mock.patch.object(netutils, 'get_lldp_info', autospec=True)
+    def test_list_network_interfaces_with_lldp(self,
+                                               mocked_lldp_info,
+                                               mock_has_carrier,
+                                               mock_get_mac,
+                                               mocked_execute,
+                                               mocked_open,
+                                               mocked_exists,
+                                               mocked_listdir,
+                                               mocked_ifaddresses,
+                                               mockedget_managers,
+                                               mocked_lshw):
+        CONF.set_override('collect_lldp', True)
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_lldp_info.return_value = {'eth0': [
+            (0, b''),
+            (1, b'\x04\x88Z\x92\xecTY'),
+            (2, b'\x05Ethernet1/18'),
+            (3, b'\x00x')]
+        }
+        mock_has_carrier.return_value = True
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
+        mocked_execute.return_value = ('em0\n', '')
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        expected_lldp_info = [
+            (0, ''),
+            (1, '04885a92ec5459'),
+            (2, '0545746865726e6574312f3138'),
+            (3, '0078'),
+        ]
+        self.assertEqual(expected_lldp_info, interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('em0', interfaces[0].biosdevname)
+
+    @mock.patch.object(netutils, 'get_lldp_info', autospec=True)
+    def test_list_network_interfaces_with_lldp_error(
+            self, mocked_lldp_info, mock_has_carrier, mock_get_mac,
+            mocked_execute, mocked_open, mocked_exists, mocked_listdir,
+            mocked_ifaddresses, mockedget_managers, mocked_lshw):
+        CONF.set_override('collect_lldp', True)
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_lldp_info.side_effect = Exception('Boom!')
+        mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = True
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertIsNone(interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('em0', interfaces[0].biosdevname)
+
+    def test_list_network_interfaces_no_carrier(self,
+                                                mock_has_carrier,
+                                                mock_get_mac,
+                                                mocked_execute,
+                                                mocked_open,
+                                                mocked_exists,
+                                                mocked_listdir,
+                                                mocked_ifaddresses,
+                                                mockedget_managers,
+                                                mocked_lshw):
+
+        mockedget_managers.return_value = [hardware.GenericHardwareManager()]
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = [OSError('boom')]
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = False
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertFalse(interfaces[0].has_carrier)
+        self.assertIsNone(interfaces[0].vendor)
+        self.assertEqual('em0', interfaces[0].biosdevname)
+
+    def test_list_network_interfaces_with_vendor_info(self,
+                                                      mock_has_carrier,
+                                                      mock_get_mac,
+                                                      mocked_execute,
+                                                      mocked_open,
+                                                      mocked_exists,
+                                                      mocked_listdir,
+                                                      mocked_ifaddresses,
+                                                      mockedget_managers,
+                                                      mocked_lshw):
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        mac = '00:0c:29:8c:11:b1'
+        read_mock.side_effect = ['0x15b3\n', '0x1014\n']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = True
+        mock_get_mac.return_value = mac
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual(mac, interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('0x15b3', interfaces[0].vendor)
+        self.assertEqual('0x1014', interfaces[0].product)
+        self.assertEqual('em0', interfaces[0].biosdevname)
+
+    def test_list_network_interfaces_with_bond(self,
+                                               mock_has_carrier,
+                                               mock_get_mac,
+                                               mocked_execute,
+                                               mocked_open,
+                                               mocked_exists,
+                                               mocked_listdir,
+                                               mocked_ifaddresses,
+                                               mockedget_managers,
+                                               mocked_lshw):
+        mocked_listdir.return_value = ['lo', 'bond0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_execute.return_value = ('\n', '')
+        mock_has_carrier.return_value = True
+        mock_get_mac.side_effect = [
+            '00:0c:29:8c:11:b1',
+            None,
+        ]
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('bond0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertIsNone(interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('', interfaces[0].biosdevname)
+
+    def test_list_network_vlan_interfaces(self,
+                                          mock_has_carrier,
+                                          mock_get_mac,
+                                          mocked_execute,
+                                          mocked_open,
+                                          mocked_exists,
+                                          mocked_listdir,
+                                          mocked_ifaddresses,
+                                          mockedget_managers,
+                                          mocked_lshw):
+        CONF.set_override('enable_vlan_interfaces', 'eth0.100')
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_execute.return_value = ('em0\n', '')
+        mock_get_mac.mock_has_carrier = True
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(2, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertIsNone(interfaces[0].lldp)
+        self.assertEqual('eth0.100', interfaces[1].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[1].mac_address)
+        self.assertIsNone(interfaces[1].lldp)
+
+    @mock.patch.object(netutils, 'get_lldp_info', autospec=True)
+    def test_list_network_vlan_interfaces_using_lldp(self,
+                                                     mocked_lldp_info,
+                                                     mock_has_carrier,
+                                                     mock_get_mac,
+                                                     mocked_execute,
+                                                     mocked_open,
+                                                     mocked_exists,
+                                                     mocked_listdir,
+                                                     mocked_ifaddresses,
+                                                     mockedget_managers,
+                                                     mocked_lshw):
+        CONF.set_override('collect_lldp', True)
+        CONF.set_override('enable_vlan_interfaces', 'eth0')
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_execute.return_value = ('em0\n', '')
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_lldp_info.return_value = {'eth0': [
+            (0, b''),
+            (127, b'\x00\x80\xc2\x03\x00d\x08vlan-100'),
+            (127, b'\x00\x80\xc2\x03\x00e\x08vlan-101')]
+        }
+        mock_has_carrier.return_value = True
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(3, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        expected_lldp_info = [
+            (0, ''),
+            (127, "0080c203006408766c616e2d313030"),
+            (127, "0080c203006508766c616e2d313031")
+        ]
+        self.assertEqual(expected_lldp_info, interfaces[0].lldp)
+        self.assertEqual('eth0.100', interfaces[1].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[1].mac_address)
+        self.assertIsNone(interfaces[1].lldp)
+        self.assertEqual('eth0.101', interfaces[2].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[2].mac_address)
+        self.assertIsNone(interfaces[2].lldp)
+
+    @mock.patch.object(netutils, 'LOG', autospec=True)
+    def test_list_network_vlan_invalid_int(self,
+                                           mocked_log,
+                                           mock_has_carrier,
+                                           mock_get_mac,
+                                           mocked_execute,
+                                           mocked_open,
+                                           mocked_exists,
+                                           mocked_listdir,
+                                           mocked_ifaddresses,
+                                           mockedget_managers,
+                                           mocked_lshw):
+        CONF.set_override('collect_lldp', True)
+        CONF.set_override('enable_vlan_interfaces', 'enp0s1')
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_ifaddresses.return_value = {
+            netifaces.AF_INET: [{'addr': '192.168.1.2'}],
+            netifaces.AF_INET6: [{'addr': 'fd00::101'}]
+        }
+        mocked_execute.return_value = ('em0\n', '')
+        mock_get_mac.mock_has_carrier = True
+        mock_get_mac.return_value = '00:0c:29:8c:11:b1'
+
+        self.hardware.list_network_interfaces()
+        mocked_log.warning.assert_called_once_with(
+            'Provided interface name %s was not found', 'enp0s1')
+
+    @mock.patch.object(netutils, 'get_lldp_info', autospec=True)
+    def test_list_network_vlan_interfaces_using_lldp_all(self,
+                                                         mocked_lldp_info,
+                                                         mock_has_carrier,
+                                                         mock_get_mac,
+                                                         mocked_execute,
+                                                         mocked_open,
+                                                         mocked_exists,
+                                                         mocked_listdir,
+                                                         mocked_ifaddresses,
+                                                         mockedget_managers,
+                                                         mocked_lshw):
+        CONF.set_override('collect_lldp', True)
+        CONF.set_override('enable_vlan_interfaces', 'all')
+        mocked_listdir.return_value = ['lo', 'eth0', 'eth1']
+        mocked_execute.return_value = ('em0\n', '')
+        mocked_exists.side_effect = [False, False, True, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_lldp_info.return_value = {'eth0': [
+            (0, b''),
+            (127, b'\x00\x80\xc2\x03\x00d\x08vlan-100'),
+            (127, b'\x00\x80\xc2\x03\x00e\x08vlan-101')],
+            'eth1': [
+            (0, b''),
+            (127, b'\x00\x80\xc2\x03\x00f\x08vlan-102'),
+            (127, b'\x00\x80\xc2\x03\x00g\x08vlan-103')]
+        }
+
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(6, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('eth1', interfaces[1].name)
+        self.assertEqual('eth0.100', interfaces[2].name)
+        self.assertEqual('eth0.101', interfaces[3].name)
+        self.assertEqual('eth1.102', interfaces[4].name)
+        self.assertEqual('eth1.103', interfaces[5].name)
