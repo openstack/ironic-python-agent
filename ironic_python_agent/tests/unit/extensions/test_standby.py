@@ -123,6 +123,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         standby._validate_image_info(None, image_info)
 
     def test_validate_image_info_legacy_md5_checksum(self):
+        CONF.set_override('md5_enabled', False)
         image_info = _build_fake_image_info()
         del image_info['os_hash_algo']
         del image_info['os_hash_value']
