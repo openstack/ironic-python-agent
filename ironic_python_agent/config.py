@@ -329,8 +329,9 @@ cli_opts = [
                      'cluster which may be visible over a storage fabric '
                      'such as FibreChannel.'),
     cfg.BoolOpt('md5_enabled',
-                default=False,
-                help='If the MD5 algorithm is enabled for file checksums.'),
+                default=True,
+                help='If the MD5 algorithm is enabled for file checksums. '
+                     'Will be changed to False in the future.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

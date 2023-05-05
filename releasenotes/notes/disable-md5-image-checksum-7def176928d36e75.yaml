@@ -6,14 +6,7 @@ features:
     (SHA-2) and SHA256 (SHA-2) checksums to be identified and utilized without
     an explicit declaration of the checksum type utilizing the
     ``os_hash_algo`` value.
-upgrade:
-  - |
-    MD5 support for checksums have been disabled by default. This may result
-    in rebulids or manual deploy attempts to fail if no updated checksum has
-    been supplied for the ``os_hash_value`` and ``os_hash_algo`` settings.
-    To re-enable MD5 support, you may utilize a the ``[DEFAULT]md5_enabled``
-    setting.
 deprecations:
   - |
-    Support for MD5 checksums have been deprecated and disabled by default.
-    Support for MD5 checksums will be removed after the 2024 Release.
+    Support for MD5 checksums have been deprecated and will be removed after
+    the 2024 Release.
