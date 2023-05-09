@@ -14,6 +14,7 @@
 
 import hashlib
 import os
+import re
 import tempfile
 import time
 from urllib import parse as urlparse
@@ -107,6 +108,24 @@ def _is_checksum_url(checksum):
         return False
 
 
+MD5_MATCH = r"^([a-fA-F\d]{32})\s"  # MD5 at beginning of line
+MD5_MATCH_END = r"\s([a-fA-F\d]{32})$"  # MD5 at end of line
+MD5_MATCH_ONLY = r"^([a-fA-F\d]{32})$"  # MD5 only
+SHA256_MATCH = r"^([a-fA-F\d]{64})\s"  # SHA256 at beginning of line
+SHA256_MATCH_END = r"\s([a-fA-F\d]{64})$"  # SHA256 at end of line
+SHA256_MATCH_ONLY = r"^([a-fA-F\d]{64})$"  # SHA256 only
+SHA512_MATCH = r"^([a-fA-F\d]{128})\s"  # SHA512 at beginning of line
+SHA512_MATCH_END = r"\s([a-fA-F\d]{128})$"  # SHA512 at end of line
+SHA512_MATCH_ONLY = r"^([a-fA-F\d]{128})$"  # SHA512 only
+FILENAME_MATCH_END = r"\s[*]?{filename}$"  # Filename binary/text end of line
+FILENAME_MATCH_PARENTHESES = r"\s\({filename}\)\s"  # CentOS images
+
+CHECKSUM_MATCHERS = (MD5_MATCH, MD5_MATCH_END, SHA256_MATCH, SHA256_MATCH_END,
+                     SHA512_MATCH, SHA512_MATCH_END)
+CHECKSUM_ONLY_MATCHERS = (MD5_MATCH_ONLY, SHA256_MATCH_ONLY, SHA512_MATCH_ONLY)
+FILENAME_MATCHERS = (FILENAME_MATCH_END, FILENAME_MATCH_PARENTHESES)
+
+
 def _fetch_checksum(checksum, image_info):
     """Fetch checksum from remote location, if needed."""
     if not _is_checksum_url(checksum):
@@ -121,17 +140,33 @@ def _fetch_checksum(checksum, image_info):
     elif len(lines) == 1:
         # Special case - checksums file with only the checksum itself
         if ' ' not in lines[0]:
-            return lines[0]
+            for matcher in CHECKSUM_ONLY_MATCHERS:
+                checksum = re.findall(matcher, lines[0])
+                if checksum:
+                    return checksum[0]
+            raise errors.ImageDownloadError(
+                checksum, ("Invalid checksum file (No valid checksum found) %s"
+                           % lines))
 
     # FIXME(dtantsur): can we assume the same name for all images?
     expected_fname = os.path.basename(urlparse.urlparse(
         image_info['urls'][0]).path)
     for line in lines:
-        checksum, fname = line.strip().split(None, 1)
-        # The star symbol designates binary mode, which is the same as text
-        # mode on GNU systems.
-        if fname.strip().lstrip('*') == expected_fname:
-            return checksum.strip()
+        # Ignore comment lines
+        if line.startswith("#"):
+            continue
+
+        # Ignore checksums for other files
+        for matcher in FILENAME_MATCHERS:
+            if re.findall(matcher.format(filename=expected_fname), line):
+                break
+        else:
+            continue
+
+        for matcher in CHECKSUM_MATCHERS:
+            checksum = re.findall(matcher, line)
+            if checksum:
+                return checksum[0]
 
     raise errors.ImageDownloadError(
         checksum, "Checksum file does not contain name %s" % expected_fname)

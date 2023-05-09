@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Improved parsing of checksum files.
+
+    * Added support for the ``ALGORITHM (FILENAME) = CHECKSUM`` format used by
+      CentOS Stream.
+    * Lines starting with ``#`` are ignored as comments.
+    * If checksum file contain only the checksum itself, the content is
+      validated to ensure it is one of the known checksum types.
+
