@@ -11,6 +11,6 @@ the workflow documented at:
 
 Pull requests submitted through GitHub will be ignored.
 
-Bugs should be filed in StoryBoard, not GitHub:
+Bugs should be filed in Launchpad, not GitHub:
 
-   https://storyboard.openstack.org/#!/project/947
+   https://bugs.launchpad.net/ironic-python-agent/+bugs

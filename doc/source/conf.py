@@ -61,7 +61,7 @@ html_theme = 'openstackdocs'
 # openstackdocstheme options
 openstackdocs_repo_name = 'openstack/ironic-python-agent'
 openstackdocs_pdf_link = True
-openstackdocs_use_storyboard = True
+openstackdocs_use_storyboard = False
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'Ironic Python Agentdoc'

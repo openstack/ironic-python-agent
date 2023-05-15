@@ -39,9 +39,9 @@ section of the Ironic dev-quickstart guide.
 
 Project Resources
 =================
-Project status, features, and bugs are tracked on StoryBoard:
+Project bugs are tracked on Launchpad:
 
-  https://storyboard.openstack.org/#!/project/947
+  https://bugs.launchpad.net/ironic-python-agent/+bugs
 
 Developer documentation can be found here:
 
@@ -56,7 +56,7 @@ Source code repository for the project is located at:
   https://opendev.org/openstack/ironic-python-agent/
 
 IRC channel:
-    #openstack-ironic
+    #openstack-ironic on irc.oftc.net
 
 To contribute, start here: `Openstack: How to
 contribute <https://docs.openstack.org/infra/manual/developers.html>`_.
