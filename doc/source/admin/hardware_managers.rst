@@ -143,3 +143,54 @@ VmWare Virtual Machine File System (VMFS), and Red Hat Global File System
 
 For information on troubleshooting, and disabling this check,
 see :doc:`/admin/troubleshooting`.
+
+==========================
+Custom hardware managers
+==========================
+
+MellanoxDeviceHardwareManager
+=============================
+
+This is a custom hardware manager for ironic-python-agent. It provides
+support for Nvidia/Mellanox NICs.
+
+* You can get the binraies firmware for all Nvidia/Mellanox NICs from here `Nvidia firmware downloads <https://network.nvidia.com/support/firmware/firmware-downloads/>`_
+
+* And you can get the deviceID from here `Nvidia/Mellanox NICs list <https://pci-ids.ucw.cz/read/PC/15b3>`_
+
+* Also you can check here `MFT decumentation <https://docs.nvidia.com/networking/display/MFTv4240/Using+mlxconfig>`_ for some supported parameters
+
+Clean steps
+-----------
+
+``update_nvidia_nic_firmware_image(node, ports, images)``
+
+A clean step used to update Nvidia/Mellanox NICs firmware images from the
+required parameter ``images`` list. it's disabled by default.
+Each image in the list is a dictionary with the following fields:
+
+``url`` (required)
+    The url of the firmware image (file://, http://).
+``checksum`` (required)
+    checksum of the provided image.
+``checksumType`` (required)
+    checksum type, it could be (md5/sha512/sha256).
+``componentFlavor`` (required)
+    The PSID of the nic.
+``version`` (required)
+    version of the firmware image , it must be the same as in the image file.
+
+``update_nvidia_nic_firmware_settings(node, ports, settings)``
+
+A clean step used to update Nvidia/Mellanox NICs firmware settings from the
+required parameter ``settings`` list. it's disabled by default.
+Each settings in the list is a dictionary with the following fields:
+
+``deviceID`` (required)
+    The ID of the NIC
+``globalConfig``
+    The global configuration for NIC
+``function0Config``
+    The per-function configuration of the first port of the NIC
+``function1Config``
+    The per-function configuration of the second port of the NIC
