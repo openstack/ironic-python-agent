@@ -204,6 +204,86 @@ class TestStandbyExtension(base.IronicAgentTest):
         expected_loc = os.path.join(tempfile.gettempdir(), 'fake_id')
         self.assertEqual(expected_loc, location)
 
+    def test_verify_basic_auth_creds(self):
+        image_info = _build_fake_image_info()
+        self.assertIsNone(standby._verify_basic_auth_creds("SpongeBob",
+                                                           "SquarePants",
+                                                           image_info['id']))
+
+    def test_gen_auth_from_image_info_user_pass_success(self):
+        image_info = _build_fake_image_info()
+        image_info['image_server_auth_strategy'] = 'http_basic'
+        image_info['image_server_user'] = 'SpongeBob'
+        image_info['image_server_password'] = 'SquarePants'
+        exp_auth = requests.auth.HTTPBasicAuth('SpongeBob', 'SquarePants')
+        return_auth = \
+            standby._gen_auth_from_image_info_user_pass(image_info,
+                                                        image_info['id'])
+        self.assertEqual(exp_auth, return_auth)
+
+    def test_gen_auth_from_image_info_user_pass_none(self):
+        image_info = _build_fake_image_info()
+        image_info['image_server_auth_strategy'] = ''
+        image_info['image_server_user'] = 'SpongeBob'
+        image_info['image_server_password'] = 'SquarePants'
+        return_auth = \
+            standby._gen_auth_from_image_info_user_pass(image_info,
+                                                        image_info['id'])
+        self.assertIsNone(return_auth)
+
+    def test_gen_auth_from_oslo_conf_user_pass_success(self):
+        image_info = _build_fake_image_info()
+        CONF.set_override('image_server_auth_strategy', 'http_basic')
+        CONF.set_override('image_server_password', 'SpongeBob')
+        CONF.set_override('image_server_user', 'SquarePants')
+        correct_auth = \
+            requests.auth.HTTPBasicAuth(CONF['image_server_user'],
+                                        CONF['image_server_password'])
+        return_auth = \
+            standby._gen_auth_from_oslo_conf_user_pass(image_info['id'])
+        self.assertEqual(correct_auth, return_auth)
+
+    def test_gen_auth_from_oslo_conf_user_pass_none(self):
+        image_info = _build_fake_image_info()
+        CONF.set_override('image_server_auth_strategy', 'noauth')
+        CONF.set_override('image_server_password', 'SpongeBob')
+        CONF.set_override('image_server_user', 'SquarePants')
+        return_auth = \
+            standby._gen_auth_from_oslo_conf_user_pass(image_info['id'])
+        self.assertIsNone(return_auth)
+
+    def test_verify_basic_auth_creds_empty_user(self):
+        image_info = _build_fake_image_info()
+        self.assertRaises(errors.ImageDownloadError,
+                          standby._verify_basic_auth_creds,
+                          "",
+                          "SquarePants",
+                          image_info['id'])
+
+    def test_verify_basic_auth_creds_empty_password(self):
+        image_info = _build_fake_image_info()
+        self.assertRaises(errors.ImageDownloadError,
+                          standby._verify_basic_auth_creds,
+                          "SpongeBob",
+                          "",
+                          image_info['id'])
+
+    def test_verify_basic_auth_creds_none_user(self):
+        image_info = _build_fake_image_info()
+        self.assertRaises(errors.ImageDownloadError,
+                          standby._verify_basic_auth_creds,
+                          None,
+                          "SquarePants",
+                          image_info['id'])
+
+    def test_verify_basic_auth_creds_none_password(self):
+        image_info = _build_fake_image_info()
+        self.assertRaises(errors.ImageDownloadError,
+                          standby._verify_basic_auth_creds,
+                          "SpongeBob",
+                          None,
+                          image_info['id'])
+
     @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
     @mock.patch('ironic_lib.disk_utils.trigger_device_rescan', autospec=True)
     @mock.patch('ironic_lib.disk_utils.convert_image', autospec=True)
@@ -500,6 +580,106 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 404
+        self.assertRaises(errors.ImageDownloadError,
+                          standby._download_image,
+                          image_info)
+
+    @mock.patch('hashlib.new', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_download_image_basic_auth_conf_success(self, requests_mock,
+                                                    open_mock, hash_mock):
+        image_info = _build_fake_image_info()
+        CONF.set_override('image_server_auth_strategy', 'http_basic')
+        CONF.set_override('image_server_password', 'SpongeBob')
+        CONF.set_override('image_server_user', 'SquarePants')
+        user = CONF.image_server_user
+        password = CONF.image_server_password
+        correct_auth = requests.auth.HTTPBasicAuth(user, password)
+        response = requests_mock.return_value
+        response.status_code = 200
+        response.iter_content.return_value = ['some', 'content']
+        file_mock = mock.Mock()
+        open_mock.return_value.__enter__.return_value = file_mock
+        file_mock.read.return_value = None
+        hexdigest_mock = hash_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['os_hash_value']
+
+        standby._download_image(image_info)
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
+                                              stream=True, proxies={},
+                                              timeout=60, auth=correct_auth)
+        write = file_mock.write
+        write.assert_any_call('some')
+        write.assert_any_call('content')
+        self.assertEqual(2, write.call_count)
+
+    @mock.patch('hashlib.new', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_download_image_basic_auth_image_info_success(self,
+                                                          requests_mock,
+                                                          open_mock,
+                                                          hash_mock):
+        image_info = _build_fake_image_info()
+        image_info['image_server_auth_strategy'] = 'http_basic'
+        image_info['image_server_password'] = 'SpongeBob'
+        image_info['image_server_user'] = 'SquarePants'
+        user = image_info['image_server_user']
+        password = image_info['image_server_password']
+        correct_auth = requests.auth.HTTPBasicAuth(user, password)
+        response = requests_mock.return_value
+        response.status_code = 200
+        response.iter_content.return_value = ['some', 'content']
+        file_mock = mock.Mock()
+        open_mock.return_value.__enter__.return_value = file_mock
+        file_mock.read.return_value = None
+        hexdigest_mock = hash_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['os_hash_value']
+
+        standby._download_image(image_info)
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
+                                              stream=True, proxies={},
+                                              timeout=60, auth=correct_auth)
+        write = file_mock.write
+        write.assert_any_call('some')
+        write.assert_any_call('content')
+        self.assertEqual(2, write.call_count)
+
+    def test_download_image_bad_basic_auth_conf_credential(self):
+        self.config(image_download_connection_retry_interval=0)
+        image_info = _build_fake_image_info()
+        CONF.set_override('image_server_auth_strategy', 'http_basic')
+        self.assertRaises(errors.ImageDownloadError,
+                          standby._download_image,
+                          image_info)
+
+    def test_download_image_bad_basic_auth_image_info_credential(self):
+        self.config(image_download_connection_retry_interval=0)
+        image_info = _build_fake_image_info()
+        image_info['image_server_auth_strategy'] = 'http_basic'
+        self.assertRaises(errors.ImageDownloadError,
+                          standby._download_image,
+                          image_info)
+
+    def test_download_image_bad_basic_auth_mixed_credential(self):
+        self.config(image_download_connection_retry_interval=0)
+        image_info = _build_fake_image_info()
+        image_info['image_server_auth_strategy'] = 'http_basic'
+        CONF.set_override('image_server_password', 'SpongeBob')
+        CONF.set_override('image_server_user', 'SquarePants')
+        self.assertRaises(errors.ImageDownloadError,
+                          standby._download_image,
+                          image_info)
+
+    def test_download_image_bad_basic_auth_mixed_credential_second(self):
+        self.config(image_download_connection_retry_interval=0)
+        image_info = _build_fake_image_info()
+        CONF.set_override('image_server_auth_strategy', 'http_basic')
+        image_info['image_server_password'] = 'SpongeBob'
+        image_info['image_server_user'] = 'SquarePants'
         self.assertRaises(errors.ImageDownloadError,
                           standby._download_image,
                           image_info)
