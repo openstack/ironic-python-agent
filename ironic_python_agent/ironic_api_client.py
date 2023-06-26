@@ -80,6 +80,7 @@ class APIClient(object):
                                     data=data,
                                     verify=verify,
                                     cert=cert,
+                                    timeout=CONF.http_request_timeout,
                                     **kwargs)
 
     def _get_ironic_api_version_header(self, version=None):

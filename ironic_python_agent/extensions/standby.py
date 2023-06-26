@@ -406,7 +406,7 @@ class ImageDownload(object):
                     # Realistically, this should never happen, but for
                     # compatability...
                     # TODO(TheJulia): Remove for a 2024 release.
-                    self._hash_algo = hashlib.new('md5')
+                    self._hash_algo = hashlib.new('md5')  # nosec
                 else:
                     self._hash_algo = new_algo
             except ValueError as e:

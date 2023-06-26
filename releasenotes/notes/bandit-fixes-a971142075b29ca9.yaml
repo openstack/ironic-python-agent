@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    Fixes timeout declarations for Bandit 1.7.5 rule additions.
+  - |
+    Adds a new configuration option ``http_request_timeout``
+    to allow for operators to set the amount of time to wait
+    for a new request socket to wait. This helps prevent prevent
+    a possible hanged connection should the initial packets be
+    lost in tranist.
+other:
+  - |
+    Adds a new configuration option ``http_request_timeout``
+    which is also accessible utilizing the kernel command line
+    option ``ipa-http-request-timeout``. This option helps prevent
+    failed connections from hanging the agent. The default is 30
+    seconds.

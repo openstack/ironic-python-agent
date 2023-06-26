@@ -332,6 +332,12 @@ cli_opts = [
                 default=True,
                 help='If the MD5 algorithm is enabled for file checksums. '
                      'Will be changed to False in the future.'),
+    cfg.IntOpt('http_request_timeout',
+               default=APARAMS.get('ipa-http-request-timeout', 30),
+               min=1,
+               help='Time in seconds to wait for an HTTP request TCP socket '
+                    'used by an API request to a remote service to enter '
+                    'a state where a request can be transmitted.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

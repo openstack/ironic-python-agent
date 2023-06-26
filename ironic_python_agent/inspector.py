@@ -139,8 +139,10 @@ def call_inspector(data, failures):
         wait=tenacity.wait_fixed(_RETRY_WAIT),
         reraise=True)
     def _post_to_inspector():
-        return requests.post(CONF.inspection_callback_url, data=data,
-                             verify=verify, cert=cert)
+        return requests.post(
+            CONF.inspection_callback_url, data=data,
+            verify=verify, cert=cert,
+            timeout=CONF.http_request_timeout)
 
     resp = _post_to_inspector()
     if resp.status_code >= 400:

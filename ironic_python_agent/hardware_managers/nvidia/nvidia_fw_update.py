@@ -23,10 +23,14 @@ from urllib import request
 from ironic_lib.common.i18n import _
 from ironic_lib.exception import IronicException
 from oslo_concurrency import processutils
+from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import fileutils
 
 from ironic_python_agent import utils
+
+
+CONF = cfg.CONF
 
 FW_VERSION_REGEX = r'FW Version:\s*\t*(?P<fw_ver>\d+\.\d+\.\d+)'
 RUNNING_FW_VERSION_REGEX = \
@@ -415,7 +419,10 @@ class NvidiaNicFirmwareBinary(object):
         try:
             LOG.info('Downloading file: %s to %s', self.url,
                      self.dest_file_path)
-            url_data = request.urlopen(self.url)
+            # NOTE(TheJulia: nosec b310 rule below is covered by _process_url
+            url_data = request.urlopen(
+                self.url,
+                timeout=CONF.image_download_connection_timeout)  # nosec
         except urlError.URLError as url_error:
             LOG.error('Failed to open URL data: %s', url_error)
             raise url_error
