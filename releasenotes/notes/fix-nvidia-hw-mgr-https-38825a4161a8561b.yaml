@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes the nvidia hardware manager firmware upgrade support to permit
+    URLs with an "https" schema.

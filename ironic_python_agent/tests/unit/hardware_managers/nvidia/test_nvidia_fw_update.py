@@ -365,6 +365,40 @@ PSID:                  MT_0000000228
         self.assertEqual(nvidia_nic_fw_binary.dest_file_path,
                          '/tmp/nvidia_firmware123/fw1.bin')
 
+    @mock.patch.object(nvidia_fw_update.request, 'urlopen', autospec=True)
+    @mock.patch.object(builtins, 'open', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(fileutils, 'compute_file_checksum', autospec=True)
+    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
+    def test_nvidia_nic_firmware_binray_https(
+            self, mocked_mkdtemp, mocked_compute_file_checksum,
+            mocked_execute, open_mock, mocked_url_open):
+        mocked_mkdtemp.return_value = '/tmp/nvidia_firmware123/'
+        a = mock.Mock()
+        a.read.return_value = 'dummy data'
+        mocked_url_open.return_value = a
+        mocked_execute.return_value = ("""Image type:            FS4
+FW Version:            20.35.1012
+PSID:                  MT_0000000228
+""", '')
+        mocked_compute_file_checksum.return_value = \
+            'a94e683ea16d9ae44768f0a65942234c'
+        fd_mock = mock.MagicMock(spec=io.BytesIO)
+        open_mock.return_value = fd_mock
+        nvidia_nic_fw_binary = nvidia_fw_update.NvidiaNicFirmwareBinary(
+            'https://10.10.10.10/firmware_images/fw1.bin',
+            'a94e683ea16d9ae44768f0a65942234c',
+            'sha512',
+            'MT_0000000228',
+            '20.35.1012')
+        mocked_execute.assert_called_once()
+        mocked_compute_file_checksum.assert_called_once()
+        open_mock.assert_called_once()
+        mocked_url_open.assert_called_once()
+        mocked_mkdtemp.assert_called_once()
+        self.assertEqual(nvidia_nic_fw_binary.dest_file_path,
+                         '/tmp/nvidia_firmware123/fw1.bin')
+
     def test_nvidia_nic_firmware_binray_invalid_url_scheme(self):
         self.assertRaises(nvidia_fw_update.InvalidURLScheme,
                           nvidia_fw_update.NvidiaNicFirmwareBinary,

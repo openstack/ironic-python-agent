@@ -436,7 +436,7 @@ class NvidiaNicFirmwareBinary(object):
         """Process the firmware url and download the image to a temporary
 
         destination in the system.
-        The supported firmware URL schemes are (file://, http://)
+        The supported firmware URL schemes are (file://, http://, https://)
         :returns:   None
         :raises:    InvalidURLScheme, for unsupported firmware url
         """
@@ -448,12 +448,12 @@ class NvidiaNicFirmwareBinary(object):
         url_scheme = parsed_url.scheme
         if url_scheme == 'file':
             self._download_file_based_fw()
-        elif url_scheme == 'http':
+        elif url_scheme == 'http' or url_scheme == 'https':
             self._download_http_based_fw()
         else:
             err = 'Firmware URL scheme %s is not supported.' \
                   'The supported firmware URL schemes are' \
-                  '(http://, file://)' % url_scheme
+                  '(http://, https://, file://)' % url_scheme
             raise InvalidURLScheme(error_msg=_(err))
 
     def _get_info(self):
