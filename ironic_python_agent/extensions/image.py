@@ -281,9 +281,14 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
                 open_call = io.open
             else:
                 open_call = open
-            with open_call(mount_point + '/' + v_bl, 'r',
-                           encoding='utf-16') as csv:
-                contents = str(csv.read())
+            try:
+                with open_call(mount_point + '/' + v_bl, 'r',
+                               encoding='utf-16') as csv:
+                    contents = str(csv.read())
+            except UnicodeError:
+                with open_call(mount_point + '/' + v_bl, 'r',
+                               encoding='utf-16-le') as csv:
+                    contents = str(csv.read())
             csv_contents = contents.split(',')
             csv_filename = v_bl.split('/')[-1]
             v_efi_bl_path = v_bl.replace(csv_filename, str(csv_contents[0]))
