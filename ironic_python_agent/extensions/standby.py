@@ -82,8 +82,8 @@ def _download_with_proxy(image_info, url, image_id):
                                 timeout=CONF.image_download_connection_timeout)
             if resp.status_code != 200:
                 msg = ('Received status code {} from {}, expected 200. '
-                       'Response body: {}').format(resp.status_code, url,
-                                                   resp.text)
+                       'Response body: {} Response headers: {}').format(
+                    resp.status_code, url, resp.text, resp.headers)
                 raise errors.ImageDownloadError(image_id, msg)
         except (errors.ImageDownloadError, requests.RequestException) as e:
             if (attempt == CONF.image_download_connection_retries
@@ -292,6 +292,8 @@ class ImageDownload(object):
         self._time = time_obj or time.time()
         self._image_info = image_info
         self._request = None
+        self._bytes_transferred = 0
+        self._expected_size = None
 
         # Determine the hash algorithm and value will be used for calculation
         # and verification, fallback to md5 if algorithm is not set or not
@@ -331,6 +333,8 @@ class ImageDownload(object):
                 LOG.info("Attempting to download image from %s", url)
                 self._request = _download_with_proxy(image_info, url,
                                                      image_info['id'])
+                self._expected_size = self._request.headers.get(
+                    'Content-Length')
             except errors.ImageDownloadError as e:
                 failtime = time.time() - self._time
                 log_msg = ('URL: {}; time: {} '
@@ -363,7 +367,13 @@ class ImageDownload(object):
             # this code.
             if chunk:
                 self._last_chunk_time = time.time()
-                self._hash_algo.update(chunk)
+                if isinstance(chunk, str):
+                    encoded_data = chunk.encode()
+                    self._hash_algo.update(encoded_data)
+                    self._bytes_transferred += len(encoded_data)
+                else:
+                    self._hash_algo.update(chunk)
+                    self._bytes_transferred += len(chunk)
                 yield chunk
             elif (time.time() - self._last_chunk_time
                   > CONF.image_download_connection_timeout):
@@ -399,6 +409,18 @@ class ImageDownload(object):
                                             self._image_info['id'],
                                             self._expected_hash_value,
                                             checksum)
+
+    @property
+    def bytes_transferred(self):
+        """Property value to return the number of bytes transferred."""
+        return self._bytes_transferred
+
+    @property
+    def content_length(self):
+        """Property value to return the server indicated length."""
+        # If none, there is nothing we can do, the server didn't have
+        # a response.
+        return self._expected_size
 
 
 def _download_image(image_info):
@@ -438,9 +460,12 @@ def _download_image(image_info):
 
     totaltime = time.time() - starttime
     LOG.info("Image downloaded from %(image_location)s "
-             "in %(totaltime)s seconds",
+             "in %(totaltime)s seconds. Transferred %(size)s bytes. "
+             "Server originaly reported: %(reported)s.",
              {'image_location': image_location,
-              'totaltime': totaltime})
+              'totaltime': totaltime,
+              'size': image_download.bytes_transferred,
+              'reported': image_download.content_length})
     image_download.verify_image(image_location)
 
 
@@ -603,7 +628,11 @@ class StandbyExtension(base.BaseAgentExtension):
 
         totaltime = time.time() - starttime
         LOG.info("Image streamed onto device %(device)s in %(totaltime)s "
-                 "seconds", {'device': device, 'totaltime': totaltime})
+                 "seconds for %(size)s bytes. Server originaly reported "
+                 "%(reported)s.",
+                 {'device': device, 'totaltime': totaltime,
+                  'size': image_download.bytes_transferred,
+                  'reported': image_download.content_length})
         # Verify if the checksum of the streamed image is correct
         image_download.verify_image(device)
         # Fix any gpt partition

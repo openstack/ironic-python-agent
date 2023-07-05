@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    The agent now logs the size of data transferred when downloading images,
+    which can be helpful in troubleshooting image download issues.
