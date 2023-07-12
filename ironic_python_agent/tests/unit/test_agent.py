@@ -230,7 +230,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             },
             'config': {
-                'heartbeat_timeout': 300
+                'heartbeat_timeout': 300,
+                'agent_md5_checksum_enable': False
             }
         }
 
@@ -246,6 +247,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                           mock.call('wait_for_disks')],
                          mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
+        self.assertFalse(CONF.md5_enabled)
 
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
@@ -259,7 +261,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                           mock_wait, mock_dispatch):
         CONF.set_override('inspection_callback_url', '')
         CONF.set_override('listen_tls', True)
-
+        CONF.set_override('md5_enabled', False)
         wsgi_server = mock_wsgi.return_value
 
         def set_serve_api():
@@ -273,7 +275,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                 'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
             },
             'config': {
-                'heartbeat_timeout': 300
+                'heartbeat_timeout': 300,
+                'agent_md5_checksum_enable': True
             }
         }
 
@@ -289,6 +292,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                           mock.call('wait_for_disks')],
                          mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
+        self.assertTrue(CONF.md5_enabled)
 
     @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
     @mock.patch(
