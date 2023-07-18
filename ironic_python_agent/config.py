@@ -338,6 +338,11 @@ cli_opts = [
                help='Time in seconds to wait for an HTTP request TCP socket '
                     'used by an API request to a remote service to enter '
                     'a state where a request can be transmitted.'),
+    cfg.BoolOpt('config_drive_rebuild',
+                default=False,
+                help='If the agent should rebuild the configuration drive '
+                     'using a local filesystem, instead of letting Ironic '
+                     'determine if this action is necessary.'),
 ]
 
 CONF.register_cli_opts(cli_opts)

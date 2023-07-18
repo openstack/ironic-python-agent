@@ -20,12 +20,16 @@ from ironic_lib import disk_utils
 from ironic_lib import exception
 from ironic_lib import utils
 from oslo_concurrency import processutils
+from oslo_config import cfg
 import requests
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
 from ironic_python_agent.tests.unit import base
+
+
+CONF = cfg.CONF
 
 
 @mock.patch.object(shutil, 'copyfileobj', autospec=True)
@@ -649,7 +653,10 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                                                        self.config_part_label,
                                                        self.node_uuid)
         self.assertFalse(mock_list_partitions.called)
-        self.assertFalse(mock_execute.called)
+        mock_execute.assert_has_calls([
+            mock.call('mount', '-o', 'ro', '-t', 'auto',
+                      '/dev/fake-part1', mock.ANY),
+            mock.call('umount', mock.ANY)])
         self.assertFalse(mock_table_type.called)
         mock_dd.assert_called_with(configdrive_file, configdrive_part)
         mock_unlink.assert_called_with(configdrive_file)
@@ -705,6 +712,135 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
         mock_fix_gpt_partition.assert_called_with(self.dev, self.node_uuid)
         mock_dd.assert_called_with(configdrive_file, expected_part)
         mock_unlink.assert_called_with(configdrive_file)
+
+    @mock.patch('oslo_utils.uuidutils.generate_uuid', lambda: 'fake-uuid')
+    @mock.patch.object(partition_utils, '_try_build_fat32_config_drive',
+                       autospec=True)
+    @mock.patch.object(partition_utils, '_does_config_drive_work',
+                       autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'unlink_without_raise',
+                       autospec=True)
+    @mock.patch.object(disk_utils, 'dd',
+                       autospec=True)
+    @mock.patch.object(disk_utils, 'fix_gpt_partition',
+                       autospec=True)
+    @mock.patch.object(disk_utils, 'get_partition_table_type',
+                       autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition',
+                       autospec=True)
+    @mock.patch.object(partition_utils, 'get_labelled_partition',
+                       autospec=True)
+    @mock.patch.object(partition_utils, 'get_configdrive',
+                       autospec=True)
+    def test_create_partition_gpt_with_fallback(
+            self, mock_get_configdrive,
+            mock_get_labelled_partition,
+            mock_get_partition_by_uuid,
+            mock_table_type,
+            mock_fix_gpt_partition,
+            mock_dd, mock_unlink, mock_execute,
+            mock_config_drive_work,
+            mock_rebuild_config_drive):
+        config_url = 'http://1.2.3.4/cd'
+        configdrive_file = '/tmp/xyz'
+        configdrive_mb = 10
+
+        mock_get_configdrive.return_value = (configdrive_mb, configdrive_file)
+        mock_get_labelled_partition.return_value = None
+
+        mock_table_type.return_value = 'gpt'
+        expected_part = '/dev/fake4'
+        mock_get_partition_by_uuid.return_value = expected_part
+        mock_config_drive_work.return_value = False
+
+        partition_utils.create_config_drive_partition(self.node_uuid, self.dev,
+                                                      config_url)
+        mock_execute.assert_has_calls([
+            mock.call('sgdisk', '-n', '0:-64MB:0', '-u', '0:fake-uuid',
+                      self.dev, run_as_root=True),
+            mock.call('sync'),
+            mock.call('udevadm', 'settle'),
+            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('sgdisk', '-v', self.dev, run_as_root=True),
+
+            mock.call('udevadm', 'settle'),
+            mock.call('test', '-e', expected_part, attempts=15,
+                      delay_on_retry=True)
+        ])
+
+        mock_table_type.assert_called_with(self.dev)
+        mock_fix_gpt_partition.assert_called_with(self.dev, self.node_uuid)
+        mock_dd.assert_called_with(configdrive_file, expected_part)
+        mock_unlink.assert_called_with(configdrive_file)
+        mock_config_drive_work.assert_called_once_with(expected_part)
+        mock_rebuild_config_drive.assert_called_once_with(expected_part,
+                                                          configdrive_file)
+
+    @mock.patch('oslo_utils.uuidutils.generate_uuid', lambda: 'fake-uuid')
+    @mock.patch.object(partition_utils, '_try_build_fat32_config_drive',
+                       autospec=True)
+    @mock.patch.object(partition_utils, '_does_config_drive_work',
+                       autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'unlink_without_raise',
+                       autospec=True)
+    @mock.patch.object(disk_utils, 'dd',
+                       autospec=True)
+    @mock.patch.object(disk_utils, 'fix_gpt_partition',
+                       autospec=True)
+    @mock.patch.object(disk_utils, 'get_partition_table_type',
+                       autospec=True)
+    @mock.patch.object(partition_utils, 'get_partition',
+                       autospec=True)
+    @mock.patch.object(partition_utils, 'get_labelled_partition',
+                       autospec=True)
+    @mock.patch.object(partition_utils, 'get_configdrive',
+                       autospec=True)
+    def test_create_partition_gpt_use_vfat(
+            self, mock_get_configdrive,
+            mock_get_labelled_partition,
+            mock_get_partition_by_uuid,
+            mock_table_type,
+            mock_fix_gpt_partition,
+            mock_dd, mock_unlink, mock_execute,
+            mock_config_drive_work,
+            mock_rebuild_config_drive):
+        config_url = 'http://1.2.3.4/cd'
+        configdrive_file = '/tmp/xyz'
+        configdrive_mb = 10
+
+        CONF.set_override('config_drive_rebuild', True)
+        mock_get_configdrive.return_value = (configdrive_mb, configdrive_file)
+        mock_get_labelled_partition.return_value = None
+
+        mock_table_type.return_value = 'gpt'
+        expected_part = '/dev/fake4'
+        mock_get_partition_by_uuid.return_value = expected_part
+        mock_config_drive_work.return_value = True
+
+        partition_utils.create_config_drive_partition(self.node_uuid, self.dev,
+                                                      config_url)
+        mock_execute.assert_has_calls([
+            mock.call('sgdisk', '-n', '0:-64MB:0', '-u', '0:fake-uuid',
+                      self.dev, run_as_root=True),
+            mock.call('sync'),
+            mock.call('udevadm', 'settle'),
+            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('sgdisk', '-v', self.dev, run_as_root=True),
+
+            mock.call('udevadm', 'settle'),
+            mock.call('test', '-e', expected_part, attempts=15,
+                      delay_on_retry=True)
+        ])
+
+        mock_table_type.assert_called_with(self.dev)
+        mock_fix_gpt_partition.assert_called_with(self.dev, self.node_uuid)
+        mock_dd.assert_not_called()
+        mock_unlink.assert_called_with(configdrive_file)
+        mock_config_drive_work.assert_not_called()
+        mock_rebuild_config_drive.assert_called_once_with(expected_part,
+                                                          configdrive_file)
 
     @mock.patch.object(disk_utils, 'count_mbr_partitions', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)
@@ -1288,3 +1424,94 @@ class TestGetPartition(base.IronicAgentTest):
                     mock.call('lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL',
                               self.fake_dev)]
         mock_execute.assert_has_calls(expected)
+
+
+@mock.patch.object(utils, 'execute', autospec=True)
+class TestConfigDriveTestRecovery(base.IronicAgentTest):
+
+    fake_dev = '/dev/fake'
+    configdrive_file = '/tmp/config-drive'
+
+    def test__does_config_drive_work(self, mock_execute):
+        self.assertTrue(partition_utils._does_config_drive_work(self.fake_dev))
+        mock_execute.assert_has_calls([
+            mock.call('mount', '-o', 'ro', '-t', 'auto', self.fake_dev,
+                      mock.ANY),
+            mock.call('umount', mock.ANY)])
+
+    def test__does_config_drive_failed(self, mock_execute):
+        mock_execute.side_effect = processutils.ProcessExecutionError('boom')
+        self.assertFalse(
+            partition_utils._does_config_drive_work(self.fake_dev)
+        )
+        mock_execute.assert_has_calls([
+            mock.call('mount', '-o', 'ro', '-t', 'auto', self.fake_dev,
+                      mock.ANY)])
+
+    @mock.patch.object(shutil, 'copytree', autospec=True)
+    @mock.patch.object(utils, 'mkfs', autospec=True)
+    def test__try_build_fat32_config_drive(self,
+                                           mock_mkfs,
+                                           mock_copy,
+                                           mock_execute):
+        partition_utils._try_build_fat32_config_drive(self.fake_dev,
+                                                      self.configdrive_file)
+        mock_execute.assert_has_calls([
+            mock.call('mount', '-o', 'loop,ro', '-t', 'auto',
+                      self.configdrive_file, mock.ANY),
+            mock.call('mount', '-t', 'auto', self.fake_dev, mock.ANY),
+            mock.call('umount', mock.ANY),
+            mock.call('umount', mock.ANY),
+        ])
+        mock_mkfs.assert_called_once_with(fs='vfat', path=self.fake_dev,
+                                          label='CONFIG-2')
+        # Validate we called copy as we expect, both source and destination
+        # are temporary folders.
+        mock_copy.assert_called_once_with(mock.ANY, mock.ANY,
+                                          dirs_exist_ok=True)
+
+    @mock.patch.object(shutil, 'copytree', autospec=True)
+    @mock.patch.object(utils, 'mkfs', autospec=True)
+    def test__try_build_fat32_config_drive_graceful_fail(
+            self,
+            mock_mkfs,
+            mock_copy,
+            mock_execute):
+        mock_execute.side_effect = processutils.ProcessExecutionError('boom')
+        self.assertIsNone(
+            partition_utils._try_build_fat32_config_drive(
+                self.fake_dev,
+                self.configdrive_file)
+        )
+        mock_execute.assert_called_once_with(
+            'mount', '-o', 'loop,ro', '-t', 'auto',
+            self.configdrive_file, mock.ANY)
+        mock_mkfs.assert_not_called()
+        # Validate we called copy as we expect, both source and destination
+        # are temporary folders.
+        mock_copy.assert_not_called()
+
+    @mock.patch.object(shutil, 'copytree', autospec=True)
+    @mock.patch.object(utils, 'mkfs', autospec=True)
+    def test__try_build_fat32_config_drive_fails_once_invalid(
+            self,
+            mock_mkfs,
+            mock_copy,
+            mock_execute):
+        mock_mkfs.side_effect = processutils.ProcessExecutionError('boom')
+        self.assertRaisesRegex(
+            exception.InstanceDeployFailure,
+            'A failure occured while attempting to format.*',
+            partition_utils._try_build_fat32_config_drive,
+            self.fake_dev,
+            self.configdrive_file)
+        mock_execute.assert_has_calls([
+            mock.call('mount', '-o', 'loop,ro', '-t', 'auto',
+                      self.configdrive_file, mock.ANY),
+            mock.call('umount', mock.ANY),
+            mock.call('umount', mock.ANY),
+        ])
+
+        mock_mkfs.assert_called_once_with(fs='vfat', path=self.fake_dev,
+                                          label='CONFIG-2')
+        mock_copy.assert_not_called()

@@ -465,12 +465,27 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                       {'part': config_drive_part, 'node': node_uuid})
             utils.execute('test', '-e', config_drive_part, attempts=15,
                           delay_on_retry=True)
-
-        disk_utils.dd(confdrive_file, config_drive_part)
+        if not CONF.config_drive_rebuild:
+            disk_utils.dd(confdrive_file, config_drive_part)
+            if not _does_config_drive_work(config_drive_part):
+                # If we have reached this point, we might have an
+                # invalid configuration drive, OR the block device
+                # layer doesn't support 2K block Logical IO (iso9660)
+                _try_build_fat32_config_drive(config_drive_part,
+                                              confdrive_file)
+        else:
+            LOG.info('Extracting configuration drive to write copy to disk.')
+            _try_build_fat32_config_drive(config_drive_part, confdrive_file)
         LOG.info("Configdrive for node %(node)s successfully "
                  "copied onto partition %(part)s",
                  {'node': node_uuid, 'part': config_drive_part})
 
+    except exception.InstanceDeployFailure:
+        # Since we no longer have a final action on the decorator, we need
+        # to catch the failure, and still perform the cleanup.
+        if confdrive_file:
+            utils.unlink_without_raise(confdrive_file)
+        raise
     except (processutils.UnknownArgumentError,
             processutils.ProcessExecutionError, OSError) as e:
         msg = ('Failed to create config drive on disk %(disk)s '
@@ -478,11 +493,88 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                {'disk': device, 'node': node_uuid, 'error': e})
         LOG.error(msg)
         raise exception.InstanceDeployFailure(msg)
-    finally:
         # If the configdrive was requested make sure we delete the file
         # after copying the content to the partition
+
+    finally:
         if confdrive_file:
             utils.unlink_without_raise(confdrive_file)
+
+
+def _does_config_drive_work(config_drive_part):
+    """Attempts to mount the config drive to validate it works.
+
+    :param config_drive_part: The partition to which the configuration drive
+                              was written.
+    :returns: True if we were able to mount the configuration drive partition.
+    """
+    temp_folder = tempfile.mkdtemp()
+    try:
+        # Why: If the filesystem is ISO9660 or vfat, and the logical sector
+        # size which is supported is *not* something which supports 512 bytes,
+        # i.e. a 4k Block size, then ISO9660 just will not work. Vfat also
+        # will not work because the logical size needs to match the logical
+        # size which is usable. If the underlying driver cannot use that size,
+        # then the filesystem will not work and cannot be updated because
+        # structurally it is incompaible with the block device driver.
+        utils.execute('mount', '-o', 'ro', '-t', 'auto', config_drive_part,
+                      temp_folder)
+        utils.execute('umount', temp_folder)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        LOG.error('Encountered issue attempting to validate the '
+                  'supplied configuration drive. Error: %s', e)
+        return False
+    finally:
+        utils.unlink_without_raise(temp_folder)
+
+    return True
+
+
+def _try_build_fat32_config_drive(partition, confdrive_file):
+    conf_drive_temp = tempfile.mkdtemp()
+    try:
+        utils.execute('mount', '-o', 'loop,ro', '-t', 'auto',
+                      confdrive_file, conf_drive_temp)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        # Config drive is invalid, at least to our point of view.
+        # Bailing.
+        LOG.warning('We were unable to examine the configuration drive, '
+                    'bypassing. Error: %s', e)
+        return
+
+    new_drive_temp = tempfile.mkdtemp()
+    try:
+        # While creating a config drive file from scratch or on
+        # a loopback will likely result in a 512 byte sector size,
+        # the underlying fat filesystem utilities *automatically*
+        # check the device block sector sizing. This *will* break
+        # above 4k blocks, or at least might. Officially, 4k is the
+        # *maximum* in the FAT standard. See:
+        # https://github.com/dosfstools/dosfstools/blame/c483196dd46eab22abba756cef511d36f5f42070/src/mkfs.fat.c#L1987
+        utils.mkfs(fs='vfat', path=partition, label='CONFIG-2')
+        utils.execute('mount', '-t', 'auto', partition, new_drive_temp)
+        # copytree, using copy2, copies everything in the source folder
+        # into the destination folder, so we should be good, and metadata
+        # is attempted to be preserved.
+        shutil.copytree(conf_drive_temp, new_drive_temp, dirs_exist_ok=True)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        # We failed to make the filesystem :(
+        # This is a fairly hard error as we could not use the
+        # config drive, nor could we recover the state.
+        LOG.error('We were unable to make a new filesystem for the '
+                  'configuration drive. Error: %s', e)
+        msg = ('A failure occured while attempting to format, copy, and '
+               're-create the configuration drive in a structure which '
+               'is compatible with the underlying hardware and Operating '
+               'System. Due to the nature of configuration drive, it could '
+               'have been incorrectly formatted. Operator investigation is '
+               'required. Error: {}'.format(str(e)))
+        raise exception.InstanceDeployFailure(msg)
+    finally:
+        utils.execute('umount', conf_drive_temp)
+        utils.execute('umount', new_drive_temp)
+        utils.unlink_without_raise(new_drive_temp)
+        utils.unlink_without_raise(conf_drive_temp)
 
 
 def _is_disk_larger_than_max_size(device, node_uuid):

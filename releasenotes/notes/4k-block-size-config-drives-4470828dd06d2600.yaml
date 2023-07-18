@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixes a failure case where a deployed instance may be unable to access
+    the configuration drive post-deployment. This can occur when block
+    devices only support 4KB IO interactions. When 4KB block IO sizes
+    are in use, the ISO9660 filesystem driver in Linux cannot be used
+    as it is modeled around a 2KB block. We now attempt to verify, and
+    rebuild the configuration drive on a FAT filesystem when we cannot
+    mount the supplied configuration drive. Operators can force the agent
+    to write configuration drives using the FAT filesystem using the
+    ``[DEFAULT]config_drive_rebuild`` option.
