@@ -412,13 +412,16 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
 
+    @mock.patch('ironic_python_agent.extensions.standby.LOG', autospec=True)
     @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
     @mock.patch('requests.get', autospec=True)
-    def test_download_image(self, requests_mock, open_mock, hash_mock):
+    def test_download_image(self, requests_mock, open_mock, hash_mock,
+                            log_mock):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
+        response.headers = {}
         response.iter_content.return_value = ['some', 'content']
         file_mock = mock.Mock()
         open_mock.return_value.__enter__.return_value = file_mock
@@ -435,6 +438,23 @@ class TestStandbyExtension(base.IronicAgentTest):
         write.assert_any_call('some')
         write.assert_any_call('content')
         self.assertEqual(2, write.call_count)
+        log_mock_calls = [
+            mock.call.info('Attempting to download image from %s',
+                           'http://example.org'),
+            mock.call.info('Image downloaded from %(image_location)s in '
+                           '%(totaltime)s seconds. Transferred %(size)s '
+                           'bytes. Server originaly reported: %(reported)s.',
+                           {'image_location': mock.ANY,
+                            'totaltime': mock.ANY,
+                            'size': 11,
+                            'reported': None}),
+            mock.call.debug('Verifying image at %(image_location)s against '
+                            '%(algo_name)s checksum %(checksum)s',
+                            {'image_location': mock.ANY,
+                             'algo_name': mock.ANY,
+                             'checksum': 'fake-checksum'})
+        ]
+        log_mock.assert_has_calls(log_mock_calls)
 
     @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
@@ -510,6 +530,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_location = '/foo/bar'
         image_download = standby.ImageDownload(image_info)
         image_download.verify_image(image_location)
+        self.assertEqual(0, image_download.bytes_transferred)
 
     @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
@@ -1267,6 +1288,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         write_mock.assert_called_once_with(image_info, device,
                                            'configdrive_data')
 
+    @mock.patch('ironic_python_agent.extensions.standby.LOG', autospec=True)
     @mock.patch('ironic_lib.disk_utils.block_uuid', autospec=True)
     @mock.patch('ironic_lib.disk_utils.fix_gpt_partition', autospec=True)
     @mock.patch('hashlib.new', autospec=True)
@@ -1274,9 +1296,11 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch('requests.get', autospec=True)
     def test_stream_raw_image_onto_device(self, requests_mock, open_mock,
                                           hash_mock, fix_gpt_mock,
-                                          block_uuid_mock):
+                                          block_uuid_mock,
+                                          mock_log):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
+        response.headers = {'Content-Length': 11}
         response.status_code = 200
         response.iter_content.return_value = ['some', 'content']
         file_mock = mock.Mock()
@@ -1307,6 +1331,25 @@ class TestStandbyExtension(base.IronicAgentTest):
             'aaaabbbb',
             self.agent_extension.partition_uuids['root uuid']
         )
+        mock_log_calls = [
+            mock.call.info('Attempting to download image from %s',
+                           'http://example.org'),
+            mock.call.info('Image streamed onto device %(device)s in '
+                           '%(totaltime)s seconds for %(size)s bytes. '
+                           'Server originaly reported %(reported)s.',
+                           {'device': '/dev/foo',
+                            'totaltime': mock.ANY,
+                            'size': 11,
+                            'reported': 11}),
+            mock.call.debug('Verifying image at %(image_location)s '
+                            'against %(algo_name)s checksum %(checksum)s',
+                            {'image_location': '/dev/foo',
+                             'algo_name': mock.ANY,
+                             'checksum': 'fake-checksum'}),
+            mock.call.info('%(device)s UUID is now %(root_uuid)s',
+                           {'device': '/dev/foo', 'root_uuid': 'aaaabbbb'})
+        ]
+        mock_log.assert_has_calls(mock_log_calls)
 
     @mock.patch('hashlib.new', autospec=True)
     @mock.patch('builtins.open', autospec=True)
@@ -1318,6 +1361,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
+        response.headers = {}
         response.iter_content.return_value = [b'some', b'content']
         file_mock = mock.Mock()
         open_mock.return_value.__enter__.return_value = file_mock
@@ -1368,6 +1412,10 @@ class TestStandbyExtension(base.IronicAgentTest):
 
             def iter_content(self, chunk_size):
                 return self
+
+            @property
+            def headers(self):
+                return {}
 
         self.config(image_download_connection_timeout=1)
         self.config(image_download_connection_retries=2)
