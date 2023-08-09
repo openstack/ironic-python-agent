@@ -211,6 +211,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         for step in self.hardware.get_deploy_steps(self.node, []):
             getattr(self.hardware, step['step'])
 
+    def test_service_steps_exist(self):
+        for step in self.hardware.get_service_steps(self.node, []):
+            getattr(self.hardware, step['step'])
+
     @mock.patch('binascii.hexlify', autospec=True)
     @mock.patch('ironic_python_agent.netutils.get_lldp_info', autospec=True)
     def test_collect_lldp_data(self, mock_lldp_info, mock_hexlify):

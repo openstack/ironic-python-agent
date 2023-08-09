@@ -158,6 +158,14 @@ class MellanoxDeviceHardwareManager(hardware.HardwareManager):
                  }
                 ]
 
+    def get_service_steps(self, node, ports):
+        """Alias wrapper for method get_clean_steps."""
+        # NOTE(TheJulia): Since these steps can be run upon service, why not
+        return self.get_clean_steps(node, ports)
+
+    # TODO(TheJulia): Should there be a get_deploy_steps handler here? Since
+    # flashing firmware on deploy is a valid case.
+
     def update_nvidia_nic_firmware_image(self, node, ports, images):
         nvidia_fw_update.update_nvidia_nic_firmware_image(images)
 

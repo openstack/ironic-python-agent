@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Adds a new ``service`` extension which facilitates command handling for
+    Ironic to retrieve a list of service steps.
+  - Adds a new base method to base HardwareManager, ``get_service_steps``
+    which works the same as ``get_clean_steps`` and ``get_deploy_steps``.
+    These methods can be extended by hardware managers to permit them to
+    signal what steps are permitted.
+  - Extends reasonable deploy/clean steps to also be service steps which
+    are embedded in the Ironic agent. For example, CPU, Network, and Memory
+    burnin steps are available as service steps, but not the disk burnin
+    step as that would likely result in the existing disk contents being
+    damaged.
