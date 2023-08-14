@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Fixes, or at least lessens the case where a running Ironic agent can stack
+    up numerous lookup requests against an Ironic deployment when a node is
+    locked. In particular, this is beause the lookup also drives generation of
+    the agent token, which requires the conductor to allocate a worker, and
+    generate the token, and return the result to the API client.
+    Ironic's retry logic will now wait up to ``60`` seconds, and if an HTTP
+    Conflict (409) message is received, the agent will automatically pause
+    lookup operations for thirty seconds as opposed continue to attempt
+    lookups which could create more work for the Ironic deployment
+    needlessly.
