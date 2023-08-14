@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import jsonutils
@@ -44,6 +46,7 @@ class APIClient(object):
     heartbeat_api = '/%s/heartbeat/{uuid}' % api_version
     _ironic_api_version = None
     agent_token = None
+    lookup_lock_pause = 0
 
     def __init__(self, api_url):
         self.api_url = api_url.rstrip('/')
@@ -175,7 +178,7 @@ class APIClient(object):
             raise errors.HeartbeatError(error)
 
     def lookup_node(self, hardware_info, timeout, starting_interval,
-                    node_uuid=None, max_interval=30):
+                    node_uuid=None, max_interval=60):
         retry = tenacity.retry(
             retry=tenacity.retry_if_result(lambda r: r is False),
             stop=tenacity.stop_after_delay(timeout),
@@ -243,10 +246,31 @@ class APIClient(object):
                 LOG.error(exc_msg)
                 raise errors.LookupNodeError(msg)
 
+        if response.status_code == requests.codes.CONFLICT:
+            if self.lookup_lock_pause == 0:
+                self.lookup_lock_pause = 5
+            elif self.lookup_lock_pause == 5:
+                self.lookup_lock_pause = 10
+            elif self.lookup_lock_pause == 10:
+                # If we're reaching this point, we've got a long held
+                # persistent lock, which means things can go very sideways
+                # or the ironic deployment is downright grumpy. Either way,
+                # we need to slow things down.
+                self.lookup_lock_pause = 30
+            LOG.warning(
+                'Ironic has responded with a conflict, signaling the '
+                'node is locked. We will wait %(time)s seconds before trying '
+                'again. %(err)s',
+                {'time': self.lookup_lock_pause,
+                 'error': self._error_from_response(response)}
+            )
+            time.sleep(self.lookup_lock_pause)
+            return False
+
         if response.status_code != requests.codes.OK:
             LOG.warning(
                 'Failed looking up node with addresses %r at %s. '
-                '%s. Check if inspection has completed.',
+                'Check if inspection has completed? %s',
                 params['addresses'], self.api_url,
                 self._error_from_response(response)
             )
