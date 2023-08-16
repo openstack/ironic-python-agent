@@ -153,6 +153,7 @@ class TestRaidUtils(base.IronicAgentTest):
         volume_name = raid_utils.get_volume_name_of_raid_device('/dev/md0')
         self.assertIsNone(volume_name)
 
+    @mock.patch.object(raid_utils, 'find_esp_raid', autospec=True)
     @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
     @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
                        return_value='/dev/md42')
@@ -161,7 +162,7 @@ class TestRaidUtils(base.IronicAgentTest):
     @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     def test_prepare_boot_partitions_for_softraid_uefi_gpt(
             self, mock_efi_part, mock_execute, mock_dispatch,
-            mock_free_raid_device, mock_rescan):
+            mock_free_raid_device, mock_rescan, mock_find_esp):
         mock_efi_part.return_value = {'number': '12'}
         mock_execute.side_effect = [
             ('451', None),  # sgdisk -F
@@ -178,6 +179,7 @@ class TestRaidUtils(base.IronicAgentTest):
             (None, None),  # cp
             (None, None),  # wipefs
         ]
+        mock_find_esp.return_value = None
 
         efi_part = raid_utils.prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
@@ -209,6 +211,7 @@ class TestRaidUtils(base.IronicAgentTest):
         self.assertEqual(efi_part, '/dev/md42')
         mock_rescan.assert_called_once_with('/dev/md42')
 
+    @mock.patch.object(raid_utils, 'find_esp_raid', autospec=True)
     @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
     @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
                        return_value='/dev/md42')
@@ -218,7 +221,7 @@ class TestRaidUtils(base.IronicAgentTest):
     @mock.patch.object(ilib_utils, 'mkfs', autospec=True)
     def test_prepare_boot_partitions_for_softraid_uefi_gpt_esp_not_found(
             self, mock_mkfs, mock_efi_part, mock_execute, mock_dispatch,
-            mock_free_raid_device, mock_rescan):
+            mock_free_raid_device, mock_rescan, mock_find_esp):
         mock_efi_part.return_value = None
         mock_execute.side_effect = [
             ('451', None),  # sgdisk -F
@@ -233,6 +236,7 @@ class TestRaidUtils(base.IronicAgentTest):
             ('/dev/sdb14: whatever', None),  # blkid
             (None, None),  # mdadm
         ]
+        mock_find_esp.return_value = None
 
         efi_part = raid_utils.prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], None,
@@ -262,6 +266,7 @@ class TestRaidUtils(base.IronicAgentTest):
         self.assertEqual(efi_part, '/dev/md42')
         mock_rescan.assert_called_once_with('/dev/md42')
 
+    @mock.patch.object(raid_utils, 'find_esp_raid', autospec=True)
     @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
     @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
                        return_value='/dev/md42')
@@ -269,7 +274,7 @@ class TestRaidUtils(base.IronicAgentTest):
     @mock.patch.object(ilib_utils, 'execute', autospec=True)
     def test_prepare_boot_partitions_for_softraid_uefi_gpt_efi_provided(
             self, mock_execute, mock_dispatch, mock_free_raid_device,
-            mock_rescan):
+            mock_rescan, mock_find_esp):
         mock_execute.side_effect = [
             ('451', None),  # sgdisk -F
             (None, None),  # sgdisk create part
@@ -285,6 +290,7 @@ class TestRaidUtils(base.IronicAgentTest):
             (None, None),  # cp
             (None, None),  # wipefs
         ]
+        mock_find_esp.return_value = None
 
         efi_part = raid_utils.prepare_boot_partitions_for_softraid(
             '/dev/md0', ['/dev/sda', '/dev/sdb'], '/dev/md0p15',
@@ -389,3 +395,17 @@ class TestGetNextFreeRaidDevice(base.IronicAgentTest):
         ]
         self.assertRaises(errors.SoftwareRAIDError,
                           raid_utils.get_next_free_raid_device)
+
+
+@mock.patch.object(utils, 'execute', autospec=True)
+class TestFindESPRAID(base.IronicAgentTest):
+
+    def test_no_esp_raid(self, mock_execute):
+        mock_execute.side_effect = [(hws.LSBLK_OUPUT, '')]
+        result = raid_utils.find_esp_raid()
+        self.assertIsNone(result)
+
+    def test_esp_raid(self, mock_execute):
+        mock_execute.side_effect = [(hws.LSBLK_OUPUT_ESP_RAID, '')]
+        result = raid_utils.find_esp_raid()
+        self.assertEqual('/dev/md125', result)

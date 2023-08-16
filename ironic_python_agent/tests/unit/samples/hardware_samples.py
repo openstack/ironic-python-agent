@@ -1769,3 +1769,33 @@ MULTIPATH_LINKS_DM = (
     ' `-+- policy=\'service-time 0\' prio=1 status=active\n'
     '  `- 0:0:0:0 device s  8:0  active ready running\n'
 )
+
+LSBLK_OUPUT = ("""
+NAME="sda" TYPE="disk" FSTYPE=""
+NAME="sdb" TYPE="disk" FSTYPE=""
+""")
+
+LSBLK_OUPUT_ESP_RAID = ("""
+NAME="sda" TYPE="disk" FSTYPE=""
+NAME="sda1" TYPE="part" FSTYPE="linux_raid_member"
+NAME="md127" TYPE="raid1" FSTYPE=""
+NAME="md127p1" TYPE="md" FSTYPE="xfs"
+NAME="md127p2" TYPE="md" FSTYPE="iso9660"
+NAME="md127p14" TYPE="md" FSTYPE=""
+NAME="md127p15" TYPE="md" FSTYPE=""
+NAME="sda2" TYPE="part" FSTYPE="linux_raid_member"
+NAME="md126" TYPE="raid0" FSTYPE=""
+NAME="sda3" TYPE="part" FSTYPE="linux_raid_member"
+NAME="md125" TYPE="raid1" FSTYPE="vfat"
+NAME="sdb" TYPE="disk" FSTYPE=""
+NAME="sdb1" TYPE="part" FSTYPE="linux_raid_member"
+NAME="md127" TYPE="raid1" FSTYPE=""
+NAME="md127p1" TYPE="md" FSTYPE="xfs"
+NAME="md127p2" TYPE="md" FSTYPE="iso9660"
+NAME="md127p14" TYPE="md" FSTYPE=""
+NAME="md127p15" TYPE="md" FSTYPE=""
+NAME="sdb2" TYPE="part" FSTYPE="linux_raid_member"
+NAME="md126" TYPE="raid0" FSTYPE=""
+NAME="sdb3" TYPE="part" FSTYPE="linux_raid_member"
+NAME="md125" TYPE="raid1" FSTYPE="vfat"
+""")
