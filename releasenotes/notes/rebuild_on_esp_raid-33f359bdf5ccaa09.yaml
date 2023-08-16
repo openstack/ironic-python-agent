@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixes an issue with rebuilding instances on Software RAID with
+    RAIDed ESP partitions.
