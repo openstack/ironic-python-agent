@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    The default timeout value for the agent to lookup itself in an Ironic
+    deployment has been extended to 600 seconds from 300 seconds. This is
+    to provide better stability for Ironic deployments under heavy load
+    which may be unable to service new requests. This is particularly true
+    when the backing database is SQLite for Ironic due to the limited write
+    concurrency of the database.

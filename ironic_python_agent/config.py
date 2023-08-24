@@ -121,7 +121,7 @@ cli_opts = [
 
     cfg.IntOpt('lookup_timeout',
                min=0,
-               default=int(APARAMS.get('ipa-lookup-timeout', 300)),
+               default=int(APARAMS.get('ipa-lookup-timeout', 600)),
                help='The amount of time to retry the initial lookup '
                     'call to Ironic. After the timeout, the agent '
                     'will exit with a non-zero exit code. '
