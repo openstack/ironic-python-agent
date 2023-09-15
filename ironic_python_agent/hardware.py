@@ -1145,6 +1145,60 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         """
         return []
 
+    def get_service_steps(self, node, ports):
+        """Get a list of service steps.
+
+        Returns a list of steps. Each step is represented by a dict::
+
+          {
+           'interface': the name of the driver interface that should execute
+                        the step.
+           'step': the HardwareManager function to call.
+           'priority': the order steps will be run in if excuted upon
+                       similar to automated cleaning or deployment.
+                       In service steps, the order comes from the user request,
+                       but this similarity is kept for consistency should we
+                       further extend the capability at some point in the
+                       future.
+           'reboot_requested': Whether the agent should request Ironic reboots
+                               the node via the power driver after the
+                               operation completes.
+           'abortable': Boolean value. Whether the service step can be
+                        stopped by the operator or not. Some steps may
+                        cause non-reversible damage to a machine if interrupted
+                        (i.e firmware update), for such steps this parameter
+                        should be set to False. If no value is set for this
+                        parameter, Ironic will consider False (non-abortable).
+          }
+
+
+        If multiple hardware managers return the same step name, the following
+        logic will be used to determine which manager's step "wins":
+
+            * Keep the step that belongs to HardwareManager with highest
+              HardwareSupport (larger int) value.
+            * If equal support level, keep the step with the higher defined
+              priority (larger int).
+            * If equal support level and priority, keep the step associated
+              with the HardwareManager whose name comes earlier in the
+              alphabet.
+
+        The steps will be called using `hardware.dispatch_to_managers` and
+        handled by the best suited hardware manager. If you need a step to be
+        executed by only your hardware manager, ensure it has a unique step
+        name.
+
+        `node` and `ports` can be used by other hardware managers to further
+        determine if a step is supported for the node.
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        :return: a list of service steps, where each step is described as a
+                 dict as defined above
+
+        """
+        return []
+
     def get_version(self):
         """Get a name and version for this hardware manager.
 
@@ -1186,7 +1240,8 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
 class GenericHardwareManager(HardwareManager):
     HARDWARE_MANAGER_NAME = 'generic_hardware_manager'
     # 1.1 - Added new clean step called erase_devices_metadata
-    HARDWARE_MANAGER_VERSION = '1.1'
+    # 1.2 - Added new get_service_steps method
+    HARDWARE_MANAGER_VERSION = '1.2'
 
     def __init__(self):
         self.lldp_data = {}
@@ -2398,6 +2453,77 @@ class GenericHardwareManager(HardwareManager):
                 'argsinfo': inject_files.ARGSINFO,
             },
         ]
+
+    # TODO(TheJulia): There has to be a better way, we should
+    # make this less copy paste. That being said, I can also see
+    # unique priorites being needed.
+    def get_service_steps(self, node, ports):
+        service_steps = [
+            {
+                'step': 'delete_configuration',
+                'priority': 0,
+                'interface': 'raid',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'apply_configuration',
+                'priority': 0,
+                'interface': 'raid',
+                'reboot_requested': False,
+                'argsinfo': RAID_APPLY_CONFIGURATION_ARGSINFO,
+            },
+            {
+                'step': 'create_configuration',
+                'priority': 0,
+                'interface': 'raid',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'burnin_cpu',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            # NOTE(TheJulia): Burnin disk is explicilty not carried in this
+            # list because it would be distructive to data on a disk.
+            # If someone needs to do that, the machine should be
+            # unprovisioned.
+            {
+                'step': 'burnin_memory',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'burnin_network',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'write_image',
+                # NOTE(dtantsur): this step has to be proxied via an
+                # out-of-band step with the same name, hence the priority here
+                # doesn't really matter.
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+            },
+            {
+                'step': 'inject_files',
+                'priority': CONF.inject_files_priority,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'argsinfo': inject_files.ARGSINFO,
+            },
+        ]
+        # TODO(TheJulia): Consider erase_devices and friends...
+        return service_steps
 
     def apply_configuration(self, node, ports, raid_config,
                             delete_existing=True):

@@ -246,6 +246,52 @@ There are two kinds of deploy steps:
     def write_a_file(self, node, ports, path, contents, mode=0o644):
         pass  # Mount the disk, write a file.
 
+Custom HardwareManagers and Service operations
+----------------------------------------------
+
+Starting with the Bobcat release cycle, A hardware manager can define
+*service steps* that may be run during a service operation by exposing a
+``get_service_steps`` call.
+
+Service steps are intended to be invoked by an operator to perform an ad-hoc
+action upon a node. This does not include automatic step execution, but may
+at some point in the future. The result is that steps can be exposed similar
+to Clean steps and Deploy steps, just the priority value, should be 0 as
+the user requested order is what is utilized.
+
+.. code-block:: python
+
+    def get_deploy_steps(self, node, ports):
+        return [
+            {
+                # A function on the custom hardware manager
+                'step': 'write_a_file',
+                # Steps with priority 0 don't run by default.
+                'priority': 0,
+                # Should be the deploy interface, unless there is driver-side
+                # support for another interface (as it is for RAID).
+                'interface': 'deploy',
+                # Arguments that can be required or optional.
+                'argsinfo': {
+                    'path': {
+                        'description': 'Path to file',
+                        'required': True,
+                    },
+                    'content': {
+                        'description': 'Content of the file',
+                        'required': True,
+                    },
+                    'mode': {
+                        'description': 'Mode of the file, defaults to 0644',
+                        'required': False,
+                    },
+                }
+            }
+        ]
+
+    def write_a_file(self, node, ports, path, contents, mode=0o644):
+        pass  # Mount the disk, write a file.
+
 Versioning
 ~~~~~~~~~~
 Each hardware manager has a name and a version. This version is used during

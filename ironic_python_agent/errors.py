@@ -312,6 +312,15 @@ class DeploymentError(RESTError):
         super(DeploymentError, self).__init__(details)
 
 
+class ServicingError(RESTError):
+    """Error raised when a service step fails."""
+
+    message = 'Service step failed'
+
+    def __init__(self, details=None):
+        super(ServicingError, self).__init__(details)
+
+
 class IncompatibleNumaFormatError(RESTError):
     """Error raised when unexpected format data in NUMA node."""
 
