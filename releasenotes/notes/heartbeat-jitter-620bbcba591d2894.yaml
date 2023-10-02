@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Adds random jitter to retried heartbeats after Ironic returns an error.
+    Previously, heartbeats would be retried after 5 seconds, potentially
+    causing a thundering herd problem if many nodes fail to heartbeat at
+    the same time.

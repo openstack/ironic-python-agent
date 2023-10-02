@@ -68,14 +68,24 @@ class IronicPythonAgentStatus(encoding.Serializable):
         self.version = version
 
 
+def _with_jitter(value, min_multiplier, max_multiplier):
+    interval_multiplier = random.uniform(min_multiplier, max_multiplier)
+    return value * interval_multiplier
+
+
 class IronicPythonAgentHeartbeater(threading.Thread):
     """Thread that periodically heartbeats to Ironic."""
 
-    # If we could wait at most N seconds between heartbeats (or in case of an
-    # error) we will instead wait r x N seconds, where r is a random value
-    # between these multipliers.
+    # If we could wait at most N seconds between heartbeats, we will instead
+    # wait r x N seconds, where r is a random value between these multipliers.
     min_jitter_multiplier = 0.3
     max_jitter_multiplier = 0.6
+    # Error retry between 5 and 10 seconds, at least 12 retries with
+    # the default ramdisk_heartbeat_timeout of 300 and the worst case interval
+    # jitter of 0.6.
+    min_heartbeat_interval = 5
+    min_error_jitter_multiplier = 1.0
+    max_error_jitter_multiplier = 2.0
 
     def __init__(self, agent):
         """Initialize the heartbeat thread.
@@ -97,19 +107,39 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         LOG.info('Starting heartbeater')
         self.agent.set_agent_advertise_addr()
 
-        while not self.stop_event.wait(min(self.interval, 5)):
-            if self._heartbeat_expected():
-                self.do_heartbeat()
+        while self._run_next():
             eventlet.sleep(0)
 
+    def _run_next(self):
+        # The logic here makes sure we don't wait exactly 5 seconds more or
+        # less regardless of the current interval since it may cause a
+        # thundering herd problem when a lot of agents are heartbeating.
+        # Essentially, if the next heartbeat is due in 2 seconds, don't wait 5.
+        # But if the next one is scheduled in 2 minutes, do wait 5 to account
+        # for forced heartbeats.
+        wait = min(
+            self.min_heartbeat_interval,
+            # This operation checks how much of the initially planned interval
+            # we have still left. Compare with 0 in case we overshoot the goal.
+            max(0, self.interval - (_time() - self.previous_heartbeat)),
+        )
+        if self.stop_event.wait(wait):
+            return False  # done
+
+        if self._heartbeat_expected():
+            self.do_heartbeat()
+
+        return True
+
     def _heartbeat_expected(self):
+        elapsed = _time() - self.previous_heartbeat
+
         # Normal heartbeating
-        if _time() > self.previous_heartbeat + self.interval:
+        if elapsed >= self.interval:
             return True
 
         # Forced heartbeating, but once in 5 seconds
-        if (self.heartbeat_forced
-                and _time() > self.previous_heartbeat + 5):
+        if self.heartbeat_forced and elapsed > self.min_heartbeat_interval:
             return True
 
     def do_heartbeat(self):
@@ -121,20 +151,24 @@ class IronicPythonAgentHeartbeater(threading.Thread):
                 advertise_protocol=self.agent.advertise_protocol,
                 generated_cert=self.agent.generated_cert,
             )
-            LOG.info('heartbeat successful')
+        except Exception as exc:
+            if isinstance(exc, errors.HeartbeatConflictError):
+                LOG.warning('conflict error sending heartbeat to %s',
+                            self.agent.api_url)
+            else:
+                LOG.exception('error sending heartbeat to %s',
+                              self.agent.api_url)
+            self.interval = _with_jitter(self.min_heartbeat_interval,
+                                         self.min_error_jitter_multiplier,
+                                         self.max_error_jitter_multiplier)
+        else:
+            LOG.debug('heartbeat successful')
             self.heartbeat_forced = False
-            self.previous_heartbeat = _time()
-        except errors.HeartbeatConflictError:
-            LOG.warning('conflict error sending heartbeat to %s',
-                        self.agent.api_url)
-        except Exception:
-            LOG.exception('error sending heartbeat to %s', self.agent.api_url)
-        finally:
-            interval_multiplier = random.uniform(self.min_jitter_multiplier,
-                                                 self.max_jitter_multiplier)
-            self.interval = self.agent.heartbeat_timeout * interval_multiplier
-            LOG.info('sleeping before next heartbeat, interval: %s',
-                     self.interval)
+            self.interval = _with_jitter(self.agent.heartbeat_timeout,
+                                         self.min_jitter_multiplier,
+                                         self.max_jitter_multiplier)
+        self.previous_heartbeat = _time()
+        LOG.info('sleeping before next heartbeat, interval: %s', self.interval)
 
     def force_heartbeat(self):
         self.heartbeat_forced = True
