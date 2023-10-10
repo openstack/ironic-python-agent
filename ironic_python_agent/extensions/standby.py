@@ -554,7 +554,9 @@ def _download_image(image_info):
                     msg = 'Unable to write image to {}. Error: {}'.format(
                         image_location, str(e))
                     raise errors.ImageDownloadError(image_info['id'], msg)
-        except errors.ImageDownloadError as e:
+            image_download.verify_image(image_location)
+        except (errors.ImageDownloadError,
+                errors.ImageChecksumError) as e:
             if attempt == CONF.image_download_connection_retries:
                 raise
             else:
@@ -575,7 +577,6 @@ def _download_image(image_info):
               'totaltime': totaltime,
               'size': image_download.bytes_transferred,
               'reported': image_download.content_length})
-    image_download.verify_image(image_location)
 
 
 def _validate_image_info(ext, image_info=None, **kwargs):
@@ -729,7 +730,12 @@ class StandbyExtension(base.BaseAgentExtension):
                         msg = ('Unable to write image to device {}. '
                                'Error: {}').format(device, str(e))
                         raise errors.ImageDownloadError(image_info['id'], msg)
-            except errors.ImageDownloadError as e:
+                # Verify the checksum of the streamed image is correct while
+                # still in the retry loop, so we can retry should a checksum
+                # failure be detected.
+                image_download.verify_image(device)
+            except (errors.ImageDownloadError,
+                    errors.ImageChecksumError) as e:
                 if attempt == CONF.image_download_connection_retries:
                     raise
                 else:
@@ -749,8 +755,6 @@ class StandbyExtension(base.BaseAgentExtension):
                  {'device': device, 'totaltime': totaltime,
                   'size': image_download.bytes_transferred,
                   'reported': image_download.content_length})
-        # Verify if the checksum of the streamed image is correct
-        image_download.verify_image(device)
         # Fix any gpt partition
         try:
             disk_utils.fix_gpt_partition(device, node_uuid=None)
