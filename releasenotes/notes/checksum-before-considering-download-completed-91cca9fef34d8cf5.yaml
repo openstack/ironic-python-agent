@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixes a failure case where downloads would not be retried when the
+    checksum fails verification. the agent now includes the checksum
+    activity as part of the file download operation, and will
+    automatically retry downloads when the checksum fails in
+    accordance with the existing download retry logic.
+    This is largely in response to what appears to be intermittent
+    transport failures at lower levels which we cannot otherwise
+    detect.
