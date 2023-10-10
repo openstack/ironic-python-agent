@@ -12,6 +12,7 @@
 
 import copy
 import re
+import shlex
 
 from ironic_lib import disk_utils
 from ironic_lib import utils as il_utils
@@ -342,50 +343,58 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
             if efi_part:
                 efi_part = '{}p{}'.format(device, efi_part['number'])
 
-        LOG.info("Creating EFI partitions on software RAID holder disks")
-        # We know that we kept this space when configuring raid,see
-        # hardware.GenericHardwareManager.create_configuration.
-        # We could also directly get the EFI partition size.
-        partsize_mib = ESP_SIZE_MIB
-        partlabel_prefix = 'uefi-holder-'
-        efi_partitions = []
-        for number, holder in enumerate(holders):
-            # NOTE: see utils.get_partition_table_type_from_specs
-            # for uefi we know that we have setup a gpt partition table,
-            # sgdisk can be used to edit table, more user friendly
-            # for alignment and relative offsets
-            partlabel = '{}{}'.format(partlabel_prefix, number)
-            out, _u = utils.execute('sgdisk', '-F', holder)
-            start_sector = '{}s'.format(out.splitlines()[-1].strip())
-            out, _u = utils.execute(
-                'sgdisk', '-n', '0:{}:+{}MiB'.format(start_sector,
-                                                     partsize_mib),
-                '-t', '0:ef00', '-c', '0:{}'.format(partlabel), holder)
+        # check if we have a RAIDed ESP already
+        md_device = find_esp_raid()
+        if md_device:
+            LOG.info("Found RAIDed ESP %s, skip creation", md_device)
+        else:
+            LOG.info("Creating EFI partitions on software RAID holder disks")
+            # We know that we kept this space when configuring raid,see
+            # hardware.GenericHardwareManager.create_configuration.
+            # We could also directly get the EFI partition size.
+            partsize_mib = ESP_SIZE_MIB
+            partlabel_prefix = 'uefi-holder-'
+            efi_partitions = []
+            for number, holder in enumerate(holders):
+                # NOTE: see utils.get_partition_table_type_from_specs
+                # for uefi we know that we have setup a gpt partition table,
+                # sgdisk can be used to edit table, more user friendly
+                # for alignment and relative offsets
+                partlabel = '{}{}'.format(partlabel_prefix, number)
+                out, _u = utils.execute('sgdisk', '-F', holder)
+                start_sector = '{}s'.format(out.splitlines()[-1].strip())
+                out, _u = utils.execute(
+                    'sgdisk', '-n', '0:{}:+{}MiB'.format(start_sector,
+                                                         partsize_mib),
+                    '-t', '0:ef00', '-c', '0:{}'.format(partlabel), holder)
 
-            # Refresh part table
-            utils.execute("partprobe")
-            utils.execute("blkid")
+                # Refresh part table
+                utils.execute("partprobe")
+                utils.execute("blkid")
 
-            target_part, _u = utils.execute(
-                "blkid", "-l", "-t", "PARTLABEL={}".format(partlabel), holder)
+                target_part, _u = utils.execute(
+                    "blkid", "-l", "-t", "PARTLABEL={}".format(partlabel),
+                    holder)
 
-            target_part = target_part.splitlines()[-1].split(':', 1)[0]
-            efi_partitions.append(target_part)
+                target_part = target_part.splitlines()[-1].split(':', 1)[0]
+                efi_partitions.append(target_part)
 
-            LOG.debug("EFI partition %s created on holder disk %s",
-                      target_part, holder)
+                LOG.debug("EFI partition %s created on holder disk %s",
+                          target_part, holder)
 
-        # RAID the ESPs, metadata=1.0 is mandatory to be able to boot
-        md_device = get_next_free_raid_device()
-        LOG.debug("Creating md device %(md_device)s for the ESPs "
-                  "on %(efi_partitions)s",
-                  {'md_device': md_device, 'efi_partitions': efi_partitions})
-        utils.execute('mdadm', '--create', md_device, '--force',
-                      '--run', '--metadata=1.0', '--level', '1',
-                      '--name', 'esp', '--raid-devices', len(efi_partitions),
-                      *efi_partitions)
+            # RAID the ESPs, metadata=1.0 is mandatory to be able to boot
+            md_device = get_next_free_raid_device()
+            LOG.debug("Creating md device %(md_device)s for the ESPs "
+                      "on %(efi_partitions)s",
+                      {'md_device': md_device,
+                       'efi_partitions': efi_partitions})
+            utils.execute('mdadm', '--create', md_device, '--force',
+                          '--run', '--metadata=1.0', '--level', '1',
+                          '--name', 'esp', '--raid-devices',
+                          len(efi_partitions),
+                          *efi_partitions)
 
-        disk_utils.trigger_device_rescan(md_device)
+            disk_utils.trigger_device_rescan(md_device)
 
         if efi_part:
             # Blockdev copy the source ESP and erase it
@@ -420,3 +429,18 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
             # disk, as in virtual disk, where to load the data from.
             # Since there is a structural difference, this means it will
             # fail.
+
+
+def find_esp_raid():
+    """Find the ESP md device in case of a rebuild."""
+
+    # find devices of type 'RAID1' and fstype 'VFAT'
+    lsblk = utils.execute('lsblk', '-PbioNAME,TYPE,FSTYPE')
+    report = lsblk[0]
+    for line in report.split('\n'):
+        dev = {}
+        vals = shlex.split(line)
+        for key, val in (v.split('=', 1) for v in vals):
+            dev[key] = val.strip()
+        if dev.get('TYPE') == 'raid1' and dev.get('FSTYPE') == 'vfat':
+            return '/dev/' + dev.get('NAME')
