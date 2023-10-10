@@ -441,6 +441,11 @@ class TestStandbyExtension(base.IronicAgentTest):
         log_mock_calls = [
             mock.call.info('Attempting to download image from %s',
                            'http://example.org'),
+            mock.call.debug('Verifying image at %(image_location)s against '
+                            '%(algo_name)s checksum %(checksum)s',
+                            {'image_location': mock.ANY,
+                             'algo_name': mock.ANY,
+                             'checksum': 'fake-checksum'}),
             mock.call.info('Image downloaded from %(image_location)s in '
                            '%(totaltime)s seconds. Transferred %(size)s '
                            'bytes. Server originaly reported: %(reported)s.',
@@ -448,11 +453,6 @@ class TestStandbyExtension(base.IronicAgentTest):
                             'totaltime': mock.ANY,
                             'size': 11,
                             'reported': None}),
-            mock.call.debug('Verifying image at %(image_location)s against '
-                            '%(algo_name)s checksum %(checksum)s',
-                            {'image_location': mock.ANY,
-                             'algo_name': mock.ANY,
-                             'checksum': 'fake-checksum'})
         ]
         log_mock.assert_has_calls(log_mock_calls)
 
@@ -509,6 +509,9 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch('requests.get', autospec=True)
     def test_download_image_verify_fails(self, requests_mock, open_mock,
                                          hash_mock):
+        # Set the config to 0 retries, so we don't retry in this case
+        # and cause the test download to loop multiple times.
+        self.config(image_download_connection_retries=0)
         image_info = _build_fake_image_info()
         response = requests_mock.return_value
         response.status_code = 200
@@ -1334,6 +1337,11 @@ class TestStandbyExtension(base.IronicAgentTest):
         mock_log_calls = [
             mock.call.info('Attempting to download image from %s',
                            'http://example.org'),
+            mock.call.debug('Verifying image at %(image_location)s '
+                            'against %(algo_name)s checksum %(checksum)s',
+                            {'image_location': '/dev/foo',
+                             'algo_name': mock.ANY,
+                             'checksum': 'fake-checksum'}),
             mock.call.info('Image streamed onto device %(device)s in '
                            '%(totaltime)s seconds for %(size)s bytes. '
                            'Server originaly reported %(reported)s.',
@@ -1341,11 +1349,6 @@ class TestStandbyExtension(base.IronicAgentTest):
                             'totaltime': mock.ANY,
                             'size': 11,
                             'reported': 11}),
-            mock.call.debug('Verifying image at %(image_location)s '
-                            'against %(algo_name)s checksum %(checksum)s',
-                            {'image_location': '/dev/foo',
-                             'algo_name': mock.ANY,
-                             'checksum': 'fake-checksum'}),
             mock.call.info('%(device)s UUID is now %(root_uuid)s',
                            {'device': '/dev/foo', 'root_uuid': 'aaaabbbb'})
         ]
