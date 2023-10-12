@@ -1320,7 +1320,7 @@ class TestGetPartition(base.IronicAgentTest):
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" UUID="%s" TYPE="part"''' % self.fake_root_uuid)
-        mock_execute.side_effect = (None, None, [lsblk_output])
+        mock_execute.side_effect = ((None, ''), (None, ''), (lsblk_output, ''))
 
         root_part = partition_utils.get_partition(
             self.fake_dev, self.fake_root_uuid)
@@ -1338,7 +1338,7 @@ class TestGetPartition(base.IronicAgentTest):
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" UUID="" TYPE="part"''')
         mock_execute.side_effect = (
-            None, None, [lsblk_output],
+            (None, ''), (None, ''), (lsblk_output, ''),
             processutils.ProcessExecutionError('boom'),
             processutils.ProcessExecutionError('kaboom'))
 
@@ -1359,7 +1359,7 @@ class TestGetPartition(base.IronicAgentTest):
         KNAME="test2" UUID="" TYPE="part"''')
         findfs_output = ('/dev/loop0\n', None)
         mock_execute.side_effect = (
-            None, None, [lsblk_output],
+            (None, ''), (None, ''), (lsblk_output, ''),
             processutils.ProcessExecutionError('boom'),
             findfs_output)
 
@@ -1394,9 +1394,9 @@ class TestGetPartition(base.IronicAgentTest):
         mock_is_md_device.side_effect = [False, False]
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
-        KNAME="test2" UUID="903e7bf9-8a13-4f7f-811b-25dc16faf6f7" TYPE="part" \
+        KNAME="test2" UUID="903e7bf9-8a13-4f7f-811b-25dc16faf6f7" TYPE="part"\
                       LABEL="%s"''' % self.fake_root_uuid)
-        mock_execute.side_effect = (None, None, [lsblk_output])
+        mock_execute.side_effect = ((None, ''), (None, ''), (lsblk_output, ''))
 
         root_part = partition_utils.get_partition(
             self.fake_dev, self.fake_root_uuid)
@@ -1413,7 +1413,7 @@ class TestGetPartition(base.IronicAgentTest):
         lsblk_output = ('''KNAME="test" UUID="" TYPE="disk"
         KNAME="test1" UUID="256a39e3-ca3c-4fb8-9cc2-b32eec441f47" TYPE="part"
         KNAME="test2" PARTUUID="%s" TYPE="part"''' % self.fake_root_uuid)
-        mock_execute.side_effect = (None, None, [lsblk_output])
+        mock_execute.side_effect = ((None, ''), (None, ''), (lsblk_output, ''))
 
         root_part = partition_utils.get_partition(
             self.fake_dev, self.fake_root_uuid)

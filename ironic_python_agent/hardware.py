@@ -435,6 +435,8 @@ def md_get_raid_devices():
     :return: A python dict containing details about the discovered RAID
       devices
     """
+    # Note(Boushra): mdadm output is similar to lsblk, but not
+    # identical; do not use il_utils.parse_device_tags
     report = il_utils.execute('mdadm', '--examine', '--scan')[0]
     lines = report.splitlines()
     result = {}
