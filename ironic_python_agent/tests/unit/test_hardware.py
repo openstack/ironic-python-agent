@@ -5351,6 +5351,46 @@ class TestMultipathEnabled(base.IronicAgentTest):
         ])
 
     @mock.patch.object(os.path, 'isfile', autospec=True)
+    def test_enable_multipath_already_running(self,
+                                              mock_isfile,
+                                              mocked_execute):
+        mock_isfile.side_effect = [True, True]
+        mocked_execute.side_effect = [
+            ('', ''),
+            ('', ''),
+            (OSError),
+            ('', ''),
+        ]
+        self.assertTrue(hardware._enable_multipath())
+        self.assertEqual(4, mocked_execute.call_count)
+        mocked_execute.assert_has_calls([
+            mock.call('modprobe', 'dm_multipath'),
+            mock.call('modprobe', 'multipath'),
+            mock.call('multipathd'),
+            mock.call('multipath', '-ll'),
+        ])
+
+    @mock.patch.object(os.path, 'isfile', autospec=True)
+    def test_enable_multipath_ll_fails(self,
+                                       mock_isfile,
+                                       mocked_execute):
+        mock_isfile.side_effect = [True, True]
+        mocked_execute.side_effect = [
+            ('', ''),
+            ('', ''),
+            ('', ''),
+            (OSError),
+        ]
+        self.assertFalse(hardware._enable_multipath())
+        self.assertEqual(4, mocked_execute.call_count)
+        mocked_execute.assert_has_calls([
+            mock.call('modprobe', 'dm_multipath'),
+            mock.call('modprobe', 'multipath'),
+            mock.call('multipathd'),
+            mock.call('multipath', '-ll'),
+        ])
+
+    @mock.patch.object(os.path, 'isfile', autospec=True)
     def test_enable_multipath_mpathconf(self, mock_isfile, mocked_execute):
         mock_isfile.side_effect = [True, False]
         mocked_execute.side_effect = [
@@ -5387,13 +5427,15 @@ class TestMultipathEnabled(base.IronicAgentTest):
         ])
 
     @mock.patch.object(hardware, '_load_multipath_modules', autospec=True)
+    @mock.patch.object(il_utils, 'try_execute', autospec=True)
     def test_enable_multipath_not_found_mpath_config(self,
+                                                     mock_try_exec,
                                                      mock_modules,
                                                      mocked_execute):
-        mocked_execute.side_effect = FileNotFoundError()
+        mock_modules.side_effect = FileNotFoundError()
         self.assertFalse(hardware._enable_multipath())
-        self.assertEqual(1, mocked_execute.call_count)
         self.assertEqual(1, mock_modules.call_count)
+        self.assertEqual(0, mock_try_exec.call_count)
 
     @mock.patch.object(hardware, '_load_multipath_modules', autospec=True)
     def test_enable_multipath_lacking_support(self,

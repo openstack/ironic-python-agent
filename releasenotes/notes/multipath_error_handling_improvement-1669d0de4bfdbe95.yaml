@@ -1,0 +1,20 @@
+---
+fixes:
+  - |
+    The error handling of the multipathd service startup/discovery process.
+    IPA handles both scenario when the multipathd service is already started
+    and the scenario when the service has not been started and in the second
+    scenario IPA will try to start the service. IPA is not pre checking whether
+    multipathd is running already or not, it will start the multipathd service
+    even if it is already running and expects 0 error code . It has been
+    noticed that with certain combinations of Linux distros and multipathd
+    versions the error code is not 0 when IPA tries to start multipathd in
+    case an instance of multipathd is already running.
+    When the expected return code is not 0 an exception will be thrown and that
+    will cause the multipath device discovery to terminate prematurely and
+    if the selected root device is a multipath device then IPA won't be
+    able to provision.
+    This fix discards the exception that is caused by the non 0 error code
+    returned by the multipathd startup process. In case there is a genuine
+    issue with the multipath service, that would be caught when the actual
+    multipath device listing command is executed (multipath -ll).
