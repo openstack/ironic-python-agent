@@ -1,0 +1,27 @@
+---
+features:
+  - |
+    Introducing basic authentication and configurable authentication strategy
+    support for image and image checksum download processes. This feature
+    introduces 3 new variables that could be set (either via oslo.config or
+    image_info) to select the authentication strategy an provide credentials
+    for HTTP(S) basic authentication. The 3 variables are structured in way
+    that 1 of them 'image_server_auth_strategy' (string) provides the ability
+    to select between authentication strategies by specifying the name of
+    the strategy. Currently the only supported authentication strategy is the
+    'http-basic' which will make IPA use HTTP(S) basic authentication also
+    known as the 'RFC 7617' standard. The other 2 variables
+    'image_server_password' and 'image_server_user' provide username and
+    password credentials for image download processes. The
+    'image_server_password' and 'image_server_user' are not strategy specific
+    and could be reused  for any username + password based authentication
+    strategy, but for the moment these 2 variables are only used for the
+    'http-basic' strategy. 'image_server_basic_auth' not just enables the
+    feature but enforces checks on the values of the 2 related credentials.
+    When the 'http-basic' strategy is enabled for image server download
+    workflow the download logic will make sure to raise an exception in case
+    any of the credentials are None or an empty string. Values coming from
+    'image_info' are prioritized over values coming from the 'oslo.config'
+    framework and the 2 different credential source can't be mixed. Passing 1
+    or 2 out of the 3 from and source and the remaining values from an other
+    source will result in a exception.

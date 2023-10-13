@@ -47,6 +47,93 @@ def _image_location(image_info):
     return os.path.join(tempfile.gettempdir(), image_info['id'])
 
 
+def _verify_basic_auth_creds(user, password, image_id):
+    """Verify the basic auth credentials used for image download are present.
+
+    :param user: Basic auth username
+    :param password: Basic auth password
+    :param image_id: id of the image that is being acted upon
+
+    :raises ImageDownloadError if the credentials are not present
+    """
+    expected_creds = {'user': user, 'password': password}
+    missing_creds = []
+    for key, value in expected_creds.items():
+        if not value:
+            missing_creds.append(key)
+    if missing_creds:
+        raise errors.ImageDownloadError(
+            image_id,
+            "Missing {} fields from HTTP(S) "
+            "basic auth config".format(missing_creds)
+        )
+
+
+def _gen_auth_from_image_info_user_pass(image_info, image_id):
+    """This function is used to pass the credentials to the chosen
+
+       credential verifier and in case the verification is successful
+       generate the compatible authentication object that will be used
+       with the request(s). This function handles the authentication object
+       generation for authentication strategies that are username+password
+       based. Credentials are collected via image_info.
+
+    :param image_info: Image information dictionary.
+    :param image_id: id of the image that is being acted upon
+
+    :return: Authentication object used directly by the request library
+    :rtype: requests.auth.HTTPBasicAuth
+    """
+    image_server_user = None
+    image_server_password = None
+
+    if image_info.get('image_server_auth_strategy') == 'http_basic':
+        image_server_user = image_info.get('image_server_user')
+        image_server_password = image_info.get('image_server_password')
+        _verify_basic_auth_creds(
+            image_server_user,
+            image_server_password,
+            image_id
+        )
+    else:
+        return None
+
+    return requests.auth.HTTPBasicAuth(image_server_user,
+                                       image_server_password)
+
+
+def _gen_auth_from_oslo_conf_user_pass(image_id):
+    """This function is used to pass the credentials to the chosen
+
+       credential verifier and in case the verification is successful
+       generate the compatible authentication object that will be used
+       with the request(s). This function handles the authentication object
+       generation for authentication strategies that are username+password
+       based. Credentials are collected from the oslo.config framework.
+
+    :param image_id: id of the image that is being acted upon
+
+    :return: Authentication object used directly by the request library
+    :rtype: requests.auth.HTTPBasicAuth
+    """
+
+    image_server_user = None
+    image_server_password = None
+
+    if CONF.image_server_auth_strategy == 'http_basic':
+        _verify_basic_auth_creds(
+            CONF.image_server_user,
+            CONF.image_server_password,
+            image_id)
+        image_server_user = CONF.image_server_user
+        image_server_password = CONF.image_server_password
+    else:
+        return None
+
+    return requests.auth.HTTPBasicAuth(image_server_user,
+                                       image_server_password)
+
+
 def _download_with_proxy(image_info, url, image_id):
     """Opens a download stream for the given URL.
 
@@ -56,13 +143,31 @@ def _download_with_proxy(image_info, url, image_id):
 
     :raises: ImageDownloadError if the download stream was not started
              properly.
+
+    :return: HTTP(s) server response for the image/hash download request
+    :rtype: requests.Response
     """
+
     no_proxy = image_info.get('no_proxy')
     if no_proxy:
         os.environ['no_proxy'] = no_proxy
     proxies = image_info.get('proxies', {})
     verify, cert = utils.get_ssl_client_options(CONF)
     resp = None
+    image_download_attributes = {
+        "stream": True,
+        "proxies": proxies,
+        "verify": verify,
+        "cert": cert,
+        "timeout": CONF.image_download_connection_timeout
+    }
+    # NOTE(Adam) `image_info` is prioritized over `oslo.conf` for credential
+    # collection and auth strategy selection
+    auth_object = _gen_auth_from_image_info_user_pass(image_info, image_id)
+    if auth_object is None:
+        auth_object = _gen_auth_from_oslo_conf_user_pass(image_id)
+    if auth_object is not None:
+        image_download_attributes['auth'] = auth_object
     for attempt in range(CONF.image_download_connection_retries + 1):
         try:
             # NOTE(TheJulia) The get request below does the following:
@@ -78,9 +183,8 @@ def _download_with_proxy(image_info, url, image_id):
             # exactly just as the timeout value exists. The risk in transitory
             # failure is more so once we've started the download and we are
             # processing the incoming data.
-            resp = requests.get(url, stream=True, proxies=proxies,
-                                verify=verify, cert=cert,
-                                timeout=CONF.image_download_connection_timeout)
+            # B113 issue is covered is the image_download_attributs list
+            resp = requests.get(url, **image_download_attributes)  # nosec
             if resp.status_code != 200:
                 msg = ('Received status code {} from {}, expected 200. '
                        'Response body: {} Response headers: {}').format(

@@ -262,6 +262,31 @@ cli_opts = [
                help='Pre-shared token to use when working with the '
                     'ironic API. This value is typically supplied by '
                     'ironic automatically.'),
+    cfg.StrOpt('image_server_user',
+               default=None,
+               help='Pre-shared username used in Basic Auth process '
+                    'against the http(s) server that hosts the disk image.'
+                    'This variable can be also configured via image_info.'
+                    'Value coming from image_info takes precedence over'
+                    'value coming from command line or configuration file.'),
+    cfg.StrOpt('image_server_password',
+               default=None,
+               help='Pre-shared password used in Basic Auth process '
+                    'against the http(s) server that hosts the disk image.'
+                    'This variable can be also configured via image_info.'
+                    'Value coming from image_info takes precedence over'
+                    'value coming from command line or configuration file.'),
+    cfg.StrOpt('image_server_auth_strategy',
+               default="noauth",
+               help='Option to select authentication strategy used during'
+                    'communication with the server that hosts the disk images'
+                    'and related checksums. This option also turns'
+                    'image_server_password and image_server_user'
+                    'into mandatory variables for those authentication'
+                    'strategies that require username + password credentials.'
+                    'This variable can be also configured via image_info.'
+                    'Value coming from image_info takes precedence over'
+                    'value coming from command line or configuration file.'),
     cfg.BoolOpt('agent_token_required',
                 default=APARAMS.get('ipa-agent-token-required', False),
                 help='Control to enforce if API command requests should '
