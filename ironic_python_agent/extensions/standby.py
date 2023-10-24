@@ -887,45 +887,6 @@ class StandbyExtension(base.BaseAgentExtension):
         else:
             self.partition_uuids['root uuid'] = root_uuid
 
-    @base.async_command('cache_image', _validate_image_info)
-    def cache_image(self, image_info, force=False, configdrive=None):
-        """Asynchronously caches specified image to the local OS device.
-
-        :param image_info: Image information dictionary.
-        :param force: Optional. If True forces cache_image to download and
-                      cache image, even if the same image already exists on
-                      the local OS install device. Defaults to False.
-        :param configdrive: A string containing the location of the config
-                            drive as a URL OR the contents (as gzip/base64)
-                            of the configdrive. Optional, defaults to None.
-
-        :raises: ImageDownloadError if the image download fails for any reason.
-        :raises: ImageChecksumError if the downloaded image's checksum does not
-                  match the one reported in image_info.
-        :raises: ImageWriteError if writing the image fails.
-        """
-        LOG.debug('Caching image %s', image_info['id'])
-        device = hardware.dispatch_to_managers('get_os_install_device',
-                                               permit_refresh=True)
-
-        msg = 'image ({}) already present on device {} '
-
-        if self.cached_image_id != image_info['id'] or force:
-            LOG.debug('Already had %s cached, overwriting',
-                      self.cached_image_id)
-            # NOTE(dtantsur): backward compatibility
-            if configdrive is None:
-                configdrive = image_info.pop('configdrive', None)
-            self._cache_and_write_image(image_info, device, configdrive)
-            msg = 'image ({}) cached to device {} '
-
-        self._fix_up_partition_uuids(image_info, device)
-        result_msg = _message_format(msg, image_info, device,
-                                     self.partition_uuids)
-
-        LOG.info(result_msg)
-        return result_msg
-
     @base.async_command('prepare_image', _validate_image_info)
     def prepare_image(self, image_info, configdrive=None):
         """Asynchronously prepares specified image on local OS install device.

@@ -1,0 +1,5 @@
+deprecations:
+  - Removed the partial-implementation of image caching. This method was never
+    used by Ironic, and was a vestige of a feature which was never completed.
+    Image caching, if it were to be implemented today, would not use this
+    method anyway.

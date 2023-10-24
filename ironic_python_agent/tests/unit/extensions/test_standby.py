@@ -191,11 +191,6 @@ class TestStandbyExtension(base.IronicAgentTest):
                           standby._validate_image_info,
                           invalid_info)
 
-    def test_cache_image_invalid_image_list(self):
-        self.assertRaises(errors.InvalidCommandParamsError,
-                          self.agent_extension.cache_image,
-                          image_info={'foo': 'bar'})
-
     def test_image_location(self):
         image_info = _build_fake_image_info()
         location = standby._image_location(image_info)
@@ -841,124 +836,6 @@ class TestStandbyExtension(base.IronicAgentTest):
                                'unsupported-algorithm',
                                standby.ImageDownload,
                                image_info)
-
-    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
-                lambda dev: 'ROOT')
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
-                autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._write_image',
-                autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._download_image',
-                autospec=True)
-    def test_cache_image(self, download_mock, write_mock,
-                         dispatch_mock):
-        image_info = _build_fake_image_info()
-        download_mock.return_value = None
-        write_mock.return_value = None
-        dispatch_mock.return_value = 'manager'
-        async_result = self.agent_extension.cache_image(image_info=image_info)
-        async_result.join()
-        download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager', None)
-        dispatch_mock.assert_called_once_with('get_os_install_device',
-                                              permit_refresh=True)
-        self.assertEqual(image_info['id'],
-                         self.agent_extension.cached_image_id)
-        self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertIn('result', async_result.command_result)
-        cmd_result = ('cache_image: image ({}) cached to device {} '
-                      'root_uuid={}').format(image_info['id'], 'manager',
-                                             'ROOT')
-        self.assertEqual(cmd_result, async_result.command_result['result'])
-
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
-                autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._write_image',
-                autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._download_image',
-                autospec=True)
-    def test_cache_partition_image(self, download_mock, write_mock,
-                                   dispatch_mock):
-        image_info = _build_fake_partition_image_info()
-        download_mock.return_value = None
-        write_mock.return_value = {'root uuid': 'root_uuid'}
-        dispatch_mock.return_value = 'manager'
-        async_result = self.agent_extension.cache_image(
-            image_info=image_info, configdrive='configdrive_data')
-        async_result.join()
-        download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager',
-                                           'configdrive_data')
-        dispatch_mock.assert_called_once_with('get_os_install_device',
-                                              permit_refresh=True)
-        self.assertEqual(image_info['id'],
-                         self.agent_extension.cached_image_id)
-        self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertIn('result', async_result.command_result)
-        cmd_result = ('cache_image: image ({}) cached to device {} '
-                      'root_uuid={}').format(image_info['id'], 'manager',
-                                             'root_uuid')
-        self.assertEqual(cmd_result, async_result.command_result['result'])
-
-    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
-                lambda dev: 'ROOT')
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
-                autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._write_image',
-                autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._download_image',
-                autospec=True)
-    def test_cache_image_force(self, download_mock, write_mock,
-                               dispatch_mock):
-        image_info = _build_fake_image_info()
-        self.agent_extension.cached_image_id = image_info['id']
-        download_mock.return_value = None
-        write_mock.return_value = None
-        dispatch_mock.return_value = 'manager'
-        async_result = self.agent_extension.cache_image(
-            image_info=image_info, force=True
-        )
-        async_result.join()
-        download_mock.assert_called_once_with(image_info)
-        write_mock.assert_called_once_with(image_info, 'manager', None)
-        dispatch_mock.assert_called_once_with('get_os_install_device',
-                                              permit_refresh=True)
-        self.assertEqual(image_info['id'],
-                         self.agent_extension.cached_image_id)
-        self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertIn('result', async_result.command_result)
-        cmd_result = ('cache_image: image ({}) cached to device {} '
-                      'root_uuid=ROOT').format(image_info['id'], 'manager')
-        self.assertEqual(cmd_result, async_result.command_result['result'])
-
-    @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
-                lambda dev: 'ROOT')
-    @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
-                autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._write_image',
-                autospec=True)
-    @mock.patch('ironic_python_agent.extensions.standby._download_image',
-                autospec=True)
-    def test_cache_image_cached(self, download_mock, write_mock,
-                                dispatch_mock):
-        image_info = _build_fake_image_info()
-        self.agent_extension.cached_image_id = image_info['id']
-        download_mock.return_value = None
-        write_mock.return_value = None
-        dispatch_mock.return_value = 'manager'
-        async_result = self.agent_extension.cache_image(image_info=image_info)
-        async_result.join()
-        self.assertFalse(download_mock.called)
-        self.assertFalse(write_mock.called)
-        dispatch_mock.assert_called_once_with('get_os_install_device',
-                                              permit_refresh=True)
-        self.assertEqual(image_info['id'],
-                         self.agent_extension.cached_image_id)
-        self.assertEqual('SUCCEEDED', async_result.command_status)
-        self.assertIn('result', async_result.command_result)
-        cmd_result = ('cache_image: image ({}) already present on device {} '
-                      'root_uuid=ROOT').format(image_info['id'], 'manager')
-        self.assertEqual(cmd_result, async_result.command_result['result'])
 
     @mock.patch('ironic_lib.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
