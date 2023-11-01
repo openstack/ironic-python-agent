@@ -59,7 +59,7 @@ AGENT_PARAMS_CACHED = dict()
 
 
 LSBLK_COLUMNS = ['KNAME', 'MODEL', 'SIZE', 'ROTA',
-                 'TYPE', 'UUID', 'PARTUUID', 'SERIAL']
+                 'TYPE', 'UUID', 'PARTUUID', 'SERIAL', 'WWN']
 
 
 DEVICE_EXTRACTOR = re.compile(r'^(?:(.*\d)p|(.*\D))(?:\d+)$')
