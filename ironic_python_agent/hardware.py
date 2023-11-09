@@ -213,21 +213,25 @@ def _enable_multipath():
         # NOTE(TheJulia): Testing locally, a prior running multipathd, the
         # explicit multipathd start just appears to silently exit with a
         # result code of 0.
-        il_utils.execute('multipathd')
+        # NOTE(rozzix): This could cause an OS error:
+        # "process is already running failed to create pid file" depending on
+        # the multipathd version in case multipathd is already running.
+        # I suggest muting the OS error in addition to the execution error.
+        il_utils.try_execute('multipathd')
         # This is mainly to get the system to actually do the needful and
         # identify/enumerate paths by combining what it can detect and what
         # it already knows. This may be useful, and in theory this should be
         # logged in the IPA log should it be needed.
         il_utils.execute('multipath', '-ll')
-        return True
     except FileNotFoundError as e:
         LOG.warning('Attempted to determine if multipath tools were present. '
                     'Not detected. Error recorded: %s', e)
         return False
-    except processutils.ProcessExecutionError as e:
+    except (processutils.ProcessExecutionError, OSError) as e:
         LOG.warning('Attempted to invoke multipath utilities, but we '
                     'encountered an error: %s', e)
         return False
+    return True
 
 
 def _get_multipath_parent_device(device):
