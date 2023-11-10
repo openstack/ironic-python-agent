@@ -216,7 +216,8 @@ def _enable_multipath():
         # NOTE(rozzix): This could cause an OS error:
         # "process is already running failed to create pid file" depending on
         # the multipathd version in case multipathd is already running.
-        # I suggest muting the OS error in addition to the execution error.
+        # The safest way to start multipathd is to expect OS error in addition
+        # to the execution error and handle both as inconsequential.
         il_utils.try_execute('multipathd')
         # This is mainly to get the system to actually do the needful and
         # identify/enumerate paths by combining what it can detect and what
