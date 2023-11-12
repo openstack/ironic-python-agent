@@ -171,7 +171,7 @@ fields:
 
 ``cpu``
     CPU information: ``model_name``, ``frequency``, ``count``,
-    ``architecture`` and ``flags``.
+    ``architecture``, ``flags`` and ``socket_count``.
 
 ``memory``
     RAM information: ``total`` (total size in bytes), ``physical_mb``

@@ -871,6 +871,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                          cpus.model_name)
         self.assertEqual('2400.0000', cpus.frequency)
         self.assertEqual(4, cpus.count)
+        self.assertEqual(1, cpus.socket_count)
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual(['fpu', 'vme', 'de', 'pse'], cpus.flags)
 
@@ -884,6 +885,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                          cpus.model_name)
         self.assertEqual('1794.433', cpus.frequency)
         self.assertEqual(12, cpus.count)
+        self.assertEqual(1, cpus.socket_count)
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual(['fpu', 'vme', 'de', 'pse'], cpus.flags)
 
