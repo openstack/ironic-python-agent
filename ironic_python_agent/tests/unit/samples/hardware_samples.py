@@ -1764,7 +1764,7 @@ MULTIPATH_VALID_PATH = '%s is a valid multipath device path'
 MULTIPATH_INVALID_PATH = '%s is not a valid multipath device path'
 
 MULTIPATH_LINKS_DM = (
-    'SUPER_FRIENDLY_NAME %s ATA,INTEL SSDSC2CT06\n'
+    'SUPER_FRIENDLY_ NAME (12345) %s ATA, INTEL SSDSC2CT06\n'
     'size=56G features=\'1 retain_attached_hw_handler\' hwhandler=\'0\' wp=rw\n'  # noqa
     ' `-+- policy=\'service-time 0\' prio=1 status=active\n'
     '  `- 0:0:0:0 device s  8:0  active ready running\n'
