@@ -274,11 +274,15 @@ def _get_multipath_parent_device(device):
     # size=56G features='1 retain_attached_hw_handler' hwhandler='0' wp=rw
     # `-+- policy='service-time 0' prio=1 status=active
     #   `- 0:0:0:0 sda 8:0  active ready running
+    # Other format:
+    # mpathat (wwid/alias) device_name vendor,product
     try:
         lines = out.splitlines()
-        mpath_device = lines[0].split(' ')[1]
-        # give back something like dm-0 so we can log it.
-        return mpath_device
+        mpath_device_out = lines[0].split(' ')
+        for mpath_device in mpath_device_out:
+            if mpath_device.startswith("dm"):
+                # give back something like dm-0 so we can log it.
+                return mpath_device
     except IndexError:
         # We didn't get any command output, so Nope.
         pass

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix the logic to detect the right parent device for a given multipath
+    device.
