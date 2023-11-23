@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    The Nvidia Mellanox "clean steps" to facilitate firmware updates of
+    their network devices, are now available as deploy steps and service
+    steps as well.

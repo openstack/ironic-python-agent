@@ -77,6 +77,10 @@ class MlnxHardwareManager(base.IronicAgentTest):
              'step': 'update_nvidia_nic_firmware_settings'}]
         self.assertEqual(self.hardware.get_clean_steps(self.node, []),
                          expected_clean_steps)
+        self.assertEqual(self.hardware.get_service_steps(self.node, []),
+                         expected_clean_steps)
+        self.assertEqual(self.hardware.get_deploy_steps(self.node, []),
+                         expected_clean_steps)
 
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
