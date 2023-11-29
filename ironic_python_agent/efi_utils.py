@@ -267,13 +267,16 @@ def _get_efi_bootloaders(location):
 
 # NOTE(TheJulia): regex used to identify entries in the efibootmgr
 # output on stdout.
-_ENTRY_LABEL = re.compile(r'Boot([0-9a-f-A-F]+)\*?\s(.*).*$')
+_ENTRY_LABEL = re.compile(
+    r'Boot([0-9a-f-A-F]+)\*?\s+(.*?)\s+'
+    r'((BBS|HD|FvFile|FvVol|PciRoot|VenMsg|VenHw|UsbClass)\(.*)$')
 
 
 def get_boot_records():
     """Executes efibootmgr and returns boot records.
 
-    :return: an iterator yielding pairs (boot number, boot record).
+    :return: An iterator yielding tuples
+             (boot number, boot record, root device type, device path).
     """
     # Invokes binary=True so we get a bytestream back.
     efi_output = utils.execute('efibootmgr', '-v', binary=True)
@@ -286,7 +289,7 @@ def get_boot_records():
     for line in cmd_output.split('\n'):
         match = _ENTRY_LABEL.match(line)
         if match is not None:
-            yield (match[1], match[2])
+            yield (match[1], match[2], match[4], match[3])
 
 
 def add_boot_record(device, efi_partition, loader, label):
@@ -358,11 +361,11 @@ def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
                 label = label + " " + str(label_suffix)
 
         # Iterate through standard out, and look for duplicates
-        for boot_num, boot_rec in boot_records:
+        for boot_num, boot_rec, boot_type, boot_details in boot_records:
             # Look for the base label in the string if a line match
             # occurs, so we can identify if we need to eliminate the
             # entry.
-            if label in boot_rec:
+            if label == boot_rec:
                 LOG.debug("Found bootnum %s matching label", boot_num)
                 remove_boot_record(boot_num)
 
