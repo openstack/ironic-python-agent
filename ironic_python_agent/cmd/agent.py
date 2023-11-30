@@ -30,9 +30,8 @@ def run():
     """Entrypoint for IronicPythonAgent."""
     # NOTE(dtantsur): this must happen very early of the files from
     # /etc/ironic-python-agent.d won't be loaded
-    vmedia_configuration = utils.copy_config_from_vmedia()
-    if vmedia_configuration:
-        utils.trigger_glean_network_refresh()
+    utils.copy_config_from_vmedia()
+
     log.register_options(CONF)
     CONF(args=sys.argv[1:])
     # Debug option comes from oslo.log, allow overriding it via kernel cmdline

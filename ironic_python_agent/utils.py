@@ -21,7 +21,6 @@ import glob
 import io
 import json
 import os
-import platform
 import re
 import shutil
 import subprocess
@@ -34,7 +33,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import units
-import psutil
 import requests
 import tenacity
 
@@ -128,7 +126,6 @@ def _find_vmedia_device_by_labels(labels):
     for device in ironic_utils.parse_device_tags(lsblk_output):
         for label in labels:
             if label.upper() == device['LABEL'].upper():
-                _early_log('Found vmedia candidate %s', device['KNAME'])
                 candidates.append(device['KNAME'])
 
     for candidate in candidates:
@@ -213,21 +210,13 @@ def _copy_config_from(path):
             msg = ("Unable to copy vmedia configuration %s to %s: %s"
                    % (src, dest, exc))
             raise errors.VirtualMediaBootError(msg)
-        network_data_path = os.path.join(
-            path, 'openstack/latest/network_data.json')
-        if os.path.isfile(network_data_path):
-            dest_path = '/etc/ironic-python-agent%s' % ext
-            _early_log('Copying network_data.json to %s', dest_path)
-            os.makedirs(dest_path, exist_ok=True)
-            shutil.copy(network_data_path, os.path.join(dest_path,
-                                                        'network_data.json'))
 
 
 def _find_mount_point(device):
     try:
         path, _e = execute('findmnt', '-n', '-oTARGET', device)
-    except (processutils.ProcessExecutionError, OSError):
-        return None
+    except processutils.ProcessExecutionError:
+        return
     else:
         return path.strip()
 
@@ -244,7 +233,6 @@ def _check_vmedia_device(vmedia_device_file):
               valid.
     """
     try:
-        _early_log('Checking device %s vmedia status.', vmedia_device_file)
         output, _e = execute('lsblk', '-n', '-s', '-P', '-b',
                              '-oKNAME,TRAN,TYPE,SIZE',
                              vmedia_device_file)
@@ -255,8 +243,6 @@ def _check_vmedia_device(vmedia_device_file):
     try:
         for device in ironic_utils.parse_device_tags(output):
             if device['TYPE'] == 'part':
-                # This would exclude any existing configuration drive written
-                # by ironic previously.
                 _early_log('Excluding device %s from virtual media'
                            'consideration as it is a partition.',
                            device['KNAME'])
@@ -267,7 +253,7 @@ def _check_vmedia_device(vmedia_device_file):
                 # registered for the scsi transport and thus type used.
                 # This will most likely be a qemu driven testing VM,
                 # or an older machine where SCSI transport is directly
-                # used to convey in a virtual media device.
+                # used to convey in a virtual
                 return True
             if device['TYPE'] == 'disk' and device['TRAN'] == 'usb':
                 # We know from experience on HPE machines, with ilo4/5, we see
@@ -320,9 +306,6 @@ def copy_config_from_vmedia():
     """Copies any configuration from a virtual media device.
 
     Copies files under /etc/ironic-python-agent and /etc/ironic-python-agent.d.
-
-    :returns: True when we successfully copied content from the virtual media
-              device. Otherwise None.
     """
     vmedia_device_file = _find_vmedia_device_by_labels(
         ['config-2', 'vmedia_boot_iso'])
@@ -336,84 +319,10 @@ def copy_config_from_vmedia():
     # Determine the device
     mounted = _find_mount_point(vmedia_device_file)
     if mounted:
-        # Unmount if already mounted by something like glean/cloud init.
-        execute("umount", mounted, run_as_root=True)
-    with ironic_utils.mounted(vmedia_device_file) as vmedia_mount_point:
-        _copy_config_from(vmedia_mount_point)
-
-    # Finally, check mount and ensure unmounted before proceeding.
-    # NOTE(TheJulia): This is a reserved path by convention for configuration
-    # drive handling. Since you *can* stack multiple devices, we need to make
-    # sure no other tooling left anything in an unclean state.
-    while os.path.ismount("/mnt/config"):
-        try:
-            execute("umount", "/mnt/config", run_as_root=True)
-            _early_log("Sucessfully unmounted /mnt/config as an orphaned "
-                       "source of configuration.")
-        except (OSError, processutils.ProcessExecutionError):
-            _early_log("We failed to umount /mnt/config. This may be fatal "
-                       "if virtual media is in use for configuration.")
-            return False
-    return True
-
-
-def _determine_networking_path():
-    os_ver = platform.uname().version.lower()
-    if 'tinycore' in os_ver:
-        # Compact CI oriented IPA Image.
-        return 'tinycore'
-    if True in ['networkd' in x.name().lower()
-                for x in psutil.process_iter(['name'])]:
-        # Basically, this would be Ubuntu AFAIK.
-        return 'networkd'
+        _copy_config_from(mounted)
     else:
-        # This is fairly safe to assume at this point.
-        return 'networkmanager'
-
-
-def trigger_glean_network_refresh():
-    """Trigger procesing and refresh of network configuration."""
-
-    # NOTE(TheJulia): Ironic explicitly doesn't support cloud-init
-    # as the consumer of this information in ramdisks. This stance
-    # may change in the future, but as of the beginning of the
-    # Caracal development cycle, cloud-init is uninstalled
-    # by ironic-python-agent-builder.
-    glean_read_path = '/mnt/config/openstack/latest/'
-    # NOTE(TheJulia) Exist_okay because we might end up re-triggering down
-    # this path if the agent restarts due to a transient failure.
-    os.makedirs(glean_read_path, exist_ok=True)
-    backup_copy = '/etc/ironic-python-agent.d/network_data.json'
-    network_data = os.path.join(glean_read_path, 'network_data.json')
-    shutil.copy(backup_copy, network_data)
-
-    _early_log('Working to apply network configuration refresh.')
-    network_type = _determine_networking_path()
-    # TODO(TheJulia): Check if python-glean is even in the $PATH.
-    # Two uniform actions, run glean, then restart all networking.
-    try:
-        if network_type == 'networkmanager':
-            # network manager present
-            execute('glean', '--use-nm', run_as_root=True)
-            try:
-                execute('systemctl', 'restart', 'NetworkManager',
-                        run_as_root=True)
-            except Exception:
-                # Inconsistent naming across distributions.
-                execute('systemctl', 'restart', 'NetworkManager.service',
-                        run_as_root=True)
-        if network_type == 'networkd':
-            execute('glean', '--distro', 'networkd', run_as_root=True)
-            execute('systemctl', 'restart', 'systemd-networkd.service',
-                    run_as_root=True)
-        if network_type == 'tinycore':
-            execute('glean', '--distro', 'tinycore', run_as_root=True)
-            # While a shell script, glean doesn't set this file to
-            # be executable once it writes it.
-            execute('/bin/sh', '/opt/network.sh', run_as_root=True)
-    except Exception as e:
-        _early_log('Unable to execute configuration refresh for '
-                   'configuration drive data. Error: %s' % e)
+        with ironic_utils.mounted(vmedia_device_file) as vmedia_mount_point:
+            _copy_config_from(vmedia_mount_point)
 
 
 def _get_cached_params():
