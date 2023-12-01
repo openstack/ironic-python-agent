@@ -204,6 +204,34 @@ class TestCallInspector(base.IronicAgentTest):
                           data, failures)
         self.assertEqual(5, mock_post.call_count)
 
+    @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
+    @mock.patch.object(inspector, '_RETRY_ATTEMPTS', 3)
+    def test_inspector_retries_on_50X_error(self, mock_post):
+        mock_post.side_effect = [mock.Mock(status_code=500),
+                                 mock.Mock(status_code=501),
+                                 mock.Mock(status_code=502)]
+        failures = utils.AccumulatedFailures()
+        data = collections.OrderedDict(data=42)
+        self.assertRaises(requests.exceptions.HTTPError,
+                          inspector.call_inspector,
+                          data, failures)
+        self.assertEqual(3, mock_post.call_count)
+
+    @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
+    @mock.patch.object(inspector, '_RETRY_ATTEMPTS', 2)
+    def test_inspector_retry_on_50X_and_succeed(self, mock_post):
+        mock_post.side_effect = [mock.Mock(status_code=503),
+                                 mock.Mock(status_code=200)]
+
+        failures = utils.AccumulatedFailures()
+        data = collections.OrderedDict(data=42)
+        inspector.call_inspector(data, failures)
+        self.assertEqual(2, mock_post.call_count)
+        mock_post.assert_called_with('url',
+                                     cert=None, verify=True,
+                                     data='{"data": 42, "error": null}',
+                                     timeout=30)
+
 
 class BaseDiscoverTest(base.IronicAgentTest):
     def setUp(self):
