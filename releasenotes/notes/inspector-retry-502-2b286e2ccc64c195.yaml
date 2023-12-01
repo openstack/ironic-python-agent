@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes the post data to inspector to retry in 50X errors.

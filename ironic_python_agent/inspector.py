@@ -134,15 +134,20 @@ def call_inspector(data, failures):
 
     @tenacity.retry(
         retry=tenacity.retry_if_exception_type(
-            requests.exceptions.ConnectionError),
+            (requests.exceptions.ConnectionError,
+             requests.exceptions.HTTPError)),
         stop=tenacity.stop_after_attempt(_RETRY_ATTEMPTS),
-        wait=tenacity.wait_fixed(_RETRY_WAIT),
+        wait=tenacity.wait_exponential(multiplier=1.5,
+                                       min=_RETRY_WAIT, max=30),
         reraise=True)
     def _post_to_inspector():
-        return requests.post(
+        inspector_resp = requests.post(
             CONF.inspection_callback_url, data=data,
-            verify=verify, cert=cert,
-            timeout=CONF.http_request_timeout)
+            verify=verify, cert=cert, timeout=CONF.http_request_timeout)
+        if inspector_resp.status_code >= 500:
+            raise requests.exceptions.HTTPError(response=inspector_resp)
+
+        return inspector_resp
 
     resp = _post_to_inspector()
     if resp.status_code >= 400:
