@@ -2926,7 +2926,7 @@ class GenericHardwareManager(HardwareManager):
             except processutils.ProcessExecutionError as e:
                 LOG.warning('Failed to remove superblock from'
                             '%(device)s: %(err)s',
-                            {'device': raid_device.name, 'err': e})
+                            {'device': blk.name, 'err': e})
 
         # Erase all partition tables we created
         all_holder_disks_uniq = list(
