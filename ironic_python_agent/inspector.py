@@ -125,7 +125,6 @@ def call_inspector(data, failures):
     """Post data to inspector."""
     data['error'] = failures.get_error()
 
-    LOG.info('posting collected data to %s', CONF.inspection_callback_url)
     LOG.debug('collected data: %s',
               {k: v for k, v in data.items() if k not in _NO_LOGGING_FIELDS})
 
@@ -140,6 +139,8 @@ def call_inspector(data, failures):
     if CONF.global_request_id:
         headers["X-OpenStack-Request-ID"] = CONF.global_request_id
 
+    urls = list(filter(None, CONF.inspection_callback_url.split(',')))
+
     @tenacity.retry(
         retry=tenacity.retry_if_exception_type(
             (requests.exceptions.ConnectionError,
@@ -149,9 +150,21 @@ def call_inspector(data, failures):
                                        min=_RETRY_WAIT, max=_RETRY_WAIT_MAX),
         reraise=True)
     def _post_to_inspector():
-        inspector_resp = requests.post(
-            CONF.inspection_callback_url, data=data, headers=headers,
-            verify=verify, cert=cert, timeout=CONF.http_request_timeout)
+        for url in urls:
+            LOG.info('Posting collected data to %s', url)
+            try:
+                inspector_resp = requests.post(
+                    url, data=data, headers=headers,
+                    verify=verify, cert=cert,
+                    timeout=CONF.http_request_timeout)
+            except requests.exceptions.ConnectionError as exc:
+                if url == urls[-1]:
+                    raise
+                LOG.warning("Connection error when accessing %s, trying the "
+                            "next URL. Error: %s", url, exc)
+            else:
+                break
+
         if inspector_resp.status_code >= 500:
             raise requests.exceptions.HTTPError(response=inspector_resp)
 

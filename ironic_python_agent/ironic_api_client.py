@@ -39,6 +39,12 @@ AGENT_VERIFY_CA_IRONIC_VERSION = (1, 68)
 # versions to ensure that we send the highest version we know about.
 MAX_KNOWN_VERSION = AGENT_VERIFY_CA_IRONIC_VERSION
 
+CONNECT_EXCEPTIONS = (requests.exceptions.Timeout,
+                      requests.exceptions.ConnectTimeout,
+                      requests.exceptions.ConnectionError,
+                      requests.exceptions.ReadTimeout,
+                      requests.exceptions.HTTPError)
+
 
 class APIClient(object):
     api_version = 'v1'
@@ -48,8 +54,10 @@ class APIClient(object):
     agent_token = None
     lookup_lock_pause = 0
 
-    def __init__(self, api_url):
-        self.api_url = api_url.rstrip('/')
+    def __init__(self, api_urls):
+        if isinstance(api_urls, str):
+            api_urls = [api_urls]
+        self.api_urls = [url.rstrip('/') for url in api_urls]
 
         # Only keep alive a maximum of 2 connections to the API. More will be
         # opened if they are needed, but they will be closed immediately after
@@ -57,12 +65,12 @@ class APIClient(object):
         adapter = requests.adapters.HTTPAdapter(pool_connections=2,
                                                 pool_maxsize=2)
         self.session = requests.Session()
-        self.session.mount(self.api_url, adapter)
+        self.session.mount('https://', adapter)
+        self.session.mount('http://', adapter)
 
         self.encoder = encoding.RESTJSONEncoder()
 
     def _request(self, method, path, data=None, headers=None, **kwargs):
-        request_url = '{api_url}{path}'.format(api_url=self.api_url, path=path)
 
         if data is not None:
             data = self.encoder.encode(data)
@@ -76,14 +84,27 @@ class APIClient(object):
             headers["X-OpenStack-Request-ID"] = CONF.global_request_id
 
         verify, cert = utils.get_ssl_client_options(CONF)
-        return self.session.request(method,
-                                    request_url,
-                                    headers=headers,
-                                    data=data,
-                                    verify=verify,
-                                    cert=cert,
-                                    timeout=CONF.http_request_timeout,
-                                    **kwargs)
+        for idx, api_url in enumerate(self.api_urls):
+            request_url = f'{api_url}{path}'
+            try:
+                resp = self.session.request(method,
+                                            request_url,
+                                            headers=headers,
+                                            data=data,
+                                            verify=verify,
+                                            cert=cert,
+                                            timeout=CONF.http_request_timeout,
+                                            **kwargs)
+                # Make sure the working URL is on the top, so that the next
+                # time we start from it. Also allows us to log self.api_urls[0]
+                # as the currently used URL.
+                self.api_urls = self.api_urls[idx:] + self.api_urls[:idx]
+                return resp
+            except CONNECT_EXCEPTIONS as exc:
+                if idx == len(self.api_urls) - 1:
+                    raise
+                LOG.warning("Connection error when accessing %s, trying the "
+                            "next URL. Error: %s", request_url, exc)
 
     def _get_ironic_api_version_header(self, version=None):
         if version is None:
@@ -204,21 +225,18 @@ class APIClient(object):
             params['node_uuid'] = node_uuid
 
         LOG.debug('Looking up node with addresses %r and UUID %s at %s',
-                  params['addresses'], node_uuid, self.api_url)
+                  params['addresses'], node_uuid, self.api_urls)
 
         try:
             response = self._request(
                 'GET', self.lookup_api,
                 headers=self._get_ironic_api_version_header(),
                 params=params)
-        except (requests.exceptions.Timeout,
-                requests.exceptions.ConnectTimeout,
-                requests.exceptions.ConnectionError,
-                requests.exceptions.ReadTimeout,
-                requests.exceptions.HTTPError) as err:
+        except CONNECT_EXCEPTIONS as err:
+            # Report the last URL, there are warnings for the rest already
             LOG.warning(
                 'Error detected while attempting to perform lookup '
-                'with %s, retrying. Error: %s', self.api_url, err
+                'with %s, retrying. Error: %s', self.api_urls[-1], err
             )
             return False
         except Exception as err:
@@ -229,7 +247,7 @@ class APIClient(object):
             # To be clear, we're going to try to provide as much detail as
             # possible in the exit handling
             msg = ('Unhandled error looking up node with addresses {} at '
-                   '{}: {}'.format(params['addresses'], self.api_url, err))
+                   '{}: {}'.format(params['addresses'], self.api_urls, err))
             # No matter what we do at this point, IPA is going to exit.
             # This is because we don't know why the exception occurred and
             # we likely should not try to retry as such.
@@ -272,7 +290,7 @@ class APIClient(object):
             LOG.warning(
                 'Failed looking up node with addresses %r at %s. '
                 'Check if inspection has completed? %s',
-                params['addresses'], self.api_url,
+                params['addresses'], self.api_urls[0],
                 self._error_from_response(response)
             )
             return False
@@ -288,7 +306,7 @@ class APIClient(object):
             LOG.warning(
                 'Got invalid node data in response to query for node '
                 'with addresses %r from %s: %s',
-                params['addresses'], self.api_url, content,
+                params['addresses'], self.api_urls[0], content,
             )
             return False
 

@@ -30,11 +30,13 @@ cli_opts = [
     cfg.StrOpt('api_url',
                default=APARAMS.get('ipa-api-url'),
                regex='^(mdns|http(s?):\\/\\/.+)',
-               help='URL of the Ironic API. '
+               help='URL(s) of the Ironic API. '
                     'Can be supplied as "ipa-api-url" kernel parameter.'
-                    'The value must start with either http:// or https://. '
+                    'The value(s) must start with either http:// or https://. '
                     'A special value "mdns" can be specified to fetch the '
-                    'URL using multicast DNS service discovery.'),
+                    'URL using multicast DNS service discovery. If several '
+                    'URLs are provided, all of them are tried until one '
+                    'does not return a connection error.'),
 
     cfg.StrOpt('global_request_id',
                default=APARAMS.get('ipa-global-request-id'),
@@ -155,9 +157,8 @@ cli_opts = [
 
     cfg.StrOpt('inspection_callback_url',
                default=APARAMS.get('ipa-inspection-callback-url'),
-               help='Endpoint of ironic-inspector. If set, hardware inventory '
-                    'will be collected and sent to ironic-inspector '
-                    'on start up. '
+               help='Endpoint(s) to send inspection data to. If set, hardware '
+                    'inventory will be collected and sent there on start up. '
                     'A special value "mdns" can be specified to fetch the '
                     'URL using multicast DNS service discovery. '
                     'Can be supplied as "ipa-inspection-callback-url" '

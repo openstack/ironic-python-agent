@@ -340,6 +340,16 @@ class TestBaseIronicPythonAgent(base.IronicAgentTest):
                                uuid='meow',
                                advertise_address=('192.0.2.1', '9999'))
 
+    def test_heartbeat_requests_several_urls(self):
+        self.api_client.api_urls = ['2001:db8::1', '192.0.2.1']
+        self.api_client.session.request = mock.Mock()
+        self.api_client.session.request.side_effect = [
+            requests.exceptions.ConnectionError,
+            FakeResponse(status_code=202),
+        ]
+        self.api_client.heartbeat(uuid='meow',
+                                  advertise_address=('192.0.2.1', '9999'))
+
     @mock.patch('time.sleep', autospec=True)
     @mock.patch('ironic_python_agent.ironic_api_client.APIClient._do_lookup',
                 autospec=True)

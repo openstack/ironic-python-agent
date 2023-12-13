@@ -1065,7 +1065,7 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         self.assertFalse(mock_gethostbyname.called)
 
     def test_route_with_ip(self, mock_exec, mock_gethostbyname):
-        self.agent.api_url = 'http://1.2.1.2:8081/v1'
+        self.agent.api_urls = ['http://1.2.1.2:8081/v1']
         mock_gethostbyname.side_effect = socket.gaierror()
         mock_exec.return_value = (
             """1.2.1.2 via 192.168.122.1 dev eth0  src 192.168.122.56
@@ -1081,7 +1081,7 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         mock_gethostbyname.assert_called_once_with('1.2.1.2')
 
     def test_route_with_ipv6(self, mock_exec, mock_gethostbyname):
-        self.agent.api_url = 'http://[fc00:1111::1]:8081/v1'
+        self.agent.api_urls = ['http://[fc00:1111::1]:8081/v1']
         mock_gethostbyname.side_effect = socket.gaierror()
         mock_exec.return_value = (
             """fc00:101::1 dev br-ctlplane  src fc00:101::4  metric 0
@@ -1136,6 +1136,46 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         mock_sleep.assert_called_with(10)
         self.assertEqual(3, mock_exec.call_count)
         self.assertEqual(2, mock_sleep.call_count)
+
+    @mock.patch.object(time, 'sleep', autospec=True)
+    def test_route_several_urls_and_retries(self, mock_sleep, mock_exec,
+                                            mock_gethostbyname):
+        mock_gethostbyname.side_effect = lambda x: x
+        self.agent.api_urls = ['http://[fc00:1111::1]:8081/v1',
+                               'http://1.2.1.2:8081/v1']
+        mock_exec.side_effect = [
+            processutils.ProcessExecutionError('boom'),
+            (
+                "Error: some error text",
+                ""
+            ),
+            processutils.ProcessExecutionError('boom'),
+            (
+                """1.2.1.2 via 192.168.122.1 dev eth0  src 192.168.122.56
+                    cache """,
+                ""
+            )
+        ]
+
+        self.agent.set_agent_advertise_addr()
+
+        self.assertEqual(('192.168.122.56', 9990),
+                         self.agent.advertise_address)
+        mock_exec.assert_has_calls([
+            mock.call('ip', 'route', 'get', 'fc00:1111::1'),
+            mock.call('ip', 'route', 'get', '1.2.1.2'),
+            mock.call('ip', 'route', 'get', 'fc00:1111::1'),
+            mock.call('ip', 'route', 'get', '1.2.1.2'),
+        ])
+        mock_gethostbyname.assert_has_calls([
+            mock.call('fc00:1111::1'),
+            mock.call('1.2.1.2'),
+        ])
+        mock_sleep.assert_called_with(10)
+        self.assertEqual(4, mock_exec.call_count)
+        # Both URLs are handled in a single attempt, so only one sleep here
+        self.assertEqual(1, mock_sleep.call_count)
+        self.assertEqual(2, mock_gethostbyname.call_count)
 
     @mock.patch.object(time, 'sleep', autospec=True)
     def test_route_failed(self, mock_sleep, mock_exec, mock_gethostbyname):
@@ -1225,3 +1265,12 @@ class TestBaseAgentVMediaToken(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
         self.assertEqual('1' * 128, self.agent.agent_token)
         self.assertEqual('1' * 128, self.agent.api_client.agent_token)
+
+
+class TestFromConfig(ironic_agent_base.IronicAgentTest):
+
+    def test_override_urls(self):
+        urls = ['http://[fc00:1111::1]:8081/v1', 'http://1.2.1.2:8081/v1']
+        CONF.set_override('api_url', ','.join(urls))
+        ag = agent.IronicPythonAgent.from_config(CONF)
+        self.assertEqual(urls, ag.api_urls)

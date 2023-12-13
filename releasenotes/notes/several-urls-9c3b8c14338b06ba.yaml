@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Supports several comma-separated URLs for ``ipa-api-url`` and
+    ``ipa-inspection-callback-url``. The URLs are probed in the provided
+    order until one does not return a connection error. The primary use case
+    it to support deploying nodes with only one IP stack from an Ironic
+    installation that has both stacks.
