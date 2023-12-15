@@ -75,7 +75,10 @@ are used to do this.
 
 dynamic-login element example::
 
-  Generate a ENCRYPTED_PASSWORD with the openssl passwd -1 command
+  Generate a ENCRYPTED_PASSWORD with following command:
+  .. code-block:: console
+    openssl passwd -1 -stdin | sed 's/\$/\$\$/g'
+
   Add rootpwd="$ENCRYPTED_PASSWORD" value on the kernel_append_params setting in /etc/ironic/ironic.conf
   Restart the ironic-conductor with the command service ironic-conductor restart
 
