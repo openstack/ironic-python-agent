@@ -64,8 +64,8 @@ Access via console
 If you need to use console access, passwords must be enabled there are a
 couple ways to enable this depending on how the IPA image was created:
 
-ironic-python-agent-builder
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ironic-python-agent-builder: dynamic-login
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Users wishing to use password access can be add the dynamic-login [0]_ or the
 devuser element [1]_
 
@@ -73,20 +73,40 @@ The dynamic-login element allows the operator to change the root password
 dynamically when the image boots. Kernel command line parameters
 are used to do this.
 
-dynamic-login element example::
+Generate a password hash with following command:
 
-  Generate a ENCRYPTED_PASSWORD with following command:
-  .. code-block:: console
-    openssl passwd -1 -stdin | sed 's/\$/\$\$/g'
+.. code-block:: console
 
-  Add rootpwd="$ENCRYPTED_PASSWORD" value on the kernel_append_params setting in /etc/ironic/ironic.conf
-  Restart the ironic-conductor with the command service ironic-conductor restart
+    $ openssl passwd -1 -stdin | sed 's/\$/\$\$/g'
 
-Users can also be added to DIB built IPA images with the devuser element [1]_
+Add ``rootpwd="<openssl output>"`` value on the ``kernel_append_params``
+setting in the Ironic configuration file (``/etc/ironic/ironic.conf``).
+Restart the ironic-conductor e.g. with
 
-Install ``ironic-python-agent-builder`` following the guide [2]_
+.. code-block:: console
 
-Example::
+   $ sudo systemctl restart ironic-conductor
+
+Alternatively, you can use the contents of the SSH public key.
+
+.. warning::
+
+   * The ``sed`` command is used to escape the ``$`` symbols in the
+     configuration file.
+
+   * The quotation marks around the value are mandatory.
+
+   * Only 1 password or 1 SSH key is supported.
+
+ironic-python-agent-builder: devuser
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Users can also be added to DIB built IPA images with the devuser element [1]_.
+Install ``ironic-python-agent-builder`` following the guide [2]_.
+
+Example:
+
+.. code-block:: bash
 
   export DIB_DEV_USER_USERNAME=username
   export DIB_DEV_USER_PWDLESS_SUDO=yes
