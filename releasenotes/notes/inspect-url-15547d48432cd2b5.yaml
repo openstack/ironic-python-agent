@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    When the new Ironic built-in inspection is used,
+    ``ipa-inspection-callback-url`` can now be automatically derived from
+    ``ipa-api-url``. In this case, inspection will be enabled if the
+    ``ipa-inspection-collectors`` option is set.
+upgrade:
+  - |
+    If you currently set the ``ipa-inspection-collectors`` option without
+    setting ``ipa-inspection-callback-url``, it will now cause inspection
+    to run. Update your boot configuration to only supply the collectors
+    when inspection is desired.

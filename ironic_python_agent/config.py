@@ -23,7 +23,7 @@ CONF = cfg.CONF
 
 APARAMS = utils.get_agent_params()
 
-INSPECTION_DEFAULT_COLLECTOR = 'default,logs'
+INSPECTION_DEFAULT_COLLECTORS = 'default,logs'
 INSPECTION_DEFAULT_DHCP_WAIT_TIMEOUT = 60
 
 cli_opts = [
@@ -162,16 +162,17 @@ cli_opts = [
                     'A special value "mdns" can be specified to fetch the '
                     'URL using multicast DNS service discovery. '
                     'Can be supplied as "ipa-inspection-callback-url" '
-                    'kernel parameter.'),
+                    'kernel parameter. If the URL is not provided but '
+                    'inspection_collectors is not empty, the URL is detected '
+                    'from api_url.'),
 
     cfg.StrOpt('inspection_collectors',
-               default=APARAMS.get('ipa-inspection-collectors',
-                                   INSPECTION_DEFAULT_COLLECTOR),
+               default=APARAMS.get('ipa-inspection-collectors'),
                help='Comma-separated list of plugins providing additional '
-                    'hardware data for inspection, empty value gives '
-                    'a minimum required set of plugins. '
+                    'hardware data for inspection. The default are %s. '
                     'Can be supplied as "ipa-inspection-collectors" '
-                    'kernel parameter.'),
+                    'kernel parameter.'
+                    % INSPECTION_DEFAULT_COLLECTORS),
 
     cfg.IntOpt('inspection_dhcp_wait_timeout',
                min=0,
