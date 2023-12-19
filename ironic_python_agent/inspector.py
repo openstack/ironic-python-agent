@@ -117,6 +117,7 @@ def inspect():
 
 
 _RETRY_WAIT = 5
+_RETRY_WAIT_MAX = 30
 _RETRY_ATTEMPTS = 5
 
 
@@ -138,7 +139,7 @@ def call_inspector(data, failures):
              requests.exceptions.HTTPError)),
         stop=tenacity.stop_after_attempt(_RETRY_ATTEMPTS),
         wait=tenacity.wait_exponential(multiplier=1.5,
-                                       min=_RETRY_WAIT, max=30),
+                                       min=_RETRY_WAIT, max=_RETRY_WAIT_MAX),
         reraise=True)
     def _post_to_inspector():
         inspector_resp = requests.post(
