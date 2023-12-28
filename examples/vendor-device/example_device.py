@@ -22,7 +22,7 @@ LOG = log.getLogger()
 # All the helper methods should be kept outside of the HardwareManager
 # so they'll never get accidentally called by dispatch_to_managers()
 def _initialize_hardware():
-    """Example method for initalizing hardware."""
+    """Example method for initializing hardware."""
     # Perform any operations here that are required to initialize your
     # hardware.
     LOG.debug('Loading drivers, settling udevs, and generally initalizing')
@@ -64,7 +64,7 @@ class ExampleDeviceHardwareManager(hardware.HardwareManager):
         """Declare level of hardware support provided.
 
         Since this example covers a case of supporting a specific device,
-        this method is where you would do anything needed to initalize that
+        this method is where you would do anything needed to initialize that
         device, including loading drivers, and then detect if one exists.
 
         In some cases, if you expect the hardware to be available on any node

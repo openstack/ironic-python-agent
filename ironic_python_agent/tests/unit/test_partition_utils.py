@@ -1501,7 +1501,7 @@ class TestConfigDriveTestRecovery(base.IronicAgentTest):
         mock_mkfs.side_effect = processutils.ProcessExecutionError('boom')
         self.assertRaisesRegex(
             exception.InstanceDeployFailure,
-            'A failure occured while attempting to format.*',
+            'A failure occurred while attempting to format.*',
             partition_utils._try_build_fat32_config_drive,
             self.fake_dev,
             self.configdrive_file)

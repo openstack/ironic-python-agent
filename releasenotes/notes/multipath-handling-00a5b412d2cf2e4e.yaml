@@ -7,7 +7,7 @@ fixes:
     to handle and account for multipaths based upon the MPIO data available.
     This requires the ``multipath`` and ``multipathd`` utility to be present
     in the ramdisk. These are supplied by the ``device-mapper-multipath`` or
-    ``multipath-tools`` packages, and are not requried for the agent's use.
+    ``multipath-tools`` packages, and are not required for the agent's use.
   - |
     Fixes non-ideal behavior when performing cleaning where Active/Active
     MPIO devices would ultimately be cleaned once per IO path, instead of

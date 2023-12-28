@@ -12,7 +12,7 @@ deprecations:
     as of January 2019, CoreOS:
 
     1) Current CoreOS images require 2GB of RAM to operate.
-    As a result of the RAM requirement, it is problematic for continious
+    As a result of the RAM requirement, it is problematic for continuous
     integration testing to occur with the CoreOS based Ironic-Python-Agent
     image in OpenStack testing infrastructure.
 

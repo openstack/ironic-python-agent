@@ -293,7 +293,7 @@ class TestServiceExtension(base.IronicAgentTest):
             ports=self.ports, service_version=self.version)
         async_result.join()
         # NOTE(TheJulia): This remains CLEAN_VERSION_MISMATCH for backwards
-        # compatability with base.py and API consumers.
+        # compatibility with base.py and API consumers.
         self.assertEqual('CLEAN_VERSION_MISMATCH',
                          async_result.command_status)
 

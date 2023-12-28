@@ -415,7 +415,7 @@ def _get_algorithm_by_length(checksum):
 
     :param checksum: The requested checksum.
     :returns: A hashlib object based upon the checksum
-              or ValueError if the algorthm could not be
+              or ValueError if the algorithm could not be
               identified.
     """
     # NOTE(TheJulia): This is all based on SHA-2 lengths.
@@ -462,7 +462,7 @@ class ImageDownload(object):
     def __init__(self, image_info, time_obj=None):
         """Initialize an instance of the ImageDownload class.
 
-        Trys each URL in image_info successively until a URL returns a
+        Tries each URL in image_info successively until a URL returns a
         successful request code. Once the object is initialized, the user may
         retrieve chunks of the image through the standard python iterator
         interface until either the image is fully downloaded, or an error is
@@ -500,7 +500,7 @@ class ImageDownload(object):
                 image_info)
             retrieved_checksum = True
             if not algo:
-                # Override algorithm not suppied as os_hash_algo
+                # Override algorithm not supplied as os_hash_algo
                 self._hash_algo = _get_algorithm_by_length(
                     self._expected_hash_value)
         elif checksum:
@@ -510,7 +510,7 @@ class ImageDownload(object):
 
                 if not new_algo:
                     # Realistically, this should never happen, but for
-                    # compatability...
+                    # compatibility...
                     # TODO(TheJulia): Remove for a 2024 release.
                     self._hash_algo = hashlib.new('md5')  # nosec
                 else:
@@ -676,7 +676,7 @@ def _download_image(image_info):
     totaltime = time.time() - starttime
     LOG.info("Image downloaded from %(image_location)s "
              "in %(totaltime)s seconds. Transferred %(size)s bytes. "
-             "Server originaly reported: %(reported)s.",
+             "Server originally reported: %(reported)s.",
              {'image_location': image_location,
               'totaltime': totaltime,
               'size': image_download.bytes_transferred,
@@ -854,7 +854,7 @@ class StandbyExtension(base.BaseAgentExtension):
 
         totaltime = time.time() - starttime
         LOG.info("Image streamed onto device %(device)s in %(totaltime)s "
-                 "seconds for %(size)s bytes. Server originaly reported "
+                 "seconds for %(size)s bytes. Server originally reported "
                  "%(reported)s.",
                  {'device': device, 'totaltime': totaltime,
                   'size': image_download.bytes_transferred,

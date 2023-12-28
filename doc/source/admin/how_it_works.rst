@@ -245,7 +245,7 @@ We also support determining the checksum by length.
 
 The field can be utilized to designate:
 
-* A URL to retreive a checksum from.
+* A URL to retrieve a checksum from.
 * MD5 (Disabled by default, see ``[DEFAULT]md5_enabled`` in the agent
   configuration file.)
 * SHA-2 based SHA256

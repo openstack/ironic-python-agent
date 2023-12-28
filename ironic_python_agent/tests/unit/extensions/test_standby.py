@@ -523,7 +523,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                              'checksum': 'fake-checksum'}),
             mock.call.info('Image downloaded from %(image_location)s in '
                            '%(totaltime)s seconds. Transferred %(size)s '
-                           'bytes. Server originaly reported: %(reported)s.',
+                           'bytes. Server originally reported: %(reported)s.',
                            {'image_location': mock.ANY,
                             'totaltime': mock.ANY,
                             'size': 11,
@@ -1401,7 +1401,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                              'checksum': 'fake-checksum'}),
             mock.call.info('Image streamed onto device %(device)s in '
                            '%(totaltime)s seconds for %(size)s bytes. '
-                           'Server originaly reported %(reported)s.',
+                           'Server originally reported %(reported)s.',
                            {'device': '/dev/foo',
                             'totaltime': mock.ANY,
                             'size': 11,

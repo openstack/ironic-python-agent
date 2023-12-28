@@ -39,7 +39,7 @@ Upon success, it returns following data in response::
 
 If successful, this synchronous command will:
 
-1. Write the salted and crypted ``rescue_password`` to
+1. Write the salted and encrypted ``rescue_password`` to
    ``/etc/ipa-rescue-config/ipa-rescue-password`` in the chroot or filesystem
    that ironic-python-agent is running in.
 

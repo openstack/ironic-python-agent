@@ -147,7 +147,7 @@ to be used.
 
 .. NOTE::
    The Ironic Developers chose to limit the items available for service steps
-   such that the risk of data distruction is generally minimized.
+   such that the risk of data destruction is generally minimized.
    That being said, it could be reasonable to reconfigure RAID devices through
    local hardware managers *or* to write the base OS image as part of a
    service operation. As such, caution should be taken, and if additional data
@@ -160,7 +160,7 @@ Cleaning safeguards
 -------------------
 
 The stock hardware manager contains a number of safeguards to prevent
-unsafe conditions from occuring.
+unsafe conditions from occurring.
 
 Devices Skip List
 ~~~~~~~~~~~~~~~~~

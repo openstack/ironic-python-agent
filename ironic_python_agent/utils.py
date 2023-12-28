@@ -224,7 +224,7 @@ def _find_mount_point(device):
 def _check_vmedia_device(vmedia_device_file):
     """Check if a virtual media device appears valid.
 
-    Explicitly ignores partitions, actual disks, and other itmes that
+    Explicitly ignores partitions, actual disks, and other items that
     seem unlikely to be virtual media based items being provided
     into the running operating system via a BMC.
 
@@ -622,7 +622,7 @@ def _parse_capabilities_str(cap_str):
     """Extract capabilities from string.
 
     :param cap_str: string meant to meet key1:value1,key2:value2 format
-    :return: a dictionnary
+    :return: a dictionary
     """
     LOG.debug("Parsing capability string %s", cap_str)
     capabilities = {}
@@ -689,7 +689,7 @@ def get_node_boot_mode(node):
     'instance_info/capabilities' of node. Otherwise it directly look for boot
     mode hints into
 
-    :param node: dictionnary.
+    :param node: dictionary.
     :returns: 'bios' or 'uefi'
     """
     instance_info = node.get('instance_info', {})
@@ -697,7 +697,7 @@ def get_node_boot_mode(node):
     node_caps = parse_capabilities(node.get('properties', {}))
 
     if _is_secure_boot(instance_info_caps, node_caps):
-        LOG.debug('Deploy boot mode is implicitely uefi for because secure '
+        LOG.debug('Deploy boot mode is implicitly uefi because secure '
                   'boot is activated.')
         return 'uefi'
 
@@ -770,7 +770,7 @@ def determine_time_method():
 
     :returns: "ntpdate" if ntpdate has been found, "chrony" if chrony
               was located, and None if neither are located. If both tools
-              are present, "chrony" will supercede "ntpdate".
+              are present, "chrony" will supersede "ntpdate".
     """
     try:
         execute('chronyd', '-h')
