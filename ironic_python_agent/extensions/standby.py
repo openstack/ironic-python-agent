@@ -706,7 +706,7 @@ def _validate_image_info(ext, image_info=None, **kwargs):
             msg = 'Image is missing \'{}\' field.'.format(field)
             raise errors.InvalidCommandParamsError(msg)
 
-    if type(image_info['urls']) != list or not image_info['urls']:
+    if not isinstance(image_info['urls'], list) or not image_info['urls']:
         raise errors.InvalidCommandParamsError(
             'Image \'urls\' must be a list with at least one element.')
 
