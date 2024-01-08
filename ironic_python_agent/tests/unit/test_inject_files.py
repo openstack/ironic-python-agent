@@ -228,7 +228,7 @@ class TestInjectOne(base.IronicAgentTest):
         with open(self.path, 'rb') as fp:
             self.assertEqual(b'content', fp.read())
         self.assertEqual(0o602, stat.S_IMODE(os.stat(self.path).st_mode))
-        # Exising directories do not change their permissions
+        # Existing directories do not change their permissions
         self.assertNotEqual(0o703, stat.S_IMODE(os.stat(self.dirpath).st_mode))
 
         mock_find_and_mount.assert_called_once_with(fl['path'], None,

@@ -350,7 +350,7 @@ class ClockSyncError(RESTError):
 
 
 class HeartbeatConnectionError(IronicAPIError):
-    """Transitory connection failure occured attempting to contact the API."""
+    """Transitory connection failure occurred attempting to contact the API."""
 
     message = ("Error attempting to heartbeat - Possible transitory network "
                "failure or blocking port may be present.")

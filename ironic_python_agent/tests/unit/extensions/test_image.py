@@ -389,7 +389,7 @@ Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
         # NOTE(TheJulia): This test string was derived from a lenovo SR650
         # which does do some weird things with additional entries.
-        # most notabley
+        # most notably
         stdout_msg = """
 BootCurrent: 0000
 Timeout: 1 seconds

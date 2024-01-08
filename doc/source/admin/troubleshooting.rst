@@ -189,7 +189,8 @@ Cleaning halted with ProtectedDeviceError
 
 The IPA service has halted cleaning as one of the block devices within or
 attached to the bare metal node contains a class of filesystem which **MAY**
-cause irreparable harm to a potentially running cluster if accidently removed.
+cause irreparable harm to a potentially running cluster if accidentally
+removed.
 
 These filesystems *may* be used for only local storage and as a result be
 safe to erase. However if a shared block device is in use, such as a device

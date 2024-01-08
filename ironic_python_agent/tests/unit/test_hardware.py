@@ -3951,7 +3951,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             [device1, device2, device3],
             [device1, device2, device3]]
 
-        # pre-creation validation fails as insufficent number of devices found
+        # pre-creation validation fails as insufficient number of devices found
         error_regex = ("Software RAID configuration is not possible for "
                        "RAID level 6 with only 3 block devices found.")
 

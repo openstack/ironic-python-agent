@@ -464,7 +464,7 @@ class TestBurnin(base.IronicAgentTest):
 
         # we are the first node to enter, so no other host
         # initially until the second one appears after some
-        # interations
+        # iterations
         mock_coordinator.get_members.side_effect = \
             [Members(), Members([b'host1']), Members([b'host1']),
              Members([b'host1']), Members([b'host1', b'host2'])]

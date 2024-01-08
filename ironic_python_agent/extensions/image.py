@@ -137,7 +137,7 @@ def _mount_partition(partition, path):
             # NOTE(TheJulia): It seems in some cases,
             # the python os.path.ismount can return False
             # even *if* it is actually mounted. This appears
-            # to be becasue it tries to rely on inode on device
+            # to be because it tries to rely on inode on device
             # logic, yet the rules are sometimes different inside
             # ramdisks. So lets check the error first.
             if 'already mounted' not in e:
@@ -436,13 +436,12 @@ def _try_preserve_efi_assets(device, path,
                              efi_partition_mount_point):
     """Attempt to preserve UEFI boot assets.
 
-    :param device: The device upon which wich to try to preserve
-                   assets.
+    :param device: The device upon which to try to preserve assets.
     :param path: The path in which the filesystem is already mounted
                  which we should examine to preserve assets from.
     :param efi_system_part_uuid: The partition ID representing the
                                  created EFI system partition.
-    :param efi_partition: The partitions upon wich to write the preserved
+    :param efi_partition: The partitions upon which to write the preserved
                           assets to.
     :param efi_partition_mount_point: The folder at which to mount
                                       the assets for the process of
@@ -450,7 +449,7 @@ def _try_preserve_efi_assets(device, path,
 
     :returns: True if assets have been preserved, otherwise False.
               None is the result of this method if a failure has
-              occured.
+              occurred.
     """
     efi_assets_folder = efi_partition_mount_point + '/EFI'
     if os.path.exists(efi_assets_folder):
@@ -459,7 +458,7 @@ def _try_preserve_efi_assets(device, path,
         # True from _preserve_efi_assets to correspond with success or
         # failure in this action.
         # NOTE(TheJulia): Still makes sense to invoke grub-install as
-        # fragmentation of grub has occured.
+        # fragmentation of grub has occurred.
         if (os.path.exists(os.path.join(path, 'usr/sbin/grub2-install'))
             or os.path.exists(os.path.join(path, 'usr/sbin/grub-install'))):
             _configure_grub(device, path)
@@ -592,7 +591,7 @@ def _preserve_efi_assets(path, efi_assets_folder, efi_partition,
     :param efi_assets_folder: The folder where we can find the
                               UEFI assets required for booting.
     :param efi_partition: The partition upon which to write the
-                          perserved assets to.
+                          preserved assets to.
     :param efi_partition_mount_point: The folder at which to mount
                                       the assets for the process of
                                       preservation.
@@ -629,7 +628,7 @@ def _preserve_efi_assets(path, efi_assets_folder, efi_partition,
         # NOTE(TheJulia): By saving the default, this file should be created.
         # this appears to what diskimage-builder does.
         # if the file is just a file, then we'll need to copy it. If it is
-        # anything else like a link, we're good. This behaivor is inconsistent
+        # anything else like a link, we're good. This behavior is inconsistent
         # depending on packager install scripts for grub.
         if os.path.isfile(grub2_env_file):
             LOG.debug('Detected grub environment file %s, will attempt '
@@ -685,7 +684,7 @@ class ImageExtension(base.BaseAgentExtension):
             Used only for booting ppc64* partition images locally. In this
             scenario the bootloader will be installed here.
         :param target_boot_mode: bios, uefi. Only taken into account
-            for softraid, when no efi partition is explicitely provided
+            for softraid, when no efi partition is explicitly provided
             (happens for whole disk images)
         :raises: CommandExecutionError if the installation of the
                  bootloader fails.

@@ -703,7 +703,7 @@ def list_all_block_devices(block_type='disk',
 
 
 def save_api_client(client=None, timeout=None, interval=None):
-    """Preserves access to the API client for potential later re-use."""
+    """Preserves access to the API client for potential later reuse."""
     global API_CLIENT, API_LOOKUP_TIMEOUT, API_LOOKUP_INTERVAL
 
     if client and timeout and interval and not API_CLIENT:
@@ -713,7 +713,7 @@ def save_api_client(client=None, timeout=None, interval=None):
 
 
 def update_cached_node():
-    """Attmepts to update the node cache via the API"""
+    """Attempts to update the node cache via the API"""
     cached_node = get_cached_node()
     if API_CLIENT:
         LOG.info('Agent is requesting to perform an explicit node cache '
@@ -1165,7 +1165,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
            'interface': the name of the driver interface that should execute
                         the step.
            'step': the HardwareManager function to call.
-           'priority': the order steps will be run in if excuted upon
+           'priority': the order steps will be run in if executed upon
                        similar to automated cleaning or deployment.
                        In service steps, the order comes from the user request,
                        but this similarity is kept for consistency should we
@@ -2296,7 +2296,7 @@ class GenericHardwareManager(HardwareManager):
 
         :return: IPv6 address of lan channel or ::/0 in case none of them is
                  configured properly. May return None value if it cannot
-                 interract with system tools or critical error occurs.
+                 interact with system tools or critical error occurs.
         """
         null_address_re = re.compile(r'^::(/\d{1,3})*$')
 
@@ -2313,9 +2313,9 @@ class GenericHardwareManager(HardwareManager):
             #       dynamic_addr and static_addr commands is a valid yaml.
             try:
                 out = yaml.safe_load(out.strip())
-            except yaml.YAMLError as excpt:
+            except yaml.YAMLError as ex:
                 LOG.warning('Cannot process output of "%(cmd)s" '
-                            'command: %(e)s', {'cmd': cmd, 'e': excpt})
+                            'command: %(e)s', {'cmd': cmd, 'e': ex})
                 return
 
             for addr_dict in out.values():
@@ -2498,8 +2498,8 @@ class GenericHardwareManager(HardwareManager):
                 'reboot_requested': False,
                 'abortable': True
             },
-            # NOTE(TheJulia): Burnin disk is explicilty not carried in this
-            # list because it would be distructive to data on a disk.
+            # NOTE(TheJulia): Burnin disk is explicitly not carried in this
+            # list because it would be destructive to data on a disk.
             # If someone needs to do that, the machine should be
             # unprovisioned.
             {
@@ -3420,16 +3420,16 @@ def get_multipath_status():
 def safety_check_block_device(node, device):
     """Performs safety checking of a block device before destroying.
 
-    In order to guard against distruction of file systems such as
+    In order to guard against destruction of file systems such as
     shared-disk file systems
     (https://en.wikipedia.org/wiki/Clustered_file_system#SHARED-DISK)
     or similar filesystems where multiple distinct computers may have
     unlocked concurrent IO access to the entire block device or
     SAN Logical Unit Number, we need to evaluate, and block cleaning
-    from occuring on these filesystems *unless* we have been explicitly
+    from occurring on these filesystems *unless* we have been explicitly
     configured to do so.
 
-    This is because cleaning is an intentionally distructive operation,
+    This is because cleaning is an intentionally destructive operation,
     and once started against such a device, given the complexities of
     shared disk clustered filesystems where concurrent access is a design
     element, in all likelihood the entire cluster can be negatively
@@ -3487,7 +3487,7 @@ def safety_check_block_device(node, device):
 def _check_for_special_partitions_filesystems(device, ids, fs_types):
     """Compare supplied IDs, Types to known items, and raise if found.
 
-    :param device: The block device in use, specificially for logging.
+    :param device: The block device in use, specifically for logging.
     :param ids: A list above IDs found to check.
     :param fs_types: A list of FS types found to check.
     :raises: ProtectedDeviceError should a partition label or metadata

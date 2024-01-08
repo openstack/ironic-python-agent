@@ -231,10 +231,10 @@ class APIClient(object):
             msg = ('Unhandled error looking up node with addresses {} at '
                    '{}: {}'.format(params['addresses'], self.api_url, err))
             # No matter what we do at this point, IPA is going to exit.
-            # This is because we don't know why the exception occured and
+            # This is because we don't know why the exception occurred and
             # we likely should not try to retry as such.
             # We will attempt to provide as much detail to the logs as
-            # possible as to what occured, although depending on the logging
+            # possible as to what occurred, although depending on the logging
             # subsystem, additional errors can occur, thus the additional
             # handling below.
             try:
@@ -242,7 +242,7 @@ class APIClient(object):
                 return False
             except Exception as exc_err:
                 LOG.error(msg)
-                exc_msg = ('Unexpected exception occured while trying to '
+                exc_msg = ('Unexpected exception occurred while trying to '
                            'log additional detail. Error: {}'.format(exc_err))
                 LOG.error(exc_msg)
                 raise errors.LookupNodeError(msg)

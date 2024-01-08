@@ -562,7 +562,7 @@ def _try_build_fat32_config_drive(partition, confdrive_file):
         # config drive, nor could we recover the state.
         LOG.error('We were unable to make a new filesystem for the '
                   'configuration drive. Error: %s', e)
-        msg = ('A failure occured while attempting to format, copy, and '
+        msg = ('A failure occurred while attempting to format, copy, and '
                're-create the configuration drive in a structure which '
                'is compatible with the underlying hardware and Operating '
                'System. Due to the nature of configuration drive, it could '

@@ -101,7 +101,7 @@ class IronicInspection(threading.Thread):
                                        self.max_delay)
                     except Exception as e:
                         # General failure such as requests ConnectionError
-                        LOG.error('Error occured attempting to connect to '
+                        LOG.error('Error occurred attempting to connect to '
                                   'connect to the introspection service. '
                                   'Error: %(err)s',
                                   {'err': e})

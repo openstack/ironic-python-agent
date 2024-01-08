@@ -128,7 +128,7 @@ def calc_raid_partition_sectors(psize, start):
 
     the unit of measure, compatible with parted.
     :param psize: size of the raid partition
-    :param start: start sector of the raid partion in integer format
+    :param start: start sector of the raid partition in integer format
     :return: start and end sector in parted compatible format, end sector
         as integer
     """

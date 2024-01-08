@@ -165,7 +165,7 @@ BLK_INCOMPLETE_DEVICE_TEMPLATE_SMALL = """
 # NOTE(dszumski): We include some partitions here to verify that
 # they are filtered out when not requested. It is assumed that
 # ROTA has been set to 0 on some software RAID devices for testing
-# purposes. In practice is appears to inherit from the underyling
+# purposes. In practice is appears to inherit from the underlying
 # devices, so in this example it would normally be 1.
 RAID_BLK_DEVICE_TEMPLATE = ("""
 {
