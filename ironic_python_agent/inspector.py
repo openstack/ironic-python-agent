@@ -133,6 +133,13 @@ def call_inspector(data, failures):
     data = encoder.encode(data)
     verify, cert = utils.get_ssl_client_options(CONF)
 
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    if CONF.global_request_id:
+        headers["X-OpenStack-Request-ID"] = CONF.global_request_id
+
     @tenacity.retry(
         retry=tenacity.retry_if_exception_type(
             (requests.exceptions.ConnectionError,
@@ -143,7 +150,7 @@ def call_inspector(data, failures):
         reraise=True)
     def _post_to_inspector():
         inspector_resp = requests.post(
-            CONF.inspection_callback_url, data=data,
+            CONF.inspection_callback_url, data=data, headers=headers,
             verify=verify, cert=cert, timeout=CONF.http_request_timeout)
         if inspector_resp.status_code >= 500:
             raise requests.exceptions.HTTPError(response=inspector_resp)
