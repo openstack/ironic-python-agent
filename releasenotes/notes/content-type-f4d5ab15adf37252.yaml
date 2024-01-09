@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes missing ``Content-Type`` header when sending inspection data back
+    to ironic-inspector or ironic. While ironic-inspector tolerates the
+    missing header, it may cause issues with the new inspection implementation.

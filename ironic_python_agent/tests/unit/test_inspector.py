@@ -161,10 +161,12 @@ class TestCallInspector(base.IronicAgentTest):
 
         res = inspector.call_inspector(data, failures)
 
-        mock_post.assert_called_once_with('url',
-                                          cert=None, verify=True,
-                                          data='{"data": 42, "error": null}',
-                                          timeout=30)
+        mock_post.assert_called_once_with(
+            'url', data='{"data": 42, "error": null}',
+            cert=None, verify=True,
+            headers={'Content-Type': 'application/json',
+                     'Accept': 'application/json'},
+            timeout=30)
         self.assertEqual(mock_post.return_value.json.return_value, res)
 
     def test_send_failure(self, mock_post):
@@ -178,6 +180,7 @@ class TestCallInspector(base.IronicAgentTest):
         mock_post.assert_called_once_with('url',
                                           cert=None, verify=True,
                                           data='{"data": 42, "error": "boom"}',
+                                          headers=mock.ANY,
                                           timeout=30)
         self.assertEqual(mock_post.return_value.json.return_value, res)
 
@@ -191,6 +194,7 @@ class TestCallInspector(base.IronicAgentTest):
         mock_post.assert_called_once_with('url',
                                           cert=None, verify=True,
                                           data='{"data": 42, "error": null}',
+                                          headers=mock.ANY,
                                           timeout=30)
         self.assertIsNone(res)
 
@@ -230,6 +234,7 @@ class TestCallInspector(base.IronicAgentTest):
         mock_post.assert_called_with('url',
                                      cert=None, verify=True,
                                      data='{"data": 42, "error": null}',
+                                     headers=mock.ANY,
                                      timeout=30)
 
 
