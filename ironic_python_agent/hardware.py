@@ -1043,6 +1043,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         hardware_info['system_vendor'] = self.get_system_vendor_info()
         hardware_info['boot'] = self.get_boot_info()
         hardware_info['hostname'] = netutils.get_hostname()
+        hardware_info['test'] = "Hello World"
 
         try:
             hardware_info['bmc_mac'] = self.get_bmc_mac()
