@@ -154,10 +154,10 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         except Exception as exc:
             if isinstance(exc, errors.HeartbeatConflictError):
                 LOG.warning('conflict error sending heartbeat to %s',
-                            self.agent.api_url)
+                            self.agent.api_urls)
             else:
                 LOG.exception('error sending heartbeat to %s',
-                              self.agent.api_url)
+                              self.agent.api_urls)
             self.interval = _with_jitter(self.min_heartbeat_interval,
                                          self.min_error_jitter_multiplier,
                                          self.max_error_jitter_multiplier)
@@ -183,6 +183,23 @@ class IronicPythonAgentHeartbeater(threading.Thread):
 class IronicPythonAgent(base.ExecuteCommandMixin):
     """Class for base agent functionality."""
 
+    @classmethod
+    def from_config(cls, conf):
+        return cls(conf.api_url,
+                   Host(hostname=conf.advertise_host,
+                        port=conf.advertise_port),
+                   Host(hostname=conf.listen_host,
+                        port=conf.listen_port),
+                   conf.ip_lookup_attempts,
+                   conf.ip_lookup_sleep,
+                   conf.network_interface,
+                   conf.lookup_timeout,
+                   conf.lookup_interval,
+                   False,
+                   conf.agent_token,
+                   conf.hardware_initialization_delay,
+                   conf.advertise_protocol)
+
     def __init__(self, api_url, advertise_address, listen_address,
                  ip_lookup_attempts, ip_lookup_sleep, network_interface,
                  lookup_timeout, lookup_interval, standalone, agent_token,
@@ -192,12 +209,11 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             LOG.warning("Only one of 'keyfile' and 'certfile' options is "
                         "defined in config file. Its value will be ignored.")
         self.ext_mgr = base.init_ext_manager(self)
-        self.api_url = api_url
-        if (not self.api_url or self.api_url == 'mdns') and not standalone:
+        if (not api_url or api_url == 'mdns') and not standalone:
             try:
-                self.api_url, params = mdns.get_endpoint('baremetal')
+                api_url, params = mdns.get_endpoint('baremetal')
             except lib_exc.ServiceLookupFailure:
-                if self.api_url:
+                if api_url:
                     # mDNS explicitly requested, report failure.
                     raise
                 else:
@@ -207,9 +223,12 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                                 'will not heartbeat')
             else:
                 config.override(params)
-
-        if self.api_url:
-            self.api_client = ironic_api_client.APIClient(self.api_url)
+        if api_url:
+            self.api_urls = list(filter(None, api_url.split(',')))
+        else:
+            self.api_urls = None
+        if self.api_urls:
+            self.api_client = ironic_api_client.APIClient(self.api_urls)
             self.heartbeater = IronicPythonAgentHeartbeater(self)
         self.listen_address = listen_address
         self.advertise_address = advertise_address
@@ -293,6 +312,25 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         return source
 
+    def _find_routable_addr(self):
+        ips = []
+        for api_url in self.api_urls:
+            ironic_host = urlparse.urlparse(api_url).hostname
+            # Try resolving it in case it's not an IP address
+            try:
+                ironic_host = socket.gethostbyname(ironic_host)
+            except socket.gaierror:
+                LOG.debug('Could not resolve %s, maybe no DNS', ironic_host)
+            ips.append(ironic_host)
+
+        for attempt in range(self.ip_lookup_attempts):
+            for ironic_host in ips:
+                found_ip = self._get_route_source(ironic_host)
+                if found_ip:
+                    return found_ip
+
+            time.sleep(self.ip_lookup_sleep)
+
     def set_agent_advertise_addr(self):
         """Set advertised IP address for the agent, if not already set.
 
@@ -311,20 +349,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             found_ip = hardware.dispatch_to_managers('get_ipv4_addr',
                                                      self.network_interface)
         else:
-            url = urlparse.urlparse(self.api_url)
-            ironic_host = url.hostname
-            # Try resolving it in case it's not an IP address
-            try:
-                ironic_host = socket.gethostbyname(ironic_host)
-            except socket.gaierror:
-                LOG.debug('Count not resolve %s, maybe no DNS', ironic_host)
-
-            for attempt in range(self.ip_lookup_attempts):
-                found_ip = self._get_route_source(ironic_host)
-                if found_ip:
-                    break
-
-                time.sleep(self.ip_lookup_sleep)
+            found_ip = self._find_routable_addr()
 
         if found_ip:
             self.advertise_address = Host(hostname=found_ip,
@@ -397,7 +422,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             LOG.debug('Automated TLS is disabled')
             return None, None
 
-        if not self.api_url or not self.api_client.supports_auto_tls():
+        if not self.api_urls or not self.api_client.supports_auto_tls():
             LOG.warning('Ironic does not support automated TLS')
             return None, None
 
@@ -415,7 +440,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         """Serve the API until an extension terminates it."""
         cert_file, key_file = self._start_auto_tls()
         self.api.start(cert_file, key_file)
-        if not self.standalone and self.api_url:
+        if not self.standalone and self.api_urls:
             # Don't start heartbeating until the server is listening
             self.heartbeater.start()
         try:
@@ -509,7 +534,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                 except errors.InspectionError as e:
                     LOG.error('Failed to perform inspection: %s', e)
 
-            if self.api_url:
+            if self.api_urls:
                 content = self.api_client.lookup_node(
                     hardware_info=hardware.list_hardware_info(use_cache=True),
                     timeout=self.lookup_timeout,
@@ -534,5 +559,5 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         self.serve_ipa_api()
 
-        if not self.standalone and self.api_url:
+        if not self.standalone and self.api_urls:
             self.heartbeater.stop()

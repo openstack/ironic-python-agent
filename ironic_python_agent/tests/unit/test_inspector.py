@@ -211,6 +211,28 @@ class TestCallInspector(base.IronicAgentTest):
 
     @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
     @mock.patch.object(inspector, '_RETRY_WAIT_MAX', 1)
+    def test_inspector_several_urls(self, mock_post):
+        CONF.set_override('inspection_callback_url', 'url1,url2')
+        mock_post.side_effect = [
+            requests.exceptions.ConnectionError,
+            requests.exceptions.ConnectionError,
+            mock.Mock(status_code=200),
+        ]
+        failures = utils.AccumulatedFailures()
+        data = collections.OrderedDict(data=42)
+        inspector.call_inspector(data, failures)
+        self.assertEqual(3, mock_post.call_count)
+        mock_post.assert_has_calls([
+            mock.call('url1', cert=None, verify=True, headers=mock.ANY,
+                      data='{"data": 42, "error": null}', timeout=30),
+            mock.call('url2', cert=None, verify=True, headers=mock.ANY,
+                      data='{"data": 42, "error": null}', timeout=30),
+            mock.call('url1', cert=None, verify=True, headers=mock.ANY,
+                      data='{"data": 42, "error": null}', timeout=30),
+        ])
+
+    @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
+    @mock.patch.object(inspector, '_RETRY_WAIT_MAX', 1)
     @mock.patch.object(inspector, '_RETRY_ATTEMPTS', 3)
     def test_inspector_retries_on_50X_error(self, mock_post):
         mock_post.side_effect = [mock.Mock(status_code=500),

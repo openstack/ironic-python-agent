@@ -47,17 +47,4 @@ def run():
     logger.debug("Configuration:")
     CONF.log_opt_values(logger, log.DEBUG)
     utils.log_early_log_to_logger()
-    agent.IronicPythonAgent(CONF.api_url,
-                            agent.Host(hostname=CONF.advertise_host,
-                                       port=CONF.advertise_port),
-                            agent.Host(hostname=CONF.listen_host,
-                                       port=CONF.listen_port),
-                            CONF.ip_lookup_attempts,
-                            CONF.ip_lookup_sleep,
-                            CONF.network_interface,
-                            CONF.lookup_timeout,
-                            CONF.lookup_interval,
-                            False,
-                            CONF.agent_token,
-                            CONF.hardware_initialization_delay,
-                            CONF.advertise_protocol).run()
+    agent.IronicPythonAgent.from_config(CONF).run()
