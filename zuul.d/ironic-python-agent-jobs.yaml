@@ -169,3 +169,10 @@
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 1024
+
+- job:
+    name: ipa-tox-codespell
+    parent: openstack-tox
+    timeout: 7200
+    vars:
+      tox_envlist: codespell

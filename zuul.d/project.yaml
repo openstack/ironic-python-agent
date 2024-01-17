@@ -27,6 +27,8 @@
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
+        - ipa-tox-codespell:
+            voting: false
     gate:
       jobs:
         - openstack-tox-functional
