@@ -808,13 +808,14 @@ class NetworkInterface(encoding.SerializableComparable):
 
 class CPU(encoding.SerializableComparable):
     serializable_fields = ('model_name', 'frequency', 'count', 'architecture',
-                           'flags')
+                           'flags', 'socket_count')
 
     def __init__(self, model_name, frequency, count, architecture,
-                 flags=None):
+                 flags=None, socket_count=None):
         self.model_name = model_name
         self.frequency = frequency
         self.count = count
+        self.socket_count = socket_count
         self.architecture = architecture
         self.flags = flags or []
 
@@ -1496,7 +1497,8 @@ class GenericHardwareManager(HardwareManager):
                    # this includes hyperthreading cores
                    count=int(cpu_info.get('cpu(s)')),
                    architecture=cpu_info.get('architecture'),
-                   flags=flags)
+                   flags=flags,
+                   socket_count=int(cpu_info.get('socket(s)', 0)))
 
     def get_memory(self):
         # psutil returns a long, so we force it to an int
