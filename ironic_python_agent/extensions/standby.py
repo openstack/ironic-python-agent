@@ -753,7 +753,7 @@ def _validate_partitioning(device):
     try:
         # Ensure we re-read the partition table before we try to list
         # partitions
-        utils.execute('partprobe', device, run_as_root=True,
+        utils.execute('partprobe', device,
                       attempts=CONF.disk_utils.partprobe_attempts)
     except (processutils.UnknownArgumentError,
             processutils.ProcessExecutionError, OSError) as e:

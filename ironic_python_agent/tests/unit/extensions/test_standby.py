@@ -887,7 +887,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertEqual(cmd_result, async_result.command_result['result'])
         list_part_mock.assert_called_with('manager')
         execute_mock.assert_called_with('partprobe', 'manager',
-                                        run_as_root=True,
                                         attempts=mock.ANY)
         self.assertEqual({'root uuid': 'ROOT'},
                          self.agent_extension.partition_uuids)
@@ -959,7 +958,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertEqual(cmd_result, async_result.command_result['result'])
         list_part_mock.assert_called_with('manager')
         execute_mock.assert_called_with('partprobe', 'manager',
-                                        run_as_root=True,
                                         attempts=mock.ANY)
         self.assertEqual({'root uuid': 'root_uuid'},
                          self.agent_extension.partition_uuids)
@@ -1107,7 +1105,6 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertEqual(cmd_result, async_result.command_result['result'])
         list_part_mock.assert_called_with('manager')
         execute_mock.assert_called_with('partprobe', 'manager',
-                                        run_as_root=True,
                                         attempts=mock.ANY)
         self.assertEqual({}, self.agent_extension.partition_uuids)
 
