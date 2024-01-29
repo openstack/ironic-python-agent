@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Inspection is now retried on HTTP 409 (conflict), which can be returned
+    by the new implementation in Ironic.

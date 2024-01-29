@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from http import client as http_client
 import json
 import os
 import time
@@ -165,7 +166,8 @@ def call_inspector(data, failures):
             else:
                 break
 
-        if inspector_resp.status_code >= 500:
+        if (inspector_resp.status_code >= 500
+                or inspector_resp.status_code == http_client.CONFLICT):
             raise requests.exceptions.HTTPError(response=inspector_resp)
 
         return inspector_resp
