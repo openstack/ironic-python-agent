@@ -37,7 +37,8 @@ class GenerateTestCase(ironic_agent_base.IronicAgentTest):
         result = tls_utils._generate_tls_certificate(self.crt_file,
                                                      self.key_file,
                                                      'localhost', '127.0.0.1')
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(
+            tz=datetime.timezone.utc).replace(tzinfo=None)
         self.assertTrue(result.startswith("-----BEGIN CERTIFICATE-----\n"),
                         result)
         self.assertTrue(result.endswith("\n-----END CERTIFICATE-----\n"),
@@ -51,6 +52,8 @@ class GenerateTestCase(ironic_agent_base.IronicAgentTest):
         self.assertEqual([(x509.NameOID.COMMON_NAME, 'localhost')],
                          [(item.oid, item.value) for item in cert.subject])
         # Sanity check for validity range
+        # FIXME(dtantsur): use timezone-aware properties and drop the replace()
+        # call above when we're ready to bump to cryptography 42.0.
         self.assertLess(cert.not_valid_before,
                         now - datetime.timedelta(seconds=1800))
         self.assertGreater(cert.not_valid_after,
