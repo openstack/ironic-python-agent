@@ -170,7 +170,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
             mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
-                      use_standard_locale=True, run_as_root=True)
+                      use_standard_locale=True)
         ]
         mock_execute.assert_has_calls(execute_calls)
 
@@ -186,7 +186,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
             mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
-                      use_standard_locale=True, run_as_root=True)
+                      use_standard_locale=True)
         ]
         mock_execute.assert_has_calls(execute_calls)
 
@@ -201,7 +201,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
             mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
-                      use_standard_locale=True, run_as_root=True)
+                      use_standard_locale=True)
         ]
         mock_execute.assert_has_calls(execute_calls)
 
@@ -220,7 +220,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
             mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
-                      use_standard_locale=True, run_as_root=True)
+                      use_standard_locale=True)
         ]
         mock_execute.assert_has_calls(execute_calls)
 
@@ -236,7 +236,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
             mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
-                      use_standard_locale=True, run_as_root=True)
+                      use_standard_locale=True)
         ]
         mock_execute.assert_has_calls(execute_calls)
         self.assertEqual(1, mock_log.call_count)
@@ -253,7 +253,7 @@ class IsDiskLargerThanMaxSizeTestCases(base.IronicAgentTest):
         result = partition_utils._is_disk_larger_than_max_size(self.dev,
                                                                self.node_uuid)
         mock_execute.assert_called_once_with('blockdev', '--getsize64',
-                                             '/dev/fake', run_as_root=True,
+                                             '/dev/fake',
                                              use_standard_locale=True)
         return result
 
@@ -277,7 +277,7 @@ class IsDiskLargerThanMaxSizeTestCases(base.IronicAgentTest):
                                partition_utils._is_disk_larger_than_max_size,
                                self.dev, self.node_uuid)
         mock_execute.assert_called_once_with('blockdev', '--getsize64',
-                                             '/dev/fake', run_as_root=True,
+                                             '/dev/fake',
                                              use_standard_locale=True)
         self.assertEqual(1, mock_log.call_count)
 
@@ -697,7 +697,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                                                       config_url)
         mock_execute.assert_has_calls([
             mock.call('sgdisk', '-n', '0:-64MB:0', '-u', '0:fake-uuid',
-                      self.dev, run_as_root=True),
+                      self.dev),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
@@ -758,7 +758,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                                                       config_url)
         mock_execute.assert_has_calls([
             mock.call('sgdisk', '-n', '0:-64MB:0', '-u', '0:fake-uuid',
-                      self.dev, run_as_root=True),
+                      self.dev),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
@@ -823,7 +823,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                                                       config_url)
         mock_execute.assert_has_calls([
             mock.call('sgdisk', '-n', '0:-64MB:0', '-u', '0:fake-uuid',
-                      self.dev, run_as_root=True),
+                      self.dev),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
@@ -918,13 +918,13 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
             parted_call = mock.call('parted', '-a', 'optimal', '-s',
                                     '--', self.dev, 'mkpart',
                                     'primary', 'fat32', 2097087,
-                                    2097151, run_as_root=True)
+                                    2097151)
         else:
             self.assertEqual(0, mock_log.call_count)
             parted_call = mock.call('parted', '-a', 'optimal', '-s',
                                     '--', self.dev, 'mkpart',
                                     'primary', 'fat32', '-64MiB',
-                                    '-0', run_as_root=True)
+                                    '-0')
         mock_execute.assert_has_calls([
             parted_call,
             mock.call('sync'),
@@ -1025,8 +1025,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
         mock_execute.assert_has_calls([
             mock.call('parted', '-a', 'optimal', '-s', '--',
                       self.dev, 'mkpart', 'primary',
-                      'fat32', '-64MiB', '-0',
-                      run_as_root=True),
+                      'fat32', '-64MiB', '-0'),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
@@ -1096,8 +1095,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
         mock_get_configdrive.assert_called_with(config_url, self.node_uuid)
         mock_execute.assert_called_with('parted', '-a', 'optimal', '-s', '--',
                                         self.dev, 'mkpart', 'primary',
-                                        'fat32', '-64MiB', '-0',
-                                        run_as_root=True)
+                                        'fat32', '-64MiB', '-0')
         self.assertEqual(1, mock_list_partitions.call_count)
         mock_fix_gpt_partition.assert_called_with(self.dev, self.node_uuid)
         mock_table_type.assert_called_with(self.dev)
@@ -1263,7 +1261,7 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
         real_execute = utils.execute
 
         def fake_execute(*cmd, **kwargs):
-            kwargs['run_as_root'] = False
+            kwargs.pop('run_as_root', None)
             return real_execute(*cmd, **kwargs)
 
         with mock.patch.object(utils, 'execute', fake_execute):

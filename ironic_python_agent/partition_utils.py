@@ -156,7 +156,7 @@ def get_labelled_partition(device_path, label, node_uuid):
     try:
         output, err = utils.execute('lsblk', '-Po', 'name,label', device_path,
                                     check_exit_code=[0, 1],
-                                    use_standard_locale=True, run_as_root=True)
+                                    use_standard_locale=True)
 
     except (processutils.UnknownArgumentError,
             processutils.ProcessExecutionError, OSError) as e:
@@ -382,8 +382,7 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                 create_option = '0:-%dMB:0' % MAX_CONFIG_DRIVE_SIZE_MB
                 uuid_option = '0:%s' % part_uuid
                 utils.execute('sgdisk', '-n', create_option,
-                              '-u', uuid_option, device,
-                              run_as_root=True)
+                              '-u', uuid_option, device)
             else:
                 cur_parts = set(part['number']
                                 for part in disk_utils.list_partitions(device))
@@ -425,7 +424,7 @@ def create_config_drive_partition(node_uuid, device, configdrive):
 
                 utils.execute('parted', '-a', 'optimal', '-s', '--', device,
                               'mkpart', 'primary', 'fat32', startlimit,
-                              endlimit, run_as_root=True)
+                              endlimit)
             # Trigger device rescan
             disk_utils.trigger_device_rescan(device)
 
@@ -588,8 +587,7 @@ def _is_disk_larger_than_max_size(device, node_uuid):
     try:
         disksize_bytes, err = utils.execute('blockdev', '--getsize64',
                                             device,
-                                            use_standard_locale=True,
-                                            run_as_root=True)
+                                            use_standard_locale=True)
     except (processutils.UnknownArgumentError,
             processutils.ProcessExecutionError, OSError) as e:
         msg = ('Failed to get size of disk %(disk)s for node %(node)s. '
