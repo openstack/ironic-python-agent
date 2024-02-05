@@ -326,6 +326,11 @@ cli_opts = [
                      'cleaning from inadvertently destroying a running '
                      'cluster which may be visible over a storage fabric '
                      'such as FibreChannel.'),
+    cfg.BoolOpt('config_drive_rebuild',
+                default=False,
+                help='If the agent should rebuild the configuration drive '
+                     'using a local filesystem, instead of letting Ironic '
+                     'determine if this action is necessary.'),
 ]
 
 CONF.register_cli_opts(cli_opts)
