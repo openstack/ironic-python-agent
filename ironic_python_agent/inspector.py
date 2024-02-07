@@ -53,8 +53,9 @@ def extension_manager(names):
 
 
 def _get_collector_names():
-    return [x.strip() for x in CONF.inspection_collectors.split(',')
-            if x.strip()]
+    collectors = (CONF.inspection_collectors
+                  or config.INSPECTION_DEFAULT_COLLECTORS)
+    return [x.strip() for x in collectors.split(',') if x.strip()]
 
 
 def inspect():
@@ -67,7 +68,8 @@ def inspect():
              was not found in inspector cache. None is also returned if
              inspector support is not enabled.
     """
-    if not CONF.inspection_callback_url:
+    if (not CONF.inspection_callback_url
+            and not (CONF.inspection_collectors and CONF.api_url)):
         LOG.info('Inspection is disabled, skipping')
         return
 
@@ -122,6 +124,14 @@ _RETRY_WAIT_MAX = 30
 _RETRY_ATTEMPTS = 5
 
 
+def _get_urls():
+    urls = CONF.inspection_callback_url or CONF.api_url
+    urls = list(filter(None, urls.split(',')))
+    if not CONF.inspection_callback_url:
+        urls = [url.rstrip('/') + "/v1/continue_inspection" for url in urls]
+    return urls
+
+
 def call_inspector(data, failures):
     """Post data to inspector."""
     data['error'] = failures.get_error()
@@ -140,7 +150,7 @@ def call_inspector(data, failures):
     if CONF.global_request_id:
         headers["X-OpenStack-Request-ID"] = CONF.global_request_id
 
-    urls = list(filter(None, CONF.inspection_callback_url.split(',')))
+    urls = _get_urls()
 
     @tenacity.retry(
         retry=tenacity.retry_if_exception_type(

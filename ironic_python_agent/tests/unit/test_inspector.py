@@ -49,7 +49,7 @@ class AcceptingFailure(mock.Mock):
 
 class TestMisc(base.IronicAgentTest):
     def test_default_collector_loadable(self):
-        defaults = config.INSPECTION_DEFAULT_COLLECTOR.split(',')
+        defaults = config.INSPECTION_DEFAULT_COLLECTORS.split(',')
         # default should go first
         self.assertEqual('default', defaults[0])
         # logs much go last
@@ -71,7 +71,6 @@ class TestInspect(base.IronicAgentTest):
     def setUp(self):
         super(TestInspect, self).setUp()
         CONF.set_override('inspection_callback_url', 'http://foo/bar')
-        CONF.set_override('inspection_collectors', '')
         self.mock_collect = AcceptingFailure()
         self.mock_ext = mock.Mock(spec=['plugin', 'name'],
                                   plugin=self.mock_collect)
@@ -85,6 +84,35 @@ class TestInspect(base.IronicAgentTest):
         self.mock_collect.assert_called_with_failure()
         mock_call.assert_called_with_failure()
         self.assertEqual('uuid1', result)
+        mock_ext_mgr.assert_called_once_with(
+            inspector._COLLECTOR_NS, ['default', 'logs'],
+            name_order=True, on_missing_entrypoints_callback=mock.ANY)
+
+    def test_ok_with_ironic_url(self, mock_ext_mgr, mock_call):
+        CONF.set_override('api_url', 'http://url')
+        CONF.set_override('inspection_callback_url', '')
+        CONF.set_override('inspection_collectors', 'default')
+        mock_ext_mgr.return_value = [self.mock_ext]
+        mock_call.return_value = {'uuid': 'uuid1'}
+
+        result = inspector.inspect()
+
+        self.mock_collect.assert_called_with_failure()
+        mock_call.assert_called_with_failure()
+        self.assertEqual('uuid1', result)
+        mock_ext_mgr.assert_called_once_with(
+            inspector._COLLECTOR_NS, ['default'],
+            name_order=True, on_missing_entrypoints_callback=mock.ANY)
+
+    def test_disabled(self, mock_ext_mgr, mock_call):
+        CONF.set_override('inspection_callback_url', '')
+        mock_ext_mgr.return_value = [self.mock_ext]
+
+        result = inspector.inspect()
+
+        self.mock_collect.assert_not_called()
+        mock_call.assert_not_called()
+        self.assertIsNone(result)
 
     @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
     def test_mdns(self, mock_mdns, mock_ext_mgr, mock_call):
@@ -169,6 +197,25 @@ class TestCallInspector(base.IronicAgentTest):
             timeout=30)
         self.assertEqual(mock_post.return_value.json.return_value, res)
 
+    def test_use_api_url(self, mock_post):
+        CONF.set_override('inspection_callback_url', '')
+        CONF.set_override('api_url', 'http://url1/,http://url2/baremetal')
+
+        failures = utils.AccumulatedFailures()
+        data = collections.OrderedDict(data=42)
+        mock_post.return_value.status_code = 200
+
+        res = inspector.call_inspector(data, failures)
+
+        mock_post.assert_called_once_with(
+            'http://url1/v1/continue_inspection',
+            data='{"data": 42, "error": null}',
+            cert=None, verify=True,
+            headers={'Content-Type': 'application/json',
+                     'Accept': 'application/json'},
+            timeout=30)
+        self.assertEqual(mock_post.return_value.json.return_value, res)
+
     def test_send_failure(self, mock_post):
         failures = mock.Mock(spec=utils.AccumulatedFailures)
         failures.get_error.return_value = "boom"
@@ -230,6 +277,31 @@ class TestCallInspector(base.IronicAgentTest):
             mock.call('url1', cert=None, verify=True, headers=mock.ANY,
                       data='{"data": 42, "error": null}', timeout=30),
         ])
+
+    def test_use_several_api_urls(self, mock_post):
+        CONF.set_override('inspection_callback_url', '')
+        CONF.set_override('api_url', 'http://url1/,http://url2/baremetal')
+
+        good_resp = mock.Mock(status_code=200)
+        mock_post.side_effect = [
+            requests.exceptions.ConnectionError, good_resp
+        ]
+
+        failures = utils.AccumulatedFailures()
+        data = collections.OrderedDict(data=42)
+        mock_post.return_value.status_code = 200
+
+        res = inspector.call_inspector(data, failures)
+
+        mock_post.assert_has_calls([
+            mock.call('http://url1/v1/continue_inspection',
+                      cert=None, verify=True, headers=mock.ANY,
+                      data='{"data": 42, "error": null}', timeout=30),
+            mock.call('http://url2/baremetal/v1/continue_inspection',
+                      cert=None, verify=True, headers=mock.ANY,
+                      data='{"data": 42, "error": null}', timeout=30),
+        ])
+        self.assertEqual(good_resp.json.return_value, res)
 
     @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
     @mock.patch.object(inspector, '_RETRY_WAIT_MAX', 1)

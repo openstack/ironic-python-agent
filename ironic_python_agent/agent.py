@@ -526,7 +526,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             # interfaces to perform those actions over.
             self._wait_for_interface()
 
-            if cfg.CONF.inspection_callback_url:
+            if self.api_urls or cfg.CONF.inspection_callback_url:
                 try:
                     # Attempt inspection. This may fail, and previously
                     # an error would be logged.

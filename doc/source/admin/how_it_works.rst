@@ -49,6 +49,18 @@ for example::
 
 Make sure your DHCP environment is set to boot IPA by default.
 
+If you use the new built-in :ironic-doc:`Ironic in-band inspection
+<admin/inspection/index.html>`, it is enough to only set a list of collectors
+(see `inspection data`_), for example::
+
+    ipa-inspection-collectors=default,logs
+
+Then the correct callback URL will be determined from the Ironic URL in
+``ipa-api-url``.
+
+Instance agent
+~~~~~~~~~~~~~~
+
 For the cases where the infrastructure operator and cloud user are the same,
 an additional tool exists that can be installed alongside the agent inside
 a running instance. This is the ``ironic-collect-introspection-data``
