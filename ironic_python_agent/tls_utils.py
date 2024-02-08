@@ -77,9 +77,9 @@ def _generate_tls_certificate(output, private_key_output,
     ])
     alt_name = x509.SubjectAlternativeName([x509.IPAddress(ip_address)])
     allowed_clock_skew = CONF.auto_tls_allowed_clock_skew
-    not_valid_before = (datetime.datetime.utcnow()
+    not_valid_before = (datetime.datetime.now(tz=datetime.timezone.utc)
                         - datetime.timedelta(seconds=allowed_clock_skew))
-    not_valid_after = (datetime.datetime.utcnow()
+    not_valid_after = (datetime.datetime.now(tz=datetime.timezone.utc)
                        + datetime.timedelta(days=valid_for_days))
     cert = (x509.CertificateBuilder()
             .subject_name(subject)
