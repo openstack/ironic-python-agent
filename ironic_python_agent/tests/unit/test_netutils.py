@@ -224,7 +224,7 @@ class TestNetutils(base.IronicAgentTest):
         sock2.bind.assert_called_with(('eth1', netutils.LLDP_ETHERTYPE))
 
         sock1.recv.assert_called_with(1600)
-        sock2.recv.not_called()
+        sock2.recv.assert_not_called()
 
         self.assertEqual(1, sock1.close.call_count)
         self.assertEqual(1, sock2.close.call_count)
@@ -261,8 +261,8 @@ class TestNetutils(base.IronicAgentTest):
         sock1.bind.assert_called_with(('eth0', netutils.LLDP_ETHERTYPE))
         sock2.bind.assert_called_with(('eth1', netutils.LLDP_ETHERTYPE))
 
-        sock1.recv.not_called()
-        sock2.recv.not_called()
+        sock1.recv.assert_not_called()
+        sock2.recv.assert_not_called()
 
         self.assertEqual(1, sock1.close.call_count)
         self.assertEqual(1, sock2.close.call_count)
