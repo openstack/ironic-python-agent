@@ -18,6 +18,7 @@ from unittest import mock
 from ironic_lib import disk_partitioner
 from ironic_lib import disk_utils
 from ironic_lib import exception
+from ironic_lib import qemu_img
 from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -700,9 +701,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       self.dev),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
-
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -761,7 +762,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       self.dev),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
 
             mock.call('udevadm', 'settle'),
@@ -826,9 +828,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       self.dev),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
-
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -929,7 +931,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
             parted_call,
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
@@ -1028,7 +1031,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       'fat32', '-64MiB', '-0'),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
         ])
 
@@ -1226,8 +1230,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
 @mock.patch.object(disk_utils, 'is_block_device', autospec=True)
 @mock.patch.object(disk_utils, 'block_uuid', autospec=True)
 @mock.patch.object(disk_utils, 'dd', autospec=True)
-@mock.patch.object(disk_utils, 'convert_image', autospec=True)
+@mock.patch.object(qemu_img, 'convert_image', autospec=True)
 @mock.patch.object(utils, 'mkfs', autospec=True)
+@mock.patch.object(disk_utils, 'populate_image', autospec=True)
 # NOTE(dtantsur): destroy_disk_metadata resets file size, disabling it
 @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
 class RealFilePartitioningTestCase(base.IronicAgentTest):
@@ -1267,9 +1272,9 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
         with mock.patch.object(utils, 'execute', fake_execute):
             return func(*args, **kwargs)
 
-    def test_different_sizes(self, mock_destroy, mock_mkfs, mock_convert,
-                             mock_dd, mock_block_uuid, mock_is_block,
-                             mock_wait, mock_trigger_rescan):
+    def test_different_sizes(self, mock_destroy, mock_populate, mock_mkfs,
+                             mock_convert, mock_dd, mock_block_uuid,
+                             mock_is_block, mock_wait, mock_trigger_rescan):
         # NOTE(dtantsur): Keep this list in order with expected partitioning
         fields = ['ephemeral_mb', 'swap_mb', 'root_mb']
         variants = ((0, 0, 12), (4, 2, 8), (0, 4, 10), (5, 0, 10))
@@ -1284,9 +1289,9 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
                 self.assertEqual(expected_size, part['size'],
                                  "comparison failed for %s" % list(variant))
 
-    def test_whole_disk(self, mock_destroy, mock_mkfs, mock_convert, mock_dd,
-                        mock_block_uuid, mock_is_block, mock_wait,
-                        mock_trigger_rescan):
+    def test_whole_disk(self, mock_destroy, mock_populate, mock_mkfs,
+                        mock_convert, mock_dd, mock_block_uuid,
+                        mock_is_block, mock_wait, mock_trigger_rescan):
         # 6 MiB ephemeral + 3 MiB swap + 9 MiB root + 1 MiB for MBR
         # + 1 MiB MAGIC == 20 MiB whole disk
         # TODO(dtantsur): figure out why we need 'magic' 1 more MiB

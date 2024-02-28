@@ -16,7 +16,9 @@
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src-uefi
-        - metalsmith-integration-ipa-src-legacy
+        # NOTE(rpittau): Currently broken because of an issue with parted
+        - metalsmith-integration-ipa-src-legacy:
+            voting: false
         - ironic-standalone-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
@@ -37,7 +39,8 @@
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src-uefi
-        - metalsmith-integration-ipa-src-legacy
+        # NOTE(rpittau): Currently broken because of an issue with parted
+        #- metalsmith-integration-ipa-src-legacy
         - ironic-standalone-ipa-src
     post:
       jobs:
