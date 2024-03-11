@@ -408,6 +408,12 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         if config.get('metrics_statsd'):
             for opt, val in config.items():
                 setattr(cfg.CONF.metrics_statsd, opt, val)
+        if config.get('disable_deep_image_inspection') is not None:
+            cfg.CONF.set_override('disable_deep_image_inspection',
+                                  config['disable_deep_image_inspection'])
+        if config.get('permitted_image_formats') is not None:
+            cfg.CONF.set_override('permitted_image_formats',
+                                  config['permitted_image_formats'])
         md5_allowed = config.get('agent_md5_checksum_enable')
         if md5_allowed is not None:
             cfg.CONF.set_override('md5_enabled', md5_allowed)

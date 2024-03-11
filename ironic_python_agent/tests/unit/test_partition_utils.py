@@ -15,17 +15,18 @@ import shutil
 import tempfile
 from unittest import mock
 
-from ironic_lib import disk_partitioner
-from ironic_lib import disk_utils
 from ironic_lib import exception
 from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 import requests
 
+from ironic_python_agent import disk_partitioner
+from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
+from ironic_python_agent import qemu_img
 from ironic_python_agent.tests.unit import base
 
 
@@ -452,13 +453,15 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
     @mock.patch.object(utils, 'mkfs', lambda fs, path, label=None: None)
     @mock.patch.object(disk_utils, 'block_uuid', lambda p: 'uuid')
     @mock.patch.object(disk_utils, 'populate_image', lambda image_path,
-                       root_path, conv_flags=None: None)
+                       root_path, conv_flags=None, source_format=None,
+                       is_raw=False: None)
     def test_gpt_disk_label(self):
         ephemeral_part = '/dev/fake-part1'
         swap_part = '/dev/fake-part2'
         root_part = '/dev/fake-part3'
         ephemeral_mb = 256
         ephemeral_format = 'exttest'
+        source_format = 'raw'
 
         self.mock_mp.return_value = {'ephemeral': ephemeral_part,
                                      'swap': swap_part,
@@ -471,7 +474,8 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                      self.swap_mb, ephemeral_mb,
                                      ephemeral_format,
                                      self.image_path, self.node_uuid,
-                                     disk_label='gpt', conv_flags=None)
+                                     disk_label='gpt', conv_flags=None,
+                                     source_format=source_format, is_raw=True)
         self.assertEqual(self.mock_ibd.call_args_list, calls)
         self.mock_mp.assert_called_once_with(self.dev, self.root_mb,
                                              self.swap_mb, ephemeral_mb,
@@ -491,6 +495,8 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         """Test that we create a fat filesystem with UEFI localboot."""
         root_part = '/dev/fake-part1'
         efi_part = '/dev/fake-part2'
+        source_format = 'format'
+
         self.mock_mp.return_value = {'root': root_part,
                                      'efi system partition': efi_part}
         self.mock_ibd.return_value = True
@@ -501,7 +507,8 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                      self.swap_mb, self.ephemeral_mb,
                                      self.ephemeral_format,
                                      self.image_path, self.node_uuid,
-                                     boot_mode="uefi")
+                                     boot_mode="uefi",
+                                     source_format=source_format, is_raw=False)
 
         self.mock_mp.assert_called_once_with(self.dev, self.root_mb,
                                              self.swap_mb, self.ephemeral_mb,
@@ -514,8 +521,9 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         self.assertEqual(self.mock_ibd.call_args_list, mock_ibd_calls)
         mock_mkfs.assert_called_once_with(fs='vfat', path=efi_part,
                                           label='efi-part')
-        mock_populate_image.assert_called_once_with(self.image_path,
-                                                    root_part, conv_flags=None)
+        mock_populate_image.assert_called_once_with(
+            self.image_path, root_part, conv_flags=None,
+            source_format=source_format, is_raw=False)
         mock_block_uuid.assert_any_call(root_part)
         mock_block_uuid.assert_any_call(efi_part)
         mock_trigger_device_rescan.assert_called_once_with(self.dev)
@@ -594,6 +602,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         root_part = '/dev/fake-part3'
         ephemeral_mb = 256
         ephemeral_format = 'exttest'
+        fmt = 'format'
 
         self.mock_mp.return_value = {'ephemeral': ephemeral_part,
                                      'swap': swap_part,
@@ -603,11 +612,15 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                      self.swap_mb, ephemeral_mb,
                                      ephemeral_format,
                                      self.image_path, self.node_uuid,
-                                     disk_label='gpt', conv_flags='sparse')
+                                     disk_label='gpt', conv_flags='sparse',
+                                     source_format=fmt,
+                                     is_raw=False)
 
         mock_populate_image.assert_called_once_with(self.image_path,
                                                     root_part,
-                                                    conv_flags='sparse')
+                                                    conv_flags='sparse',
+                                                    source_format=fmt,
+                                                    is_raw=False)
 
 
 class CreateConfigDriveTestCases(base.IronicAgentTest):
@@ -700,9 +713,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       self.dev, run_as_root=True),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
-
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -761,7 +774,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       self.dev, run_as_root=True),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
 
             mock.call('udevadm', 'settle'),
@@ -826,9 +840,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       self.dev, run_as_root=True),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
-
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -929,7 +943,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
             parted_call,
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
@@ -1029,7 +1044,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       run_as_root=True),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, attempts=10, run_as_root=True),
+            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev, run_as_root=True),
         ])
 
@@ -1224,12 +1240,14 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
 # NOTE(TheJulia): trigger_device_rescan is systemwide thus pointless
 # to execute in the file test case. Also, CI unit test jobs lack sgdisk.
 @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
-@mock.patch.object(utils, 'wait_for_disk_to_become_available', autospec=True)
+@mock.patch.object(disk_utils, 'wait_for_disk_to_become_available',
+                   autospec=True)
 @mock.patch.object(disk_utils, 'is_block_device', autospec=True)
 @mock.patch.object(disk_utils, 'block_uuid', autospec=True)
 @mock.patch.object(disk_utils, 'dd', autospec=True)
-@mock.patch.object(disk_utils, 'convert_image', autospec=True)
+@mock.patch.object(qemu_img, 'convert_image', autospec=True)
 @mock.patch.object(utils, 'mkfs', autospec=True)
+@mock.patch.object(disk_utils, 'populate_image', autospec=True)
 # NOTE(dtantsur): destroy_disk_metadata resets file size, disabling it
 @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
 class RealFilePartitioningTestCase(base.IronicAgentTest):
@@ -1269,9 +1287,9 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
         with mock.patch.object(utils, 'execute', fake_execute):
             return func(*args, **kwargs)
 
-    def test_different_sizes(self, mock_destroy, mock_mkfs, mock_convert,
-                             mock_dd, mock_block_uuid, mock_is_block,
-                             mock_wait, mock_trigger_rescan):
+    def test_different_sizes(self, mock_destroy, mock_populate, mock_mkfs,
+                             mock_convert, mock_dd, mock_block_uuid,
+                             mock_is_block, mock_wait, mock_trigger_rescan):
         # NOTE(dtantsur): Keep this list in order with expected partitioning
         fields = ['ephemeral_mb', 'swap_mb', 'root_mb']
         variants = ((0, 0, 12), (4, 2, 8), (0, 4, 10), (5, 0, 10))
@@ -1286,9 +1304,9 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
                 self.assertEqual(expected_size, part['size'],
                                  "comparison failed for %s" % list(variant))
 
-    def test_whole_disk(self, mock_destroy, mock_mkfs, mock_convert, mock_dd,
-                        mock_block_uuid, mock_is_block, mock_wait,
-                        mock_trigger_rescan):
+    def test_whole_disk(self, mock_destroy, mock_populate, mock_mkfs,
+                        mock_convert, mock_dd, mock_block_uuid,
+                        mock_is_block, mock_wait, mock_trigger_rescan):
         # 6 MiB ephemeral + 3 MiB swap + 9 MiB root + 1 MiB for MBR
         # + 1 MiB MAGIC == 20 MiB whole disk
         # TODO(dtantsur): figure out why we need 'magic' 1 more MiB
