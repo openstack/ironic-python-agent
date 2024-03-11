@@ -372,11 +372,55 @@ cli_opts = [
                      'determine if this action is necessary.'),
 ]
 
+disk_utils_opts = [
+    cfg.IntOpt('efi_system_partition_size',
+               default=550,
+               help='Size of EFI system partition in MiB when configuring '
+                    'UEFI systems for local boot. A common minimum is ~200 '
+                    'megabytes, however OS driven firmware updates and '
+                    'unikernel usage generally requires more space on the '
+                    'efi partition.'),
+    cfg.IntOpt('bios_boot_partition_size',
+               default=1,
+               help='Size of BIOS Boot partition in MiB when configuring '
+                    'GPT partitioned systems for local boot in BIOS.'),
+    cfg.StrOpt('dd_block_size',
+               default='1M',
+               help='Block size to use when writing to the nodes disk.'),
+    cfg.IntOpt('partition_detection_attempts',
+               default=3,
+               min=1,
+               help='Maximum attempts to detect a newly created partition.'),
+    cfg.IntOpt('partprobe_attempts',
+               default=10,
+               help='Maximum number of attempts to try to read the '
+                    'partition.'),
+]
+
+disk_part_opts = [
+    cfg.IntOpt('check_device_interval',
+               default=1,
+               help='After Ironic has completed creating the partition table, '
+                    'it continues to check for activity on the attached iSCSI '
+                    'device status at this interval prior to copying the image'
+                    ' to the node, in seconds'),
+    cfg.IntOpt('check_device_max_retries',
+               default=20,
+               help='The maximum number of times to check that the device is '
+                    'not accessed by another process. If the device is still '
+                    'busy after that, the disk partitioning will be treated as'
+                    ' having failed.')
+]
+
 CONF.register_cli_opts(cli_opts)
+CONF.register_opts(disk_utils_opts, group='disk_utils')
+CONF.register_opts(disk_part_opts, group='disk_partitioner')
 
 
 def list_opts():
-    return [('DEFAULT', cli_opts)]
+    return [('DEFAULT', cli_opts),
+            ('disk_utils', disk_utils_opts),
+            ('disk_partitioner', disk_part_opts)]
 
 
 def override(params):

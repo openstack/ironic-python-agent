@@ -19,13 +19,14 @@ import tempfile
 import time
 from urllib import parse as urlparse
 
-from ironic_lib import disk_utils
 from ironic_lib import exception
+from ironic_lib import qemu_img
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
 import requests
 
+from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
@@ -349,9 +350,9 @@ def _write_whole_disk_image(image, image_info, device):
                image, device]
     LOG.info('Writing image with command: %s', ' '.join(command))
     try:
-        disk_utils.convert_image(image, device, out_format='host_device',
-                                 cache='directsync', out_of_order=True,
-                                 sparse_size='0')
+        qemu_img.convert_image(image, device, out_format='host_device',
+                               cache='directsync', out_of_order=True,
+                               sparse_size='0')
     except processutils.ProcessExecutionError as e:
         raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
 
@@ -750,17 +751,7 @@ def _validate_partitioning(device):
     Check if after writing the image to disk we have a valid partition
     table by trying to read it. This will fail if the disk is junk.
     """
-    try:
-        # Ensure we re-read the partition table before we try to list
-        # partitions
-        utils.execute('partprobe', device,
-                      attempts=CONF.disk_utils.partprobe_attempts)
-    except (processutils.UnknownArgumentError,
-            processutils.ProcessExecutionError, OSError) as e:
-        LOG.warning("Unable to probe for partitions on device %(device)s "
-                    "after writing the image, the partitioning table may "
-                    "be broken. Error: %(error)s",
-                    {'device': device, 'error': e})
+    disk_utils.partprobe(device)
 
     try:
         nparts = len(disk_utils.list_partitions(device))

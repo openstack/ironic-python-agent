@@ -22,7 +22,7 @@ from ironic_python_agent.tests.unit import base
 
 
 @mock.patch('ironic_lib.utils.mounted', autospec=True)
-@mock.patch('ironic_lib.disk_utils.list_partitions', autospec=True)
+@mock.patch('ironic_python_agent.disk_utils.list_partitions', autospec=True)
 @mock.patch('ironic_python_agent.hardware.dispatch_to_managers',
             lambda _call: '/dev/fake')
 class TestFindPartitionWithPath(base.IronicAgentTest):

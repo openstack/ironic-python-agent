@@ -14,11 +14,11 @@ import copy
 import re
 import shlex
 
-from ironic_lib import disk_utils
 from ironic_lib import utils as il_utils
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 
+from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import utils
 

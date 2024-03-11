@@ -15,8 +15,6 @@ import shutil
 import tempfile
 from unittest import mock
 
-from ironic_lib import disk_partitioner
-from ironic_lib import disk_utils
 from ironic_lib import exception
 from ironic_lib import qemu_img
 from ironic_lib import utils
@@ -24,6 +22,8 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 import requests
 
+from ironic_python_agent import disk_partitioner
+from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
@@ -168,7 +168,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
                                                         self.node_uuid)
         self.assertEqual(part_result, result)
         execute_calls = [
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
                       use_standard_locale=True)
@@ -184,7 +184,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
                                                         self.node_uuid)
         self.assertEqual(part_result, result)
         execute_calls = [
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
                       use_standard_locale=True)
@@ -199,7 +199,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
                                                         self.node_uuid)
         self.assertIsNone(result)
         execute_calls = [
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
                       use_standard_locale=True)
@@ -218,7 +218,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
                                self.dev, self.config_part_label,
                                self.node_uuid)
         execute_calls = [
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
                       use_standard_locale=True)
@@ -234,7 +234,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
                                self.dev, self.config_part_label,
                                self.node_uuid)
         execute_calls = [
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('lsblk', '-Po', 'name,label', self.dev,
                       check_exit_code=[0, 1],
                       use_standard_locale=True)
@@ -701,9 +701,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       self.dev),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev, run_as_root=True),
+            mock.call('sgdisk', '-v', self.dev),
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -762,9 +762,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       self.dev),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev, run_as_root=True),
+            mock.call('sgdisk', '-v', self.dev),
 
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
@@ -828,9 +828,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       self.dev),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev, run_as_root=True),
+            mock.call('sgdisk', '-v', self.dev),
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -931,9 +931,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
             parted_call,
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev, run_as_root=True),
+            mock.call('sgdisk', '-v', self.dev),
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -1031,9 +1031,9 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                       'fat32', '-64MiB', '-0'),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
-            mock.call('partprobe', self.dev, run_as_root=True, attempts=10),
+            mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev, run_as_root=True),
+            mock.call('sgdisk', '-v', self.dev),
         ])
 
         self.assertEqual(2, mock_list_partitions.call_count)
@@ -1226,7 +1226,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
 # NOTE(TheJulia): trigger_device_rescan is systemwide thus pointless
 # to execute in the file test case. Also, CI unit test jobs lack sgdisk.
 @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
-@mock.patch.object(utils, 'wait_for_disk_to_become_available', autospec=True)
+@mock.patch.object(disk_utils, 'wait_for_disk_to_become_available',
+                   autospec=True)
 @mock.patch.object(disk_utils, 'is_block_device', autospec=True)
 @mock.patch.object(disk_utils, 'block_uuid', autospec=True)
 @mock.patch.object(disk_utils, 'dd', autospec=True)
