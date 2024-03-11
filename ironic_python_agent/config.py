@@ -331,13 +331,75 @@ cli_opts = [
                 help='If the agent should rebuild the configuration drive '
                      'using a local filesystem, instead of letting Ironic '
                      'determine if this action is necessary.'),
+    cfg.BoolOpt('disable_deep_image_inspection',
+                default=False,
+                help='This disables the additional deep image inspection '
+                     'the agent does before converting and writing an image. '
+                     'Generally, this should remain enabled for maximum '
+                     'security, but this option allows disabling it if there '
+                     'is a compatability concern.'),
+    cfg.ListOpt('permitted_image_formats',
+                default='raw,qcow2',
+                help='The supported list of image formats which are '
+                     'permitted for deployment with Ironic Python Agent. If '
+                     'an image format outside of this list is detected, the '
+                     'image validation logic will fail the deployment '
+                     'process. This check is skipped if deep image '
+                     'inspection is disabled.'),
 ]
 
-CONF.register_cli_opts(cli_opts)
+disk_utils_opts = [
+    cfg.IntOpt('bios_boot_partition_size',
+               default=1,
+               help='Size of BIOS Boot partition in MiB when configuring '
+                    'GPT partitioned systems for local boot in BIOS.'),
+    cfg.StrOpt('dd_block_size',
+               default='1M',
+               help='Block size to use when writing to the nodes disk.'),
+    cfg.IntOpt('partition_detection_attempts',
+               default=3,
+               min=1,
+               help='Maximum attempts to detect a newly created partition.'),
+    cfg.IntOpt('partprobe_attempts',
+               default=10,
+               help='Maximum number of attempts to try to read the '
+                    'partition.'),
+    cfg.IntOpt('image_convert_memory_limit',
+               default=2048,
+               help='Memory limit for "qemu-img convert" in MiB. Implemented '
+                    'via the address space resource limit.'),
+    cfg.IntOpt('image_convert_attempts',
+               default=3,
+               help='Number of attempts to convert an image.'),
+]
+
+disk_part_opts = [
+    cfg.IntOpt('check_device_interval',
+               default=1,
+               help='After Ironic has completed creating the partition table, '
+                    'it continues to check for activity on the attached iSCSI '
+                    'device status at this interval prior to copying the image'
+                    ' to the node, in seconds'),
+    cfg.IntOpt('check_device_max_retries',
+               default=20,
+               help='The maximum number of times to check that the device is '
+                    'not accessed by another process. If the device is still '
+                    'busy after that, the disk partitioning will be treated as'
+                    ' having failed.')
+]
 
 
 def list_opts():
-    return [('DEFAULT', cli_opts)]
+    return [('DEFAULT', cli_opts),
+            ('disk_utils', disk_utils_opts),
+            ('disk_partitioner', disk_part_opts)]
+
+
+def populate_config():
+    """Populate configuration. In a method so tests can easily utilize it."""
+    CONF.register_cli_opts(cli_opts)
+    CONF.register_opts(disk_utils_opts, group='disk_utils')
+    CONF.register_opts(disk_part_opts, group='disk_partitioner')
 
 
 def override(params):
@@ -364,3 +426,6 @@ def override(params):
             LOG.warning('Unable to override configuration option %(key)s '
                         'with %(value)r: %(exc)s',
                         {'key': key, 'value': value, 'exc': exc})
+
+
+populate_config()

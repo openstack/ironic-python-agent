@@ -367,3 +367,12 @@ class ProtectedDeviceError(CleaningError):
 
         self.message = details
         super(CleaningError, self).__init__(details)
+
+
+class InvalidImage(DeploymentError):
+    """Error raised when an image fails validation for any reason."""
+
+    message = 'The provided image is not valid for use'
+
+    def __init__(self, details=None):
+        super(InvalidImage, self).__init__(details)

@@ -27,7 +27,6 @@ import shutil
 import stat
 import tempfile
 
-from ironic_lib import disk_utils
 from ironic_lib import exception
 from ironic_lib import utils
 from oslo_concurrency import processutils
@@ -38,6 +37,7 @@ from oslo_utils import units
 from oslo_utils import uuidutils
 import requests
 
+from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import utils as ipa_utils
@@ -188,7 +188,8 @@ def get_labelled_partition(device_path, label, node_uuid):
 def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
                  image_path, node_uuid, preserve_ephemeral=False,
                  configdrive=None, boot_mode="bios",
-                 tempdir=None, disk_label=None, cpu_arch="", conv_flags=None):
+                 tempdir=None, disk_label=None, cpu_arch="", conv_flags=None,
+                 source_format=None, is_raw=False):
     """Create partitions and copy an image to the root partition.
 
     :param dev: Path for the device to work on.
@@ -219,6 +220,9 @@ def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
     :param conv_flags: Flags that need to be sent to the dd command, to control
         the conversion of the original file when copying to the host. It can
         contain several options separated by commas.
+    :param source_format: The format of the disk image to be written.
+        If set, must be "raw" or the actual disk format of the image.
+    :param is_raw: Ironic indictor image is raw; not to be converted
     :returns: a dictionary containing the following keys:
         'root uuid': UUID of root partition
         'efi system partition uuid': UUID of the uefi system partition
@@ -296,7 +300,8 @@ def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
             utils.unlink_without_raise(configdrive_file)
 
     if image_path is not None:
-        disk_utils.populate_image(image_path, root_part, conv_flags=conv_flags)
+        disk_utils.populate_image(image_path, root_part, conv_flags=conv_flags,
+                                  source_format=source_format, is_raw=is_raw)
         LOG.info("Image for %(node)s successfully populated",
                  {'node': node_uuid})
     else:

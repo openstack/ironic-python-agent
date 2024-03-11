@@ -408,6 +408,12 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         if config.get('metrics_statsd'):
             for opt, val in config.items():
                 setattr(cfg.CONF.metrics_statsd, opt, val)
+        if config.get('disable_deep_image_inspection') is not None:
+            cfg.CONF.set_override('disable_deep_image_inspection',
+                                  config['disable_deep_image_inspection'])
+        if config.get('permitted_image_formats') is not None:
+            cfg.CONF.set_override('permitted_image_formats',
+                                  config['permitted_image_formats'])
         if config.get('agent_token_required'):
             self.agent_token_required = True
         token = config.get('agent_token')
