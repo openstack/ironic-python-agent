@@ -447,6 +447,28 @@ LSHW_JSON_OUTPUT_V1 = ("""
         "ethernet": true,
         "physical": "Physical interface"
       }
+    },
+    {
+      "id": "usb",
+      "class": "bus",
+      "children": [
+        {
+          "id": "usbhost:0",
+          "class": "bus",
+          "children": [
+            {
+              "id": "usb",
+              "class": "generic",
+              "handle": "USB:1:2",
+              "description": "Generic USB device",
+              "product": "MyProduct",
+              "vendor": "MyVendor",
+              "physid": "1",
+              "businfo": "usb@1:1"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

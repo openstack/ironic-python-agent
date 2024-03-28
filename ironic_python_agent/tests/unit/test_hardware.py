@@ -4899,6 +4899,16 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('', vendor_info.firmware.build_date)
         self.assertEqual('', vendor_info.firmware.version)
 
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_usb_devices(self, mocked_execute):
+
+        device = hardware.USBInfo('MyProduct', 'MyVendor', 'USB:1:2')
+
+        mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_V1
+        detected_usb_devices = self.hardware.get_usb_devices()
+
+        self.assertEqual([device], detected_usb_devices)
+
     @mock.patch.object(utils, 'get_agent_params',
                        lambda: {'BOOTIF': 'boot:if'})
     @mock.patch.object(os.path, 'isdir', autospec=True)

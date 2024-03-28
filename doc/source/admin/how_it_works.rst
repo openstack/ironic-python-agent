@@ -164,6 +164,12 @@ collectors are:
     * ``lldp_raw`` - mapping of interface names to lists of raw
       type-length-value (TLV) records.
 
+``usb-devices``
+    Collects USB devices information. Adds one key:
+
+      * ``usb_devices`` - list of objects with keys ``product``, ``vendor`` and
+        ``handle``
+
 .. _hardware: https://pypi.org/project/hardware/
 .. _NUMA: https://en.wikipedia.org/wiki/Non-uniform_memory_access
 .. _LLDP: https://en.wikipedia.org/wiki/Link_Layer_Discovery_Protocol

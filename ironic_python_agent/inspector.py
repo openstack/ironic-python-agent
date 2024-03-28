@@ -425,3 +425,12 @@ def collect_lldp(data, failures):
     :param failures: AccumulatedFailures object
     """
     data['lldp_raw'] = hardware.dispatch_to_managers('collect_lldp_data')
+
+
+def collect_usb_devices(data, failures):
+    """Collect USB information for connected devices.
+
+    :param data: mutable data that we'll send to inspector
+    :param failures: AccumulatedFailures object
+    """
+    data['usb_devices'] = hardware.dispatch_to_managers('get_usb_devices')

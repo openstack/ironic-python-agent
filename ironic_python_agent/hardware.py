@@ -849,6 +849,15 @@ class SystemVendorInfo(encoding.SerializableComparable):
         self.firmware = firmware
 
 
+class USBInfo(encoding.SerializableComparable):
+    serializable_fields = ('product', 'vendor', 'handle')
+
+    def __init__(self, product, vendor, handle):
+        self.product = product
+        self.vendor = vendor
+        self.handle = handle
+
+
 class BootInfo(encoding.SerializableComparable):
     serializable_fields = ('current_boot_mode', 'pxe_interface')
 
@@ -924,6 +933,15 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         raise errors.IncompatibleHardwareMethodError()
 
     def generate_tls_certificate(self, ip_address):
+        raise errors.IncompatibleHardwareMethodError()
+
+    def get_usb_devices(self):
+        """Collect USB devices
+
+        List all USB final devices, based on lshw information
+
+        :return: a dict, containing product, vendor, and handle information
+        """
         raise errors.IncompatibleHardwareMethodError()
 
     def erase_block_device(self, node, block_device):
@@ -1616,6 +1634,23 @@ class GenericHardwareManager(HardwareManager):
                  {'dev': dev_name, 'hints': root_device_hints,
                   'node': cached_node['uuid'] if cached_node else None})
         return dev_name
+
+    def get_usb_devices(self):
+        sys_dict = self._get_system_lshw_dict()
+        try:
+            usb_dict = utils.find_in_lshw(sys_dict, by_id='usb',
+                                          by_class='generic', recursive=True)
+
+        except StopIteration:
+            LOG.warning('Cannot find detailed information about USB')
+            return None
+        devices = []
+        for dev in usb_dict:
+            usb_info = USBInfo(product=dev.get('product', ''),
+                               vendor=dev.get('vendor', ''),
+                               handle=dev.get('handle', ''))
+            devices.append(usb_info)
+        return devices
 
     def get_system_vendor_info(self):
         try:

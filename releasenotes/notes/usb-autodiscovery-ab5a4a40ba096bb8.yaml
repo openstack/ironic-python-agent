@@ -1,0 +1,5 @@
+---
+features:
+  - Add attached USB device auto discovery. The information is
+    retrieived from `lshw` tool and store in introspection data result.
+
