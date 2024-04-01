@@ -127,6 +127,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         CONF.clear_override('disk_wait_attempts')
         CONF.clear_override('disk_wait_delay')
 
+        self.mock_get_managers = mock.patch.object(
+            hardware, 'get_managers', autospec=True)
+        self.get_managers = self.mock_get_managers.start()
+        self.get_managers.return_value = [self.hardware]
+
     def test_get_clean_steps(self):
         expected_clean_steps = [
             {
@@ -4712,7 +4717,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_get_volume_name.side_effect = [
             "/dev/md0", "small"
         ]
-        mocked_get_skip_list.return_value = ["small"]
+        mocked_get_skip_list.return_value = set({"small"})
 
         self.hardware.delete_configuration(self.node, [])
 
