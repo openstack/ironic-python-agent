@@ -314,6 +314,23 @@ def remove_boot_record(boot_num):
     utils.execute('efibootmgr', '-b', boot_num, '-B', binary=True)
 
 
+def clean_boot_records(patterns):
+    """Remove EFI boot records matching regex patterns.
+
+    :param match_patterns: A list of string regular expression patterns
+                            where any matching entry will be deleted.
+    """
+
+    for boot_num, entry, _, path in get_boot_records():
+        for pattern in patterns:
+            if pattern.search(path):
+                LOG.debug('Path %s matched pattern %s, '
+                          'entry will be deleted: %s',
+                          path, pattern.pattern, entry)
+                remove_boot_record(boot_num)
+                break
+
+
 def _run_efibootmgr(valid_efi_bootloaders, device, efi_partition,
                     mount_point, label_suffix=None):
     """Executes efibootmgr and removes duplicate entries.

@@ -41,6 +41,7 @@ import yaml
 
 from ironic_python_agent import burnin
 from ironic_python_agent import disk_utils
+from ironic_python_agent import efi_utils
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base as ext_base
@@ -81,6 +82,24 @@ RAID_APPLY_CONFIGURATION_ARGSINFO = {
             "Setting this to 'True' indicates to delete existing RAID "
             "configuration prior to creating the new configuration. "
             "Default value is 'True'."
+        ),
+        "required": False,
+    }
+}
+
+DEFAULT_CLEAN_UEFI_NVRAM_MATCH_PATTERNS = [
+    r'^HD\(',
+    r'shim.*\.efi',
+    r'grub.*\.efi'
+]
+DEPLOY_CLEAN_UEFI_NVRAM_ARGSINFO = {
+    "match_patterns": {
+        "description": (
+            "Json blob contains a list of regex patterns where any UEFI "
+            "NVRAM entry matching that pattern will be deleted. "
+            "Default value is "
+            "'[\"{}\"]'".format('", "'.join(
+                DEFAULT_CLEAN_UEFI_NVRAM_MATCH_PATTERNS))
         ),
         "required": False,
     }
@@ -2411,6 +2430,14 @@ class GenericHardwareManager(HardwareManager):
                 'abortable': True
             },
             {
+                'step': 'clean_uefi_nvram',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True,
+                'argsinfo': DEPLOY_CLEAN_UEFI_NVRAM_ARGSINFO,
+            },
+            {
                 'step': 'delete_configuration',
                 'priority': 0,
                 'interface': 'raid',
@@ -2468,6 +2495,13 @@ class GenericHardwareManager(HardwareManager):
                 'interface': 'raid',
                 'reboot_requested': False,
                 'argsinfo': RAID_APPLY_CONFIGURATION_ARGSINFO,
+            },
+            {
+                'step': 'clean_uefi_nvram',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'argsinfo': DEPLOY_CLEAN_UEFI_NVRAM_ARGSINFO,
             },
             {
                 'step': 'write_image',
@@ -2557,6 +2591,32 @@ class GenericHardwareManager(HardwareManager):
         ]
         # TODO(TheJulia): Consider erase_devices and friends...
         return service_steps
+
+    def clean_uefi_nvram(self, node, ports, match_patterns=None):
+        """Clean UEFI NVRAM entries.
+
+        :param node: A dictionary of the node object.
+        :param ports: A list of dictionaries containing information
+                      of ports for the node.
+        :param match_patterns: A list of string regular expression patterns
+                               where any matching entry will be deleted.
+        """
+        if match_patterns is None:
+            match_patterns = DEFAULT_CLEAN_UEFI_NVRAM_MATCH_PATTERNS
+        validation_error = ('The match_patterns must be a list of strings: '
+                            '{}').format(match_patterns)
+        if not type(match_patterns) is list:
+            raise errors.InvalidCommandParamsError(validation_error)
+        patterns = []
+        for item in match_patterns:
+            if not isinstance(item, str):
+                raise errors.InvalidCommandParamsError(validation_error)
+            try:
+                patterns.append(re.compile(item, flags=re.IGNORECASE))
+            except re.error:
+                raise errors.InvalidCommandParamsError(validation_error)
+
+        return efi_utils.clean_boot_records(patterns=patterns)
 
     def apply_configuration(self, node, ports, raid_config,
                             delete_existing=True):

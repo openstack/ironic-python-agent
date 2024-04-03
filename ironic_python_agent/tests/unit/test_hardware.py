@@ -15,6 +15,7 @@
 import binascii
 import json
 import os
+import re
 import shutil
 import stat
 import time
@@ -29,6 +30,7 @@ import pyudev
 from stevedore import extension
 
 from ironic_python_agent import disk_utils
+from ironic_python_agent import efi_utils
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import netutils
@@ -161,6 +163,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 'interface': 'deploy',
                 'reboot_requested': False,
                 'abortable': True
+            },
+            {
+                'step': 'clean_uefi_nvram',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True,
+                'argsinfo': mock.ANY
             },
             {
                 'step': 'delete_configuration',
@@ -2897,6 +2907,40 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.side_effect = side_effect
         self.assertEqual('2001:5678:5678:5678:5678:5678:5678:5678',
                          self.hardware.get_bmc_v6address())
+
+    @mock.patch.object(efi_utils, 'clean_boot_records', autospec=True)
+    def test_clean_uefi_nvram_defaults(self, mock_efi_utils):
+        self.hardware.clean_uefi_nvram(self.node, [])
+        mock_efi_utils.assert_called_once_with(patterns=[
+            re.compile(r'^HD\(', flags=re.IGNORECASE),
+            re.compile(r'shim.*\.efi', flags=re.IGNORECASE),
+            re.compile(r'grub.*\.efi', flags=re.IGNORECASE)
+        ])
+
+    @mock.patch.object(efi_utils, 'clean_boot_records', autospec=True)
+    def test_clean_uefi_nvram(self, mock_efi_utils):
+        self.hardware.clean_uefi_nvram(self.node, [], match_patterns=[
+            'VenHw', 'VenMsg'
+        ])
+        mock_efi_utils.assert_called_once_with(patterns=[
+            re.compile(r'VenHw', flags=re.IGNORECASE),
+            re.compile(r'VenMsg', flags=re.IGNORECASE)
+        ])
+
+    @mock.patch.object(efi_utils, 'clean_boot_records', autospec=True)
+    def test_clean_uefi_invalid(self, mock_efi_utils):
+        # Not a list
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.hardware.clean_uefi_nvram, self.node, [],
+                          match_patterns='VenHw')
+        # Not a list of strings
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.hardware.clean_uefi_nvram, self.node, [],
+                          match_patterns=[True])
+        # Not valid regular expression
+        self.assertRaises(errors.InvalidCommandParamsError,
+                          self.hardware.clean_uefi_nvram, self.node, [],
+                          match_patterns=[')oo('])
 
     @mock.patch.object(il_utils, 'execute', autospec=True)
     def test_validate_configuration_no_configuration(self, mocked_execute):

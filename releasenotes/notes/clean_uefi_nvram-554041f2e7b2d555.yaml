@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Adds a deploy step ``clean_uefi_nvram`` to remove unrequired extra UEFI
+    NVRAM boot entries. By default any entry matching ``HD`` as the root device,
+    or with a ``shim`` or ``grub`` efi file in the path will be deleted,
+    ensuring that disk based boot entries are removed before the new entry is
+    created for the written image. The ``match_patterns`` parameter allows a
+    list of regular expressions to be passed, where a case insensitive search in
+    the device path will result in that entry being deleted.
