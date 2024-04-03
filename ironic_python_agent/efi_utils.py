@@ -15,10 +15,10 @@ import re
 import sys
 import tempfile
 
-from ironic_lib import disk_utils
 from oslo_concurrency import processutils
 from oslo_log import log
 
+from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils

@@ -12,10 +12,10 @@
 
 from unittest import mock
 
-from ironic_lib import disk_utils
 from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 
+from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import raid_utils

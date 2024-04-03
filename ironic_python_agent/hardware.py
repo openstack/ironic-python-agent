@@ -29,7 +29,6 @@ import stat
 import string
 import time
 
-from ironic_lib import disk_utils
 from ironic_lib import utils as il_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -41,6 +40,7 @@ import stevedore
 import yaml
 
 from ironic_python_agent import burnin
+from ironic_python_agent import disk_utils
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import base as ext_base
@@ -100,21 +100,6 @@ def _get_device_info(dev, devclass, field):
         LOG.warning("Can't find field %(field)s for "
                     "device %(dev)s in device class %(class)s",
                     {'field': field, 'dev': dev, 'class': devclass})
-
-
-def _udev_settle():
-    """Wait for the udev event queue to settle.
-
-    Wait for the udev event queue to settle to make sure all devices
-    are detected once the machine boots up.
-
-    """
-    try:
-        il_utils.execute('udevadm', 'settle')
-    except processutils.ProcessExecutionError as e:
-        LOG.warning('Something went wrong when waiting for udev '
-                    'to settle. Error: %s', e)
-        return
 
 
 def _load_ipmi_modules():
@@ -508,7 +493,7 @@ def list_all_block_devices(block_type='disk',
 
     check_multipath = not ignore_multipath and get_multipath_status()
 
-    _udev_settle()
+    disk_utils.udev_settle()
 
     # map device names to /dev/disk/by-path symbolic links that points to it
 

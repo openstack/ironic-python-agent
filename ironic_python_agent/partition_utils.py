@@ -26,7 +26,6 @@ import shutil
 import stat
 import tempfile
 
-from ironic_lib import disk_utils
 from ironic_lib import exception
 from ironic_lib import utils
 from oslo_concurrency import processutils
@@ -37,6 +36,7 @@ from oslo_utils import units
 from oslo_utils import uuidutils
 import requests
 
+from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import utils as ipa_utils
