@@ -312,13 +312,11 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
         self.dev = 'fake-dev'
         self.node_uuid = "12345678-1234-1234-1234-1234567890abcxyz"
 
-    def test_destroy_disk_metadata(self, mock_exec):
-        # Note(TheJulia): This list will get-reused, but only the second
-        # execution returning a string is needed for the test as otherwise
-        # command output is not used.
+    def test_destroy_disk_metadata_4096(self, mock_exec):
         mock_exec.side_effect = iter([
             (None, None),
-            ('1024\n', None),
+            ('4096\n', None),
+            ('524288\n', None),
             (None, None),
             (None, None),
             (None, None),
@@ -326,7 +324,37 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
 
         expected_calls = [mock.call('wipefs', '--force', '--all', 'fake-dev',
                                     use_standard_locale=True),
-                          mock.call('blockdev', '--getsz', 'fake-dev'),
+                          mock.call('blockdev', '--getss', 'fake-dev'),
+                          mock.call('blockdev', '--getsize64', 'fake-dev'),
+                          mock.call('dd', 'bs=4096', 'if=/dev/zero',
+                                    'of=fake-dev', 'count=5', 'oflag=direct',
+                                    use_standard_locale=True),
+                          mock.call('dd', 'bs=4096', 'if=/dev/zero',
+                                    'of=fake-dev', 'count=5', 'oflag=direct',
+                                    'seek=123', use_standard_locale=True),
+                          mock.call('sgdisk', '-Z', 'fake-dev',
+                                    use_standard_locale=True),
+                          mock.call('fuser', self.dev, check_exit_code=[0, 1])]
+        disk_utils.destroy_disk_metadata(self.dev, self.node_uuid)
+        mock_exec.assert_has_calls(expected_calls)
+
+    def test_destroy_disk_metadata(self, mock_exec):
+        # Note(TheJulia): This list will get-reused, but only the second
+        # execution returning a string is needed for the test as otherwise
+        # command output is not used.
+        mock_exec.side_effect = iter([
+            (None, None),
+            ('512\n', None),
+            ('524288\n', None),
+            (None, None),
+            (None, None),
+            (None, None),
+            (None, None)])
+
+        expected_calls = [mock.call('wipefs', '--force', '--all', 'fake-dev',
+                                    use_standard_locale=True),
+                          mock.call('blockdev', '--getss', 'fake-dev'),
+                          mock.call('blockdev', '--getsize64', 'fake-dev'),
                           mock.call('dd', 'bs=512', 'if=/dev/zero',
                                     'of=fake-dev', 'count=33', 'oflag=direct',
                                     use_standard_locale=True),
@@ -353,7 +381,8 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
     def test_destroy_disk_metadata_sgdisk_fail(self, mock_exec):
         expected_calls = [mock.call('wipefs', '--force', '--all', 'fake-dev',
                                     use_standard_locale=True),
-                          mock.call('blockdev', '--getsz', 'fake-dev'),
+                          mock.call('blockdev', '--getss', 'fake-dev'),
+                          mock.call('blockdev', '--getsize64', 'fake-dev'),
                           mock.call('dd', 'bs=512', 'if=/dev/zero',
                                     'of=fake-dev', 'count=33', 'oflag=direct',
                                     use_standard_locale=True),
@@ -364,7 +393,8 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
                                     use_standard_locale=True)]
         mock_exec.side_effect = iter([
             (None, None),
-            ('1024\n', None),
+            ('512\n', None),
+            ('524288\n', None),
             (None, None),
             (None, None),
             processutils.ProcessExecutionError()])
@@ -378,7 +408,8 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
         mock_exec.side_effect = iter([
             processutils.ProcessExecutionError(description='--force'),
             (None, None),
-            ('1024\n', None),
+            ('512\n', None),
+            ('524288\n', None),
             (None, None),
             (None, None),
             (None, None),
@@ -394,7 +425,8 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
     def test_destroy_disk_metadata_ebr(self, mock_exec):
         expected_calls = [mock.call('wipefs', '--force', '--all', 'fake-dev',
                                     use_standard_locale=True),
-                          mock.call('blockdev', '--getsz', 'fake-dev'),
+                          mock.call('blockdev', '--getss', 'fake-dev'),
+                          mock.call('blockdev', '--getsize64', 'fake-dev'),
                           mock.call('dd', 'bs=512', 'if=/dev/zero',
                                     'of=fake-dev', 'count=2', 'oflag=direct',
                                     use_standard_locale=True),
@@ -402,7 +434,8 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
                                     use_standard_locale=True)]
         mock_exec.side_effect = iter([
             (None, None),
-            ('2\n', None),  # an EBR is 2 sectors
+            ('512\n', None),
+            ('1024\n', None),  # an EBR is 2 sectors
             (None, None),
             (None, None),
             (None, None),
@@ -413,7 +446,8 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
     def test_destroy_disk_metadata_tiny_partition(self, mock_exec):
         expected_calls = [mock.call('wipefs', '--force', '--all', 'fake-dev',
                                     use_standard_locale=True),
-                          mock.call('blockdev', '--getsz', 'fake-dev'),
+                          mock.call('blockdev', '--getss', 'fake-dev'),
+                          mock.call('blockdev', '--getsize64', 'fake-dev'),
                           mock.call('dd', 'bs=512', 'if=/dev/zero',
                                     'of=fake-dev', 'count=33', 'oflag=direct',
                                     use_standard_locale=True),
@@ -424,7 +458,8 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
                                     use_standard_locale=True)]
         mock_exec.side_effect = iter([
             (None, None),
-            ('42\n', None),
+            ('512\n', None),
+            ('21504\n', None),
             (None, None),
             (None, None),
             (None, None),
@@ -434,17 +469,17 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class GetDeviceBlockSizeTestCase(base.IronicLibTestCase):
+class GetDeviceByteSizeTestCase(base.IronicLibTestCase):
 
     def setUp(self):
-        super(GetDeviceBlockSizeTestCase, self).setUp()
+        super(GetDeviceByteSizeTestCase, self).setUp()
         self.dev = 'fake-dev'
         self.node_uuid = "12345678-1234-1234-1234-1234567890abcxyz"
 
-    def test_get_dev_block_size(self, mock_exec):
+    def test_get_dev_byte_size(self, mock_exec):
         mock_exec.return_value = ("64", "")
-        expected_call = [mock.call('blockdev', '--getsz', self.dev)]
-        disk_utils.get_dev_block_size(self.dev)
+        expected_call = [mock.call('blockdev', '--getsize64', self.dev)]
+        disk_utils.get_dev_byte_size(self.dev)
         mock_exec.assert_has_calls(expected_call)
 
 

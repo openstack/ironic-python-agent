@@ -49,8 +49,6 @@ _PARTED_TABLE_TYPE_RE = re.compile(r'^.*partition\s+table\s*:\s*(gpt|msdos)',
 CONFIGDRIVE_LABEL = "config-2"
 MAX_CONFIG_DRIVE_SIZE_MB = 64
 
-GPT_SIZE_SECTORS = 33
-
 # Maximum disk size supported by MBR is 2TB (2 * 1024 * 1024 MB)
 MAX_DISK_SIZE_MB_SUPPORTED_BY_MBR = 2097152
 
@@ -428,10 +426,16 @@ def get_image_mb(image_path, virtual_size=True):
     return image_mb
 
 
-def get_dev_block_size(dev):
-    """Get the device size in 512 byte sectors."""
-    block_sz, cmderr = utils.execute('blockdev', '--getsz', dev)
-    return int(block_sz)
+def get_dev_byte_size(dev):
+    """Get the device size in bytes."""
+    byte_sz, cmderr = utils.execute('blockdev', '--getsize64', dev)
+    return int(byte_sz)
+
+
+def get_dev_sector_size(dev):
+    """Get the device logical sector size in bytes."""
+    sect_sz, cmderr = utils.execute('blockdev', '--getss', dev)
+    return int(sect_sz)
 
 
 def destroy_disk_metadata(dev, node_uuid):
@@ -465,21 +469,32 @@ def destroy_disk_metadata(dev, node_uuid):
     # This is the same bug as
     # https://bugs.launchpad.net/ironic-python-agent/+bug/1737556
 
+    sector_size = get_dev_sector_size(dev)
+    # https://uefi.org/specs/UEFI/2.10/05_GUID_Partition_Table_Format.html If
+    # the block size is 512, the First Usable LBA must be greater than or equal
+    # to 34 [...] if the logical block size is 4096, the First Usable LBA must
+    # be greater than or equal to 6
+    if sector_size == 512:
+        gpt_sectors = 33
+    elif sector_size == 4096:
+        gpt_sectors = 5
+
     # Overwrite the Primary GPT, catch very small partitions (like EBRs)
+    dd_bs = 'bs=%s' % sector_size
     dd_device = 'of=%s' % dev
-    dd_count = 'count=%s' % GPT_SIZE_SECTORS
-    dev_size = get_dev_block_size(dev)
-    if dev_size < GPT_SIZE_SECTORS:
-        dd_count = 'count=%s' % dev_size
-    utils.execute('dd', 'bs=512', 'if=/dev/zero', dd_device, dd_count,
+    dd_count = 'count=%s' % gpt_sectors
+    dev_size = get_dev_byte_size(dev)
+    if dev_size < gpt_sectors * sector_size:
+        dd_count = 'count=%s' % int(dev_size / sector_size)
+    utils.execute('dd', dd_bs, 'if=/dev/zero', dd_device, dd_count,
                   'oflag=direct', use_standard_locale=True)
 
     # Overwrite the Secondary GPT, do this only if there could be one
-    if dev_size > GPT_SIZE_SECTORS:
-        gpt_backup = dev_size - GPT_SIZE_SECTORS
+    if dev_size > gpt_sectors * sector_size:
+        gpt_backup = int(dev_size / sector_size - gpt_sectors)
         dd_seek = 'seek=%i' % gpt_backup
-        dd_count = 'count=%s' % GPT_SIZE_SECTORS
-        utils.execute('dd', 'bs=512', 'if=/dev/zero', dd_device, dd_count,
+        dd_count = 'count=%s' % gpt_sectors
+        utils.execute('dd', dd_bs, 'if=/dev/zero', dd_device, dd_count,
                       'oflag=direct', dd_seek, use_standard_locale=True)
 
     # Go ahead and let sgdisk run as well.

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Adds support for disks with 4096 sector size when cleaning disk metadata.
+    Previously, only 512 sector size disks were supported.
