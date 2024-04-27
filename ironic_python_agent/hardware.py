@@ -480,7 +480,8 @@ def list_all_block_devices(block_type='disk',
                            ignore_raid=False,
                            ignore_floppy=True,
                            ignore_empty=True,
-                           ignore_multipath=False):
+                           ignore_multipath=False,
+                           all_serial_and_wwn=False):
     """List all physical block devices
 
     The switches we use for lsblk: P for KEY="value" output, b for size output
@@ -500,6 +501,13 @@ def list_all_block_devices(block_type='disk',
     :param ignore_multipath: Whether to ignore devices backing multipath
                              devices. Default is to consider multipath
                              devices, if possible.
+    :param all_serial_and_wwn: Don't collect serial and wwn numbers based
+                               on a priority order, instead collect wwn
+                               numbers from both udevadm and lsblk. When
+                               enabled this option will allso collect both
+                               the short and the long serial from udevadm if
+                               possible.
+
     :return: A list of BlockDevices
     """
 
@@ -646,8 +654,15 @@ def list_all_block_devices(block_type='disk',
 
         extra = {}
         lsblk_serial = device_raw.get('serial')
-        if lsblk_serial:
-            extra['serial'] = lsblk_serial
+        lsblk_wwn = device_raw.get('wwn')
+        if all_serial_and_wwn:
+            extra['serial'] = [lsblk_serial]
+            extra['wwn'] = [lsblk_wwn]
+        else:
+            if lsblk_serial:
+                extra['serial'] = lsblk_serial
+            if lsblk_wwn:
+                extra['wwn'] = lsblk_wwn
         try:
             udev = pyudev.Devices.from_device_file(context, name)
         except pyudev.DeviceNotFoundByFileError as e:
@@ -667,18 +682,23 @@ def list_all_block_devices(block_type='disk',
             ]
             # Only check device serial information from udev
             # when lsblk returned None
-            if not lsblk_serial:
+            if all_serial_and_wwn or not lsblk_serial:
                 udev_property_mappings += [
                     ('serial', 'SERIAL_SHORT'),
                     ('serial', 'SERIAL')
                 ]
             for key, udev_key in udev_property_mappings:
-                if key in extra:
-                    continue
-                value = (udev.get(f'ID_{udev_key}')
-                         or udev.get(f'DM_{udev_key}'))  # devicemapper
-                if value:
-                    extra[key] = value
+                if all_serial_and_wwn and (key == 'wwn' or key == 'serial'):
+                    value = (udev.get(f'ID_{udev_key}')
+                             or udev.get(f'DM_{udev_key}'))  # devicemapper
+                    extra[key].append(value)
+                else:
+                    if key in extra:
+                        continue
+                    value = (udev.get(f'ID_{udev_key}')
+                             or udev.get(f'DM_{udev_key}'))  # devicemapper
+                    if value:
+                        extra[key] = value
 
         # NOTE(lucasagomes): Newer versions of the lsblk tool supports
         # HCTL as a parameter but let's get it from sysfs to avoid breaking
@@ -1546,8 +1566,10 @@ class GenericHardwareManager(HardwareManager):
 
         return Memory(total=total, physical_mb=physical)
 
-    def list_block_devices(self, include_partitions=False):
-        block_devices = list_all_block_devices()
+    def list_block_devices(self, include_partitions=False,
+                           all_serial_and_wwn=False):
+        block_devices = \
+            list_all_block_devices(all_serial_and_wwn=all_serial_and_wwn)
         if include_partitions:
             block_devices.extend(
                 list_all_block_devices(block_type='part',
@@ -1581,9 +1603,11 @@ class GenericHardwareManager(HardwareManager):
         return skip_list
 
     def list_block_devices_check_skip_list(self, node,
-                                           include_partitions=False):
+                                           include_partitions=False,
+                                           all_serial_and_wwn=False):
         block_devices = self.list_block_devices(
-            include_partitions=include_partitions)
+            include_partitions=include_partitions,
+            all_serial_and_wwn=all_serial_and_wwn)
         skip_list = self.get_skip_list_from_node(
             node, block_devices)
         if skip_list is not None:
@@ -1606,13 +1630,29 @@ class GenericHardwareManager(HardwareManager):
             LOG.debug('Looking for a device matching root hints %s',
                       root_device_hints)
             block_devices = self.list_block_devices_check_skip_list(
-                cached_node)
+                cached_node, all_serial_and_wwn=True)
         else:
-            block_devices = self.list_block_devices()
+            block_devices = self.list_block_devices(all_serial_and_wwn=True)
         if not root_device_hints:
             dev_name = utils.guess_root_disk(block_devices).name
         else:
             serialized_devs = [dev.serialize() for dev in block_devices]
+            orig_size = len(serialized_devs)
+            for dev_idx in range(orig_size):
+                ser_dev = serialized_devs.pop(0)
+                serials = ser_dev.get('serial')
+                wwns = ser_dev.get('wwn')
+                # (rozzi) static serial and static wwn are used to avoid
+                # reundancy in the number of wwns and serials, if the code
+                # would just loop over both serials and wwns it could be that
+                # there would be an uncesarry duplication of the first wwn
+                # number
+                for serial in serials:
+                    for wwn in wwns:
+                        tmp_ser_dev = ser_dev.copy()
+                        tmp_ser_dev['wwn'] = wwn
+                        tmp_ser_dev['serial'] = serial
+                        serialized_devs.append(tmp_ser_dev)
             try:
                 device = il_utils.match_root_device_hints(serialized_devs,
                                                           root_device_hints)

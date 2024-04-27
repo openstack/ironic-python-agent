@@ -102,35 +102,42 @@ BLK_DEVICE_TEMPLATE = """
     "blockdevices": [
         {"kname":"sda", "model":"TinyUSB Drive", "size":3116853504,
         "rota":false, "type":"disk", "serial":"sda123", "uuid":"F531-BDC3",
-        "partuuid":null},
+        "partuuid":null, "wwn":"wwn0"},
         {"kname":"sdb", "model":"Fastable SD131 7", "size":10737418240,
-        "rota":false, "type":"disk", "serial":"sdb123",
+        "rota":false, "type":"disk", "serial":"sdb123", "wwn":"wwn1",
         "uuid":"9a5e5cca-e03d-4cbd-9054-9e6ca9048222", "partuuid":null},
         {"kname":"sdc", "model":"NWD-BLP4-1600", "size":1765517033472,
         "rota":false, "type":"disk", "serial":"sdc123", "uuid":null,
-        "partuuid":null},
+        "partuuid":null, "wwn":"wwn2"},
         {"kname":"sdd", "model":"NWD-BLP4-1600", "size":1765517033472,
         "rota":false, "type":"disk", "serial":"sdd123", "uuid":null,
-        "partuuid":null},
+        "partuuid":null, "wwn":"wwn3"},
         {"kname":"loop0", "model":null, "size":109109248, "rota":true,
-        "type":"loop", "serial":null, "uuid":null, "partuuid": null},
+        "type":"loop", "serial":null, "uuid":null, "partuuid": null,
+        "wwn":"wwn03"},
         {"kname":"zram0", "model":null, "size":0, "rota":false, "type":"disk",
-        "serial":null, "uuid":null, "partuuid":null},
+        "serial":null, "uuid":null, "partuuid":null, "wwn":"wwn04"},
         {"kname":"ram0", "model":null, "size":8388608, "rota":false,
-        "type":"disk", "serial":null, "uuid":null, "partuuid":null},
+        "type":"disk", "serial":null, "uuid":null, "partuuid":null, "wwn":null
+        },
         {"kname":"ram1", "model":null, "size":8388608, "rota":false,
-        "type":"disk", "serial":null, "uuid":null, "partuuid":null},
+        "type":"disk", "serial":null, "uuid":null, "partuuid":null, "wwn":null
+        },
         {"kname":"ram2", "model":null, "size":8388608, "rota":false,
-        "type":"disk", "serial":null,  "uuid":null, "partuuid":null},
+        "type":"disk", "serial":null,  "uuid":null, "partuuid":null,"wwn":null
+        },
         {"kname":"ram3", "model":null, "size":8388608, "rota":false,
-        "type":"disk", "serial":null, "uuid":null, "partuuid":null},
+        "type":"disk", "serial":null, "uuid":null, "partuuid":null, "wwn":null
+        },
         {"kname":"fd1", "model":"magic", "size":4096, "rota":true,
-        "type":"disk", "serial":null, "uuid":null, "partuuid":null},
+        "type":"disk", "serial":null, "uuid":null, "partuuid":null, "wwn":null
+        },
         {"kname":"sdf", "model":"virtual floppy", "size":0, "rota":true,
-        "type":"disk", "serial":null, "uuid":null, "partuuid":null},
+        "type":"disk", "serial":null, "uuid":null, "partuuid":null, "wwn":null
+        },
         {"kname":"dm-0", "model":"NWD-BLP4-1600", "size":"1765517033472",
         "rota":false, "type":"mpath", "serial":null, "uuid":null,
-        "partuuid":null}
+        "partuuid":null, "wwn":null }
     ]
 }
 """
@@ -140,9 +147,11 @@ BLK_DEVICE_TEMPLATE_SMALL = """
 {
   "blockdevices": [
     {"kname":"sda", "model":"TinyUSB Drive", "size":3116853504, "rota":false,
-    "type":"disk", "serial":"123", "uuid":"F531-BDC", "partuuid":null},
+    "type":"disk", "serial":"123", "uuid":"F531-BDC", "partuuid":null,
+    "wwn":"wwn0" },
     {"kname":"sdb", "model":"AlmostBigEnough Drive", "size":"4294967295",
-    "rota":false, "type":"disk", "serial":"456", "uuid":null, "partuuid":null}
+    "rota":false, "type":"disk", "serial":"456", "uuid":null, "partuuid":null,
+    "wwn":"wwn1" }
   ]
 }
 """
@@ -153,9 +162,10 @@ BLK_INCOMPLETE_DEVICE_TEMPLATE_SMALL = """
 {
   "blockdevices": [
     {"kname":"sda", "model":"TinyUSB Drive", "size":3116853504, "rota":false,
-    "type":"disk", "serial":"", "uuid":"F531-BDC", "partuuid":null},
+    "type":"disk", "serial":"", "uuid":"F531-BDC", "partuuid":null, "wwn":""},
     {"kname":"sdb", "model":"AlmostBigEnough Drive", "size":"4294967295",
-    "rota":false, "type":"disk", "serial":"", "uuid":null, "partuuid":null}
+    "rota":false, "type":"disk", "serial":"", "uuid":null, "partuuid":null,
+    "wwn":null }
   ]
 }
 """
@@ -171,23 +181,27 @@ RAID_BLK_DEVICE_TEMPLATE = ("""
 {
     "blockdevices": [
       {"kname":"sda", "model":"DRIVE 0", "size":1765517033472, "rota":true,
-      "type":"disk", "serial":"sda123", "uuid":null, "partuuid":null},
+      "type":"disk", "serial":"sda123", "uuid":null, "partuuid":null,
+      "wwn":"wwn1234" },
       {"kname":"sda1", "model":"DRIVE 0", "size":107373133824, "rota":true,
-      "type":"part", "serial":"sda1123", "uuid":null, "partuuid":null},
+      "type":"part", "serial":"sda1123", "uuid":null, "partuuid":null,
+      "wwn":"wwn2222"},
       {"kname":"sdb", "model":"DRIVE 1", "size":1765517033472, "rota":true,
-      "type":"disk", "serial":"sdb123", "uuid":null, "partuuid":null},
+      "type":"disk", "serial":"sdb123", "uuid":null, "partuuid":null,
+      "wwn":"wwn333"},
       {"kname":"sdb", "model":"DRIVE 1", "size":1765517033472, "rota":true,
-      "type":"disk", "uuid":null, "partuuid":null},
+      "type":"disk", "uuid":null, "partuuid":null, "wwn":"444"},
       {"kname":"sdb1", "model":"DRIVE 1", "size":107373133824, "rota":true,
-      "type":"part", "serial":"sdb1123", "uuid":null, "partuuid":null},
+      "type":"part", "serial":"sdb1123", "uuid":null, "partuuid":null,
+      "wwn":"wwn5"},
       {"kname":"md0p1", "model":"RAID", "size":107236818944, "rota":false,
-      "type":"md", "serial":null, "uuid":null, "partuuid":null},
+      "type":"md", "serial":null, "uuid":null, "partuuid":null, "wwn":"wwn6"},
       {"kname":"md0", "model":"RAID", "size":1765517033470, "rota":false,
-      "type":"raid1", "serial":null, "uuid":null, "partuuid":null},
+      "type":"raid1", "serial":null, "uuid":null, "partuuid":null, "wwn":"12"},
       {"kname":"md0", "model":"RAID", "size":1765517033470, "rota":false,
-      "type":"raid1", "serial":null, "uuid":null, "partuuid":null},
+      "type":"raid1", "serial":null, "uuid":null, "partuuid":null, "wwn":"33"},
       {"kname":"md1", "model":"RAID", "size":0, "rota":false, "type":"raid1",
-      "serial":null, "uuid":null, "partuuid":null}
+      "serial":null, "uuid":null, "partuuid":null, "wwn":null}
     ]
 }
 """)
@@ -197,51 +211,59 @@ MULTIPATH_BLK_DEVICE_TEMPLATE = ("""
     "blockdevices": [
       {"kname":"sda", "model":"INTEL_SSDSC2CT060A3", "size":"60022480896",
       "rota":false, "type":"disk", "serial":"sda123", "uuid":null,
-      "partuuid":null},
+      "partuuid":null, "wwn":null },
       {"kname":"sda2", "model":null, "size":"59162722304", "rota":false,
       "type":"part", "uuid":"f8b55d59-96c3-3982-b129-1b6b2ee8da86",
-      "partuuid":"c97c8aac-7796-4433-b1fc-9b5fac43edf3", "serial":"sda2123"},
+      "partuuid":"c97c8aac-7796-4433-b1fc-9b5fac43edf3", "serial":"sda2123",
+      "wwn":"" },
       {"kname":"sda3", "model":null, "size":"650002432", "rota":false,
       "type":"part", "uuid":"b3b03565-5f13-3c93-b2a6-6d90e25be926",
-      "partuuid":"6c85beff-b2bd-4a1c-91b7-8abb5256459d", "serial":"sda3123"},
+      "partuuid":"6c85beff-b2bd-4a1c-91b7-8abb5256459d", "serial":"sda3123",
+      "wwn":"wwn1" },
       {"kname":"sda1", "model":null, "size":"209715200", "rota":false,
       "type":"part", "uuid":"0a83355d-7500-3f5f-9abd-66f6fd03714c",
-      "partuuid":"eba28b26-b76a-402c-94dd-0b66a523a485", "serial":"sda1123"},
+      "partuuid":"eba28b26-b76a-402c-94dd-0b66a523a485", "serial":"sda1123",
+      "wwn":"123" },
       {"kname":"dm-0", "model":null, "size":"60022480896", "rota":false,
-      "type":"mpath", "serial":null, "uuid":null, "partuuid":null},
+      "type":"mpath", "serial":null, "uuid":null, "partuuid":null,
+      "wwn":"123aa" },
       {"kname":"dm-4", "model":null, "size":"650002432", "rota":false,
       "type":"part", "uuid":"b3b03565-5f13-3c93-b2a6-6d90e25be926",
-      "partuuid":"6c85beff-b2bd-4a1c-91b7-8abb5256459d", "serial":null},
+      "partuuid":"6c85beff-b2bd-4a1c-91b7-8abb5256459d", "serial":null,
+      "wwn":"123bb" },
       {"kname":"dm-2", "model":null, "size":"209715200", "rota":false,
       "type":"part", "uuid":"0a83355d-7500-3f5f-9abd-66f6fd03714c",
-      "partuuid":"eba28b26-b76a-402c-94dd-0b66a523a485", "serial":null},
+      "partuuid":"eba28b26-b76a-402c-94dd-0b66a523a485", "serial":null,
+      "wwn":"123cc" },
       {"kname":"dm-3", "model":null, "size":"59162722304", "rota":false,
       "type":"part", "uuid":"f8b55d59-96c3-3982-b129-1b6b2ee8da86",
-      "partuuid":"c97c8aac-7796-4433-b1fc-9b5fac43edf3", "serial":null},
+      "partuuid":"c97c8aac-7796-4433-b1fc-9b5fac43edf3", "serial":null,
+      "wwn":"123dd" },
       {"kname":"sdb", "model":"INTEL_SSDSC2CT060A3", "size":"60022480896",
       "rota":false, "type":"disk", "serial":"sdb123", "uuid":null,
-      "partuuid":null},
+      "partuuid":null, "wwn":"123ee" },
       {"kname":"sdb2", "model":null, "size":"59162722304",
       "rota":false, "type":"part", "serial":"sdb2123",
-      "uuid":"f8b55d59-96c3-3982-b129-1b6b2ee8da86",
+      "uuid":"f8b55d59-96c3-3982-b129-1b6b2ee8da86", "wwn":"123gg",
       "partuuid":"c97c8aac-7796-4433-b1fc-9b5fac43edf3"},
       {"kname":"sdb3", "model":null, "size":"650002432",
       "rota":false, "type":"part", "serial":"sdv3123",
-      "uuid":"b3b03565-5f13-3c93-b2a6-6d90e25be926",
+      "uuid":"b3b03565-5f13-3c93-b2a6-6d90e25be926", "wwn":"123zz",
       "partuuid":"6c85beff-b2bd-4a1c-91b7-8abb5256459d"},
       {"kname":"sdb1", "model":null, "size":"209715200",
       "rota":false, "type":"part", "serial":"sdb1123",
-      "uuid":"0a83355d-7500-3f5f-9abd-66f6fd03714c",
+      "uuid":"0a83355d-7500-3f5f-9abd-66f6fd03714c", "wwn":"123ll",
       "partuuid":"eba28b26-b76a-402c-94dd-0b66a523a485"},
       {"kname":"sdc", "model":"ST1000DM003-1CH162", "size":"1000204886016",
-      "rota":true, "type":"disk", "serial":"sdc123", "uuid":null,
+      "rota":true, "type":"disk", "serial":"sdc123", "uuid":null, "wwn":"123g",
       "partuuid":null},
       {"kname":"sdc1", "model":null, "size":"899999072256",
       "rota":true, "type":"part", "serial":"sdc1123",
-      "uuid":"457f7d3c-9376-4997-89bd-d1a7c8b04060",
+      "uuid":"457f7d3c-9376-4997-89bd-d1a7c8b04060", "wwn":"123kc",
       "partuuid":"c9433d2e-3bbc-47b4-92bf-43c1d80f06e0"},
       {"kname":"dm-1", "model":null, "size":"1000204886016", "rota":false,
-      "type":"mpath", "serial":null, "uuid":null, "partuuid":null}
+      "type":"mpath", "serial":null, "uuid":null, "partuuid":null,
+      "wwn":"sp0ng3b0b" }
     ]
 }
 """)
@@ -250,9 +272,10 @@ PARTUUID_DEVICE_TEMPLATE = ("""
 {
     "blockdevices": [
       {"kname":"sda", "model":"DRIVE 0", "size":1765517033472, "rota":true,
-      "type":"disk", "serial":"sda123", "uuid":null, "partuuid":null},
+      "type":"disk", "serial":"sda123", "uuid":null, "partuuid":null,
+      "wwn":"4d4m" },
       {"kname":"sda1", "model":"DRIVE 0", "size":107373133824, "rota":true,
-      "type":"part", "serial":"sda1123", "uuid":"987654-3210",
+      "type":"part", "serial":"sda1123", "uuid":"987654-3210", "wwn":"k4k1",
       "partuuid":"1234-5678"}
     ]
 }

@@ -49,37 +49,37 @@ BLK_DEVICE_TEMPLATE_SMALL_DEVICES = [
     hardware.BlockDevice(name='/dev/sda', model='TinyUSB Drive',
                          size=3116853504, rotational=False,
                          vendor="FooTastic", uuid="F531-BDC3",
-                         serial="123"),
+                         serial="123", wwn="wwn0"),
     hardware.BlockDevice(name='/dev/sdb', model='AlmostBigEnough Drive',
                          size=4294967295, rotational=False,
                          vendor="FooTastic", uuid="",
-                         serial="456"),
+                         serial="456", wwn="wwn1"),
 ]
 
 RAID_BLK_DEVICE_TEMPLATE_DEVICES = [
     hardware.BlockDevice(name='/dev/sda', model='DRIVE 0',
                          size=1765517033472, rotational=True,
                          vendor="FooTastic", uuid="",
-                         serial="sda123"),
+                         serial="sda123", wwn="wwn1234"),
     hardware.BlockDevice(name='/dev/sdb', model='DRIVE 1',
                          size=1765517033472, rotational=True,
                          vendor="FooTastic", uuid="",
-                         serial="sdb123"),
+                         serial="sdb123", wwn="wwn333"),
     hardware.BlockDevice(name='/dev/md0', model='RAID',
                          size=1765517033470, rotational=False,
                          vendor="FooTastic", uuid="",
-                         serial=None),
+                         serial=None, wwn="12"),
     hardware.BlockDevice(name='/dev/md1', model='RAID',
                          size=0, rotational=False,
                          vendor="FooTastic", uuid="",
-                         serial=None),
+                         serial=None, wwn=None),
 ]
 
 BLK_DEVICE_TEMPLATE_PARTUUID_DEVICE = [
     hardware.BlockDevice(name='/dev/sda1', model='DRIVE 0',
                          size=107373133824, rotational=True,
                          vendor="FooTastic", uuid="987654-3210",
-                         partuuid="1234-5678", serial="sda1123"),
+                         partuuid="1234-5678", serial="sda1123", wwn="k4k1"),
 ]
 
 
@@ -406,7 +406,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ]
         expected = [
             mock.call('lsblk', '-bia', '--json',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-ll', '/dev/sda'),
@@ -486,7 +486,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ]
         expected = [
             mock.call('lsblk', '-bia', '--json',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-ll', '/dev/sda'),
@@ -541,7 +541,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('/dev/md0', self.hardware.get_os_install_device())
         expected = [
             mock.call('lsblk', '-bia', '--json',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
                       check_exit_code=[0]),
         ]
 
@@ -567,14 +567,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                self.hardware.get_os_install_device)
         expected = [
             mock.call('lsblk', '-bia', '--json',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
                       check_exit_code=[0]),
         ]
 
         mocked_execute.assert_has_calls(expected)
         mocked_execute.assert_called_once_with(
             'lsblk', '-bia', '--json',
-            '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+            '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
             check_exit_code=[0])
         self.assertIn(str(4 * units.Gi), ex.details)
         mock_cached_node.assert_called_once_with()
@@ -594,26 +594,26 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  size=3116853504,
                                  rotational=False,
                                  vendor='Super Vendor',
-                                 wwn='wwn0',
+                                 wwn=['strangewwn', 'wwn0'],
                                  wwn_with_extension='wwn0ven0',
                                  wwn_vendor_extension='ven0',
-                                 serial='serial0'),
+                                 serial=['wongserial', 'wrng0', 'serial0']),
             hardware.BlockDevice(name='/dev/sdb',
                                  model=model,
                                  size=10737418240,
                                  rotational=True,
                                  vendor='fake-vendor',
-                                 wwn='fake-wwn',
+                                 wwn=['fake-wwn'],
                                  wwn_with_extension='fake-wwnven0',
                                  wwn_vendor_extension='ven0',
-                                 serial='fake-serial',
+                                 serial=['fake-serial', 'serial1'],
                                  by_path='/dev/disk/by-path/1:0:0:0'),
         ]
 
         self.assertEqual(expected_device,
                          self.hardware.get_os_install_device())
         mock_cached_node.assert_called_once_with()
-        mock_dev.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
 
     def test_get_os_install_device_root_device_hints_model(self):
         self._get_os_install_device_root_device_hints(
@@ -691,7 +691,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertRaises(errors.DeviceNotFound,
                           self.hardware.get_os_install_device)
         mock_cached_node.assert_called_once_with()
-        mock_dev.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
@@ -727,7 +727,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         self.assertEqual('/dev/sdb', self.hardware.get_os_install_device())
         mock_cached_node.assert_called_once_with()
-        mock_dev.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
 
     @mock.patch.object(hardware, 'update_cached_node', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
@@ -767,7 +767,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                          self.hardware.get_os_install_device(
                              permit_refresh=True))
         self.assertEqual(1, mock_cached_node.call_count)
-        mock_dev.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
@@ -801,7 +801,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('/dev/sdb',
                          self.hardware.get_os_install_device())
         mock_cached_node.assert_called_once_with()
-        mock_dev.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
@@ -832,7 +832,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertRaises(errors.DeviceNotFound,
                           self.hardware.get_os_install_device)
         mock_cached_node.assert_called_once_with()
-        mock_dev.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
@@ -864,7 +864,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertRaises(errors.DeviceNotFound,
                           self.hardware.get_os_install_device)
         mock_cached_node.assert_called_once_with()
-        mock_dev.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
 
     def test__get_device_info(self):
         fileobj = mock.mock_open(read_data='fake-vendor')
@@ -1070,7 +1070,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         self.assertEqual([device], devices)
 
-        list_mock.assert_called_once_with()
+        list_mock.assert_called_once_with(all_serial_and_wwn=False)
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     def test_list_block_devices_including_partitions(self, list_mock):
@@ -1081,8 +1081,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         self.assertEqual([device, partition], devices)
 
-        self.assertEqual([mock.call(), mock.call(block_type='part',
-                                                 ignore_raid=True)],
+        self.assertEqual([mock.call(all_serial_and_wwn=False),
+                          mock.call(block_type='part', ignore_raid=True)],
                          list_mock.call_args_list)
 
     def test_get_skip_list_from_node_block_devices_with_skip_list(self):
@@ -1156,7 +1156,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual([device], returned_devices)
 
         mock_list_devs.assert_called_once_with(self.hardware,
-                                               include_partitions=False)
+                                               include_partitions=False,
+                                               all_serial_and_wwn=False)
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'list_block_devices', autospec=True)
@@ -1175,7 +1176,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(devices, returned_devices)
 
         mock_list_devs.assert_called_once_with(self.hardware,
-                                               include_partitions=False)
+                                               include_partitions=False,
+                                               all_serial_and_wwn=False)
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'list_block_devices', autospec=True)
@@ -1202,7 +1204,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(devices, returned_devices)
 
         mock_list_devs.assert_called_once_with(self.hardware,
-                                               include_partitions=False)
+                                               include_partitions=False,
+                                               all_serial_and_wwn=False)
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'list_block_devices', autospec=True)
@@ -1229,7 +1232,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual([], returned_devices)
 
         mock_list_devs.assert_called_once_with(self.hardware,
-                                               include_partitions=False)
+                                               include_partitions=False,
+                                               all_serial_and_wwn=False)
 
     @mock.patch.object(hardware, 'get_multipath_status', lambda *_: True)
     @mock.patch.object(os, 'readlink', autospec=True)
@@ -1292,7 +1296,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  vendor='Super Vendor',
                                  hctl='1:0:0:0',
                                  by_path='/dev/disk/by-path/1:0:0:0',
-                                 serial='sda123'),
+                                 serial='sda123',
+                                 wwn='wwn0'),
             hardware.BlockDevice(name='/dev/sdb',
                                  model='Fastable SD131 7',
                                  size=10737418240,
@@ -1300,7 +1305,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  vendor='Super Vendor',
                                  hctl='1:0:0:0',
                                  by_path='/dev/disk/by-path/1:0:0:1',
-                                 serial='sdb123'),
+                                 serial='sdb123',
+                                 wwn='wwn1'),
             hardware.BlockDevice(name='/dev/sdc',
                                  model='NWD-BLP4-1600',
                                  size=1765517033472,
@@ -1308,13 +1314,15 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  vendor='Super Vendor',
                                  hctl='1:0:0:0',
                                  by_path='/dev/disk/by-path/1:0:0:2',
-                                 serial='sdc123'),
+                                 serial='sdc123',
+                                 wwn='wwn2'),
             hardware.BlockDevice(name='/dev/dm-0',
                                  model='NWD-BLP4-1600',
                                  size=1765517033472,
                                  rotational=False,
                                  vendor='Super Vendor',
-                                 hctl='1:0:0:0'),
+                                 hctl='1:0:0:0',
+                                 wwn=None),
         ]
 
         self.assertEqual(4, len(devices))
@@ -1333,7 +1341,139 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mock_readlink.assert_has_calls(expected_calls)
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
+                      check_exit_code=[0]),
+            mock.call('multipath', '-c', '/dev/sda'),
+            mock.call('multipath', '-c', '/dev/sdb'),
+            mock.call('multipath', '-c', '/dev/sdc'),
+            mock.call('multipath', '-c', '/dev/sdd'),
+            mock.call('multipath', '-ll', '/dev/sdd'),
+            mock.call('multipath', '-c', '/dev/loop0'),
+            mock.call('multipath', '-c', '/dev/zram0'),
+            mock.call('multipath', '-c', '/dev/ram0'),
+            mock.call('multipath', '-c', '/dev/ram1'),
+            mock.call('multipath', '-c', '/dev/ram2'),
+            mock.call('multipath', '-c', '/dev/ram3'),
+            mock.call('multipath', '-c', '/dev/sdf'),
+            mock.call('multipath', '-c', '/dev/dm-0')
+        ]
+        mocked_execute.assert_has_calls(expected_calls)
+
+    @mock.patch.object(hardware, 'get_multipath_status', lambda *_: True)
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch.object(hardware, '_get_device_info', autospec=True)
+    @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_list_all_block_device_all_serial(self, mocked_execute,
+                                              mocked_udev, mocked_dev_vendor,
+                                              mock_listdir, mock_readlink):
+        by_path_map = {
+            '/dev/disk/by-path/1:0:0:0': '../../dev/sda',
+            '/dev/disk/by-path/1:0:0:1': '../../dev/sdb',
+            '/dev/disk/by-path/1:0:0:2': '../../dev/sdc',
+            # pretend that the by-path link to ../../dev/sdd is missing
+        }
+        mock_readlink.side_effect = lambda x, m=by_path_map: m[x]
+        mock_listdir.return_value = [os.path.basename(x)
+                                     for x in sorted(by_path_map)]
+        mocked_execute.side_effect = [
+            (hws.BLK_DEVICE_TEMPLATE, ''),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sda'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdb'),
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdc'),
+            # Pretend sdd is a multipath device... because why not.
+            (hws.MULTIPATH_VALID_PATH % '/dev/sdd', ''),
+            (hws.MULTIPATH_LINKS_DM % 'dm-0', ''),
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # loop0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # zram0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram0
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram1
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram2
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # ram3
+            processutils.ProcessExecutionError(
+                stderr=hws.MULTIPATH_INVALID_PATH % '/dev/sdf'),
+            processutils.ProcessExecutionError(
+                stderr='the -c option requires a path to check'),  # dm-0
+        ]
+        mocked_udev.side_effect = [
+            {'ID_WWN': 'badwwn%d' % i, 'ID_SERIAL_SHORT': 'badserial%d' % i,
+             'ID_SERIAL': 'longserial%d' % i,
+             'ID_WWN_WITH_EXTENSION': 'wwn-ext%d' % i,
+             'ID_WWN_VENDOR_EXTENSION': 'wwn-vendor-ext%d' % i}
+            for i in range(3)
+        ] + [
+            {'DM_WWN': 'wwn3', 'DM_SERIAL': 'serial3'}
+        ]
+        mocked_dev_vendor.return_value = 'Super Vendor'
+        devices = hardware.list_all_block_devices(all_serial_and_wwn=True)
+        expected_devices = [
+            hardware.BlockDevice(name='/dev/sda',
+                                 model='TinyUSB Drive',
+                                 size=3116853504,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 hctl='1:0:0:0',
+                                 by_path='/dev/disk/by-path/1:0:0:0',
+                                 serial=['sda123', 'badserial0',
+                                         'longserial0'],
+                                 wwn=['wwn0', 'badwwn0']),
+            hardware.BlockDevice(name='/dev/sdb',
+                                 model='Fastable SD131 7',
+                                 size=10737418240,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 hctl='1:0:0:0',
+                                 by_path='/dev/disk/by-path/1:0:0:1',
+                                 serial=['sdb123', 'badserial1',
+                                         'longserial1'],
+                                 wwn=['wwn1', 'badwwn1']),
+            hardware.BlockDevice(name='/dev/sdc',
+                                 model='NWD-BLP4-1600',
+                                 size=1765517033472,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 hctl='1:0:0:0',
+                                 by_path='/dev/disk/by-path/1:0:0:2',
+                                 serial=['sdc123', 'badserial2',
+                                         'longserial2'],
+                                 wwn=['wwn2', 'badwwn2']),
+            hardware.BlockDevice(name='/dev/dm-0',
+                                 model='NWD-BLP4-1600',
+                                 size=1765517033472,
+                                 rotational=False,
+                                 vendor='Super Vendor',
+                                 hctl='1:0:0:0',
+                                 wwn=[None, 'wwn3'],
+                                 serial=[None, None, 'serial3']),
+        ]
+
+        self.assertEqual(4, len(devices))
+        for expected, device in zip(expected_devices, devices):
+            # Compare all attrs of the objects
+            for attr in ['name', 'model', 'size', 'rotational',
+                         'wwn', 'vendor', 'serial', 'hctl']:
+                self.assertEqual(getattr(expected, attr),
+                                 getattr(device, attr))
+        expected_calls = [mock.call('/sys/block/%s/device/scsi_device' % dev)
+                          for dev in ('sda', 'sdb', 'sdc', 'dm-0')]
+        mock_listdir.assert_has_calls(expected_calls)
+
+        expected_calls = [mock.call('/dev/disk/by-path/1:0:0:%d' % dev)
+                          for dev in range(3)]
+        mock_readlink.assert_has_calls(expected_calls)
+        expected_calls = [
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sdb'),
@@ -2540,7 +2680,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           mock.call('/dev/md0', self.node['uuid'])],
                          mock_metadata.call_args_list)
         mock_list_devs.assert_called_with(self.hardware,
-                                          include_partitions=True)
+                                          include_partitions=True,
+                                          all_serial_and_wwn=False)
         self.assertEqual([mock.call(self.hardware, block_devices[0]),
                           mock.call(self.hardware, block_devices[1]),
                           mock.call(self.hardware, block_devices[4]),
@@ -2599,7 +2740,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual([mock.call('/dev/sda1', self.node['uuid'])],
                          mock_metadata.call_args_list)
         mock_list_devs.assert_called_with(self.hardware,
-                                          include_partitions=True)
+                                          include_partitions=True,
+                                          all_serial_and_wwn=False)
         mock_safety_check.assert_has_calls([
             mock.call(self.node, '/dev/sda1'),
             mock.call(self.node, '/dev/sda'),
@@ -2648,7 +2790,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           mock.call('/dev/sda', self.node['uuid'])],
                          mock_metadata.call_args_list)
         mock_list_devs.assert_called_with(self.hardware,
-                                          include_partitions=True)
+                                          include_partitions=True,
+                                          all_serial_and_wwn=False)
         self.assertEqual([mock.call(self.hardware, block_devices[1]),
                           mock.call(self.hardware, block_devices[0])],
                          mock__is_vmedia.call_args_list)
@@ -5229,7 +5372,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         result = hardware.list_all_block_devices()
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sdb')
@@ -5276,7 +5419,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         ]
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sda1'),
@@ -5315,7 +5458,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         result = hardware.list_all_block_devices(block_type='part')
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sda1'),
@@ -5338,7 +5481,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         result = hardware.list_all_block_devices()
         mocked_execute.assert_called_once_with(
             'lsblk', '-bia', '--json',
-            '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+            '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
             check_exit_code=[0])
         self.assertEqual([], result)
         mocked_udev.assert_called_once_with()
@@ -5352,15 +5495,15 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_mpath.return_value = False
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
-                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN',
                       check_exit_code=[0]),
         ]
         mocked_execute.return_value = (
             '{"blockdevices": [{"type":"disk", "model":"model"}]}', '')
         self.assertRaisesRegex(
             errors.BlockDeviceError,
-            r'^Block device caused unknown error: kname, partuuid, rota, '
-            r'serial, size, uuid must be returned by lsblk.$',
+            r'Block device caused unknown error: kname, partuuid, rota, '
+            r'serial, size, uuid, wwn must be returned by lsblk.',
             hardware.list_all_block_devices)
         mocked_udev.assert_called_once_with()
         mocked_execute.assert_has_calls(expected_calls)
