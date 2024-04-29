@@ -311,18 +311,27 @@ def copy_config_from_vmedia():
         ['config-2', 'vmedia_boot_iso'])
     if not vmedia_device_file:
         _early_log('No virtual media device detected')
+        _unmount_any_config_drives()
         return
     if not _booted_from_vmedia():
         _early_log('Cannot use configuration from virtual media as the '
                    'agent was not booted from virtual media.')
+        _unmount_any_config_drives()
         return
     # Determine the device
     mounted = _find_mount_point(vmedia_device_file)
     if mounted:
+        # In this case a utility like a configuration drive tool
+        # has *already* mounted the device we believe to be the
+        # configuration drive.
         _copy_config_from(mounted)
     else:
         with ironic_utils.mounted(vmedia_device_file) as vmedia_mount_point:
+            # In this case, we use a temporary folder and extract the contents
+            # for our configuration.
             _copy_config_from(vmedia_mount_point)
+    # As a last act, just make sure there is nothing else mounted.
+    _unmount_any_config_drives()
 
 
 def _get_cached_params():
@@ -917,3 +926,22 @@ def rescan_device(device):
     except processutils.ProcessExecutionError as e:
         LOG.warning('Something went wrong when waiting for udev '
                     'to settle. Error: %s', e)
+
+
+def _unmount_any_config_drives():
+    """Umount anything mounted to /mnt/config
+
+    As part of the configuration drive model, utilities like cloud-init
+    and glean leverage a folder at /mnt/config to convey configuration
+    to a booting OS.
+
+    The possibility exists that one of the utilties mounted one or multiple
+    such folders, even if the configuration was not used, and this can
+    result in locked devices which can prevent rebuild operations from
+    completing successfully as as long as the folder is mounted, it is
+    a "locked" device to the operating system.
+    """
+    while os.path.ismount('/mnt/config'):
+        _early_log('Issuing an umount command for /mnt/config...')
+        execute('umount', '/mnt/config')
+        time.sleep(1)
