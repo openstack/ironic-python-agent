@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import time
 from unittest import mock
 
 from ironic_lib import utils as ironic_utils
@@ -877,6 +878,7 @@ class TestClockSyncUtils(ironic_agent_base.IronicAgentTest):
         self.assertEqual(0, mock_execute.call_count)
 
 
+@mock.patch.object(utils, '_unmount_any_config_drives', autospec=True)
 @mock.patch.object(utils, '_booted_from_vmedia', autospec=True)
 @mock.patch.object(utils, '_check_vmedia_device', autospec=True)
 @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
@@ -887,7 +889,8 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
 
     def test_vmedia_found_not_booted_from_vmedia(
             self, mock_execute, mock_mount, mock_copy,
-            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia,
+            mock_unmount_config):
         mock_booted_from_vmedia.return_value = False
         mock_find_device.return_value = '/dev/fake'
         utils.copy_config_from_vmedia()
@@ -896,10 +899,12 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
         mock_copy.assert_not_called()
         mock_check_vmedia.assert_not_called()
         self.assertTrue(mock_booted_from_vmedia.called)
+        self.assertTrue(mock_unmount_config.called)
 
     def test_no_vmedia(
             self, mock_execute, mock_mount, mock_copy,
-            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia,
+            mock_unmount_config):
         mock_booted_from_vmedia.return_value = True
         mock_find_device.return_value = None
         utils.copy_config_from_vmedia()
@@ -908,10 +913,12 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
         mock_copy.assert_not_called()
         mock_check_vmedia.assert_not_called()
         self.assertFalse(mock_booted_from_vmedia.called)
+        self.assertTrue(mock_unmount_config.called)
 
     def test_no_files(
             self, mock_execute, mock_mount, mock_copy,
-            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia,
+            mock_unmount_config):
         mock_booted_from_vmedia.return_value = True
         temp_path = tempfile.mkdtemp()
         self.addCleanup(lambda: shutil.rmtree(temp_path))
@@ -925,10 +932,12 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
                                              '/dev/something')
         mock_copy.assert_not_called()
         self.assertTrue(mock_booted_from_vmedia.called)
+        self.assertTrue(mock_unmount_config.called)
 
     def test_mounted_no_files(
             self, mock_execute, mock_mount, mock_copy,
-            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia,
+            mock_unmount_config):
 
         mock_booted_from_vmedia.return_value = True
         mock_execute.return_value = '/some/path', ''
@@ -939,11 +948,13 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
         mock_copy.assert_not_called()
         mock_mount.assert_not_called()
         self.assertTrue(mock_booted_from_vmedia.called)
+        self.assertTrue(mock_unmount_config.called)
 
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test_copy(
             self, mock_makedirs, mock_execute, mock_mount, mock_copy,
-            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia):
+            mock_find_device, mock_check_vmedia, mock_booted_from_vmedia,
+            mock_unmount_config):
 
         mock_booted_from_vmedia.return_value = True
         mock_find_device.return_value = '/dev/something'
@@ -982,12 +993,14 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
             mock.call(mock.ANY, '/etc/ironic-python-agent.d/ironic.conf'),
         ], any_order=True)
         self.assertTrue(mock_booted_from_vmedia.called)
+        self.assertTrue(mock_unmount_config.called)
 
     @mock.patch.object(os, 'makedirs', autospec=True)
     def test_copy_mounted(
             self, mock_makedirs, mock_execute, mock_mount,
             mock_copy, mock_find_device, mock_check_vmedia,
-            mock_booted_from_vmedia):
+            mock_booted_from_vmedia,
+            mock_unmount_config):
         mock_booted_from_vmedia.return_value = True
         mock_find_device.return_value = '/dev/something'
         path = tempfile.mkdtemp()
@@ -1023,6 +1036,7 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
         ], any_order=True)
         mock_mount.assert_not_called()
         self.assertTrue(mock_booted_from_vmedia.called)
+        self.assertTrue(mock_unmount_config.called)
 
 
 @mock.patch.object(requests, 'get', autospec=True)
@@ -1143,3 +1157,20 @@ class TestCheckEarlyLogging(ironic_agent_base.IronicAgentTest):
         expected_calls = [mock.call('Early logging: %s', 'line 1.'),
                           mock.call('Early logging: %s', 'line 2 message')]
         info.assert_has_calls(expected_calls)
+
+
+class TestUnmountOfConfig(ironic_agent_base.IronicAgentTest):
+
+    @mock.patch.object(utils, '_early_log', autospec=True)
+    @mock.patch.object(os.path, 'ismount', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    def test__unmount_any_config_drives(self, mock_sleep, mock_exec,
+                                        mock_ismount, mock_log,):
+        mock_ismount.side_effect = iter([True, True, False])
+        utils._unmount_any_config_drives()
+        self.assertEqual(2, mock_sleep.call_count)
+        self.assertEqual(2, mock_log.call_count)
+        mock_exec.assert_has_calls([
+            mock.call('umount', '/mnt/config'),
+            mock.call('umount', '/mnt/config')])
