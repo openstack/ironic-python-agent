@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes an issue where configuration drive volumes which are mounted
+    by the operating system could remain mounted and cause a lock to be
+    held, which may conflict with actions such as ``rebuild``.
+    The agent now always makes sure the folder used by Glean and Cloud-init
+    is not mounted.
