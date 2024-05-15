@@ -10,15 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import eventlet
-
-# NOTE(TheJulia): Eventlet, when monkey patching occurs, replaces the base
-# dns resolver methods. This can lead to compatibility issues,
-# and un-expected exceptions being raised during the process
-# of monkey patching. Such as one if there are no resolvers.
-os.environ['EVENTLET_NO_GREENDNS'] = "yes"
 
 # NOTE(JayF) Without monkey_patching socket, API requests will hang with TLS
 # enabled. Enabling more than just socket for monkey patching causes failures
