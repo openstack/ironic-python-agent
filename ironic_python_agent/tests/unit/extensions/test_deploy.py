@@ -32,12 +32,14 @@ class TestDeployExtension(base.IronicAgentTest):
         }
         self.version = {'generic': '1', 'specific': '1'}
 
+    @mock.patch('ironic_python_agent.hardware.get_managers_detail',
+                autospec=True)
     @mock.patch('ironic_python_agent.hardware.get_current_versions',
                 autospec=True)
     @mock.patch('ironic_python_agent.hardware.dispatch_to_all_managers',
                 autospec=True)
     def test_get_deploy_steps(self, mock_dispatch, mock_version,
-                              mock_cache_node):
+                              mock_managers, mock_cache_node):
         mock_version.return_value = self.version
 
         manager_steps = {
@@ -116,13 +118,17 @@ class TestDeployExtension(base.IronicAgentTest):
 
         }
 
-        hardware_support = {
-            'SpecificHardwareManager': 3,
-            'FirmwareHardwareManager': 4,
-            'DiskHardwareManager': 4
-        }
+        # NOTE(JayF): The real dict also has manager: hwm-object
+        #             but we don't use it in the code under test
+        hwms = [
+            {'name': 'SpecificHardwareManager', 'support': 3},
+            {'name': 'FirmwareHardwareManager', 'support': 4},
+            {'name': 'DiskHardwareManager', 'support': 4},
+        ]
 
-        mock_dispatch.side_effect = [manager_steps, hardware_support]
+        mock_dispatch.side_effect = [manager_steps]
+        mock_managers.return_value = hwms
+
         expected_return = {
             'hardware_manager_version': self.version,
             'deploy_steps': expected_steps
