@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes bug 2066308, an issue where Ironic Python Agent would call
+    evaluate_hardware_support multiple times on hardware manager plugins.
+    Scanning for hardware and disks is time consuming, and caused timeouts
+    on badly-performing nodes.
