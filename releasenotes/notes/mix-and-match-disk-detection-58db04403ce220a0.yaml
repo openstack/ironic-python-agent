@@ -6,5 +6,5 @@ features:
     The new ``mix and match`` approach allows IPA to collect and match
     ``disk serial`` and ``wwn`` root device hints against values coming
     from both ``lsblk`` and ``udev`` at the same time. The ``mix and match``
-    approach is necesarry to handle edge cases where the serial and/or wwn
+    approach is necessary to handle edge cases where the serial and/or wwn
     information is different in ``lsblk`` compared to ``udev``.

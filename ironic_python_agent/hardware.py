@@ -504,7 +504,7 @@ def list_all_block_devices(block_type='disk',
     :param all_serial_and_wwn: Don't collect serial and wwn numbers based
                                on a priority order, instead collect wwn
                                numbers from both udevadm and lsblk. When
-                               enabled this option will allso collect both
+                               enabled this option will also collect both
                                the short and the long serial from udevadm if
                                possible.
 
@@ -3268,46 +3268,65 @@ def _collect_udev(io_dict):
         io_dict[f'udev/{kname}'] = buf
 
 
-def _compare_extensions(ext1, ext2):
-    mgr1 = ext1.obj
-    mgr2 = ext2.obj
-    return mgr2.evaluate_hardware_support() - mgr1.evaluate_hardware_support()
+def _compare_managers(hwm1, hwm2):
+    return hwm2['support'] - hwm1['support']
+
+
+def _get_extensions():
+    return stevedore.ExtensionManager(
+        namespace='ironic_python_agent.hardware_managers',
+        invoke_on_load=True
+    )
 
 
 def get_managers():
     """Get a list of hardware managers in priority order.
 
-    Use stevedore to find all eligible hardware managers, sort them based on
-    self-reported (via evaluate_hardware_support()) priorities, and return them
-    in a list. The resulting list is cached in _global_managers.
+    This exists as a backwards compatibility shim, returning a simple list
+    of managers where expected. New usages should use get_managers_detail.
 
     :returns: Priority-sorted list of hardware managers
+    :raises HardwareManagerNotFound: if no valid hardware managers found
+    """
+    return [hwm['manager'] for hwm in get_managers_detail()]
+
+
+def get_managers_detail():
+    """Get detailed information about hardware managers
+
+    Use stevedore to find all eligible hardware managers, sort them based on
+    self-reported (via evaluate_hardware_support()) priorities, and return a
+    dict containing the manager object, it's class name, and hardware support
+    value. The resulting list is cached in _global_managers.
+
+    :returns: list of dictionaries representing hardware managers and metadata
     :raises HardwareManagerNotFound: if no valid hardware managers found
     """
     global _global_managers
 
     if not _global_managers:
-        extension_manager = stevedore.ExtensionManager(
-            namespace='ironic_python_agent.hardware_managers',
-            invoke_on_load=True)
-
-        # There will always be at least one extension available (the
-        # GenericHardwareManager).
-        extensions = sorted(extension_manager,
-                            key=functools.cmp_to_key(_compare_extensions))
 
         preferred_managers = []
 
-        for extension in extensions:
-            if extension.obj.evaluate_hardware_support() > 0:
-                preferred_managers.append(extension.obj)
+        for extension in _get_extensions():
+            hwm = extension.obj
+            hardware_support = hwm.evaluate_hardware_support()
+            if hardware_support > 0:
+                preferred_managers.append({
+                    'name': hwm.__class__.__name__,
+                    'manager': hwm,
+                    'support': hardware_support
+                })
                 LOG.info('Hardware manager found: %s',
                          extension.entry_point_target)
 
         if not preferred_managers:
             raise errors.HardwareManagerNotFound
 
-        _global_managers = preferred_managers
+        hwms = sorted(preferred_managers,
+                      key=functools.cmp_to_key(_compare_managers))
+
+        _global_managers = hwms
 
     return _global_managers
 
@@ -3501,20 +3520,14 @@ def deduplicate_steps(candidate_steps):
         all managers, key=manager, value=list of steps
     :returns: A deduplicated dictionary of {hardware_manager: [steps]}
     """
-    support = dispatch_to_all_managers(
-        'evaluate_hardware_support')
+    support = {hwm['name']: hwm['support']
+               for hwm in get_managers_detail()}
 
     steps = collections.defaultdict(list)
     deduped_steps = collections.defaultdict(list)
 
     for manager, manager_steps in candidate_steps.items():
         # We cannot deduplicate steps with unknown hardware support
-        if manager not in support:
-            LOG.warning('Unknown hardware support for %(manager)s, '
-                        'dropping steps: %(steps)s',
-                        {'manager': manager, 'steps': manager_steps})
-            continue
-
         for step in manager_steps:
             # build a new dict of steps that's easier to filter
             step['hwm'] = {'name': manager,

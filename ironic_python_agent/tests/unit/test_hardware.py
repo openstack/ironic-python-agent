@@ -83,12 +83,22 @@ BLK_DEVICE_TEMPLATE_PARTUUID_DEVICE = [
 ]
 
 
-class FakeHardwareManager(hardware.GenericHardwareManager):
-    def __init__(self, hardware_support):
-        self._hardware_support = hardware_support
-
+class FakeHardwareManager(hardware.HardwareManager):
     def evaluate_hardware_support(self):
-        return self._hardware_support
+        return self.support
+
+
+def _create_mock_hwm(name, support):
+    def set_support(self, x):
+        self.support = x
+
+    # note(JayF): This code creates a subclass of FakeHardwareManager with
+    #             a unique name. Since we actually use the class name in IPA
+    #             code as an identifier, we need to have a new class for each
+    #             mock.
+    hwm = type(name, (FakeHardwareManager,), {'_set_support': set_support})()
+    hwm._set_support(support)
+    return hwm
 
 
 class TestHardwareManagerLoading(base.IronicAgentTest):
@@ -106,17 +116,58 @@ class TestHardwareManagerLoading(base.IronicAgentTest):
         fake_ep.attrs = ['fake attrs']
         ext1 = extension.Extension(
             'fake_generic0', fake_ep, None,
-            FakeHardwareManager(hardware.HardwareSupport.GENERIC))
+            _create_mock_hwm("fake_generic0",
+                             hardware.HardwareSupport.GENERIC))
         ext2 = extension.Extension(
             'fake_mainline0', fake_ep, None,
-            FakeHardwareManager(hardware.HardwareSupport.MAINLINE))
+            _create_mock_hwm("fake_mainline0",
+                             hardware.HardwareSupport.MAINLINE))
         ext3 = extension.Extension(
-            'fake_generic1', fake_ep, None,
-            FakeHardwareManager(hardware.HardwareSupport.GENERIC))
-        self.correct_hw_manager = ext2.obj
+            'fake_serviceprovider0', fake_ep, None,
+            _create_mock_hwm("fake_serviceprovider0",
+                             hardware.HardwareSupport.SERVICE_PROVIDER))
+        # Note(JayF): Ensure these are added in an order other than priority
+        #             order or else you may invalidate the entire test :)
         self.fake_ext_mgr = extension.ExtensionManager.make_test_instance([
             ext1, ext2, ext3
         ])
+        self.expected_detail_response = [
+            {'name': 'fake_serviceprovider0',
+             'support': hardware.HardwareSupport.SERVICE_PROVIDER,
+             'manager': ext3.obj},
+            {'name': 'fake_mainline0',
+             'support': hardware.HardwareSupport.MAINLINE,
+             'manager': ext2.obj},
+            {'name': 'fake_generic0',
+             'support': hardware.HardwareSupport.GENERIC,
+             'manager': ext1.obj},
+        ]
+        self.expected_get_managers_response = [ext3.obj, ext2.obj, ext1.obj]
+
+    @mock.patch.object(hardware, '_get_extensions', autospec=True)
+    def test_get_managers(self, mock_extensions):
+        """Test to ensure get_managers sorts and returns a list of HWMs.
+
+        The most meaningful part of this test is ensuring HWMs are in priority
+        order, with the highest hardware support value coming earlier in the
+        list of classes.
+        """
+        mock_extensions.return_value = self.fake_ext_mgr
+        expected_names = [x.__class__.__name__
+                          for x in self.expected_get_managers_response]
+        actual_names = [x.__class__.__name__
+                        for x in hardware.get_managers()]
+        self.assertEqual(actual_names, expected_names)
+
+    @mock.patch.object(hardware, '_get_extensions', autospec=True)
+    def test_get_managers_detail(self, mock_extensions):
+        """ensure get_manager_details returns a list of HWMs + metadata
+
+        These also need to be sorted in priority order
+        """
+        mock_extensions.return_value = self.fake_ext_mgr
+        self.assertEqual(hardware.get_managers_detail(),
+                         self.expected_detail_response)
 
 
 @mock.patch.object(disk_utils, 'udev_settle', lambda *_: None)

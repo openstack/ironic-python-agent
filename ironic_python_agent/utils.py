@@ -962,10 +962,10 @@ def _unmount_any_config_drives():
     and glean leverage a folder at /mnt/config to convey configuration
     to a booting OS.
 
-    The possibility exists that one of the utilties mounted one or multiple
+    The possibility exists that one of the utilities mounted one or multiple
     such folders, even if the configuration was not used, and this can
     result in locked devices which can prevent rebuild operations from
-    completing successfully as as long as the folder is mounted, it is
+    completing successfully as long as the folder is mounted, it is
     a "locked" device to the operating system.
     """
     while os.path.ismount('/mnt/config'):
