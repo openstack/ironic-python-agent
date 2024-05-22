@@ -29,8 +29,7 @@
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
-        - ipa-tox-codespell:
-            voting: false
+        - ipa-tox-codespell
     gate:
       jobs:
         - openstack-tox-functional
@@ -42,6 +41,7 @@
         # NOTE(rpittau): Currently broken because of an issue with parted
         #- metalsmith-integration-ipa-src-legacy
         - ironic-standalone-ipa-src
+        - ipa-tox-codespell
     post:
       jobs:
         - ironic-python-agent-build-image-tinyipa
