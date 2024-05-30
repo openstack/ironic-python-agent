@@ -2563,7 +2563,7 @@ class GenericHardwareManager(HardwareManager):
 
     # TODO(TheJulia): There has to be a better way, we should
     # make this less copy paste. That being said, I can also see
-    # unique priorites being needed.
+    # unique priorities being needed.
     def get_service_steps(self, node, ports):
         service_steps = [
             {
