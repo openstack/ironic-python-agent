@@ -105,9 +105,6 @@
       - ^releasenotes/.*$
       - ^setup.cfg$
       - ^tox.ini$
-      - ^tools/.*$
-      - regex: ^tools/bandit\.yml$
-        negate: true
 
 - job:
     name: ipa-tox-examples
@@ -123,8 +120,6 @@
       - ^releasenotes/.*$
       - ^setup.cfg$
       - ^tox.ini$
-      - regex: ^tools/bandit\.yml$
-        negate: true
 
 # used by ironic-python-agent-builder
 - job:
