@@ -11,6 +11,7 @@
 # limitations under the License.
 
 import crypt
+import time
 
 from oslo_log import log
 
@@ -60,4 +61,5 @@ class RescueExtension(base.BaseAgentExtension):
         # IPA will terminate after the result of finalize_rescue is returned to
         # ironic to avoid exposing the IPA API to a tenant or public network
         self.agent.serve_api = False
+        time.sleep(300)
         return
