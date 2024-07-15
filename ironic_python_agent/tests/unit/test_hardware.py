@@ -14,6 +14,7 @@
 
 import binascii
 import json
+import logging
 import os
 import re
 import shutil
@@ -927,12 +928,45 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 '/sys/class/block/sdfake/device/vendor', 'r')
             self.assertEqual('fake-vendor', vendor)
 
+    @mock.patch("builtins.open", new_callable=mock.mock_open)
     @mock.patch.object(il_utils, 'execute', autospec=True)
-    def test_get_cpus(self, mocked_execute):
-        mocked_execute.side_effect = [(hws.LSCPU_OUTPUT, ''),
-                                      (hws.CPUINFO_FLAGS_OUTPUT, '')]
+    def test_get_cpus_max_mhz_flag_fallback(self, mocked_execute, mocked_open):
+        mocked_execute.side_effect = [(hws.LSCPU_OUTPUT, '')]
 
-        cpus = self.hardware.get_cpus()
+        mocked_open.side_effect = [
+            mock.mock_open(read_data=hws.PROC_CPUINFO_OUTPUT).return_value,
+        ]
+
+        with self.assertLogs(level='WARNING') as cm:
+            cpus = self.hardware.get_cpus()
+            logging.getLogger("root").warning("Test Placeholder")
+
+        self.assertEqual('AMD EPYC 7282 16-Core Processor',
+                         cpus.model_name)
+        self.assertEqual('2794.748', cpus.frequency)
+        self.assertEqual(8, cpus.count)
+        self.assertEqual(1, cpus.socket_count)
+        self.assertEqual('x86_64', cpus.architecture)
+        self.assertEqual(['fpu', 'vme', 'de', 'pse', 'tsc'], cpus.flags)
+
+        self.assertEqual(["WARNING:root:Test Placeholder"], cm.output)
+
+    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_cpus_max_mhz_and_flag_fallback(
+        self, mocked_execute, mocked_open
+    ):
+        mocked_execute.side_effect = [(hws.LSCPU_OUTPUT_WITH_MAX_MHZ, '')]
+
+        mocked_open.side_effect = [
+            mock.mock_open(read_data=hws.PROC_CPUINFO_OUTPUT).return_value,
+            mock.mock_open(read_data=hws.PROC_CPUINFO_OUTPUT).return_value,
+        ]
+
+        with self.assertLogs(level='WARNING') as cm:
+            cpus = self.hardware.get_cpus()
+            logging.getLogger("root").warning("Test Placeholder")
+
         self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
                          cpus.model_name)
         self.assertEqual('2400.0000', cpus.frequency)
@@ -941,45 +975,84 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual(['fpu', 'vme', 'de', 'pse'], cpus.flags)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    def test_get_cpus2(self, mocked_execute):
-        mocked_execute.side_effect = [(hws.LSCPU_OUTPUT_NO_MAX_MHZ, ''),
-                                      (hws.CPUINFO_FLAGS_OUTPUT, '')]
+        self.assertEqual(["WARNING:root:Test Placeholder"], cm.output)
 
-        cpus = self.hardware.get_cpus()
+    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_cpus_multi(self, mocked_execute, mocked_open):
+        mocked_execute.side_effect = [(hws.LSCPU_OUTPUT, '')]
+        mocked_open.side_effect = [
+            mock.mock_open(read_data=hws.PROC_CPUINFO_OUTPUT).return_value,
+        ]
+
+        with self.assertLogs(level='WARNING') as cm:
+            cpus = self.hardware.get_cpus()
+            logging.getLogger("root").warning("Test Placeholder")
+
+        clock_speeds = ["2794.748", "2794.748"]
+        core_ids = [0, 1, 2, 3, 4, 5, 6, 7]
+
+        self.assertGreater(len(cpus.cpus), 0)
+
+        for i, cpu in enumerate(cpus.cpus):
+            self.assertEqual('AMD EPYC 7282 16-Core Processor',
+                             cpu.model_name)
+
+            self.assertEqual(clock_speeds[i], cpu.frequency)
+            self.assertEqual(str(core_ids[i]), cpu.core_id)
+
+        self.assertEqual(8, cpus.count)
+        self.assertEqual(1, cpus.socket_count)
+        self.assertEqual('x86_64', cpus.architecture)
+        self.assertEqual(['fpu', 'vme', 'de', 'pse', 'tsc'], cpus.flags)
+
+        self.assertEqual(["WARNING:root:Test Placeholder"], cm.output)
+
+    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_cpus_no_flags(self, mocked_execute, mocked_open):
+        mocked_execute.side_effect = [(hws.LSCPU_OUTPUT_NO_FLAGS, '')]
+
+        mocked_open.side_effect = [
+            mock.mock_open(read_data=hws.NO_PROC_FLAGS).return_value,
+            mock.mock_open(read_data=hws.PROC_CPUINFO_OUTPUT).return_value,
+        ]
+
+        with self.assertLogs(level='WARNING') as cm:
+            cpus = self.hardware.get_cpus()
+
         self.assertEqual('Intel(R) Xeon(R) CPU E5-1650 v3 @ 3.50GHz',
                          cpus.model_name)
         self.assertEqual('1794.433', cpus.frequency)
         self.assertEqual(12, cpus.count)
-        self.assertEqual(1, cpus.socket_count)
-        self.assertEqual('x86_64', cpus.architecture)
-        self.assertEqual(['fpu', 'vme', 'de', 'pse'], cpus.flags)
-
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    def test_get_cpus_no_flags(self, mocked_execute):
-        mocked_execute.side_effect = [(hws.LSCPU_OUTPUT, ''),
-                                      processutils.ProcessExecutionError()]
-
-        cpus = self.hardware.get_cpus()
-        self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
-                         cpus.model_name)
-        self.assertEqual('2400.0000', cpus.frequency)
-        self.assertEqual(4, cpus.count)
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual([], cpus.flags)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
-    def test_get_cpus_illegal_flags(self, mocked_execute):
-        mocked_execute.side_effect = [(hws.LSCPU_OUTPUT, ''),
-                                      ('I am not a flag', '')]
+        self.assertEqual(["WARNING:root:No CPU flags found"], cm.output)
 
-        cpus = self.hardware.get_cpus()
-        self.assertEqual('Intel(R) Xeon(R) CPU E5-2609 0 @ 2.40GHz',
+    @mock.patch("builtins.open", new_callable=mock.mock_open)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_cpus_illegal_flags(self, mocked_execute, mocked_open):
+        mocked_execute.side_effect = [(hws.LSCPU_OUTPUT_NO_FLAGS, '')]
+        mocked_open.side_effect = [
+            mock.mock_open(read_data=hws.ILLEGAL_PROC_FLAGS).return_value,
+            mock.mock_open(read_data=hws.PROC_CPUINFO_OUTPUT).return_value,
+        ]
+
+        with self.assertLogs(level='WARNING') as cm:
+            cpus = self.hardware.get_cpus()
+
+        self.assertEqual('Intel(R) Xeon(R) CPU E5-1650 v3 @ 3.50GHz',
                          cpus.model_name)
-        self.assertEqual('2400.0000', cpus.frequency)
-        self.assertEqual(4, cpus.count)
+        self.assertEqual('1794.433', cpus.frequency)
+        self.assertEqual(12, cpus.count)
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual([], cpus.flags)
+
+        # Check if the warning was logged
+        self.assertEqual([
+            "WARNING:root:Malformed CPU flags information: I am not a flag",
+            "WARNING:root:No CPU flags found"], cm.output)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
     @mock.patch.object(il_utils, 'execute', autospec=True)

@@ -310,6 +310,43 @@ SHRED_OUTPUT_2_ITERATIONS_ZERO_FALSE = (
 )
 
 LSCPU_OUTPUT = """
+Architecture:                       x86_64
+CPU op-mode(s):                     32-bit, 64-bit
+Byte Order:                         Little Endian
+Address sizes:                      48 bits physical, 48 bits virtual
+CPU(s):                             8
+On-line CPU(s) list:                0-7
+Thread(s) per core:                 1
+Core(s) per socket:                 8
+Socket(s):                          1
+NUMA node(s):                       1
+Vendor ID:                          AuthenticAMD
+CPU family:                         23
+Model:                              49
+Model name:                         AMD EPYC 7282 16-Core Processor
+Stepping:                           0
+CPU MHz:                            2794.748
+BogoMIPS:                           5589.49
+Hypervisor vendor:                  KVM
+Virtualization type:                full
+L1d cache:                          512 KiB
+L1i cache:                          512 KiB
+L2 cache:                           4 MiB
+L3 cache:                           16 MiB
+NUMA node0 CPU(s):                  0-7
+Vulnerability Gather data sampling: Not affected
+Vulnerability Itlb multihit:        Not affected
+Vulnerability L1tf:                 Not affected
+Vulnerability Mds:                  Not affected
+Vulnerability Meltdown:             Not affected
+Vulnerability Mmio stale data:      Not affected
+Vulnerability Retbleed:             Vulnerable
+Vulnerability Srbds:                Not affected
+Vulnerability Tsx async abort:      Not affected
+Flags:                              fpu vme de pse tsc
+"""
+
+LSCPU_OUTPUT_WITH_MAX_MHZ = """
 Architecture:          x86_64
 CPU op-mode(s):        32-bit, 64-bit
 Byte Order:            Little Endian
@@ -336,7 +373,7 @@ L3 cache:              10240K
 NUMA node0 CPU(s):     0-3
 """
 
-LSCPU_OUTPUT_NO_MAX_MHZ = """
+LSCPU_OUTPUT_NO_FLAGS = """
 Architecture:          x86_64
 CPU op-mode(s):        32-bit, 64-bit
 Byte Order:            Little Endian
@@ -361,10 +398,73 @@ L3 cache:              15360K
 NUMA node0 CPU(s):     0-11
 """
 
-# NOTE(dtanstur): flags list stripped down for sanity reasons
-CPUINFO_FLAGS_OUTPUT = """
+
+PROC_CPUINFO_OUTPUT = """
+processor       : 0
+vendor_id       : AuthenticAMD
+cpu family      : 23
+model           : 49
+model name      : AMD EPYC 7282 16-Core Processor
+stepping        : 0
+microcode       : 0x8301055
+cpu MHz         : 2794.748
+cache size      : 512 KB
+physical id     : 0
+siblings        : 6
+core id         : 0
+cpu cores       : 6
+apicid          : 0
+initial apicid  : 0
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 16
+wp              : yes
 flags           : fpu vme de pse
+bugs            : sysret_ss_attrs
+bogomips        : 5589.49
+TLB size        : 1024 4K pages
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 40 bits physical, 48 bits virtual
+power management:
+
+processor       : 1
+vendor_id       : AuthenticAMD
+cpu family      : 23
+model           : 49
+model name      : AMD EPYC 7282 16-Core Processor
+stepping        : 0
+microcode       : 0x8301055
+cpu MHz         : 2794.748
+cache size      : 512 KB
+physical id     : 0
+siblings        : 6
+core id         : 1
+cpu cores       : 6
+apicid          : 1
+initial apicid  : 1
+fpu             : yes
+fpu_exception   : yes
+cpuid level     : 16
+wp              : yes
+flags           : fpu vme de pse
+bogomips        : 5589.49
+TLB size        : 1024 4K pages
+clflush size    : 64
+cache_alignment : 64
+address sizes   : 40 bits physical, 48 bits virtual
+power management:
+
 """
+
+ILLEGAL_PROC_FLAGS = PROC_CPUINFO_OUTPUT.replace(
+    "fpu vme de pse", "I am not a flag"
+)
+
+# NO PROC FLAGS should remove the lines with the word flags
+NO_PROC_FLAGS = PROC_CPUINFO_OUTPUT.replace(
+    "flags           : fpu vme de pse\n", ""
+)
 
 LSHW_JSON_OUTPUT_V1 = ("""
 {

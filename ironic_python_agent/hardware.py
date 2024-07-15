@@ -28,6 +28,7 @@ import shutil
 import stat
 import string
 import time
+from typing import List
 
 from ironic_lib import utils as il_utils
 from oslo_concurrency import processutils
@@ -830,18 +831,34 @@ class NetworkInterface(encoding.SerializableComparable):
         self.client_id = client_id
 
 
+class CPUCore(encoding.SerializableComparable):
+    serializable_fields = ('model_name', 'frequency', 'count', 'architecture',
+                           'flags', 'core_id')
+
+    def __init__(self, model_name, frequency, architecture,
+                 core_id, flags=None):
+        self.model_name = model_name
+        self.frequency = frequency
+        self.architecture = architecture
+        self.core_id = core_id
+
+        self.flags = flags or []
+
+
 class CPU(encoding.SerializableComparable):
     serializable_fields = ('model_name', 'frequency', 'count', 'architecture',
                            'flags', 'socket_count')
 
     def __init__(self, model_name, frequency, count, architecture,
-                 flags=None, socket_count=None):
+                 flags=None, socket_count=None, cpus: List[CPUCore] = None):
         self.model_name = model_name
         self.frequency = frequency
         self.count = count
         self.socket_count = socket_count
         self.architecture = architecture
         self.flags = flags or []
+
+        self.cpus = cpus or []
 
 
 class Memory(encoding.SerializableComparable):
@@ -1512,35 +1529,108 @@ class GenericHardwareManager(HardwareManager):
 
         return network_interfaces_list
 
-    def get_cpus(self):
-        lines = il_utils.execute('lscpu')[0]
+    @staticmethod
+    def create_cpu_info_dict(lines):
         cpu_info = {k.strip().lower(): v.strip() for k, v in
                     (line.split(':', 1)
-                     for line in lines.split('\n')
-                     if line.strip())}
-        # Current CPU frequency can be different from maximum one on modern
-        # processors
-        freq = cpu_info.get('cpu max mhz', cpu_info.get('cpu mhz'))
+                    for line in lines.split('\n')
+                    if line.strip())}
 
-        flags = []
-        out = il_utils.try_execute('grep', '-Em1', '^flags', '/proc/cpuinfo')
-        if out:
-            try:
-                # Example output (much longer for a real system):
-                # flags           : fpu vme de pse
-                flags = out[0].strip().split(':', 1)[1].strip().split()
-            except (IndexError, ValueError):
-                LOG.warning('Malformed CPU flags information: %s', out)
-        else:
-            LOG.warning('Failed to get CPU flags')
+        return cpu_info
 
-        return CPU(model_name=cpu_info.get('model name'),
-                   frequency=freq,
-                   # this includes hyperthreading cores
-                   count=int(cpu_info.get('cpu(s)')),
-                   architecture=cpu_info.get('architecture'),
-                   flags=flags,
-                   socket_count=int(cpu_info.get('socket(s)', 0)))
+    def read_cpu_info(self):
+        sections = []
+
+        try:
+            with open('/proc/cpuinfo', 'r') as file:
+                file_contents = file.read()
+
+            # Replace tabs with nothing (essentially removing them)
+            file_contents = file_contents.replace("\t", "")
+
+            # Split the string into a list of CPU core entries
+            # Each core's info is separated by a double newline
+            sections = file_contents.split("\n\n")[:-1]
+
+        except (FileNotFoundError, errors.InspectionError, OSError) as e:
+            LOG.warning(
+                'Failed to get CPU information from /proc/cpuinfo: %s', e
+            )
+
+        return sections
+
+    def get_cpu_cores(self):
+        cpu_info_dicts = []
+
+        sections = self.read_cpu_info()
+
+        for lines in sections:
+            cpu_info = self.create_cpu_info_dict(lines)
+
+            if cpu_info is not None:
+                cpu_info_dicts.append(cpu_info)
+
+        if len(cpu_info_dicts) == 0:
+            LOG.warning(
+                'No per-core CPU information found'
+            )
+
+        cpus = []
+        for cpu_info in cpu_info_dicts:
+            cpu = CPUCore(
+                model_name=cpu_info.get('model name', ''),
+                frequency=cpu_info.get('cpu mhz', ''),
+                architecture=cpu_info.get('architecture', ''),
+                core_id=cpu_info.get('core id', ''),
+                flags=cpu_info.get('flags', '').split()
+            )
+            cpus.append(cpu)
+
+        return cpus
+
+    def get_cpus(self):
+        lines = il_utils.execute('lscpu')[0]
+        cpu_info = self.create_cpu_info_dict(lines)
+
+        # NOTE(adamcarthur) Kept this assuming it was added as a fallback
+        # for systems where lscpu does not show flags.
+        if not cpu_info.get("flags", None):
+
+            sections = self.read_cpu_info()
+            if len(sections) == 0:
+                cpu_info['flags'] = ""
+            else:
+                cpu_info_proc = self.create_cpu_info_dict(sections[0])
+
+                flags = cpu_info_proc.get('flags', "")
+
+                # NOTE(adamcarthur) This is only a basic check to
+                # check the flags look correct
+                if flags and re.search(r'[A-Z!@#$%^&*()_+{}|:"<>?]', flags):
+                    LOG.warning('Malformed CPU flags information: %s', flags)
+                    cpu_info['flags'] = ""
+                else:
+                    cpu_info['flags'] = flags
+
+        if cpu_info["flags"] == "":
+            LOG.warning(
+                'No CPU flags found'
+            )
+
+        return CPU(
+            model_name=cpu_info.get('model name', ''),
+            # NOTE(adamcarthur) Current CPU frequency can
+            # be different from maximum one on modern processors
+            frequency=cpu_info.get(
+                'cpu max mhz',
+                cpu_info.get('cpu mhz', "")
+            ),
+            count=int(cpu_info.get('cpu(s)', 0)),
+            architecture=cpu_info.get('architecture', ''),
+            flags=cpu_info.get('flags', '').split(),
+            socket_count=int(cpu_info.get('socket(s)', 0)),
+            cpus=self.get_cpu_cores()
+        )
 
     def get_memory(self):
         # psutil returns a long, so we force it to an int
