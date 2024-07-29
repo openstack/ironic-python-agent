@@ -16,6 +16,7 @@ import json
 import socket
 import time
 from unittest import mock
+from unittest.mock import sentinel
 
 from ironic_lib import exception as lib_exc
 from oslo_concurrency import processutils
@@ -999,7 +1000,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 @mock.patch.object(hardware, '_load_ipmi_modules', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
-@mock.patch.object(socket, 'gethostbyname', autospec=True)
+@mock.patch.object(socket, 'getaddrinfo', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
     def setUp(self):
@@ -1017,14 +1018,14 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
             agent_token=None,
             standalone=False)
 
-    def test_advertise_address_provided(self, mock_exec, mock_gethostbyname):
+    def test_advertise_address_provided(self, mock_exec, mock_getaddrinfo):
         self.agent.advertise_address = agent.Host('1.2.3.4', 9990)
 
         self.agent.set_agent_advertise_addr()
 
         self.assertEqual(('1.2.3.4', 9990), self.agent.advertise_address)
         self.assertFalse(mock_exec.called)
-        self.assertFalse(mock_gethostbyname.called)
+        self.assertFalse(mock_getaddrinfo.called)
 
     @mock.patch.object(hardware, '_enable_multipath', autospec=True)
     @mock.patch.object(netutils, 'get_ipv4_addr',
@@ -1032,7 +1033,7 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
     @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
                 autospec=True)
     def test_with_network_interface(self, mock_cna, mock_get_ipv4, mock_mpath,
-                                    mock_exec, mock_gethostbyname):
+                                    mock_exec, mock_getaddrinfo):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = '1.2.3.4'
         mock_cna.return_value = False
@@ -1043,7 +1044,7 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
                          self.agent.advertise_address)
         mock_get_ipv4.assert_called_once_with('em1')
         self.assertFalse(mock_exec.called)
-        self.assertFalse(mock_gethostbyname.called)
+        self.assertFalse(mock_getaddrinfo.called)
 
     @mock.patch.object(hardware, '_enable_multipath', autospec=True)
     @mock.patch.object(netutils, 'get_ipv4_addr',
@@ -1052,7 +1053,7 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
                 autospec=True)
     def test_with_network_interface_failed(self, mock_cna, mock_get_ipv4,
                                            mock_mpath, mock_exec,
-                                           mock_gethostbyname):
+                                           mock_getaddrinfo):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = None
         mock_cna.return_value = False
@@ -1062,11 +1063,11 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
 
         mock_get_ipv4.assert_called_once_with('em1')
         self.assertFalse(mock_exec.called)
-        self.assertFalse(mock_gethostbyname.called)
+        self.assertFalse(mock_getaddrinfo.called)
 
-    def test_route_with_ip(self, mock_exec, mock_gethostbyname):
+    def test_route_with_ip(self, mock_exec, mock_getaddrinfo):
         self.agent.api_urls = ['http://1.2.1.2:8081/v1']
-        mock_gethostbyname.side_effect = socket.gaierror()
+        mock_getaddrinfo.side_effect = socket.gaierror()
         mock_exec.return_value = (
             """1.2.1.2 via 192.168.122.1 dev eth0  src 192.168.122.56
                 cache """,
@@ -1078,11 +1079,11 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         self.assertEqual(('192.168.122.56', 9990),
                          self.agent.advertise_address)
         mock_exec.assert_called_once_with('ip', 'route', 'get', '1.2.1.2')
-        mock_gethostbyname.assert_called_once_with('1.2.1.2')
+        mock_getaddrinfo.assert_called_once_with('1.2.1.2', 0)
 
-    def test_route_with_ipv6(self, mock_exec, mock_gethostbyname):
+    def test_route_with_ipv6(self, mock_exec, mock_getaddrinfo):
         self.agent.api_urls = ['http://[fc00:1111::1]:8081/v1']
-        mock_gethostbyname.side_effect = socket.gaierror()
+        mock_getaddrinfo.side_effect = socket.gaierror()
         mock_exec.return_value = (
             """fc00:101::1 dev br-ctlplane  src fc00:101::4  metric 0
                 cache """,
@@ -1094,10 +1095,13 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         self.assertEqual(('fc00:101::4', 9990),
                          self.agent.advertise_address)
         mock_exec.assert_called_once_with('ip', 'route', 'get', 'fc00:1111::1')
-        mock_gethostbyname.assert_called_once_with('fc00:1111::1')
+        mock_getaddrinfo.assert_called_once_with('fc00:1111::1', 0)
 
-    def test_route_with_host(self, mock_exec, mock_gethostbyname):
-        mock_gethostbyname.return_value = '1.2.1.2'
+    def test_route_with_host(self, mock_exec, mock_getaddrinfo):
+        mock_getaddrinfo.return_value = [
+            (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
+             ('1.2.1.2', sentinel.e)),
+        ]
         mock_exec.return_value = (
             """1.2.1.2 via 192.168.122.1 dev eth0  src 192.168.122.56
                 cache """,
@@ -1109,11 +1113,32 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         self.assertEqual(('192.168.122.56', 9990),
                          self.agent.advertise_address)
         mock_exec.assert_called_once_with('ip', 'route', 'get', '1.2.1.2')
-        mock_gethostbyname.assert_called_once_with('fake_api.example.org')
+        mock_getaddrinfo.assert_called_once_with('fake_api.example.org', 0)
+
+    def test_route_with_host_v6(self, mock_exec, mock_getaddrinfo):
+        mock_getaddrinfo.return_value = [
+            (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
+             ('fc00:1111::1', sentinel.e)),
+        ]
+        mock_exec.return_value = (
+            """fc00:101::1 dev br-ctlplane  src fc00:101::4  metric 0
+                cache """,
+            ""
+        )
+
+        self.agent.set_agent_advertise_addr()
+
+        self.assertEqual(('fc00:101::4', 9990),
+                         self.agent.advertise_address)
+        mock_exec.assert_called_once_with('ip', 'route', 'get', 'fc00:1111::1')
+        mock_getaddrinfo.assert_called_once_with('fake_api.example.org', 0)
 
     @mock.patch.object(time, 'sleep', autospec=True)
-    def test_route_retry(self, mock_sleep, mock_exec, mock_gethostbyname):
-        mock_gethostbyname.return_value = '1.2.1.2'
+    def test_route_retry(self, mock_sleep, mock_exec, mock_getaddrinfo):
+        mock_getaddrinfo.return_value = [
+            (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
+             ('1.2.1.2', sentinel.e)),
+        ]
         mock_exec.side_effect = [
             processutils.ProcessExecutionError('boom'),
             (
@@ -1132,15 +1157,18 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         self.assertEqual(('192.168.122.56', 9990),
                          self.agent.advertise_address)
         mock_exec.assert_called_with('ip', 'route', 'get', '1.2.1.2')
-        mock_gethostbyname.assert_called_once_with('fake_api.example.org')
+        mock_getaddrinfo.assert_called_once_with('fake_api.example.org', 0)
         mock_sleep.assert_called_with(10)
         self.assertEqual(3, mock_exec.call_count)
         self.assertEqual(2, mock_sleep.call_count)
 
     @mock.patch.object(time, 'sleep', autospec=True)
     def test_route_several_urls_and_retries(self, mock_sleep, mock_exec,
-                                            mock_gethostbyname):
-        mock_gethostbyname.side_effect = lambda x: x
+                                            mock_getaddrinfo):
+        mock_getaddrinfo.side_effect = lambda addr, port: [
+            (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
+             (addr, sentinel.e)),
+        ]
         self.agent.api_urls = ['http://[fc00:1111::1]:8081/v1',
                                'http://1.2.1.2:8081/v1']
         mock_exec.side_effect = [
@@ -1161,32 +1189,38 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
 
         self.assertEqual(('192.168.122.56', 9990),
                          self.agent.advertise_address)
-        mock_exec.assert_has_calls([
-            mock.call('ip', 'route', 'get', 'fc00:1111::1'),
-            mock.call('ip', 'route', 'get', '1.2.1.2'),
-            mock.call('ip', 'route', 'get', 'fc00:1111::1'),
-            mock.call('ip', 'route', 'get', '1.2.1.2'),
-        ])
-        mock_gethostbyname.assert_has_calls([
-            mock.call('fc00:1111::1'),
-            mock.call('1.2.1.2'),
+        self.assertCountEqual(
+            mock_exec.mock_calls,
+            [
+                mock.call('ip', 'route', 'get', 'fc00:1111::1'),
+                mock.call('ip', 'route', 'get', '1.2.1.2'),
+                mock.call('ip', 'route', 'get', 'fc00:1111::1'),
+                mock.call('ip', 'route', 'get', '1.2.1.2'),
+            ],
+        )
+        mock_getaddrinfo.assert_has_calls([
+            mock.call('fc00:1111::1', 0),
+            mock.call('1.2.1.2', 0),
         ])
         mock_sleep.assert_called_with(10)
         self.assertEqual(4, mock_exec.call_count)
         # Both URLs are handled in a single attempt, so only one sleep here
         self.assertEqual(1, mock_sleep.call_count)
-        self.assertEqual(2, mock_gethostbyname.call_count)
+        self.assertEqual(2, mock_getaddrinfo.call_count)
 
     @mock.patch.object(time, 'sleep', autospec=True)
-    def test_route_failed(self, mock_sleep, mock_exec, mock_gethostbyname):
-        mock_gethostbyname.return_value = '1.2.1.2'
+    def test_route_failed(self, mock_sleep, mock_exec, mock_getaddrinfo):
+        mock_getaddrinfo.return_value = [
+            (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
+             ('1.2.1.2', sentinel.e)),
+        ]
         mock_exec.side_effect = processutils.ProcessExecutionError('boom')
 
         self.assertRaises(errors.LookupAgentIPError,
                           self.agent.set_agent_advertise_addr)
 
         mock_exec.assert_called_with('ip', 'route', 'get', '1.2.1.2')
-        mock_gethostbyname.assert_called_once_with('fake_api.example.org')
+        mock_getaddrinfo.assert_called_once_with('fake_api.example.org', 0)
         self.assertEqual(5, mock_exec.call_count)
         self.assertEqual(5, mock_sleep.call_count)
 
