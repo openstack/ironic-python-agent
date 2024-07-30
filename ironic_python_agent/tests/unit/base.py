@@ -25,6 +25,7 @@ from oslo_log import log
 from oslo_service import sslutils
 from oslotest import base as test_base
 
+from ironic_python_agent import config
 from ironic_python_agent.extensions import base as ext_base
 from ironic_python_agent import hardware
 
@@ -40,6 +41,7 @@ class IronicAgentTest(test_base.BaseTestCase):
     def setUp(self):
         super(IronicAgentTest, self).setUp()
 
+        config.populate_config()
         self._set_config()
 
         # Ban running external processes via 'execute' like functions. If the

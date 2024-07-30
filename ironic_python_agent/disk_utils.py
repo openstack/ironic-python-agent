@@ -28,7 +28,6 @@ import time
 
 from ironic_lib.common.i18n import _
 from ironic_lib import exception
-from ironic_lib import qemu_img
 from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -36,6 +35,9 @@ from oslo_utils import excutils
 import tenacity
 
 from ironic_python_agent import disk_partitioner
+from ironic_python_agent import errors
+from ironic_python_agent import format_inspector
+from ironic_python_agent import qemu_img
 
 CONF = cfg.CONF
 
@@ -389,12 +391,97 @@ def dd(src, dst, conv_flags=None):
              *extra_args)
 
 
-def populate_image(src, dst, conv_flags=None):
-    data = qemu_img.image_info(src)
-    if data.file_format == 'raw':
+def _image_inspection(filename):
+    try:
+        inspector_cls = format_inspector.detect_file_format(filename)
+        if (not inspector_cls
+            or not hasattr(inspector_cls, 'safety_check')
+            or not inspector_cls.safety_check()):
+            err = "Security: Image failed safety check"
+            LOG.error(err)
+            raise errors.InvalidImage(details=err)
+
+    except (format_inspector.ImageFormatError, AttributeError):
+        # NOTE(JayF): Because we already validated the format is OK and matches
+        #             expectation, it should be impossible for us to get an
+        #             ImageFormatError or AttributeError. We handle it anyway
+        #             for completeness.
+        msg = "Security: Unable to safety check image"
+        LOG.error(msg)
+        raise errors.InvalidImage(details=msg)
+
+    return inspector_cls
+
+
+def get_and_validate_image_format(filename, ironic_disk_format):
+    """Get the format of a given image file and ensure it's allowed.
+
+    This method uses the format inspector originally written for glance to
+    safely detect the image format. It also sanity checks to ensure any
+    specified format matches the provided one (except raw; which in some
+    cases is a request to convert to raw) and that the format is in the
+    allowed list of formats.
+
+    It also performs a basic safety check on the image.
+
+    This entire process can be bypassed, and the older code path used,
+    by setting CONF.disable_deep_image_inspection to True.
+
+    See https://bugs.launchpad.net/ironic/+bug/2071740 for full details on
+    why this must always happen.
+
+    :param filename: The name of the image file to validate.
+    :param ironic_disk_format: The ironic-provided expected format of the image
+    :returns: tuple of validated img_format (str) and size (int)
+    """
+    if CONF.disable_deep_image_inspection:
+        data = qemu_img.image_info(filename)
+        img_format = data.file_format
+        size = data.virtual_size
+    else:
+        if ironic_disk_format == 'raw':
+            # NOTE(JayF): IPA unconditionally writes raw images to disk without
+            #             conversion with dd or raw python, not qemu-img, it's
+            #             not required to safety check raw images.
+            img_format = ironic_disk_format
+            size = os.path.getsize(filename)
+        else:
+            img_format_cls = _image_inspection(filename)
+            img_format = str(img_format_cls)
+            size = img_format_cls.virtual_size
+            if img_format not in CONF.permitted_image_formats:
+                msg = ("Security: Detected image format was %s, but only %s "
+                       "are allowed")
+                fmts = ', '.join(CONF.permitted_image_formats)
+                LOG.error(msg, img_format, fmts)
+                raise errors.InvalidImage(
+                    details=msg % (img_format, fmts)
+                )
+            elif ironic_disk_format and ironic_disk_format != img_format:
+                msg = ("Security: Expected format was %s, but image was "
+                       "actually %s" % (ironic_disk_format, img_format))
+                LOG.error(msg)
+                raise errors.InvalidImage(details=msg)
+
+    return img_format, size
+
+
+def populate_image(src, dst, conv_flags=None,
+                   source_format=None, is_raw=False):
+    """Populate a provided destination device with the image
+
+    :param src: An image already security checked in format disk_format
+    :param dst: A location, usually a partition or block device,
+                to write the image
+    :param conv_flags: Conversion flags to pass to dd if provided
+    :param source_format: format of the image
+    :param is_raw: Ironic indicates image is raw; do not convert!
+    """
+    if is_raw:
         dd(src, dst, conv_flags=conv_flags)
     else:
-        qemu_img.convert_image(src, dst, 'raw', True, sparse_size='0')
+        qemu_img.convert_image(src, dst, 'raw', True,
+                               sparse_size='0', source_format=source_format)
 
 
 def block_uuid(dev):
@@ -410,20 +497,6 @@ def block_uuid(dev):
                   'was not found while examining %(device)s',
                   {'device': dev})
         return info.get('PARTUUID', '')
-
-
-def get_image_mb(image_path, virtual_size=True):
-    """Get size of an image in Megabyte."""
-    mb = 1024 * 1024
-    if not virtual_size:
-        image_byte = os.path.getsize(image_path)
-    else:
-        data = qemu_img.image_info(image_path)
-        image_byte = data.virtual_size
-
-    # round up size to MB
-    image_mb = int((image_byte + mb - 1) / mb)
-    return image_mb
 
 
 def get_dev_byte_size(dev):
