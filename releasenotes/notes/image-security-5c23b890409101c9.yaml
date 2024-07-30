@@ -1,0 +1,48 @@
+---
+security:
+  - |
+    Ironic-Python-Agent now checks any supplied image format value against 
+    the detected format of the image file and will prevent deployments should
+    the values mismatch.
+  - |
+    Images previously misconfigured as raw despite being in another format, 
+    in some non-default configurations, may have been mistakenly converted if
+    needed. Ironic-Python-Agent will no longer perform conversion in any case
+    for images with metadata indicating in raw format.
+  - |
+    Ironic-Python-Agent *always* inspects any non-raw user image content for 
+    safety before running any qemu-based utilities on the image. This is 
+    utilized to identify the format of the image and to verify the overall 
+    safety of the image. Any images with unknown or unsafe feature uses are 
+    explicitly rejected. This can be disabled in both IPA and Ironic by setting 
+    ``[conductor]disable_deep_image_inspection`` to ``True`` for the Ironic
+    deployment. Image inspection is the primary mitigation for CVE-2024-44082 
+    being tracked in 
+    `bug 2071740 <https://bugs.launchpad.net/ironic-python-agent/+bug/2071740>`_.
+    Operators may desire to set
+    ``[conductor]conductor_always_validates_images`` on Ironic conductors to 
+    mitigate the issue before they have upgraded their Ironic-Python-Agent.
+  - |
+    Ironic-Python-Agent now explicitly enforces a list of permitted image 
+    types for deployment, defaulting to "raw" and "qcow2". Other image types 
+    may work, but are not explicitly supported and must be enabled. This can 
+    be modified by setting ``[conductor]permitted_image_formats`` for all 
+    Ironic services.
+fixes:
+  - |
+    Fixes multiple issues in the handling of images as it related to 
+    execution of the ``qemu-img`` utility. When using this utility to convert
+    an unsafe image, a malicious user can extract information from a node 
+    while Ironic-Python-Agent is deploying or converting an image. 
+    Ironic-Python-Agent now inspects all non-raw images for safety, and never
+    runs qemu-based utilities on raw images. This fix is tracked as 
+    CVE-2024-44082 and `bug 2071740 <https://bugs.launchpad
+    .net/ironic-python-agent/+bug/2071740>`_.
+  - |
+    Images with metadata indicating a "raw" disk format may have been 
+    transparently converted from another format. Now, these images will have 
+    their exact contents imaged to disk without modification.
+upgrade:
+  - |
+    Deployers implementing their own ``HardwareManagers`` must to audit 
+    their code for unsafe uses of `qemu-img` and related methods.

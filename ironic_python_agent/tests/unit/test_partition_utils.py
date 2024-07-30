@@ -16,7 +16,6 @@ import tempfile
 from unittest import mock
 
 from ironic_lib import exception
-from ironic_lib import qemu_img
 from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -27,6 +26,7 @@ from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
+from ironic_python_agent import qemu_img
 from ironic_python_agent.tests.unit import base
 
 
@@ -453,13 +453,15 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
     @mock.patch.object(utils, 'mkfs', lambda fs, path, label=None: None)
     @mock.patch.object(disk_utils, 'block_uuid', lambda p: 'uuid')
     @mock.patch.object(disk_utils, 'populate_image', lambda image_path,
-                       root_path, conv_flags=None: None)
+                       root_path, conv_flags=None, source_format=None,
+                       is_raw=False: None)
     def test_gpt_disk_label(self):
         ephemeral_part = '/dev/fake-part1'
         swap_part = '/dev/fake-part2'
         root_part = '/dev/fake-part3'
         ephemeral_mb = 256
         ephemeral_format = 'exttest'
+        source_format = 'raw'
 
         self.mock_mp.return_value = {'ephemeral': ephemeral_part,
                                      'swap': swap_part,
@@ -472,7 +474,8 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                      self.swap_mb, ephemeral_mb,
                                      ephemeral_format,
                                      self.image_path, self.node_uuid,
-                                     disk_label='gpt', conv_flags=None)
+                                     disk_label='gpt', conv_flags=None,
+                                     source_format=source_format, is_raw=True)
         self.assertEqual(self.mock_ibd.call_args_list, calls)
         self.mock_mp.assert_called_once_with(self.dev, self.root_mb,
                                              self.swap_mb, ephemeral_mb,
@@ -492,6 +495,8 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         """Test that we create a fat filesystem with UEFI localboot."""
         root_part = '/dev/fake-part1'
         efi_part = '/dev/fake-part2'
+        source_format = 'format'
+
         self.mock_mp.return_value = {'root': root_part,
                                      'efi system partition': efi_part}
         self.mock_ibd.return_value = True
@@ -502,7 +507,8 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                      self.swap_mb, self.ephemeral_mb,
                                      self.ephemeral_format,
                                      self.image_path, self.node_uuid,
-                                     boot_mode="uefi")
+                                     boot_mode="uefi",
+                                     source_format=source_format, is_raw=False)
 
         self.mock_mp.assert_called_once_with(self.dev, self.root_mb,
                                              self.swap_mb, self.ephemeral_mb,
@@ -515,8 +521,9 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         self.assertEqual(self.mock_ibd.call_args_list, mock_ibd_calls)
         mock_mkfs.assert_called_once_with(fs='vfat', path=efi_part,
                                           label='efi-part')
-        mock_populate_image.assert_called_once_with(self.image_path,
-                                                    root_part, conv_flags=None)
+        mock_populate_image.assert_called_once_with(
+            self.image_path, root_part, conv_flags=None,
+            source_format=source_format, is_raw=False)
         mock_block_uuid.assert_any_call(root_part)
         mock_block_uuid.assert_any_call(efi_part)
         mock_trigger_device_rescan.assert_called_once_with(self.dev)
@@ -595,6 +602,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         root_part = '/dev/fake-part3'
         ephemeral_mb = 256
         ephemeral_format = 'exttest'
+        fmt = 'format'
 
         self.mock_mp.return_value = {'ephemeral': ephemeral_part,
                                      'swap': swap_part,
@@ -604,11 +612,15 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
                                      self.swap_mb, ephemeral_mb,
                                      ephemeral_format,
                                      self.image_path, self.node_uuid,
-                                     disk_label='gpt', conv_flags='sparse')
+                                     disk_label='gpt', conv_flags='sparse',
+                                     source_format=fmt,
+                                     is_raw=False)
 
         mock_populate_image.assert_called_once_with(self.image_path,
                                                     root_part,
-                                                    conv_flags='sparse')
+                                                    conv_flags='sparse',
+                                                    source_format=fmt,
+                                                    is_raw=False)
 
 
 class CreateConfigDriveTestCases(base.IronicAgentTest):
