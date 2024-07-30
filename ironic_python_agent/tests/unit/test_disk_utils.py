@@ -13,20 +13,52 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
 import os
 import stat
 from unittest import mock
 
 from ironic_lib import exception
-from ironic_lib import qemu_img
 from ironic_lib.tests import base
 from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils.imageutils import QemuImgInfo
+from oslo_utils import units
 
 from ironic_python_agent import disk_utils
+from ironic_python_agent.errors import InvalidImage
+from ironic_python_agent import format_inspector
+from ironic_python_agent import qemu_img
 
 CONF = cfg.CONF
+
+
+class MockFormatInspectorCls(object):
+    def __init__(self, img_format='qcow2', virtual_size_mb=0, safe=False):
+        self.img_format = img_format
+        self.virtual_size_mb = virtual_size_mb
+        self.safe = safe
+
+    def __str__(self):
+        return self.img_format
+
+    @property
+    def virtual_size(self):
+        # NOTE(JayF): Allow the mock-user to input MBs but
+        # backwards-calculate so code in _write_image can still work
+        if self.virtual_size_mb == 0:
+            return 0
+        else:
+            return (self.virtual_size_mb * units.Mi) + 1 - units.Mi
+
+    def safety_check(self):
+        return self.safe
+
+
+def _get_fake_qemu_image_info(file_format='qcow2', virtual_size=0):
+    fake_data = {'format': file_format, 'virtual-size': virtual_size, }
+    return QemuImgInfo(cmd_output=json.dumps(fake_data), format='json')
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
@@ -484,31 +516,24 @@ class GetDeviceByteSizeTestCase(base.IronicLibTestCase):
 
 
 @mock.patch.object(disk_utils, 'dd', autospec=True)
-@mock.patch.object(qemu_img, 'image_info', autospec=True)
 @mock.patch.object(qemu_img, 'convert_image', autospec=True)
 class PopulateImageTestCase(base.IronicLibTestCase):
 
-    def test_populate_raw_image(self, mock_cg, mock_qinfo, mock_dd):
-        type(mock_qinfo.return_value).file_format = mock.PropertyMock(
-            return_value='raw')
-        disk_utils.populate_image('src', 'dst')
+    def test_populate_raw_image(self, mock_cg, mock_dd):
+        source_format = 'raw'
+        disk_utils.populate_image('src', 'dst',
+                                  source_format=source_format,
+                                  is_raw=True)
         mock_dd.assert_called_once_with('src', 'dst', conv_flags=None)
         self.assertFalse(mock_cg.called)
 
-    def test_populate_raw_image_with_convert(self, mock_cg, mock_qinfo,
-                                             mock_dd):
-        type(mock_qinfo.return_value).file_format = mock.PropertyMock(
-            return_value='raw')
-        disk_utils.populate_image('src', 'dst', conv_flags='sparse')
-        mock_dd.assert_called_once_with('src', 'dst', conv_flags='sparse')
-        self.assertFalse(mock_cg.called)
-
-    def test_populate_qcow2_image(self, mock_cg, mock_qinfo, mock_dd):
-        type(mock_qinfo.return_value).file_format = mock.PropertyMock(
-            return_value='qcow2')
-        disk_utils.populate_image('src', 'dst')
+    def test_populate_qcow2_image(self, mock_cg, mock_dd):
+        source_format = 'qcow2'
+        disk_utils.populate_image('src', 'dst',
+                                  source_format=source_format, is_raw=False)
         mock_cg.assert_called_once_with('src', 'dst', 'raw', True,
-                                        sparse_size='0')
+                                        sparse_size='0',
+                                        source_format=source_format)
         self.assertFalse(mock_dd.called)
 
 
@@ -541,32 +566,6 @@ class OtherFunctionTestCase(base.IronicLibTestCase):
         self.assertRaises(exception.InstanceDeployFailure,
                           disk_utils.is_block_device, device)
         mock_os.assert_has_calls([mock.call(device)] * 2)
-
-    @mock.patch.object(os.path, 'getsize', autospec=True)
-    @mock.patch.object(qemu_img, 'image_info', autospec=True)
-    def test_get_image_mb(self, mock_qinfo, mock_getsize):
-        mb = 1024 * 1024
-
-        mock_getsize.return_value = 0
-        type(mock_qinfo.return_value).virtual_size = mock.PropertyMock(
-            return_value=0)
-        self.assertEqual(0, disk_utils.get_image_mb('x', False))
-        self.assertEqual(0, disk_utils.get_image_mb('x', True))
-        mock_getsize.return_value = 1
-        type(mock_qinfo.return_value).virtual_size = mock.PropertyMock(
-            return_value=1)
-        self.assertEqual(1, disk_utils.get_image_mb('x', False))
-        self.assertEqual(1, disk_utils.get_image_mb('x', True))
-        mock_getsize.return_value = mb
-        type(mock_qinfo.return_value).virtual_size = mock.PropertyMock(
-            return_value=mb)
-        self.assertEqual(1, disk_utils.get_image_mb('x', False))
-        self.assertEqual(1, disk_utils.get_image_mb('x', True))
-        mock_getsize.return_value = mb + 1
-        type(mock_qinfo.return_value).virtual_size = mock.PropertyMock(
-            return_value=mb + 1)
-        self.assertEqual(2, disk_utils.get_image_mb('x', False))
-        self.assertEqual(2, disk_utils.get_image_mb('x', True))
 
     def _test_count_mbr_partitions(self, output, mock_execute):
         mock_execute.return_value = (output, '')
@@ -960,3 +959,104 @@ class WaitForDisk(base.IronicLibTestCase):
         fuser_call = mock.call(*fuser_cmd, check_exit_code=[0, 1])
         self.assertEqual(2, mock_exc.call_count)
         mock_exc.assert_has_calls([fuser_call, fuser_call])
+
+
+class GetAndValidateImageFormat(base.IronicLibTestCase):
+    @mock.patch.object(disk_utils, '_image_inspection', autospec=True)
+    @mock.patch('os.path.getsize', autospec=True)
+    def test_happy_raw(self, mock_size, mock_ii):
+        """Valid raw image"""
+        CONF.set_override('disable_deep_image_inspection', False)
+        mock_size.return_value = 13
+        fmt = 'raw'
+        self.assertEqual(
+            (fmt, 13),
+            disk_utils.get_and_validate_image_format('/fake/path', fmt))
+        mock_ii.assert_not_called()
+        mock_size.assert_called_once_with('/fake/path')
+
+    @mock.patch.object(disk_utils, '_image_inspection', autospec=True)
+    def test_happy_qcow2(self, mock_ii):
+        """Valid qcow2 image"""
+        CONF.set_override('disable_deep_image_inspection', False)
+        fmt = 'qcow2'
+        mock_ii.return_value = MockFormatInspectorCls(fmt, 0, True)
+        self.assertEqual(
+            (fmt, 0),
+            disk_utils.get_and_validate_image_format('/fake/path', fmt)
+        )
+        mock_ii.assert_called_once_with('/fake/path')
+
+    @mock.patch.object(disk_utils, '_image_inspection', autospec=True)
+    def test_format_type_disallowed(self, mock_ii):
+        """qcow3 images are not allowed in default config"""
+        CONF.set_override('disable_deep_image_inspection', False)
+        fmt = 'qcow3'
+        mock_ii.return_value = MockFormatInspectorCls(fmt, 0, True)
+        self.assertRaises(InvalidImage,
+                          disk_utils.get_and_validate_image_format,
+                          '/fake/path', fmt)
+        mock_ii.assert_called_once_with('/fake/path')
+
+    @mock.patch.object(disk_utils, '_image_inspection', autospec=True)
+    def test_format_mismatch(self, mock_ii):
+        """ironic_disk_format=qcow2, but we detect it as a qcow3"""
+        CONF.set_override('disable_deep_image_inspection', False)
+        fmt = 'qcow2'
+        mock_ii.return_value = MockFormatInspectorCls('qcow3', 0, True)
+        self.assertRaises(InvalidImage,
+                          disk_utils.get_and_validate_image_format,
+                          '/fake/path', fmt)
+
+    @mock.patch.object(disk_utils, '_image_inspection', autospec=True)
+    @mock.patch.object(qemu_img, 'image_info', autospec=True)
+    def test_format_mismatch_but_disabled(self, mock_info, mock_ii):
+        """qcow3 ironic_disk_format ignored because deep inspection disabled"""
+        CONF.set_override('disable_deep_image_inspection', True)
+        fmt = 'qcow2'
+        fake_info = _get_fake_qemu_image_info(file_format=fmt, virtual_size=0)
+        qemu_img.image_info.return_value = fake_info
+        # note the input is qcow3, the output is qcow2: this mismatch is
+        # forbidden if CONF.disable_deep_image_inspection is False
+        self.assertEqual(
+            (fmt, 0),
+            disk_utils.get_and_validate_image_format('/fake/path', 'qcow3'))
+        mock_ii.assert_not_called()
+        mock_info.assert_called_once()
+
+    @mock.patch.object(disk_utils, '_image_inspection', autospec=True)
+    @mock.patch.object(qemu_img, 'image_info', autospec=True)
+    def test_safety_check_fail_but_disabled(self, mock_info, mock_ii):
+        """unsafe image ignored because inspection is disabled"""
+        CONF.set_override('disable_deep_image_inspection', True)
+        fmt = 'qcow2'
+        fake_info = _get_fake_qemu_image_info(file_format=fmt, virtual_size=0)
+        qemu_img.image_info.return_value = fake_info
+        # note the input is qcow3, the output is qcow2: this mismatch is
+        # forbidden if CONF.disable_deep_image_inspection is False
+        self.assertEqual(
+            (fmt, 0),
+            disk_utils.get_and_validate_image_format('/fake/path', 'qcow3'))
+        mock_ii.assert_not_called()
+        mock_info.assert_called_once()
+
+
+class ImageInspectionTest(base.IronicLibTestCase):
+    @mock.patch.object(format_inspector, 'detect_file_format', autospec=True)
+    def test_image_inspection_pass(self, mock_fi):
+        inspector = MockFormatInspectorCls('qcow2', 0, True)
+        mock_fi.return_value = inspector
+        self.assertEqual(inspector, disk_utils._image_inspection('/fake/path'))
+
+    @mock.patch.object(format_inspector, 'detect_file_format', autospec=True)
+    def test_image_inspection_fail_safety_check(self, mock_fi):
+        inspector = MockFormatInspectorCls('qcow2', 0, False)
+        mock_fi.return_value = inspector
+        self.assertRaises(InvalidImage, disk_utils._image_inspection,
+                          '/fake/path')
+
+    @mock.patch.object(format_inspector, 'detect_file_format', autospec=True)
+    def test_image_inspection_fail_format_error(self, mock_fi):
+        mock_fi.side_effect = format_inspector.ImageFormatError
+        self.assertRaises(InvalidImage, disk_utils._image_inspection,
+                          '/fake/path')

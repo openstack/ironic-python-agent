@@ -370,6 +370,21 @@ cli_opts = [
                 help='If the agent should rebuild the configuration drive '
                      'using a local filesystem, instead of letting Ironic '
                      'determine if this action is necessary.'),
+    cfg.BoolOpt('disable_deep_image_inspection',
+                default=False,
+                help='This disables the additional deep image inspection '
+                     'the agent does before converting and writing an image. '
+                     'Generally, this should remain enabled for maximum '
+                     'security, but this option allows disabling it if there '
+                     'is a compatibility concern.'),
+    cfg.ListOpt('permitted_image_formats',
+                default='raw,qcow2',
+                help='The supported list of image formats which are '
+                     'permitted for deployment with Ironic Python Agent. If '
+                     'an image format outside of this list is detected, the '
+                     'image validation logic will fail the deployment '
+                     'process. This check is skipped if deep image '
+                     'inspection is disabled.'),
 ]
 
 disk_utils_opts = [
@@ -395,6 +410,13 @@ disk_utils_opts = [
                default=10,
                help='Maximum number of attempts to try to read the '
                     'partition.'),
+    cfg.IntOpt('image_convert_memory_limit',
+               default=2048,
+               help='Memory limit for "qemu-img convert" in MiB. Implemented '
+                    'via the address space resource limit.'),
+    cfg.IntOpt('image_convert_attempts',
+               default=3,
+               help='Number of attempts to convert an image.'),
 ]
 
 disk_part_opts = [
@@ -412,15 +434,18 @@ disk_part_opts = [
                     ' having failed.')
 ]
 
-CONF.register_cli_opts(cli_opts)
-CONF.register_opts(disk_utils_opts, group='disk_utils')
-CONF.register_opts(disk_part_opts, group='disk_partitioner')
-
 
 def list_opts():
     return [('DEFAULT', cli_opts),
             ('disk_utils', disk_utils_opts),
             ('disk_partitioner', disk_part_opts)]
+
+
+def populate_config():
+    """Populate configuration. In a method so tests can easily utilize it."""
+    CONF.register_cli_opts(cli_opts)
+    CONF.register_opts(disk_utils_opts, group='disk_utils')
+    CONF.register_opts(disk_part_opts, group='disk_partitioner')
 
 
 def override(params):
@@ -447,3 +472,6 @@ def override(params):
             LOG.warning('Unable to override configuration option %(key)s '
                         'with %(value)r: %(exc)s',
                         {'key': key, 'value': value, 'exc': exc})
+
+
+populate_config()
