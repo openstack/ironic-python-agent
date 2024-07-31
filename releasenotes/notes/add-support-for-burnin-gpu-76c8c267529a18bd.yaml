@@ -1,0 +1,3 @@
+features:
+  - |
+    Add support for GPU burn-in testing using gpu-burn.
