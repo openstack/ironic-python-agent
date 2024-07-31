@@ -69,8 +69,8 @@ ironic-python-agent-builder: dynamic-login
 Users wishing to use password access can be add the dynamic-login [0]_ or the
 devuser element [1]_
 
-The dynamic-login element allows the operator to change the root password
-dynamically when the image boots. Kernel command line parameters
+The dynamic-login element allows the operator to change the root password or
+SSH key dynamically when the image boots. Kernel command line parameters
 are used to do this.
 
 Generate a password hash with following command:
@@ -79,15 +79,14 @@ Generate a password hash with following command:
 
     $ openssl passwd -1 -stdin | sed 's/\$/\$\$/g'
 
-Add ``rootpwd="<openssl output>"`` value on the ``kernel_append_params``
+Add ``rootpwd="<openssl output>"`` value or add ``sshkey="<ssh public key>"``
+on the ``kernel_append_params``
 setting in the Ironic configuration file (``/etc/ironic/ironic.conf``).
 Restart the ironic-conductor e.g. with
 
 .. code-block:: console
 
    $ sudo systemctl restart ironic-conductor
-
-Alternatively, you can use the contents of the SSH public key.
 
 .. warning::
 
