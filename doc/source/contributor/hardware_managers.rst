@@ -114,6 +114,13 @@ message, and no further managers will be called. An example step:
         else:
             raise errors.IncompatibleHardwareMethodError()
 
+
+.. note::
+
+   If creating a new step, the value returned must be serializable into an
+   API response and log message. If replacing an existing step, you should
+   return a response of the same type and style of the upstream step.
+
 If the step has args, you need to add them to argsinfo and provide the
 function with extra parameters.
 
