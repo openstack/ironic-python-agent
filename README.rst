@@ -11,6 +11,11 @@ Team and repository tags
 Overview
 ========
 
+*WARNING:* The Ironic-Python-Agent version in this branch is vulnerable to
+CVE-2024-44082. Do not run this in production unless using a patched
+conductor with ``[conductor]/conductor_always_validate_images`` set to
+``True``.
+
 An agent for controlling and deploying Ironic controlled baremetal nodes.
 
 The ironic-python-agent works with the agent driver in Ironic to provision
