@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Adds a preliminary check for IPMI device files before the BMC detection
+    attempts, optimizing `ipmitool` command calls on systems without IPMI
+    capabilities.
