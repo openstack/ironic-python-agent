@@ -1,5 +1,5 @@
 ========================================
-Zed (8.6.0 - 9.1.x) Series Release Notes
+Zed Series (8.6.0 - 9.1.x) Release Notes
 ========================================
 
 .. release-notes::
