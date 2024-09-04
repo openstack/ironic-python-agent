@@ -107,22 +107,6 @@
       - ^tools/(?!bandit.yml).*$
       - ^tox.ini$
 
-- job:
-    name: ipa-tox-examples
-    parent: openstack-tox
-    timeout: 600
-    vars:
-      tox_envlist: examples
-    irrelevant-files:
-      - ^test-requirements.txt$
-      - ^.*\.rst$
-      - ^doc/.*$
-      - ^ironic_python_agent/tests/.*$
-      - ^releasenotes/.*$
-      - ^setup.cfg$
-      - ^tools/(?!bandit.yml).*$
-      - ^tox.ini$
-
 # used by ironic-python-agent-builder
 - job:
     name: ironic-standalone-ipa-src
@@ -169,3 +153,4 @@
       devstack_localrc:
         IRONIC_RAMDISK_TYPE: tinyipa
         IRONIC_VM_SPECS_RAM: 1024
+
