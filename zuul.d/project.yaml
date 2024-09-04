@@ -9,7 +9,6 @@
     check:
       jobs:
         - openstack-tox-functional
-        - ipa-tox-examples
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
         # NOTE(TheJulia): Disabling as the centos base image url is no longer
@@ -24,13 +23,15 @@
         # to break them. They rather serve as a canary for broken POST jobs.
         - ironic-python-agent-check-image-tinyipa:
             voting: false
+        - ironic-python-agent-check-image-dib-centos9:
+            voting: false
+            nodeset: ubuntu-jammy
         # Non-voting jobs
         - ipa-tox-bandit:
             voting: false
     gate:
       jobs:
         - openstack-tox-functional
-        - ipa-tox-examples
         # NOTE(TheJulia): Disabling as the centos base image url is no longer
         # available and returns a 404.
         # - ipa-tempest-bios-ipmi-direct-src
