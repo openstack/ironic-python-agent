@@ -10,7 +10,6 @@
       jobs:
         - openstack-tox-functional
         - ipa-tox-bandit
-        - ipa-tox-examples
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
         - ipa-tempest-bios-ipmi-direct-src
@@ -35,7 +34,6 @@
       jobs:
         - openstack-tox-functional
         - ipa-tox-bandit
-        - ipa-tox-examples
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src-uefi

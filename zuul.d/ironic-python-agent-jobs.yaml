@@ -109,23 +109,6 @@
       - regex: ^tools/bandit\.yml$
         negate: true
 
-- job:
-    name: ipa-tox-examples
-    parent: openstack-tox
-    timeout: 600
-    vars:
-      tox_envlist: examples
-    irrelevant-files:
-      - ^test-requirements.txt$
-      - ^.*\.rst$
-      - ^doc/.*$
-      - ^ironic_python_agent/tests/.*$
-      - ^releasenotes/.*$
-      - ^setup.cfg$
-      - ^tox.ini$
-      - regex: ^tools/bandit\.yml$
-        negate: true
-
 # used by ironic-python-agent-builder
 - job:
     name: ironic-standalone-ipa-src
