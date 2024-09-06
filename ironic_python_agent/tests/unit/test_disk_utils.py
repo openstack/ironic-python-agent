@@ -19,17 +19,17 @@ import stat
 from unittest import mock
 
 from ironic_lib import exception
-from ironic_lib.tests import base
 from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils.imageutils import format_inspector
 from oslo_utils.imageutils import QemuImgInfo
 from oslo_utils import units
 
 from ironic_python_agent import disk_utils
 from ironic_python_agent.errors import InvalidImage
-from ironic_python_agent import format_inspector
 from ironic_python_agent import qemu_img
+from ironic_python_agent.tests.unit import base
 
 CONF = cfg.CONF
 
@@ -53,7 +53,12 @@ class MockFormatInspectorCls(object):
             return (self.virtual_size_mb * units.Mi) + 1 - units.Mi
 
     def safety_check(self):
-        return self.safe
+        if self.safe:
+            return True
+        else:
+            raise format_inspector.SafetyCheckFailed(
+                failures={'mockfail': format_inspector.SafetyViolation()}
+            )
 
 
 def _get_fake_qemu_image_info(file_format='qcow2', virtual_size=0):
@@ -62,7 +67,7 @@ def _get_fake_qemu_image_info(file_format='qcow2', virtual_size=0):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class ListPartitionsTestCase(base.IronicLibTestCase):
+class ListPartitionsTestCase(base.IronicAgentTest):
 
     def test_correct(self, execute_mock):
         output = """
@@ -137,7 +142,7 @@ BYT;
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class MakePartitionsTestCase(base.IronicLibTestCase):
+class MakePartitionsTestCase(base.IronicAgentTest):
 
     def setUp(self):
         super(MakePartitionsTestCase, self).setUp()
@@ -337,7 +342,7 @@ class MakePartitionsTestCase(base.IronicLibTestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class DestroyMetaDataTestCase(base.IronicLibTestCase):
+class DestroyMetaDataTestCase(base.IronicAgentTest):
 
     def setUp(self):
         super(DestroyMetaDataTestCase, self).setUp()
@@ -501,7 +506,7 @@ class DestroyMetaDataTestCase(base.IronicLibTestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class GetDeviceByteSizeTestCase(base.IronicLibTestCase):
+class GetDeviceByteSizeTestCase(base.IronicAgentTest):
 
     def setUp(self):
         super(GetDeviceByteSizeTestCase, self).setUp()
@@ -517,7 +522,7 @@ class GetDeviceByteSizeTestCase(base.IronicLibTestCase):
 
 @mock.patch.object(disk_utils, 'dd', autospec=True)
 @mock.patch.object(qemu_img, 'convert_image', autospec=True)
-class PopulateImageTestCase(base.IronicLibTestCase):
+class PopulateImageTestCase(base.IronicAgentTest):
 
     def test_populate_raw_image(self, mock_cg, mock_dd):
         source_format = 'raw'
@@ -538,7 +543,7 @@ class PopulateImageTestCase(base.IronicLibTestCase):
 
 
 @mock.patch('time.sleep', lambda sec: None)
-class OtherFunctionTestCase(base.IronicLibTestCase):
+class OtherFunctionTestCase(base.IronicAgentTest):
 
     @mock.patch.object(os, 'stat', autospec=True)
     @mock.patch.object(stat, 'S_ISBLK', autospec=True)
@@ -616,7 +621,7 @@ class OtherFunctionTestCase(base.IronicLibTestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class FixGptStructsTestCases(base.IronicLibTestCase):
+class FixGptStructsTestCases(base.IronicAgentTest):
 
     def setUp(self):
         super(FixGptStructsTestCases, self).setUp()
@@ -659,7 +664,7 @@ Identified 1 problems!
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class TriggerDeviceRescanTestCase(base.IronicLibTestCase):
+class TriggerDeviceRescanTestCase(base.IronicAgentTest):
     def test_trigger(self, mock_execute):
         self.assertTrue(disk_utils.trigger_device_rescan('/dev/fake'))
         mock_execute.assert_has_calls([
@@ -707,7 +712,7 @@ LSBLK_NORMAL = (
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class GetDeviceInformationTestCase(base.IronicLibTestCase):
+class GetDeviceInformationTestCase(base.IronicAgentTest):
 
     def test_normal(self, mock_execute):
         mock_execute.return_value = LSBLK_NORMAL, ""
@@ -746,7 +751,7 @@ class GetDeviceInformationTestCase(base.IronicLibTestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class GetPartitionTableTypeTestCase(base.IronicLibTestCase):
+class GetPartitionTableTypeTestCase(base.IronicAgentTest):
     def test_gpt(self, mocked_execute):
         self._test_by_type(mocked_execute, 'gpt', 'gpt')
 
@@ -786,7 +791,7 @@ Number  Start   End     Size    File system  Name  Flags
 
 @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
 @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True)
-class FindEfiPartitionTestCase(base.IronicLibTestCase):
+class FindEfiPartitionTestCase(base.IronicAgentTest):
 
     def test_find_efi_partition(self, mocked_type, mocked_parts):
         mocked_parts.return_value = [
@@ -826,7 +831,7 @@ class FindEfiPartitionTestCase(base.IronicLibTestCase):
         self.assertIsNone(disk_utils.find_efi_partition('/dev/sda'))
 
 
-class WaitForDisk(base.IronicLibTestCase):
+class WaitForDisk(base.IronicAgentTest):
 
     def setUp(self):
         super(WaitForDisk, self).setUp()
@@ -961,7 +966,7 @@ class WaitForDisk(base.IronicLibTestCase):
         mock_exc.assert_has_calls([fuser_call, fuser_call])
 
 
-class GetAndValidateImageFormat(base.IronicLibTestCase):
+class GetAndValidateImageFormat(base.IronicAgentTest):
     @mock.patch.object(disk_utils, '_image_inspection', autospec=True)
     @mock.patch('os.path.getsize', autospec=True)
     def test_happy_raw(self, mock_size, mock_ii):
@@ -1041,7 +1046,7 @@ class GetAndValidateImageFormat(base.IronicLibTestCase):
         mock_info.assert_called_once()
 
 
-class ImageInspectionTest(base.IronicLibTestCase):
+class ImageInspectionTest(base.IronicAgentTest):
     @mock.patch.object(format_inspector, 'detect_file_format', autospec=True)
     def test_image_inspection_pass(self, mock_fi):
         inspector = MockFormatInspectorCls('qcow2', 0, True)

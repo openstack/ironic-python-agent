@@ -32,11 +32,11 @@ from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import excutils
+from oslo_utils.imageutils import format_inspector
 import tenacity
 
 from ironic_python_agent import disk_partitioner
 from ironic_python_agent import errors
-from ironic_python_agent import format_inspector
 from ironic_python_agent import qemu_img
 
 CONF = cfg.CONF
@@ -53,6 +53,9 @@ MAX_CONFIG_DRIVE_SIZE_MB = 64
 
 # Maximum disk size supported by MBR is 2TB (2 * 1024 * 1024 MB)
 MAX_DISK_SIZE_MB_SUPPORTED_BY_MBR = 2097152
+
+# NOTE(JayF): Image types we write bit-perfect to disk, no conversion
+RAW_LIKE_IMAGETYPES = ['gpt', 'raw']
 
 
 def list_partitions(device):
@@ -394,20 +397,20 @@ def dd(src, dst, conv_flags=None):
 def _image_inspection(filename):
     try:
         inspector_cls = format_inspector.detect_file_format(filename)
-        if (not inspector_cls
-            or not hasattr(inspector_cls, 'safety_check')
-            or not inspector_cls.safety_check()):
-            err = "Security: Image failed safety check"
-            LOG.error(err)
-            raise errors.InvalidImage(details=err)
+        if not inspector_cls:
+            msg = "Security: Unable to safety check image"
+            LOG.error(msg)
+            raise errors.InvalidImage(details=msg)
+        inspector_cls.safety_check()
 
-    except (format_inspector.ImageFormatError, AttributeError):
-        # NOTE(JayF): Because we already validated the format is OK and matches
-        #             expectation, it should be impossible for us to get an
-        #             ImageFormatError or AttributeError. We handle it anyway
-        #             for completeness.
-        msg = "Security: Unable to safety check image"
-        LOG.error(msg)
+    except format_inspector.ImageFormatError:
+        msg = "Security: Image matched multiple potential formats"
+        LOG.exception(msg)
+        raise errors.InvalidImage(details=msg)
+
+    except format_inspector.SafetyCheckFailed:
+        msg = "Security: Image failed safety check"
+        LOG.exception(msg)
         raise errors.InvalidImage(details=msg)
 
     return inspector_cls
@@ -418,9 +421,11 @@ def get_and_validate_image_format(filename, ironic_disk_format):
 
     This method uses the format inspector originally written for glance to
     safely detect the image format. It also sanity checks to ensure any
-    specified format matches the provided one (except raw; which in some
-    cases is a request to convert to raw) and that the format is in the
+    specified format matches the provided one and that the format is in the
     allowed list of formats.
+
+    If the image format provided by Ironic is a type which doesn't need
+    conversion, we avoid all introspection of the image and use of qemu-img.
 
     It also performs a basic safety check on the image.
 
@@ -439,10 +444,10 @@ def get_and_validate_image_format(filename, ironic_disk_format):
         img_format = data.file_format
         size = data.virtual_size
     else:
-        if ironic_disk_format == 'raw':
-            # NOTE(JayF): IPA unconditionally writes raw images to disk without
-            #             conversion with dd or raw python, not qemu-img, it's
-            #             not required to safety check raw images.
+        if ironic_disk_format in RAW_LIKE_IMAGETYPES:
+            # NOTE(JayF): IPA avoids converting images which claim to be a
+            #             type that doesn't need conversion. This negates any
+            #             security risk the image file could pose.
             img_format = ironic_disk_format
             size = os.path.getsize(filename)
         else:
