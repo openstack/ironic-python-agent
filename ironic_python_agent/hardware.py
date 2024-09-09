@@ -17,6 +17,7 @@ import binascii
 import collections
 import contextlib
 import functools
+import glob
 import io
 import ipaddress
 import json
@@ -446,7 +447,7 @@ def md_restart(raid_device):
 def md_get_raid_devices():
     """Get all discovered Software RAID (md) devices
 
-    :return: A python dict containing details about the discovered RAID
+    :returns: A python dict containing details about the discovered RAID
       devices
     """
     # Note(Boushra): mdadm output is similar to lsblk, but not
@@ -509,7 +510,7 @@ def list_all_block_devices(block_type='disk',
                                the short and the long serial from udevadm if
                                possible.
 
-    :return: A list of BlockDevices
+    :returns: A list of BlockDevices
     """
 
     def _is_known_device(existing, new_device_name):
@@ -925,7 +926,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         """List physical block devices
 
         :param include_partitions: If to include partitions
-        :return: A list of BlockDevices
+        :returns: A list of BlockDevices
         """
         raise errors.IncompatibleHardwareMethodError
 
@@ -936,7 +937,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         :param block_devices: a list of BlockDevices
         :param just_raids: a boolean to signify that only RAID devices
                            are important
-        :return: A set of names of devices on the skip list
+        :returns: A set of names of devices on the skip list
         """
         raise errors.IncompatibleHardwareMethodError
 
@@ -948,7 +949,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
 
         :param node: A node used to check the skip list
         :param include_partitions: If to include partitions
-        :return: A list of BlockDevices
+        :returns: A list of BlockDevices
         """
         raise errors.IncompatibleHardwareMethodError
 
@@ -981,7 +982,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
 
         List all USB final devices, based on lshw information
 
-        :return: a dict, containing product, vendor, and handle information
+        :returns: a dict, containing product, vendor, and handle information
         """
         raise errors.IncompatibleHardwareMethodError()
 
@@ -1027,7 +1028,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
                  may require manual intervention due to the contents and
                  operational risk which exists as it could also be a sign
                  of an environmental misconfiguration.
-        :return: a dictionary in the form {device.name: erasure output}
+        :returns: a dictionary in the form {device.name: erasure output}
         """
         erase_results = {}
         block_devices = self.list_block_devices_check_skip_list(node)
@@ -1088,7 +1089,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         This inventory is sent to Ironic on lookup and to Inspector on
         inspection.
 
-        :return: a dictionary representing inventory
+        :returns: a dictionary representing inventory
         """
         start = time.time()
         LOG.info('Collecting full inventory')
@@ -1161,7 +1162,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
 
         :param node: Ironic node object
         :param ports: list of Ironic port objects
-        :return: a list of cleaning steps, where each step is described as a
+        :returns: a list of cleaning steps, where each step is described as a
                  dict as defined above
 
         """
@@ -1210,7 +1211,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
 
         :param node: Ironic node object
         :param ports: list of Ironic port objects
-        :return: a list of deploying steps, where each step is described as a
+        :returns: a list of deploying steps, where each step is described as a
                  dict as defined above
 
         """
@@ -1264,7 +1265,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
 
         :param node: Ironic node object
         :param ports: list of Ironic port objects
-        :return: a list of service steps, where each step is described as a
+        :returns: a list of service steps, where each step is described as a
                  dict as defined above
 
         """
@@ -1336,7 +1337,7 @@ class GenericHardwareManager(HardwareManager):
         This inventory is sent to Ironic on lookup and to Inspector on
         inspection.
 
-        :return: a dictionary representing inventory
+        :returns: a dictionary representing inventory
         """
         with self._cached_lshw():
             return super().list_hardware_info()
@@ -1359,7 +1360,7 @@ class GenericHardwareManager(HardwareManager):
         Retrieves a json representation of the system from lshw and converts
         it to a python dict
 
-        :return: A python dict from the lshw json output
+        :returns: A python dict from the lshw json output
         """
         if self._lshw_cache:
             return self._lshw_cache
@@ -1379,7 +1380,7 @@ class GenericHardwareManager(HardwareManager):
         be converted for serialization purposes.
 
         :param interface_names: list of names of node's interfaces.
-        :return: a dict, containing the lldp data from every interface.
+        :returns: a dict, containing the lldp data from every interface.
         """
         if interface_names is None:
             interface_names = netutils.list_interfaces()
@@ -1471,7 +1472,7 @@ class GenericHardwareManager(HardwareManager):
         extra field named ``biosdevname``.
 
         :param interface_name: list of names of node's interfaces.
-        :return: the BIOS given NIC name of node's interfaces or default
+        :returns: the BIOS given NIC name of node's interfaces or default
                  as None.
         """
         global WARN_BIOSDEVNAME_NOT_FOUND
@@ -1528,6 +1529,15 @@ class GenericHardwareManager(HardwareManager):
                     network_interfaces_list.append(result)
 
         return network_interfaces_list
+
+    def any_ipmi_device_exists(self):
+        '''Check for an IPMI device to confirm IPMI capability.'''
+        for pattern in ['/dev/ipmi*', '/dev/ipmi/*', '/dev/ipmidev/*']:
+            ipmi_files = glob.glob(pattern)
+            for device in ipmi_files:
+                if utils.is_char_device(device):
+                    return True
+        return False
 
     @staticmethod
     def create_cpu_info_dict(lines):
@@ -2317,7 +2327,7 @@ class GenericHardwareManager(HardwareManager):
         """Attempt to clean the NVMe using the most secure supported method
 
         :param block_device: a BlockDevice object
-        :return: True if cleaning operation succeeded, False if it failed
+        :returns: True if cleaning operation succeeded, False if it failed
         :raises: BlockDeviceEraseError
         """
 
@@ -2382,9 +2392,12 @@ class GenericHardwareManager(HardwareManager):
     def get_bmc_address(self):
         """Attempt to detect BMC IP address
 
-        :return: IP address of lan channel or 0.0.0.0 in case none of them is
+        :returns: IP address of lan channel or 0.0.0.0 in case none of them is
                  configured properly
         """
+        if not self.any_ipmi_device_exists():
+            return None
+
         try:
             # From all the channels 0-15, only 1-11 can be assigned to
             # different types of communication media and protocols and
@@ -2419,9 +2432,13 @@ class GenericHardwareManager(HardwareManager):
     def get_bmc_mac(self):
         """Attempt to detect BMC MAC address
 
-        :return: MAC address of the first LAN channel or 00:00:00:00:00:00 in
+        :returns: MAC address of the first LAN channel or 00:00:00:00:00:00 in
                  case none of them has one or is configured properly
+        :raises: IncompatibleHardwareMethodError if no valid mac is found.
         """
+        if not self.any_ipmi_device_exists():
+            return None
+
         try:
             # From all the channels 0-15, only 1-11 can be assigned to
             # different types of communication media and protocols and
@@ -2465,10 +2482,13 @@ class GenericHardwareManager(HardwareManager):
     def get_bmc_v6address(self):
         """Attempt to detect BMC v6 address
 
-        :return: IPv6 address of lan channel or ::/0 in case none of them is
+        :returns: IPv6 address of lan channel or ::/0 in case none of them is
                  configured properly. May return None value if it cannot
                  interact with system tools or critical error occurs.
         """
+        if not self.any_ipmi_device_exists():
+            return None
+
         null_address_re = re.compile(r'^::(/\d{1,3})*$')
 
         def get_addr(channel, dynamic=False):

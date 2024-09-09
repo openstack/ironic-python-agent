@@ -23,6 +23,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -972,3 +973,13 @@ def _unmount_any_config_drives():
         _early_log('Issuing an umount command for /mnt/config...')
         execute('umount', '/mnt/config')
         time.sleep(1)
+
+
+def is_char_device(path):
+    '''Check if the specified path is a character device.'''
+    try:
+        return stat.S_ISCHR(os.stat(path).st_mode)
+    except OSError:
+        # Likely because of insufficient permission,
+        # race conditions or I/O related errors.
+        return False
