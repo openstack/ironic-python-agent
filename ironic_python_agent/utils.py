@@ -27,6 +27,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 
 from ironic_lib import utils as ironic_utils
@@ -76,6 +77,61 @@ def execute(*cmd, **kwargs):
     Executes and logs results from a system command.
     """
     return ironic_utils.execute(*cmd, **kwargs)
+
+
+@contextlib.contextmanager
+def mounted(source, dest=None, opts=None, fs_type=None,
+            mount_attempts=1, umount_attempts=3):
+    """A context manager for a temporary mount.
+
+    :param source: A device to mount.
+    :param dest: Mount destination. If not specified, a temporary directory
+        will be created and removed afterwards. An existing destination is
+        not removed.
+    :param opts: Mount options (``-o`` argument).
+    :param fs_type: File system type (``-t`` argument).
+    :param mount_attempts: A number of attempts to mount the device.
+    :param umount_attempts: A number of attempts to unmount the device.
+    :returns: A generator yielding the destination.
+    """
+    params = []
+    if opts:
+        params.extend(['-o', ','.join(opts)])
+    if fs_type:
+        params.extend(['-t', fs_type])
+
+    if dest is None:
+        dest = tempfile.mkdtemp()
+        clean_up = True
+    else:
+        clean_up = False
+
+    mounted = False
+    try:
+        ironic_utils.execute("mount", source, dest, *params,
+                             attempts=mount_attempts, delay_on_retry=True)
+        mounted = True
+        yield dest
+    finally:
+        if mounted:
+            try:
+                ironic_utils.execute("umount", dest, attempts=umount_attempts,
+                                     delay_on_retry=True)
+            except (EnvironmentError,
+                    processutils.ProcessExecutionError) as exc:
+                LOG.warning(
+                    'Unable to unmount temporary location %(dest)s: %(err)s',
+                    {'dest': dest, 'err': exc})
+                # NOTE(dtantsur): don't try to remove a still mounted location
+                clean_up = False
+
+        if clean_up:
+            try:
+                shutil.rmtree(dest)
+            except EnvironmentError as exc:
+                LOG.warning(
+                    'Unable to remove temporary location %(dest)s: %(err)s',
+                    {'dest': dest, 'err': exc})
 
 
 def _read_params_from_file(filepath):
@@ -168,7 +224,7 @@ def _get_vmedia_params():
             # If the device is not valid, return an empty dictionary.
             return {}
 
-    with ironic_utils.mounted(vmedia_device_file) as vmedia_mount_point:
+    with mounted(vmedia_device_file) as vmedia_mount_point:
         parameters_file_path = os.path.join(vmedia_mount_point,
                                             parameters_file)
         params = _read_params_from_file(parameters_file_path)
@@ -321,14 +377,14 @@ def copy_config_from_vmedia():
         _unmount_any_config_drives()
         return
     # Determine the device
-    mounted = _find_mount_point(vmedia_device_file)
-    if mounted:
+    mount_point = _find_mount_point(vmedia_device_file)
+    if mount_point:
         # In this case a utility like a configuration drive tool
         # has *already* mounted the device we believe to be the
         # configuration drive.
-        _copy_config_from(mounted)
+        _copy_config_from(mount_point)
     else:
-        with ironic_utils.mounted(vmedia_device_file) as vmedia_mount_point:
+        with mounted(vmedia_device_file) as vmedia_mount_point:
             # In this case, we use a temporary folder and extract the contents
             # for our configuration.
             _copy_config_from(vmedia_mount_point)

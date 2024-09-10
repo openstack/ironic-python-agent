@@ -311,7 +311,6 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         convert_mock.assert_called_once_with(location, device,
                                              out_format='host_device',
-                                             run_as_root=True,
                                              sparse_size='0',
                                              source_format=source_format,
                                              cache='directsync',

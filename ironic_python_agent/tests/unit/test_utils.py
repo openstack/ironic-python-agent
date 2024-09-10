@@ -50,6 +50,79 @@ class ExecuteTestCase(ironic_agent_base.IronicAgentTest):
                                              check_exit_code=False)
 
 
+@mock.patch('shutil.rmtree', autospec=True)
+@mock.patch.object(ironic_utils, 'execute', autospec=True)
+@mock.patch('tempfile.mkdtemp', autospec=True)
+class MountedTestCase(ironic_agent_base.IronicAgentTest):
+
+    def test_temporary(self, mock_temp, mock_execute, mock_rmtree):
+        with utils.mounted('/dev/fake') as path:
+            self.assertIs(path, mock_temp.return_value)
+        mock_execute.assert_has_calls([
+            mock.call("mount", '/dev/fake', mock_temp.return_value,
+                      attempts=1, delay_on_retry=True),
+            mock.call("umount", mock_temp.return_value,
+                      attempts=3, delay_on_retry=True),
+        ])
+        mock_rmtree.assert_called_once_with(mock_temp.return_value)
+
+    def test_with_dest(self, mock_temp, mock_execute, mock_rmtree):
+        with utils.mounted('/dev/fake', '/mnt/fake') as path:
+            self.assertEqual('/mnt/fake', path)
+        mock_execute.assert_has_calls([
+            mock.call("mount", '/dev/fake', '/mnt/fake',
+                      attempts=1, delay_on_retry=True),
+            mock.call("umount", '/mnt/fake',
+                      attempts=3, delay_on_retry=True),
+        ])
+        self.assertFalse(mock_temp.called)
+        self.assertFalse(mock_rmtree.called)
+
+    def test_with_opts(self, mock_temp, mock_execute, mock_rmtree):
+        with utils.mounted('/dev/fake', '/mnt/fake',
+                           opts=['ro', 'foo=bar']) as path:
+            self.assertEqual('/mnt/fake', path)
+        mock_execute.assert_has_calls([
+            mock.call("mount", '/dev/fake', '/mnt/fake', '-o', 'ro,foo=bar',
+                      attempts=1, delay_on_retry=True),
+            mock.call("umount", '/mnt/fake',
+                      attempts=3, delay_on_retry=True),
+        ])
+
+    def test_with_type(self, mock_temp, mock_execute, mock_rmtree):
+        with utils.mounted('/dev/fake', '/mnt/fake',
+                           fs_type='iso9660') as path:
+            self.assertEqual('/mnt/fake', path)
+        mock_execute.assert_has_calls([
+            mock.call("mount", '/dev/fake', '/mnt/fake', '-t', 'iso9660',
+                      attempts=1, delay_on_retry=True),
+            mock.call("umount", '/mnt/fake',
+                      attempts=3, delay_on_retry=True),
+        ])
+
+    def test_failed_to_mount(self, mock_temp, mock_execute, mock_rmtree):
+        mock_execute.side_effect = OSError
+        self.assertRaises(OSError, utils.mounted('/dev/fake').__enter__)
+        mock_execute.assert_called_once_with("mount", '/dev/fake',
+                                             mock_temp.return_value,
+                                             attempts=1,
+                                             delay_on_retry=True)
+        mock_rmtree.assert_called_once_with(mock_temp.return_value)
+
+    def test_failed_to_unmount(self, mock_temp, mock_execute, mock_rmtree):
+        mock_execute.side_effect = [('', ''),
+                                    processutils.ProcessExecutionError]
+        with utils.mounted('/dev/fake', '/mnt/fake') as path:
+            self.assertEqual('/mnt/fake', path)
+        mock_execute.assert_has_calls([
+            mock.call("mount", '/dev/fake', '/mnt/fake',
+                      attempts=1, delay_on_retry=True),
+            mock.call("umount", '/mnt/fake',
+                      attempts=3, delay_on_retry=True),
+        ])
+        self.assertFalse(mock_rmtree.called)
+
+
 class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
 
     @mock.patch('oslo_log.log.getLogger', autospec=True)
@@ -187,7 +260,7 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(utils, '_check_vmedia_device', autospec=True)
     @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
     @mock.patch.object(utils, '_read_params_from_file', autospec=True)
-    @mock.patch.object(ironic_utils, 'mounted', autospec=True)
+    @mock.patch.object(utils, 'mounted', autospec=True)
     def test__get_vmedia_params(self, mount_mock, read_params_mock, find_mock,
                                 check_vmedia_mock):
         check_vmedia_mock.return_value = True
@@ -206,7 +279,7 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
     @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
     @mock.patch.object(utils, '_read_params_from_file', autospec=True)
-    @mock.patch.object(ironic_utils, 'mounted', autospec=True)
+    @mock.patch.object(utils, 'mounted', autospec=True)
     def test__get_vmedia_params_by_device(self, mount_mock, read_params_mock,
                                           get_device_mock, find_mock,
                                           check_vmedia_mock):
@@ -228,7 +301,7 @@ class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
     @mock.patch.object(utils, '_get_vmedia_device', autospec=True)
     @mock.patch.object(utils, '_read_params_from_file', autospec=True)
-    @mock.patch.object(ironic_utils, 'mounted', autospec=True)
+    @mock.patch.object(utils, 'mounted', autospec=True)
     def test__get_vmedia_params_by_device_device_invalid(
             self, mount_mock, read_params_mock,
             get_device_mock, find_mock,
@@ -883,7 +956,7 @@ class TestClockSyncUtils(ironic_agent_base.IronicAgentTest):
 @mock.patch.object(utils, '_check_vmedia_device', autospec=True)
 @mock.patch.object(utils, '_find_vmedia_device_by_labels', autospec=True)
 @mock.patch.object(shutil, 'copy', autospec=True)
-@mock.patch.object(ironic_utils, 'mounted', autospec=True)
+@mock.patch.object(utils, 'mounted', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestCopyConfigFromVmedia(testtools.TestCase):
 

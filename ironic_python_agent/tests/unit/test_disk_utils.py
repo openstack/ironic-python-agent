@@ -538,7 +538,6 @@ class PopulateImageTestCase(base.IronicAgentTest):
                                   source_format=source_format, is_raw=False)
         mock_cg.assert_called_once_with('src', 'dst',
                                         out_format='raw',
-                                        run_as_root=True,
                                         sparse_size='0',
                                         source_format=source_format)
         self.assertFalse(mock_dd.called)

@@ -1273,18 +1273,6 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
         utils.execute('dd', 'if=/dev/zero', 'of=%s' % self.file.name,
                       'bs=1', 'count=0', 'seek=20MiB')
 
-    @staticmethod
-    def _run_without_root(func, *args, **kwargs):
-        """Make sure root is not required when using utils.execute."""
-        real_execute = utils.execute
-
-        def fake_execute(*cmd, **kwargs):
-            kwargs.pop('run_as_root', None)
-            return real_execute(*cmd, **kwargs)
-
-        with mock.patch.object(utils, 'execute', fake_execute):
-            return func(*args, **kwargs)
-
     def test_different_sizes(self, mock_destroy, mock_populate, mock_mkfs,
                              mock_convert, mock_dd, mock_block_uuid,
                              mock_is_block, mock_wait, mock_trigger_rescan):
@@ -1293,11 +1281,10 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
         variants = ((0, 0, 12), (4, 2, 8), (0, 4, 10), (5, 0, 10))
         for variant in variants:
             kwargs = dict(zip(fields, variant))
-            self._run_without_root(partition_utils.work_on_disk,
-                                   self.file.name, ephemeral_format='ext4',
-                                   node_uuid='', image_path='path', **kwargs)
-            part_table = self._run_without_root(
-                disk_utils.list_partitions, self.file.name)
+            partition_utils.work_on_disk(
+                self.file.name, ephemeral_format='ext4',
+                node_uuid='', image_path='path', **kwargs)
+            part_table = disk_utils.list_partitions(self.file.name)
             for part, expected_size in zip(part_table, filter(None, variant)):
                 self.assertEqual(expected_size, part['size'],
                                  "comparison failed for %s" % list(variant))
@@ -1309,12 +1296,10 @@ class RealFilePartitioningTestCase(base.IronicAgentTest):
         # + 1 MiB MAGIC == 20 MiB whole disk
         # TODO(dtantsur): figure out why we need 'magic' 1 more MiB
         # and why the is different on Ubuntu and Fedora (see below)
-        self._run_without_root(partition_utils.work_on_disk, self.file.name,
-                               root_mb=9, ephemeral_mb=6, swap_mb=3,
-                               ephemeral_format='ext4', node_uuid='',
-                               image_path='path')
-        part_table = self._run_without_root(
-            disk_utils.list_partitions, self.file.name)
+        partition_utils.work_on_disk(
+            self.file.name, root_mb=9, ephemeral_mb=6, swap_mb=3,
+            ephemeral_format='ext4', node_uuid='', image_path='path')
+        part_table = disk_utils.list_partitions(self.file.name)
         sizes = [part['size'] for part in part_table]
         # NOTE(dtantsur): parted in Ubuntu 12.04 will occupy the last MiB,
         # parted in Fedora 20 won't - thus two possible variants for last part

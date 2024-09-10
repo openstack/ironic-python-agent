@@ -51,6 +51,11 @@ MAX_CONFIG_DRIVE_SIZE_MB = 64
 MAX_DISK_SIZE_MB_SUPPORTED_BY_MBR = 2097152
 
 
+def _is_http_url(url):
+    url = url.lower()
+    return url.startswith('http://') or url.startswith('https://')
+
+
 def get_configdrive(configdrive, node_uuid, tempdir=None):
     """Get the information about size and location of the configdrive.
 
@@ -65,7 +70,7 @@ def get_configdrive(configdrive, node_uuid, tempdir=None):
 
     """
     # Check if the configdrive option is a HTTP URL or the content directly
-    is_url = utils.is_http_url(configdrive)
+    is_url = _is_http_url(configdrive)
     if is_url:
         verify, cert = ipa_utils.get_ssl_client_options(CONF)
         timeout = CONF.image_download_connection_timeout
