@@ -281,7 +281,7 @@ class APIClient(object):
                 'node is locked. We will wait %(time)s seconds before trying '
                 'again. %(err)s',
                 {'time': self.lookup_lock_pause,
-                 'error': self._error_from_response(response)}
+                 'err': self._error_from_response(response)}
             )
             time.sleep(self.lookup_lock_pause)
             return False
