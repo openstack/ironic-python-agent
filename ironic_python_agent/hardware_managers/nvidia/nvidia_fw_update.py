@@ -20,7 +20,6 @@ from urllib import error as urlError
 from urllib.parse import urlparse
 from urllib import request
 
-from ironic_lib.common.i18n import _
 from ironic_lib.exception import IronicException
 from oslo_concurrency import processutils
 from oslo_config import cfg
@@ -115,45 +114,45 @@ def check_prereq():
 
 
 class InvalidFirmwareImageConfig(IronicException):
-    _msg_fmt = _('Invalid firmware image config: %(error_msg)s')
+    _msg_fmt = 'Invalid firmware image config: %(error_msg)s'
 
 
 class InvalidFirmwareSettingsConfig(IronicException):
-    _msg_fmt = _('Invalid firmware settings config: %(error_msg)s')
+    _msg_fmt = 'Invalid firmware settings config: %(error_msg)s'
 
 
 class MismatchChecksumError(IronicException):
-    _msg_fmt = _('Mismatch Checksum for the firmware image: %(error_msg)s')
+    _msg_fmt = 'Mismatch Checksum for the firmware image: %(error_msg)s'
 
 
 class MismatchComponentFlavor(IronicException):
-    _msg_fmt = _('Mismatch Component Flavor: %(error_msg)s')
+    _msg_fmt = 'Mismatch Component Flavor: %(error_msg)s'
 
 
 class MismatchFWVersion(IronicException):
-    _msg_fmt = _('Mismatch Firmware version: %(error_msg)s')
+    _msg_fmt = 'Mismatch Firmware version: %(error_msg)s'
 
 
 class DuplicateComponentFlavor(IronicException):
-    _msg_fmt = _('Duplicate Component Flavor for the firmware image: '
-                 '%(error_msg)s')
+    _msg_fmt = ('Duplicate Component Flavor for the firmware image: '
+                '%(error_msg)s')
 
 
 class DuplicateDeviceID(IronicException):
-    _msg_fmt = _('Duplicate Device ID for firmware settings: '
-                 '%(error_msg)s')
+    _msg_fmt = ('Duplicate Device ID for firmware settings: '
+                '%(error_msg)s')
 
 
 class UnSupportedConfigByMstflintPackage(IronicException):
-    _msg_fmt = _('Unsupported config by mstflint package: %(error_msg)s')
+    _msg_fmt = 'Unsupported config by mstflint package: %(error_msg)s'
 
 
 class UnSupportedConfigByFW(IronicException):
-    _msg_fmt = _('Unsupported config by Firmware: %(error_msg)s')
+    _msg_fmt = 'Unsupported config by Firmware: %(error_msg)s'
 
 
 class InvalidURLScheme(IronicException):
-    _msg_fmt = _('Invalid URL Scheme: %(error_msg)s')
+    _msg_fmt = 'Invalid URL Scheme: %(error_msg)s'
 
 
 class NvidiaNicFirmwareOps(object):
@@ -454,7 +453,7 @@ class NvidiaNicFirmwareBinary(object):
             err = 'Firmware URL scheme %s is not supported.' \
                   'The supported firmware URL schemes are' \
                   '(http://, https://, file://)' % url_scheme
-            raise InvalidURLScheme(error_msg=_(err))
+            raise InvalidURLScheme(error_msg=err)
 
     def _get_info(self):
         """Get firmware information from firmware binary image
@@ -489,7 +488,7 @@ class NvidiaNicFirmwareBinary(object):
             err = 'The provided psid %s does not match the image psid %s' % \
                   (self.psid, image_psid)
             LOG.error(err)
-            raise MismatchComponentFlavor(error_msg=_(err))
+            raise MismatchComponentFlavor(error_msg=err)
 
     def _validate_image_firmware_version(self):
         """Validate that the provided firmware version same as the version
@@ -503,7 +502,7 @@ class NvidiaNicFirmwareBinary(object):
             err = 'The provided firmware version %s does not match ' \
                   'image firmware version %s' % (self.version, image_version)
             LOG.error(err)
-            raise MismatchFWVersion(error_msg=_(err))
+            raise MismatchFWVersion(error_msg=err)
 
     def _validate_image_checksum(self):
         """Validate the provided checksum with the calculated one of the
@@ -517,7 +516,7 @@ class NvidiaNicFirmwareBinary(object):
             err = 'Mismatch provided checksum %s for image %s' % (
                 self.checksum, self.url)
             LOG.error(err)
-            raise MismatchChecksumError(error_msg=_(err))
+            raise MismatchChecksumError(error_msg=err)
 
 
 class NvidiaFirmwareImages(object):
@@ -546,7 +545,7 @@ class NvidiaFirmwareImages(object):
                       'url, checksum, checksumType, componentFlavor, ' \
                       'version' % image
                 LOG.error(err)
-                raise InvalidFirmwareImageConfig(error_msg=_(err))
+                raise InvalidFirmwareImageConfig(error_msg=err)
 
     def filter_images(self, psids_list):
         """Filter firmware images according to the system nics PSIDs,
@@ -565,7 +564,7 @@ class NvidiaFirmwareImages(object):
                     err = 'Duplicate componentFlavor %s' % \
                           image['componentFlavor']
                     LOG.error(err)
-                    raise DuplicateComponentFlavor(error_msg=_(err))
+                    raise DuplicateComponentFlavor(error_msg=err)
                 else:
                     self.filtered_images_psid_dict[
                         image.get('componentFlavor')] = image
@@ -728,13 +727,13 @@ class NvidiaNicConfig(object):
                       'please update to the latest mstflint package.' % key
 
                 LOG.error(err)
-                raise UnSupportedConfigByMstflintPackage(error_msg=_(err))
+                raise UnSupportedConfigByMstflintPackage(error_msg=err)
 
             if not self._param_supp_by_fw(key):
                 err = 'Configuraiton %s for device %s is not supported with ' \
                       'current fw' % (key, self.nvidia_dev.dev_pci)
                 LOG.error(err)
-                raise UnSupportedConfigByFW(error_msg=_(err))
+                raise UnSupportedConfigByFW(error_msg=err)
 
     def set_config(self):
         """Set device configurations
@@ -827,14 +826,14 @@ class NvidiaNicsConfig(object):
                 err = 'duplicate settings for device ID %s ' % \
                       setting.get('deviceID')
                 LOG.error(err)
-                raise DuplicateDeviceID(error_msg=_(err))
+                raise DuplicateDeviceID(error_msg=err)
             elif setting.get('deviceID'):
                 LOG.debug('There are no devices with ID %s on the system',
                           setting.get('deviceID'))
             else:
                 err = 'There is no deviceID provided for this settings'
                 LOG.error(err)
-                raise InvalidFirmwareSettingsConfig(error_msg=_(err))
+                raise InvalidFirmwareSettingsConfig(error_msg=err)
 
     def prepare_nvidia_nic_config(self):
         """Expand the settings map per devices PCI and create a list
@@ -909,7 +908,7 @@ def update_nvidia_nic_firmware_image(images):
     """
     if not type(images) is list:
         err = 'The images must be a list of images, %s' % images
-        raise InvalidFirmwareImageConfig(error_msg=_(err))
+        raise InvalidFirmwareImageConfig(error_msg=err)
     check_prereq()
     nvidia_fw_images = NvidiaFirmwareImages(images)
     nvidia_fw_images.validate_images_schema()
@@ -927,7 +926,7 @@ def update_nvidia_nic_firmware_settings(settings):
     """
     if not type(settings) is list:
         err = 'The settings must be  list of settings, %s' % settings
-        raise InvalidFirmwareSettingsConfig(error_msg=_(err))
+        raise InvalidFirmwareSettingsConfig(error_msg=err)
     check_prereq()
     nvidia_nics = NvidiaNics()
     nvidia_nics.discover()
