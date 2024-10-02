@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import importlib.metadata
 import ipaddress
 import random
 import socket
@@ -26,7 +27,6 @@ from ironic_lib import mdns
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
-import pkg_resources
 
 from ironic_python_agent.api import app
 from ironic_python_agent import config
@@ -233,8 +233,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.listen_address = listen_address
         self.advertise_address = advertise_address
         self.advertise_protocol = advertise_protocol
-        self.version = pkg_resources.get_distribution('ironic-python-agent')\
-            .version
+        self.version = importlib.metadata.version('ironic-python-agent')
         self.api = app.Application(self, cfg.CONF)
         self.heartbeat_timeout = None
         self.started_at = None

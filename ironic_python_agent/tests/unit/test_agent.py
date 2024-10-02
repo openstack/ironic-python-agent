@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.metadata
 import json
 import socket
 import time
@@ -20,7 +21,6 @@ from unittest import mock
 from ironic_lib import exception as lib_exc
 from oslo_concurrency import processutils
 from oslo_config import cfg
-import pkg_resources
 from stevedore import extension
 
 from ironic_python_agent import agent
@@ -230,8 +230,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         status = self.agent.get_status()
         self.assertIsInstance(status, agent.IronicPythonAgentStatus)
         self.assertEqual(started_at, status.started_at)
-        self.assertEqual(pkg_resources.get_distribution('ironic-python-agent')
-                         .version, status.version)
+        self.assertEqual(importlib.metadata.version('ironic-python-agent'),
+                         status.version)
 
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
