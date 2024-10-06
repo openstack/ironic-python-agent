@@ -20,10 +20,10 @@ import socket
 import struct
 import sys
 
-import netifaces
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import netutils
+import psutil
 
 from ironic_python_agent import utils
 
@@ -214,31 +214,29 @@ def _get_lldp_info(interfaces):
     return lldp_info
 
 
-def get_default_ip_addr(type, interface_id):
-    """Retrieve default IPv4 or IPv6 address."""
+def get_default_ip_addr(family, interface_id):
+    """Retrieve default IPv4, IPv6 or mac address."""
     try:
-        addrs = netifaces.ifaddresses(interface_id)
-        return addrs[type][0]['addr']
-    except (ValueError, IndexError, KeyError):
+        addrs = psutil.net_if_addrs()[interface_id]
+        for addr in addrs:
+            if addr.family == family:
+                return addr.address
+    except KeyError:
         # No default IP address found
-        return None
+        pass
+    return None
 
 
 def get_ipv4_addr(interface_id):
-    return get_default_ip_addr(netifaces.AF_INET, interface_id)
+    return get_default_ip_addr(socket.AF_INET, interface_id)
 
 
 def get_ipv6_addr(interface_id):
-    return get_default_ip_addr(netifaces.AF_INET6, interface_id)
+    return get_default_ip_addr(socket.AF_INET6, interface_id)
 
 
 def get_mac_addr(interface_id):
-    try:
-        addrs = netifaces.ifaddresses(interface_id)
-        return addrs[netifaces.AF_LINK][0]['addr']
-    except (ValueError, IndexError, KeyError):
-        # No mac address found
-        return None
+    return get_default_ip_addr(socket.AF_PACKET, interface_id)
 
 
 # Other options...
