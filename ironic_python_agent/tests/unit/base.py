@@ -65,6 +65,7 @@ class IronicAgentTest(test_base.BaseTestCase):
 
         ext_base._EXT_MANAGER = None
         hardware._CACHED_HW_INFO = None
+        hardware._global_managers = None
 
     def _set_config(self):
         self.cfg_fixture = self.useFixture(config_fixture.Config(CONF))
