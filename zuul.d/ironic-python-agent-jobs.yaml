@@ -104,7 +104,6 @@
       - ^ironic_python_agent/tests/.*$
       - ^releasenotes/.*$
       - ^setup.cfg$
-      - ^tools/(?!bandit.yml).*$
       - ^tox.ini$
 
 # used by ironic-python-agent-builder
