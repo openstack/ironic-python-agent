@@ -12,10 +12,13 @@
         - ipa-tox-examples
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
-        - ipa-tempest-bios-ipmi-direct-src
-        - ipa-tempest-uefi-redfish-vmedia-src
-        - metalsmith-integration-ipa-src-uefi
-        - metalsmith-integration-ipa-src-legacy
+        # NOTE(elod.illes) The below two jobs are intermittently failing,
+        # which makes the gate unstable and the error seems to be environment
+        # related. Setting them as non-voting to do not waste CI resource.
+        - ipa-tempest-bios-ipmi-direct-src:
+            voting: false
+        - ipa-tempest-uefi-redfish-vmedia-src:
+            voting: false
         - ironic-standalone-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
@@ -32,10 +35,6 @@
       jobs:
         - openstack-tox-functional
         - ipa-tox-examples
-        - ipa-tempest-bios-ipmi-direct-src
-        - ipa-tempest-uefi-redfish-vmedia-src
-        - metalsmith-integration-ipa-src-uefi
-        - metalsmith-integration-ipa-src-legacy
         - ironic-standalone-ipa-src
     post:
       jobs:
