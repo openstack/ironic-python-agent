@@ -581,6 +581,25 @@ class ImageDownload(object):
                 self._expected_hash_value,
                 image_info)
 
+        # NOTE(dtantsur): verify that the user's input does not obviously
+        # contradict the actual value. It is especially easy to make such
+        # a mistake when providing a checksum URL.
+        if algo:
+            try:
+                detected_algo = _get_algorithm_by_length(
+                    self._expected_hash_value)
+            except ValueError:
+                pass  # an exotic algorithm?
+            else:
+                if detected_algo.name != algo:
+                    LOG.warning("Provided checksum algorithm %(provided)s "
+                                "does not match the detected algorithm "
+                                "%(detected)s. It may be a sign of a user "
+                                "error when providing the algorithm or the "
+                                "checksum URL.",
+                                {'provided': algo,
+                                 'detected': detected_algo.name})
+
         details = []
         for url in image_info['urls']:
             try:
