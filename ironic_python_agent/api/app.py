@@ -14,7 +14,6 @@
 
 import json
 
-from ironic_lib import metrics_utils
 from oslo_log import log
 from oslo_service import wsgi
 import werkzeug
@@ -22,6 +21,7 @@ from werkzeug import exceptions as http_exc
 from werkzeug import routing
 
 from ironic_python_agent import encoding
+from ironic_python_agent.metrics_lib import metrics_utils
 
 
 LOG = log.getLogger(__name__)

@@ -15,8 +15,11 @@
 from oslo_config import cfg
 from oslo_log import log as logging
 
+from ironic_python_agent.metrics_lib.metrics_statsd import statsd_opts
+from ironic_python_agent.metrics_lib.metrics_utils import metrics_opts
 from ironic_python_agent import netutils
 from ironic_python_agent import utils
+
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -438,7 +441,9 @@ disk_part_opts = [
 def list_opts():
     return [('DEFAULT', cli_opts),
             ('disk_utils', disk_utils_opts),
-            ('disk_partitioner', disk_part_opts)]
+            ('disk_partitioner', disk_part_opts),
+            ('metrics', metrics_opts),
+            ('metrics_statsd', statsd_opts)]
 
 
 def populate_config():
@@ -446,6 +451,8 @@ def populate_config():
     CONF.register_cli_opts(cli_opts)
     CONF.register_opts(disk_utils_opts, group='disk_utils')
     CONF.register_opts(disk_part_opts, group='disk_partitioner')
+    CONF.register_opts(metrics_opts, group='metrics')
+    CONF.register_opts(statsd_opts, group='metrics_statsd')
 
 
 def override(params):
