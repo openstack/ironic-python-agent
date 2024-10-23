@@ -378,7 +378,7 @@ cli_opts = [
                      'security, but this option allows disabling it if there '
                      'is a compatibility concern.'),
     cfg.ListOpt('permitted_image_formats',
-                default='raw,qcow2',
+                default='raw,gpt,qcow2',
                 help='The supported list of image formats which are '
                      'permitted for deployment with Ironic Python Agent. If '
                      'an image format outside of this list is detected, the '
