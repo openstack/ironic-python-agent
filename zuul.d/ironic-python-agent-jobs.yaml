@@ -131,19 +131,6 @@
         IRONIC_AUTOMATED_CLEAN_ENABLED: False
         IRONIC_BUILD_DEPLOY_RAMDISK: True
 
-- job:
-    name: metalsmith-integration-ipa-src-legacy
-    parent: metalsmith-integration-glance-centos9-legacy
-    required-projects:
-      - openstack/ironic-python-agent
-      - openstack/ironic-python-agent-builder
-      - openstack/ironic-lib
-    vars:
-      devstack_localrc:
-        # Don't waste time on cleaning, it's checked everywhere else
-        IRONIC_AUTOMATED_CLEAN_ENABLED: False
-        IRONIC_BUILD_DEPLOY_RAMDISK: True
-
 # used by ironic-python-agent-builder
 - job:
     name: ipa-tempest-bios-ipmi-direct-tinyipa-src
