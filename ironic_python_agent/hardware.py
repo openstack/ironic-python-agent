@@ -724,6 +724,8 @@ def list_all_block_devices(block_type='disk',
                                    by_path=by_path_name,
                                    uuid=device_raw['uuid'],
                                    partuuid=device_raw['partuuid'],
+                                   logical_sectors=device_raw['log-sec'],
+                                   physical_sectors=device_raw['phy-sec'],
                                    **extra))
     return devices
 
@@ -786,12 +788,14 @@ class HardwareType(object):
 class BlockDevice(encoding.SerializableComparable):
     serializable_fields = ('name', 'model', 'size', 'rotational',
                            'wwn', 'serial', 'vendor', 'wwn_with_extension',
-                           'wwn_vendor_extension', 'hctl', 'by_path')
+                           'wwn_vendor_extension', 'hctl', 'by_path',
+                           'logical_sectors', 'physical_sectors')
 
     def __init__(self, name, model, size, rotational, wwn=None, serial=None,
                  vendor=None, wwn_with_extension=None,
                  wwn_vendor_extension=None, hctl=None, by_path=None,
-                 uuid=None, partuuid=None):
+                 uuid=None, partuuid=None,
+                 logical_sectors=None, physical_sectors=None):
         self.name = name
         self.model = model
         self.size = size
@@ -805,6 +809,8 @@ class BlockDevice(encoding.SerializableComparable):
         self.hctl = hctl
         self.by_path = by_path
         self.partuuid = partuuid
+        self.logical_sectors = logical_sectors
+        self.physical_sectors = physical_sectors
 
 
 class NetworkInterface(encoding.SerializableComparable):
