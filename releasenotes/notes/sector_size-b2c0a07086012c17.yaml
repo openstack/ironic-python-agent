@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    ``logical_sectors`` and ``physical_sectors`` sizes are now captured for each
+    hardware info ``disks`` entry, and also logged for ``lsblk`` calls. This
+    will be increasingly useful as storage devices with 4096 byte sector sizes
+    become more common.
