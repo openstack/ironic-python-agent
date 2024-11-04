@@ -26,7 +26,6 @@ import re
 import stat
 import time
 
-from ironic_lib.common.i18n import _
 from ironic_lib import exception
 from ironic_lib import utils
 from oslo_concurrency import processutils
@@ -362,8 +361,8 @@ def is_block_device(dev):
             time.sleep(1)
         else:
             return stat.S_ISBLK(s.st_mode)
-    msg = _("Unable to stat device %(dev)s after attempting to verify "
-            "%(attempts)d times.") % {'dev': dev, 'attempts': attempts}
+    msg = ("Unable to stat device %(dev)s after attempting to verify "
+           "%(attempts)d times.") % {'dev': dev, 'attempts': attempts}
     LOG.error(msg)
     raise exception.InstanceDeployFailure(msg)
 
@@ -607,8 +606,8 @@ def _fix_gpt_structs(device, node_uuid):
             utils.execute('sgdisk', '-e', device)
     except (processutils.UnknownArgumentError,
             processutils.ProcessExecutionError, OSError) as e:
-        msg = (_('Failed to fix GPT data structures on disk %(disk)s '
-                 'for node %(node)s. Error: %(error)s') %
+        msg = ('Failed to fix GPT data structures on disk %(disk)s '
+               'for node %(node)s. Error: %(error)s' %
                {'disk': device, 'node': node_uuid, 'error': e})
         LOG.error(msg)
         raise exception.InstanceDeployFailure(msg)
@@ -629,8 +628,8 @@ def fix_gpt_partition(device, node_uuid):
         if disk_is_gpt_partitioned:
             _fix_gpt_structs(device, node_uuid)
     except Exception as e:
-        msg = (_('Failed to fix GPT partition on disk %(disk)s '
-                 'for node %(node)s. Error: %(error)s') %
+        msg = ('Failed to fix GPT partition on disk %(disk)s '
+               'for node %(node)s. Error: %(error)s' %
                {'disk': device, 'node': node_uuid, 'error': e})
         LOG.error(msg)
         raise exception.InstanceDeployFailure(msg)
@@ -789,13 +788,12 @@ def wait_for_disk_to_become_available(device):
     except tenacity.RetryError:
         if pids[0]:
             raise exception.IronicException(
-                _('Processes with the following PIDs are holding '
-                  'device %(device)s: %(pids)s. '
-                  'Timed out waiting for completion.')
+                ('Processes with the following PIDs are holding '
+                 'device %(device)s: %(pids)s. '
+                 'Timed out waiting for completion.')
                 % {'device': device, 'pids': ', '.join(pids[0])})
         else:
             raise exception.IronicException(
-                _('Fuser exited with "%(fuser_err)s" while checking '
-                  'locks for device %(device)s. Timed out waiting for '
-                  'completion.')
-                % {'device': device, 'fuser_err': stderr[0]})
+                ('Fuser exited with "%(fuser_err)s" while checking '
+                 'locks for device %(device)s. Timed out waiting for '
+                 'completion.') % {'device': device, 'fuser_err': stderr[0]})
