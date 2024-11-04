@@ -31,7 +31,6 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
-from ironic_python_agent import qemu_img
 from ironic_python_agent import utils
 
 CONF = cfg.CONF
@@ -355,33 +354,12 @@ def _write_whole_disk_image(image, image_info, device, source_format=None,
     # FIXME(dtantsur): pass the real node UUID for logging
     disk_utils.destroy_disk_metadata(device, '')
     disk_utils.udev_settle()
-
-    try:
-        if is_raw:
-            # TODO(JayF): We should unify all these dd/convert_image calls
-            # into disk_utils.populate_image().
-            # NOTE(JayF): Since we do not safety check raw images, we must use
-            #  dd to write them to ensure maximum security. This may cause
-            #  failures in situations where images are configured as raw but
-            #  are actually in need of conversion. Those cases can no longer
-            #  be transparently handled safely.
-            LOG.info('Writing raw image %s to device %s', image, device)
-            disk_utils.dd(image, device)
-        else:
-            command = ['qemu-img', 'convert',
-                       '-t', 'directsync', '-S', '0', '-O', 'host_device',
-                       '-W']
-            if source_format:
-                command += ['-f', source_format]
-            command += [image, device]
-            LOG.info('Writing image with command: %s', ' '.join(command))
-            qemu_img.convert_image(image, device, out_format='host_device',
-                                   cache='directsync', out_of_order=True,
-                                   sparse_size='0',
-                                   source_format=source_format)
-    except processutils.ProcessExecutionError as e:
-        raise errors.ImageWriteError(device, e.exit_code, e.stdout, e.stderr)
-
+    disk_utils.populate_image(image, device,
+                              is_raw=is_raw,
+                              source_format=source_format,
+                              out_format='host_device',
+                              cache='directsync',
+                              out_of_order=True)
     disk_utils.trigger_device_rescan(device)
 
 

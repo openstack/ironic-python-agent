@@ -300,7 +300,7 @@ def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
 
     if image_path is not None:
         disk_utils.populate_image(image_path, root_part, conv_flags=conv_flags,
-                                  source_format=source_format, is_raw=is_raw)
+                                  is_raw=is_raw, source_format=source_format)
         LOG.info("Image for %(node)s successfully populated",
                  {'node': node_uuid})
     else:
