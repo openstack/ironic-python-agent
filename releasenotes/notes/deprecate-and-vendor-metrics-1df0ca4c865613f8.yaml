@@ -1,0 +1,6 @@
+deprecations:
+  - |
+    Ironic Python Agent has had limited capabilities to emit metrics, but was
+    unable to support prometheus exporting of those metrics, as was possible
+    for the conductor. Support for sending these metrics will be removed during
+    or after the 2026.1 OpenStack release cycle.
