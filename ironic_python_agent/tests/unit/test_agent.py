@@ -741,6 +741,65 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertTrue(mock_wait.called)
         self.assertFalse(mock_dispatch.called)
 
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    @mock.patch.object(netutils, 'list_interfaces', autospec=True)
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
+    @mock.patch('oslo_service.wsgi.Server', autospec=True)
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_run_then_lockdown(self, mock_get_managers, mock_wsgi,
+                               mock_wait, mock_dispatch, mock_interfaces,
+                               mock_exec, mock_sleep):
+        CONF.set_override('inspection_callback_url', '')
+
+        wsgi_server = mock_wsgi.return_value
+
+        def set_serve_api():
+            self.agent.lockdown = True
+            self.agent.serve_api = False
+
+        wsgi_server.start.side_effect = set_serve_api
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'config': {
+                'heartbeat_timeout': 300,
+                'agent_md5_checksum_enable': False
+            }
+        }
+        mock_interfaces.return_value = ['em1', 'em2']
+
+        class StopTesting(Exception):
+            """Exception to exit the infinite loop."""
+
+        mock_sleep.side_effect = StopTesting
+
+        self.assertRaises(StopTesting, self.agent.run)
+
+        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
+                                          app=self.agent.api,
+                                          host=mock.ANY, port=9999,
+                                          use_ssl=False)
+        wsgi_server.start.assert_called_once_with()
+        mock_wait.assert_called_once_with(mock.ANY)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
+        self.agent.heartbeater.start.assert_called_once_with()
+        self.agent.heartbeater.stop.assert_called_once_with()
+        mock_exec.assert_has_calls([
+            mock.call('ip', 'link', 'set', iface, 'down')
+            for iface in ['em1', 'em2']
+        ])
+
     @mock.patch.object(time, 'time', autospec=True)
     @mock.patch.object(time, 'sleep', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
