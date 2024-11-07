@@ -369,13 +369,12 @@ def is_block_device(dev):
 
 def dd(src, dst, conv_flags=None):
     """Execute dd from src to dst."""
+    args = ['bs=%s' % CONF.disk_utils.dd_block_size, 'oflag=direct']
     if conv_flags:
-        extra_args = ['conv=%s' % conv_flags]
-    else:
-        extra_args = []
+        args.append('conv=%s' % conv_flags)
 
-    utils.dd(src, dst, 'bs=%s' % CONF.disk_utils.dd_block_size, 'oflag=direct',
-             *extra_args)
+    utils.execute('dd', 'if=%s' % src, 'of=%s' % dst, *args,
+                  use_standard_locale=True)
 
 
 def _image_inspection(filename):
@@ -481,7 +480,6 @@ def populate_image(src, dst, conv_flags=None, source_format=None, is_raw=False,
         else:
             qemu_img.convert_image(src, dst,
                                    out_format=out_format,
-                                   run_as_root=True,
                                    sparse_size=sparse_size,
                                    source_format=source_format,
                                    **convert_args)

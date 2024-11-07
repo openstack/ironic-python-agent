@@ -88,7 +88,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
         execute_mock.assert_called_once_with(
             'qemu-img', 'convert', '-O',
             'out_format', 'source', 'dest',
-            run_as_root=False,
             prlimit=mock.ANY,
             use_standard_locale=True,
             env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -103,7 +102,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
             'qemu-img', 'convert', '-O',
             'out_format', '-t', 'directsync',
             '-S', '0', '-W', 'source', 'dest',
-            run_as_root=False,
             prlimit=mock.ANY,
             use_standard_locale=True,
             env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -121,7 +119,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
         qemu_img.convert_image('source', 'dest', 'out_format')
         convert_call = mock.call('qemu-img', 'convert', '-O',
                                  'out_format', 'source', 'dest',
-                                 run_as_root=False,
                                  prlimit=mock.ANY,
                                  use_standard_locale=True,
                                  env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -146,7 +143,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
         qemu_img.convert_image('source', 'dest', 'out_format')
         convert_call = mock.call('qemu-img', 'convert', '-O',
                                  'out_format', 'source', 'dest',
-                                 run_as_root=False,
                                  prlimit=mock.ANY,
                                  use_standard_locale=True,
                                  env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -174,7 +170,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
                           'source', 'dest', 'out_format')
         convert_call = mock.call('qemu-img', 'convert', '-O',
                                  'out_format', 'source', 'dest',
-                                 run_as_root=False,
                                  prlimit=mock.ANY,
                                  use_standard_locale=True,
                                  env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -199,7 +194,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
                           'source', 'dest', 'out_format')
         convert_call = mock.call('qemu-img', 'convert', '-O',
                                  'out_format', 'source', 'dest',
-                                 run_as_root=False,
                                  prlimit=mock.ANY,
                                  use_standard_locale=True,
                                  env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -215,7 +209,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
             'qemu-img', 'convert', '-O',
             'out_format', '-f', 'fmt',
             'source', 'dest',
-            run_as_root=False,
             prlimit=mock.ANY,
             use_standard_locale=True,
             env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -229,7 +222,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
             'qemu-img', 'convert', '-O',
             'out_format', '-t', 'directsync',
             '-S', '0', '-f', 'fmt', '-W', 'source', 'dest',
-            run_as_root=False,
             prlimit=mock.ANY,
             use_standard_locale=True,
             env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -247,7 +239,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
                                source_format='fmt')
         convert_call = mock.call('qemu-img', 'convert', '-O',
                                  'out_format', '-f', 'fmt', 'source', 'dest',
-                                 run_as_root=False,
                                  prlimit=mock.ANY,
                                  use_standard_locale=True,
                                  env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -272,7 +263,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
                                source_format='fmt')
         convert_call = mock.call('qemu-img', 'convert', '-O',
                                  'out_format', '-f', 'fmt', 'source', 'dest',
-                                 run_as_root=False,
                                  prlimit=mock.ANY,
                                  use_standard_locale=True,
                                  env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -299,7 +289,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
                           'source', 'dest', 'out_format', source_format='fmt')
         convert_call = mock.call('qemu-img', 'convert', '-O',
                                  'out_format', '-f', 'fmt', 'source', 'dest',
-                                 run_as_root=False,
                                  prlimit=mock.ANY,
                                  use_standard_locale=True,
                                  env_variables={'MALLOC_ARENA_MAX': '3'})
@@ -323,7 +312,6 @@ class ConvertImageTestCase(base.IronicLibTestCase):
                           'source', 'dest', 'out_format', source_format='fmt')
         convert_call = mock.call('qemu-img', 'convert', '-O',
                                  'out_format', '-f', 'fmt', 'source', 'dest',
-                                 run_as_root=False,
                                  prlimit=mock.ANY,
                                  use_standard_locale=True,
                                  env_variables={'MALLOC_ARENA_MAX': '3'})

@@ -97,8 +97,8 @@ def image_info(path, source_format=None):
     retry=tenacity.retry_if_exception(_retry_on_res_temp_unavailable),
     stop=tenacity.stop_after_attempt(CONF.disk_utils.image_convert_attempts),
     reraise=True)
-def convert_image(source, dest, out_format, run_as_root=False, cache=None,
-                  out_of_order=False, sparse_size=None, source_format=None):
+def convert_image(source, dest, out_format, cache=None, out_of_order=False,
+                  sparse_size=None, source_format=None):
     """Convert image to other format.
 
     This method is only to be run against images who have passed
@@ -140,8 +140,7 @@ def convert_image(source, dest, out_format, run_as_root=False, cache=None,
     # be passed through qemu-img.
     env_vars = {'MALLOC_ARENA_MAX': '3'}
     try:
-        utils.execute(*cmd, run_as_root=run_as_root,
-                      prlimit=_qemu_img_limits(),
+        utils.execute(*cmd, prlimit=_qemu_img_limits(),
                       use_standard_locale=True,
                       env_variables=env_vars)
     except processutils.ProcessExecutionError as e:
