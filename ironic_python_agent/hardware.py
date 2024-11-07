@@ -1314,6 +1314,15 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         """
         raise errors.IncompatibleHardwareMethodError()
 
+    def full_sync(self):
+        """Synchronize all caches to the disk.
+
+        This method will be called on *all* managers before the ramdisk
+        is powered off externally. It is expected to try flush all caches
+        to the disk to avoid data loss.
+        """
+        raise errors.IncompatibleHardwareMethodError()
+
 
 class GenericHardwareManager(HardwareManager):
     HARDWARE_MANAGER_NAME = 'generic_hardware_manager'
@@ -3346,6 +3355,32 @@ class GenericHardwareManager(HardwareManager):
             utils.try_collect_command_output(io_dict, name, cmd)
 
         _collect_udev(io_dict)
+
+    def full_sync(self):
+        LOG.debug('Flushing file system buffers')
+        try:
+            utils.execute('sync')
+        except processutils.ProcessExecutionError as e:
+            error_msg = f'Flushing file system buffers failed: {e}'
+            LOG.error(error_msg)
+            # If sync fails, the machine is probably in a bad state and we
+            # better not continue.
+            raise errors.CommandExecutionError(error_msg)
+
+        LOG.debug('Flushing device caches')
+        try:
+            # https://www.kernel.org/doc/Documentation/sysctl/vm.txt
+            with open('/proc/sys/vm/drop_caches', 'wb') as fp:
+                fp.write(b'3')
+        except OSError as e:
+            LOG.warning('Unable to tell the kernel to drop caches: %s', e)
+
+        for blkdev in dispatch_to_managers('list_block_devices'):
+            try:
+                utils.execute('blockdev', '--flushbufs', blkdev.name)
+            except (processutils.ProcessExecutionError, OSError) as e:
+                LOG.warning('Cannot flush buffers of device %s: %s',
+                            blkdev.name, e)
 
 
 def _collect_udev(io_dict):

@@ -6690,3 +6690,50 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
         self.assertEqual('eth0.101', interfaces[3].name)
         self.assertEqual('eth1.102', interfaces[4].name)
         self.assertEqual('eth1.103', interfaces[5].name)
+
+
+@mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+@mock.patch.object(il_utils, 'execute', autospec=True)
+class TestFullSync(base.IronicAgentTest):
+    def setUp(self):
+        super().setUp()
+        self.hardware = hardware.GenericHardwareManager()
+
+    def test_sync_fails(self, mock_execute, mock_dispatch):
+        mock_execute.side_effect = processutils.ProcessExecutionError
+        self.assertRaises(errors.CommandExecutionError,
+                          self.hardware.full_sync)
+
+    def test_full_sync(self, mock_execute, mock_dispatch):
+        mock_dispatch.return_value = [
+            hardware.BlockDevice('/dev/sda', '', 42, False),
+            hardware.BlockDevice('/dev/nvme0n1', '', 42, True),
+        ]
+        with mock.patch.object(hardware, 'open', mock.mock_open()) as mock_opn:
+            self.hardware.full_sync()
+            mock_opn.return_value.write.assert_called_once_with(b'3')
+        mock_execute.assert_has_calls([
+            mock.call('sync'),
+            mock.call('blockdev', '--flushbufs', '/dev/sda'),
+            mock.call('blockdev', '--flushbufs', '/dev/nvme0n1'),
+        ])
+
+    def test_optional_calls_fail(self, mock_execute, mock_dispatch):
+        mock_dispatch.return_value = [
+            hardware.BlockDevice('/dev/sda', '', 42, False),
+            hardware.BlockDevice('/dev/nvme0n1', '', 42, True),
+        ]
+        mock_execute.side_effect = [
+            ('', ''),
+            processutils.ProcessExecutionError,
+            processutils.ProcessExecutionError,
+        ]
+        with mock.patch.object(hardware, 'open', mock.mock_open()) as mock_opn:
+            mock_opn.return_value.write.side_effect = OSError
+            self.hardware.full_sync()
+            mock_opn.return_value.write.assert_called_once_with(b'3')
+        mock_execute.assert_has_calls([
+            mock.call('sync'),
+            mock.call('blockdev', '--flushbufs', '/dev/sda'),
+            mock.call('blockdev', '--flushbufs', '/dev/nvme0n1'),
+        ])

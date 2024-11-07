@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    When synchronizing the disk caches at the end of a deployment, the agent
+    now also instructs the kernel to drop the virtual memory caches and
+    tells each block devices to sync its internal cache.

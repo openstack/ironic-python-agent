@@ -1017,8 +1017,8 @@ class StandbyExtension(base.BaseAgentExtension):
                     'but received "%s".') % command)
             raise errors.InvalidCommandParamsError(msg)
         try:
-            self.sync()
-        except errors.CommandExecutionError as e:
+            hardware.dispatch_to_all_managers('full_sync')
+        except Exception as e:
             LOG.warning('Failed to sync file system buffers: % s', e)
 
         try:
@@ -1059,13 +1059,7 @@ class StandbyExtension(base.BaseAgentExtension):
 
         :raises: CommandExecutionError if flushing file system buffers fails.
         """
-        LOG.debug('Flushing file system buffers')
-        try:
-            utils.execute('sync')
-        except processutils.ProcessExecutionError as e:
-            error_msg = 'Flushing file system buffers failed. Error: %s' % e
-            LOG.error(error_msg)
-            raise errors.CommandExecutionError(error_msg)
+        hardware.dispatch_to_all_managers('full_sync')
 
     @base.sync_command('get_partition_uuids')
     def get_partition_uuids(self):

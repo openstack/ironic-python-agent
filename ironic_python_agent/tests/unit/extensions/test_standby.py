@@ -1250,55 +1250,69 @@ class TestStandbyExtension(base.IronicAgentTest):
                           self.agent_extension._run_shutdown_command, 'boot')
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_run_shutdown_command_fails(self, execute_mock):
+    @mock.patch.object(hardware, 'dispatch_to_all_managers', autospec=True)
+    def test_run_shutdown_command_fails(self, dispatch_mock, execute_mock):
         execute_mock.side_effect = processutils.ProcessExecutionError
         self.assertRaises(errors.SystemRebootError,
                           self.agent_extension._run_shutdown_command, 'reboot')
+        dispatch_mock.assert_called_once_with('full_sync')
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_run_shutdown_command_valid(self, execute_mock):
+    @mock.patch.object(hardware, 'dispatch_to_all_managers', autospec=True)
+    def test_run_shutdown_command_valid(self, dispatch_mock, execute_mock):
         execute_mock.return_value = ('', '')
 
         self.agent_extension._run_shutdown_command('poweroff')
-        calls = [mock.call('sync'),
+        calls = [mock.call('hwclock', '-v', '--systohc'),
                  mock.call('poweroff', use_standard_locale=True)]
         execute_mock.assert_has_calls(calls)
+        dispatch_mock.assert_called_once_with('full_sync')
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_run_shutdown_command_valid_poweroff_sysrq(self, execute_mock):
+    @mock.patch.object(hardware, 'dispatch_to_all_managers', autospec=True)
+    def test_run_shutdown_command_valid_poweroff_sysrq(self, dispatch_mock,
+                                                       execute_mock):
         execute_mock.side_effect = [
-            ('', ''), ('', ''),
+            ('', ''),
             processutils.ProcessExecutionError(''),
-            ('', '')]
+            ('', ''),
+        ]
 
         self.agent_extension._run_shutdown_command('poweroff')
         calls = [mock.call('hwclock', '-v', '--systohc'),
-                 mock.call('sync'),
                  mock.call('poweroff', use_standard_locale=True),
                  mock.call("echo o > /proc/sysrq-trigger", shell=True)]
         execute_mock.assert_has_calls(calls)
+        dispatch_mock.assert_called_once_with('full_sync')
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_run_shutdown_command_valid_reboot_sysrq(self, execute_mock):
-        execute_mock.side_effect = [('', ''), ('', ''), ('',
-                                    'Running in chroot, ignoring request.'),
-                                    ('', '')]
+    @mock.patch.object(hardware, 'dispatch_to_all_managers', autospec=True)
+    def test_run_shutdown_command_valid_reboot_sysrq(self, dispatch_mock,
+                                                     execute_mock):
+        execute_mock.side_effect = [
+            ('', ''),
+            ('', 'Running in chroot, ignoring request.'),
+            ('', ''),
+        ]
 
         self.agent_extension._run_shutdown_command('reboot')
-        calls = [mock.call('sync'),
+        calls = [mock.call('hwclock', '-v', '--systohc'),
                  mock.call('reboot', use_standard_locale=True),
                  mock.call("echo b > /proc/sysrq-trigger", shell=True)]
         execute_mock.assert_has_calls(calls)
+        dispatch_mock.assert_called_once_with('full_sync')
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_run_image(self, execute_mock):
+    @mock.patch.object(hardware, 'dispatch_to_all_managers', autospec=True)
+    def test_run_image(self, dispatch_mock, execute_mock):
         execute_mock.return_value = ('', '')
 
         success_result = self.agent_extension.run_image()
         success_result.join()
-        calls = [mock.call('sync'),
+        calls = [mock.call('hwclock', '-v', '--systohc'),
                  mock.call('reboot', use_standard_locale=True)]
         execute_mock.assert_has_calls(calls)
+        dispatch_mock.assert_called_once_with('full_sync')
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
         execute_mock.reset_mock()
@@ -1308,35 +1322,37 @@ class TestStandbyExtension(base.IronicAgentTest):
         failed_result = self.agent_extension.run_image()
         failed_result.join()
 
-        execute_mock.assert_any_call('sync')
         self.assertEqual('FAILED', failed_result.command_status)
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_power_off(self, execute_mock):
+    @mock.patch.object(hardware, 'dispatch_to_all_managers', autospec=True)
+    def test_power_off(self, dispatch_mock, execute_mock):
         execute_mock.return_value = ('', '')
 
         success_result = self.agent_extension.power_off()
         success_result.join()
 
-        calls = [mock.call('sync'),
-                 mock.call('poweroff', use_standard_locale=True)]
-        execute_mock.assert_has_calls(calls)
+        execute_mock.assert_has_calls([
+            mock.call('hwclock', '-v', '--systohc'),
+            mock.call('poweroff', use_standard_locale=True),
+        ])
+        dispatch_mock.assert_called_once_with('full_sync')
         self.assertEqual('SUCCEEDED', success_result.command_status)
 
         execute_mock.reset_mock()
-        execute_mock.return_value = ('', '')
         execute_mock.side_effect = processutils.ProcessExecutionError
 
         failed_result = self.agent_extension.power_off()
         failed_result.join()
 
-        execute_mock.assert_any_call('sync')
         self.assertEqual('FAILED', failed_result.command_status)
 
     @mock.patch('ironic_python_agent.utils.determine_time_method',
                 autospec=True)
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_power_off_with_ntp_server(self, execute_mock, mock_timemethod):
+    @mock.patch.object(hardware, 'dispatch_to_all_managers', autospec=True)
+    def test_power_off_with_ntp_server(self, dispatch_mock, execute_mock,
+                                       mock_timemethod):
         self.config(fail_if_clock_not_set=False)
         self.config(ntp_server='192.168.1.1')
         execute_mock.return_value = ('', '')
@@ -1347,7 +1363,6 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         calls = [mock.call('ntpdate', '192.168.1.1'),
                  mock.call('hwclock', '-v', '--systohc'),
-                 mock.call('sync'),
                  mock.call('poweroff', use_standard_locale=True)]
         execute_mock.assert_has_calls(calls)
         self.assertEqual('SUCCEEDED', success_result.command_status)
@@ -1363,18 +1378,11 @@ class TestStandbyExtension(base.IronicAgentTest):
         execute_mock.assert_any_call('ntpdate', '192.168.1.1')
         self.assertEqual('FAILED', failed_result.command_status)
 
-    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_sync(self, execute_mock):
+    @mock.patch.object(hardware, 'dispatch_to_all_managers', autospec=True)
+    def test_sync(self, dispatch_mock):
         result = self.agent_extension.sync()
-        execute_mock.assert_called_once_with('sync')
+        dispatch_mock.assert_called_once_with('full_sync')
         self.assertEqual('SUCCEEDED', result.command_status)
-
-    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
-    def test_sync_error(self, execute_mock):
-        execute_mock.side_effect = processutils.ProcessExecutionError
-        self.assertRaises(
-            errors.CommandExecutionError, self.agent_extension.sync)
-        execute_mock.assert_called_once_with('sync')
 
     @mock.patch('ironic_python_agent.extensions.standby._write_image',
                 autospec=True)
