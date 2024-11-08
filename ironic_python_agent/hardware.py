@@ -1030,7 +1030,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
 
         :param node: Ironic node object
         :param ports: list of Ironic port objects
-        :raises: ProtectedDeviceFound if a device has been identified which
+        :raises: ProtectedDeviceError if a device has been identified which
                  may require manual intervention due to the contents and
                  operational risk which exists as it could also be a sign
                  of an environmental misconfiguration.
@@ -1942,7 +1942,7 @@ class GenericHardwareManager(HardwareManager):
         :param ports: list of Ironic port objects
         :raises BlockDeviceEraseError: when there's an error erasing the
                 block device
-        :raises: ProtectedDeviceFound if a device has been identified which
+        :raises: ProtectedDeviceError if a device has been identified which
                  may require manual intervention due to the contents and
                  operational risk which exists as it could also be a sign
                  of an environmental misconfiguration.
@@ -1973,7 +1973,7 @@ class GenericHardwareManager(HardwareManager):
         :param ports: list of Ironic port objects
         :raises BlockDeviceEraseError: when there's an error erasing the
                 block device
-        :raises: ProtectedDeviceFound if a device has been identified which
+        :raises: ProtectedDeviceError if a device has been identified which
                  may require manual intervention due to the contents and
                  operational risk which exists as it could also be a sign
                  of an environmental misconfiguration.
