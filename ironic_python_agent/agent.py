@@ -36,6 +36,7 @@ from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
 from ironic_python_agent import ironic_api_client
+from ironic_python_agent import netutils
 from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)
@@ -248,6 +249,9 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.hardware_initialization_delay = hardware_initialization_delay
         # IPA will stop serving requests and exit after this is set to False
         self.serve_api = True
+        # Together with serve_api, this option allows locking down the system
+        # before IPA stops.
+        self.lockdown = False
         self.agent_token = agent_token
         # Allows this to be turned on by the conductor while running,
         # in the event of long running ramdisks where the conductor
@@ -568,3 +572,21 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         if not self.standalone and self.api_urls:
             self.heartbeater.stop()
+
+        if self.lockdown:
+            self._lockdown_system()
+            LOG.info('System locked down, looping forever to avoid a service '
+                     'restart')
+            while True:
+                time.sleep(100)
+
+    def _lockdown_system(self):
+        LOG.info('Locking down system after the API stopped')
+        # NOTE(dtantsur): not going through hardware managers here to minimize
+        # the amount of operations.
+        for iface in netutils.list_interfaces():
+            try:
+                utils.execute('ip', 'link', 'set', iface, 'down')
+            except Exception as exc:
+                LOG.warning('Could not bring down interface %s: %s',
+                            iface, exc)

@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Adds a new API command ``system.lockdown``. When invoked, it stops the API,
+    the heartbeater and tries to disable all local network interfaces. More
+    actions may be added in the future to make the agent and the ramdisk
+    unusable after this command.
