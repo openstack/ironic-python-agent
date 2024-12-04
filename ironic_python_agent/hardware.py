@@ -2473,8 +2473,34 @@ class GenericHardwareManager(HardwareManager):
                     continue
 
                 if ip == "0.0.0.0":
-                    # disabled, ignore
-                    continue
+                    # Check if we have IPv6 address configured
+                    out, e = il_utils.execute(
+                        "ipmitool lan6 print {} | awk '/^IPv6"
+                        " (Dynamic|Static) Address [0-9]+:/"
+                        " {{in_section=1; next}} /^IPv6 / {{in_section=0}}"
+                        " in_section && /Address:/ {{print $2}}'".
+                        format(channel), shell=True)
+                    if e.startswith("Invalid channel"):
+                        continue
+
+                    valid_ipv6_found = False
+                    try:
+                        ipv6_list = out.strip().split("\n")
+                        # Skip auto-configured link-local addresses
+                        # and ignore "::/255", which indicates unconfigured
+                        # addresses returned by ipmitool.
+                        valid_ipv6_found = any(
+                            not ipv6.startswith("::")
+                            and not ipv6.startswith("fe80")
+                            for ipv6 in ipv6_list
+                        )
+                    except ValueError:
+                        LOG.warning('Invalid ipmitool output %(output)s',
+                                    {'output': out})
+                        continue
+
+                    if not valid_ipv6_found:
+                        continue
 
                 if not re.match("^[0-9a-f]{2}(:[0-9a-f]{2}){5}$", mac, re.I):
                     LOG.warning('Invalid MAC address %(output)s',

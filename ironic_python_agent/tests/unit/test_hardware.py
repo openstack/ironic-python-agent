@@ -3185,13 +3185,122 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 return '', 'Invalid channel 1\n'
             elif args[0].startswith("ipmitool lan print 2"):
                 return '0.0.0.0\n00:00:00:00:23:42', ''
+            elif args[0].startswith("ipmitool lan6 print"):
+                return '::/255', ''
             elif args[0].startswith("ipmitool lan print 3"):
                 return 'meow', ''
             elif args[0].startswith("ipmitool lan print 4"):
                 return '192.1.2.3\n01:02:03:04:05:06', ''
             else:
-                # this should never happen because the previous one was good
                 raise AssertionError
+        mocked_execute.side_effect = side_effect
+        self.assertEqual('01:02:03:04:05:06', self.hardware.get_bmc_mac())
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'any_ipmi_device_exists', autospec=True)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_bmc_mac_for_ipv6(self, mocked_execute,
+                                  mock_ipmi_device_exists):
+        mock_ipmi_device_exists.return_value = True
+
+        def side_effect(*args, **kwargs):
+            if args[0].startswith("ipmitool lan print"):
+                return '0.0.0.0\n01:02:03:04:05:06', ''
+            elif args[0].startswith("ipmitool lan6 print"):
+                return '2001:db8::/32', ''
+            else:
+                raise AssertionError
+
+        mocked_execute.side_effect = side_effect
+        self.assertEqual('01:02:03:04:05:06', self.hardware.get_bmc_mac())
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'any_ipmi_device_exists', autospec=True)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_bmc_mac_with_invalid_ipv6(self, mocked_execute,
+                                           mock_ipmi_device_exists):
+        mock_ipmi_device_exists.return_value = True
+
+        def side_effect(*args, **kwargs):
+            if args[0].startswith("ipmitool lan print"):
+                return '0.0.0.0\n01:02:03:04:05:06', ''
+            elif args[0].startswith("ipmitool lan6 print"):
+                return '::/255', ''
+            else:
+                raise AssertionError
+
+        mocked_execute.side_effect = side_effect
+        self.assertRaises(errors.IncompatibleHardwareMethodError,
+                          self.hardware.get_bmc_mac)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'any_ipmi_device_exists', autospec=True)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_bmc_mac_with_valid_ipv6_and_invalid_mac(
+            self, mocked_execute, mock_ipmi_device_exists):
+        mock_ipmi_device_exists.return_value = True
+
+        def side_effect(*args, **kwargs):
+            if args[0].startswith("ipmitool lan print"):
+                return '0.0.0.0\n00:00:00:00:00:00', ''
+            elif args[0].startswith("ipmitool lan6 print"):
+                return '2001:db8::/32', ''
+            else:
+                raise AssertionError
+
+        mocked_execute.side_effect = side_effect
+        self.assertRaises(errors.IncompatibleHardwareMethodError,
+                          self.hardware.get_bmc_mac)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'any_ipmi_device_exists', autospec=True)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_bmc_mac_no_valid_ip_or_ipv6(self,
+                                             mocked_execute,
+                                             mock_ipmi_device_exists):
+        mock_ipmi_device_exists.return_value = True
+
+        def side_effect(*args, **kwargs):
+            if args[0].startswith("ipmitool lan print"):
+                return '0.0.0.0\n00:00:00:00:00:00', ''
+            elif args[0].startswith("ipmitool lan6 print"):
+                return '::/255', ''
+            else:
+                raise AssertionError
+
+        mocked_execute.side_effect = side_effect
+        self.assertRaises(errors.IncompatibleHardwareMethodError,
+                          self.hardware.get_bmc_mac)
+
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       'any_ipmi_device_exists', autospec=True)
+    @mock.patch.object(il_utils, 'execute', autospec=True)
+    def test_get_bmc_mac_iterate_channels_ipv6(self,
+                                               mocked_execute,
+                                               mock_ipmi_device_exists):
+        mock_ipmi_device_exists.return_value = True
+        # For channel 4 we simulate configured IPv6 and MAC
+
+        def side_effect(*args, **kwargs):
+            if args[0].startswith("ipmitool lan print 1"):
+                return '', 'Invalid channel 1\n'
+            elif args[0].startswith("ipmitool lan print 2"):
+                return 'meow', ''
+            elif args[0].startswith("ipmitool lan6 print 1"):
+                return '', 'Invalid channel 1\n'
+            elif args[0].startswith("ipmitool lan6 print 2"):
+                return 'meow', ''
+            elif args[0].startswith("ipmitool lan print 3"):
+                return '0.0.0.0\n00:00:00:00:01:02', ''
+            elif args[0].startswith("ipmitool lan6 print 3"):
+                return 'fe80::/64', ''
+            elif args[0].startswith("ipmitool lan print 4"):
+                return '0.0.0.0\n01:02:03:04:05:06', ''
+            elif args[0].startswith("ipmitool lan6 print 4"):
+                return '2001:db8::/32', ''
+            else:
+                raise AssertionError
+
         mocked_execute.side_effect = side_effect
         self.assertEqual('01:02:03:04:05:06', self.hardware.get_bmc_mac())
 

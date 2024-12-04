@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adds support for detecting MAC addresses for interfaces with
+    only a IPv6 address.
