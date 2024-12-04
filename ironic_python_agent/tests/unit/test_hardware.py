@@ -5928,13 +5928,29 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.assert_has_calls([
             mock.call('iscsistart', '-f')])
 
-    @mock.patch.object(utils, 'try_execute', autospec=True)
-    def test__load_ipmi_modules(self, mocked_try_execute, me):
+    @mock.patch.object(processutils, 'execute', autospec=True)
+    def test__load_ipmi_modules(self, mocked_proc_execute, mocked_execute):
         hardware._load_ipmi_modules()
-        mocked_try_execute.assert_has_calls([
+        mocked_proc_execute.assert_has_calls([
             mock.call('modprobe', 'ipmi_msghandler'),
             mock.call('modprobe', 'ipmi_devintf'),
             mock.call('modprobe', 'ipmi_si')])
+
+    @mock.patch.object(hardware, 'LOG', autospec=True)
+    @mock.patch.object(processutils, 'execute', autospec=True)
+    def test__load_ipmi_modules_fail(self, mocked_proc_execute, mocked_log,
+                                     mocked_execute):
+        mocked_proc_execute.side_effect = [
+            processutils.ProcessExecutionError,
+            ('', ''),
+            ('', ''),
+        ]
+        hardware._load_ipmi_modules()
+        mocked_proc_execute.assert_has_calls([
+            mock.call('modprobe', 'ipmi_msghandler'),
+            mock.call('modprobe', 'ipmi_devintf'),
+            mock.call('modprobe', 'ipmi_si')])
+        mocked_log.debug.assert_called_once()
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
