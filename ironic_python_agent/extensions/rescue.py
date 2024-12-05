@@ -10,9 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import crypt
-
 from oslo_log import log
+from oslo_utils import secretutils
 
 from ironic_python_agent.extensions import base
 
@@ -43,7 +42,8 @@ class RescueExtension(base.BaseAgentExtension):
         if hashed:
             hashed_password = password
         else:
-            hashed_password = crypt.crypt(rescue_password)
+            hashed_password = secretutils.crypt_password(
+                rescue_password, secretutils.crypt_mksalt('SHA-256'))
         try:
             with open(PASSWORD_FILE, 'w') as f:
                 f.write(hashed_password)

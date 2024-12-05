@@ -25,7 +25,8 @@ class TestRescueExtension(test_base.BaseTestCase):
         self.agent_extension = rescue.RescueExtension()
         self.agent_extension.agent = FakeAgent()
 
-    @mock.patch('ironic_python_agent.extensions.rescue.crypt.crypt',
+    @mock.patch('ironic_python_agent.extensions.rescue.secretutils.'
+                'crypt_password',
                 autospec=True)
     def test_write_rescue_password(self, mock_crypt):
         mock_crypt.return_value = '12deadbeef'
@@ -34,13 +35,14 @@ class TestRescueExtension(test_base.BaseTestCase):
                         mock_open):
             self.agent_extension.write_rescue_password('password')
 
-        mock_crypt.assert_called_once_with('password')
+        mock_crypt.assert_called_once_with('password', mock.ANY)
         mock_open.assert_called_once_with(
             '/etc/ipa-rescue-config/ipa-rescue-password', 'w')
         file_handle = mock_open()
         file_handle.write.assert_called_once_with('12deadbeef')
 
-    @mock.patch('ironic_python_agent.extensions.rescue.crypt.crypt',
+    @mock.patch('ironic_python_agent.extensions.rescue.secretutils.'
+                'crypt_password',
                 autospec=True)
     def test_write_rescue_password_ioerror(self, mock_crypt):
         mock_crypt.return_value = '12deadbeef'
@@ -53,7 +55,8 @@ class TestRescueExtension(test_base.BaseTestCase):
                 IOError, self.agent_extension.write_rescue_password,
                 'password')
 
-    @mock.patch('ironic_python_agent.extensions.rescue.crypt.crypt',
+    @mock.patch('ironic_python_agent.extensions.rescue.secretutils.'
+                'crypt_password',
                 autospec=True)
     def _write_password_hashed_test(self, password, mock_crypt):
         mock_open = mock.mock_open()
