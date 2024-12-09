@@ -1,0 +1,12 @@
+---
+deprecations:
+  - |
+    If a volume_name is present in the skip_block_devices property,
+    the function validate_confiuguration will now fail unless
+    all logical disks in the target_raid_config have a volume_name
+    specified.
+fixes:
+  - |
+    The skip_block_devices property now supports RAIDs, including scenarios
+    with multiple arrays on the same physical disk. This included 6 smaller
+    bugs that have all been addressed.

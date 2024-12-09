@@ -176,6 +176,9 @@ containing hints to identify the drives. For example::
 To prevent software RAID devices from being deleted, put their volume name
 (defined in the ``target_raid_config``) to the list.
 
+If a volume name is present in the ``skip_block_devices`` property, all logical
+disks in the ``target_raid_config`` are required to have volume names defined.
+
 Note: one dictionary with one value for each of the logical disks.
 For example::
 

@@ -498,7 +498,8 @@ def list_all_block_devices(block_type='disk',
     Broken out as its own function to facilitate custom hardware managers that
     don't need to subclass GenericHardwareManager.
 
-    :param block_type: Type of block device to find
+    :param block_type: Type(s) of block device to find.
+                       Can be a string or a list of strings.
     :param ignore_raid: Ignore auto-identified raid devices, example: md0
                         Defaults to false as these are generally disk
                         devices and should be treated as such if encountered.
@@ -524,6 +525,14 @@ def list_all_block_devices(block_type='disk',
             if os.path.join('/dev', new_device_name) == known_dev.name:
                 return True
         return False
+
+    # Normalize block_type to a list
+    if isinstance(block_type, str):
+        block_types = [block_type]
+    elif isinstance(block_type, list):
+        block_types = block_type
+    else:
+        raise ValueError("block_type must be a string or a list of strings")
 
     check_multipath = not ignore_multipath and get_multipath_status()
 
@@ -601,22 +610,22 @@ def list_all_block_devices(block_type='disk',
         # Other possible type values, which we skip recording:
         #   lvm, part, rom, loop
 
-        if devtype != block_type:
+        if devtype not in block_types:
             if devtype is None or ignore_raid:
                 LOG.debug(
-                    "TYPE did not match. Wanted: %(block_type)s but found: "
+                    "TYPE did not match. Wanted: %(block_types)s but found: "
                     "%(devtype)s (RAID devices are ignored)",
-                    {'block_type': block_type, 'devtype': devtype})
+                    {'block_types': block_types, 'devtype': devtype})
                 continue
             elif ('raid' in devtype
-                  and block_type in ['raid', 'disk', 'mpath']):
+                  and any(bt in ['raid', 'disk', 'mpath']
+                          for bt in block_types)):
                 LOG.debug(
                     "TYPE detected to contain 'raid', signifying a "
                     "RAID volume. Found: %(device_raw)s",
                     {'device_raw': device_raw})
             elif (devtype == 'md'
-                  and (block_type == 'part'
-                       or block_type == 'md')):
+                  and any(bt in ['part', 'md'] for bt in block_types)):
                 # NOTE(dszumski): Partitions on software RAID devices have type
                 # 'md'. This may also contain RAID devices in a broken state in
                 # rare occasions. See https://review.opendev.org/#/c/670807 for
@@ -625,7 +634,8 @@ def list_all_block_devices(block_type='disk',
                     "TYPE detected to contain 'md', signifying a "
                     "RAID partition. Found: %(device_raw)s",
                     {'device_raw': device_raw})
-            elif devtype == 'mpath' and block_type == 'disk':
+            elif (devtype == 'mpath' and any(bt == 'disk'
+                                             for bt in block_types)):
                 LOG.debug(
                     "TYPE detected to contain 'mpath', "
                     "signifing a device mapper multipath device. "
@@ -633,9 +643,9 @@ def list_all_block_devices(block_type='disk',
                     {'device_raw': device_raw})
             else:
                 LOG.debug(
-                    "TYPE did not match. Wanted: %(block_type)s but found: "
+                    "TYPE did not match. Wanted: %(block_types)s but found: "
                     "%(device_raw)s (RAID devices are ignored)",
-                    {'block_type': block_type, 'device_raw': device_raw})
+                    {'block_types': block_types, 'device_raw': device_raw})
                 continue
 
         # Ensure all required columns are at least present, even if blank
@@ -963,14 +973,21 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         """
         raise errors.IncompatibleHardwareMethodError
 
-    def get_skip_list_from_node(self, node,
-                                block_devices=None, just_raids=False):
+    def get_skip_list_from_node_for_disks(self, node,
+                                          block_devices=None):
+        """Get the skip block devices list from the node for physical disks
+
+        :param node: A node to be check for the 'skip_block_devices' property
+        :param block_devices: a list of BlockDevices
+        :returns: A set of names of devices on the skip list
+        """
+        raise errors.IncompatibleHardwareMethodError
+
+    def get_skip_list_from_node_for_raids(self, node):
         """Get the skip block devices list from the node
 
-        :param block_devices: a list of BlockDevices
-        :param just_raids: a boolean to signify that only RAID devices
-                           are important
-        :returns: A set of names of devices on the skip list
+        :param node: A node to be check for the 'skip_block_devices' property
+        :returns: A set of volume names of RAID arrays on the skip list
         """
         raise errors.IncompatibleHardwareMethodError
 
@@ -1749,15 +1766,12 @@ class GenericHardwareManager(HardwareManager):
             )
         return filter_devices(block_devices)
 
-    def get_skip_list_from_node(self, node,
-                                block_devices=None, just_raids=False):
+    def get_skip_list_from_node_for_disks(self, node,
+                                          block_devices=None):
         properties = node.get('properties', {})
         skip_list_hints = properties.get("skip_block_devices", [])
         if not skip_list_hints:
             return None
-        if just_raids:
-            return {d['volume_name'] for d in skip_list_hints
-                    if 'volume_name' in d}
         if not block_devices:
             return None
         skip_list = set()
@@ -1775,17 +1789,50 @@ class GenericHardwareManager(HardwareManager):
                             {'hint': hint, 'devs': ','.join(skipped_devices)})
         return skip_list
 
+    def get_skip_list_from_node_for_raids(self, node):
+        properties = node.get('properties', {})
+        skip_list_hints = properties.get("skip_block_devices", [])
+        if not skip_list_hints:
+            return None
+        raid_skip_list = {d['volume_name'] for d in skip_list_hints
+                          if 'volume_name' in d}
+        if len(raid_skip_list) == 0:
+            return None
+        else:
+            return raid_skip_list
+
     def list_block_devices_check_skip_list(self, node,
                                            include_partitions=False,
-                                           all_serial_and_wwn=False):
+                                           all_serial_and_wwn=False,
+                                           include_wipe=False):
         block_devices = self.list_block_devices(
             include_partitions=include_partitions,
             all_serial_and_wwn=all_serial_and_wwn)
-        skip_list = self.get_skip_list_from_node(
+        skip_list = self.get_skip_list_from_node_for_disks(
             node, block_devices)
         if skip_list is not None:
             block_devices = [d for d in block_devices
                              if d.name not in skip_list]
+        # Note(kubajj): match volume_names to raid_device names
+        raid_skip_list = self.get_skip_list_from_node_for_raids(node)
+        if raid_skip_list is not None:
+            # Find all raid devices and remove anyone with 'keep'
+            # (and 'wipe' if include_wipe is true)
+            raid_devices = list_all_block_devices(block_type=['raid', 'md'],
+                                                  ignore_raid=False,
+                                                  ignore_empty=False)
+            raid_skip_list_dict = self._handle_raid_skip_list(raid_devices,
+                                                              raid_skip_list)
+            delete_raid_devices = raid_skip_list_dict['delete_raid_devices']
+            block_devices = [
+                rd for rd in block_devices
+                if delete_raid_devices.get(rd.name) != 'keep'
+            ]
+            if include_wipe:
+                block_devices = [
+                    rd for rd in block_devices
+                    if delete_raid_devices.get(rd.name) != 'wipe'
+                ]
         return block_devices
 
     def get_os_install_device(self, permit_refresh=False):
@@ -1970,7 +2017,7 @@ class GenericHardwareManager(HardwareManager):
 
     def _list_erasable_devices(self, node):
         block_devices = self.list_block_devices_check_skip_list(
-            node, include_partitions=True)
+            node, include_partitions=True, include_wipe=True)
         # NOTE(coreywright): Reverse sort by device name so a partition (eg
         # sda1) is processed before it disappears when its associated disk (eg
         # sda) has its partition table erased and the kernel notified.
@@ -2925,6 +2972,128 @@ class GenericHardwareManager(HardwareManager):
             self.delete_configuration(node, ports)
         return self._do_create_configuration(node, ports, raid_config)
 
+    def _handle_raid_skip_list(self, raid_devices, skip_list):
+        '''Handle the RAID skip list
+
+        This function analyzes the existing RAID devices and the provided
+        skip list to determine which RAID devices should be deleted, wiped,
+        or kept.
+
+        :param raid_devices: A list of BlockDevice objects representing
+                             existing RAID devices
+        :param skip_list: A list of volume names to skip
+        :returns: A dictionary with three keys:
+                    - 'delete_raid_devices': A dictionary mapping RAID device
+                       names to actions ('delete', 'wipe', 'keep')
+                    - 'volume_name_of_raid_devices': A dictionary mapping
+                       RAID device names to their volume names
+                    - 'cause_of_not_deleting': A dictionary mapping RAID
+                       device names to the volume names of RAID devices
+                       that caused them to be kept
+        '''
+        # NOTE(kubajj):
+        # Options in the dictionary delete_raid_devices:
+        # 1. Delete both superblock and data - delete
+        # 2. Keep superblock and wipe data - wipe
+        # 3. Do not touch RAID array - keep
+        delete_raid_devices = {}
+
+        volume_name_of_raid_devices = {}
+        cause_of_not_deleting = {}
+
+        raid_devices_on_holder_disks = {}
+        volume_name_on_skip_list = {}
+        esp_part = None
+        for raid_device in raid_devices:
+            delete_raid_devices[raid_device.name] = 'delete'
+            esp_part = self._analyze_raid_device(raid_device, skip_list,
+                                                 raid_devices_on_holder_disks,
+                                                 volume_name_on_skip_list,
+                                                 volume_name_of_raid_devices)
+        for raid_device in raid_devices:
+            if volume_name_on_skip_list.get(raid_device.name):
+                self._handle_raids_with_volume_name_on_skip_list(
+                    raid_device.name, delete_raid_devices,
+                    cause_of_not_deleting, raid_devices_on_holder_disks,
+                    volume_name_of_raid_devices)
+        # NOTE(kubajj): If ESP partition was supposed to be wiped,
+        # we keep it so that it can be found by raid_utils.find_esp_raid
+        if esp_part is not None and \
+                delete_raid_devices.get(esp_part) == 'wipe':
+            delete_raid_devices[esp_part] = 'keep'
+        return {'delete_raid_devices': delete_raid_devices,
+                'volume_name_of_raid_devices': volume_name_of_raid_devices,
+                'cause_of_not_deleting': cause_of_not_deleting}
+
+    def _analyze_raid_device(self, raid_device, skip_list,
+                             raid_devices_on_holder_disks,
+                             volume_name_on_skip_list,
+                             volume_name_of_raid_devices):
+        '''Analyze a RAID device
+
+        This function figures out which holder disks a RAID device is on,
+        checks if its volume name is on the skip list, and checks whether
+        it is an ESP partition - in which case it returns its name.
+        It also updates the provided dictionaries with information about
+        the RAID device.
+
+        :param raid_device: A BlockDevice object representing a RAID device
+        :param skip_list: A list of volume names to skip
+        :param raid_devices_on_holder_disks: A dictionary mapping holder disks
+                to lists of RAID devices on them
+        :param volume_name_on_skip_list: A dictionary mapping RAID device names
+                to booleans indicating whether their volume name is on the skip
+                list
+        :param volume_name_of_raid_devices: A dictionary mapping RAID device
+                names to their volume names
+        :returns: The name of the ESP partition if the RAID device is an ESP
+                  partition, None otherwise
+        '''
+        esp_part = None
+        holder_disks = get_holder_disks(raid_device.name)
+        for holder_disk in holder_disks:
+            if raid_devices_on_holder_disks.get(holder_disk):
+                raid_devices_on_holder_disks.get(holder_disk).append(
+                    raid_device.name)
+            else:
+                raid_devices_on_holder_disks[holder_disk] = [
+                    raid_device.name]
+        volume_name = raid_utils.get_volume_name_of_raid_device(
+            raid_device.name)
+        if volume_name == 'esp':
+            esp_part = raid_device.name
+        volume_name_of_raid_devices[raid_device.name] = volume_name
+        if volume_name:
+            LOG.info("Software RAID device %(dev)s has volume name "
+                     "%(name)s", {'dev': raid_device.name,
+                                  'name': volume_name})
+            if volume_name in skip_list:
+                LOG.warning("RAID device %s will not be deleted",
+                            raid_device.name)
+                volume_name_on_skip_list[raid_device.name] = True
+            else:
+                volume_name_on_skip_list[raid_device.name] = False
+        return esp_part
+
+    def _handle_raids_with_volume_name_on_skip_list(
+            self, raid_device_name, delete_raid_devices,
+            cause_of_not_deleting, raid_devices_on_holder_disks,
+            volume_name_of_raid_devices):
+        # NOTE(kubajj): Keep this raid_device
+        # wipe all other RAID arrays on these holder disks
+        # unless they have 'keep' already
+        delete_raid_devices[raid_device_name] = 'keep'
+        holder_disks = get_holder_disks(raid_device_name)
+        for holder_disk in holder_disks:
+            for neighbour_raid_device in raid_devices_on_holder_disks[
+                    holder_disk]:
+                if not neighbour_raid_device == raid_device_name and \
+                        delete_raid_devices[neighbour_raid_device] \
+                        == 'delete':
+                    delete_raid_devices[neighbour_raid_device] = 'wipe'
+                    cause_of_not_deleting[neighbour_raid_device] = \
+                        volume_name_of_raid_devices[raid_device_name]
+
     def create_configuration(self, node, ports):
         """Create a RAID configuration.
 
@@ -2948,30 +3117,103 @@ class GenericHardwareManager(HardwareManager):
         return self._do_create_configuration(node, ports, raid_config)
 
     def _do_create_configuration(self, node, ports, raid_config):
-        def _get_volume_names_of_existing_raids():
-            list_of_raids = []
-            raid_devices = list_all_block_devices(block_type='raid',
+        def _create_raid_ignore_list(logical_disks, skip_list):
+            """Create list of RAID devices to ignore during creation.
+
+            Creates a list of RAID devices to ignore when trying to create a
+            the target raid config. This list includes RAIDs that are left
+            over due to safeguards (skip_block_devices) as well as others
+            which are affected by it.
+
+            :param logical_disks: A list of logical disks from the target RAID
+                    config.
+            :returns: The list of RAID devices to ignore during creation of
+                    the target RAID config.
+            :raises: SoftwareRAIDError if the desired configuration is not
+                    valid or if there was an error when creating the RAID
+                    devices.
+            """
+            raid_devices = list_all_block_devices(block_type=['raid', 'md'],
                                                   ignore_raid=False,
                                                   ignore_empty=False)
-            raid_devices.extend(
-                list_all_block_devices(block_type='md',
-                                       ignore_raid=False,
-                                       ignore_empty=False)
-            )
-            for raid_device in raid_devices:
-                device = raid_device.name
-                try:
-                    utils.execute('mdadm', '--examine',
-                                  device, use_standard_locale=True)
-                except processutils.ProcessExecutionError as e:
-                    if "No md superblock detected" in str(e):
-                        continue
-                volume_name = raid_utils.get_volume_name_of_raid_device(device)
-                if volume_name:
-                    list_of_raids.append(volume_name)
-                else:
-                    list_of_raids.append("unnamed_raid")
-            return list_of_raids
+
+            if not raid_devices:
+                # Escape the function if no RAID devices are present
+                return []
+
+            raid_skip_list_dict = self._handle_raid_skip_list(
+                raid_devices, skip_list)
+            delete_raid_devices = raid_skip_list_dict['delete_raid_devices']
+            volume_name_of_raid_devices = raid_skip_list_dict[
+                'volume_name_of_raid_devices']
+            cause_of_not_deleting = raid_skip_list_dict[
+                'cause_of_not_deleting']
+            list_of_raids = [volume_name for volume_name in
+                             volume_name_of_raid_devices.values()]
+            for volume_name in list_of_raids:
+                if volume_name is None or volume_name == '':
+                    msg = ("A Software RAID device detected that does not "
+                           "have a volume name. This is not allowed "
+                           "because there is a volume_name hint in the "
+                           "property 'skip_block_devices'.")
+                    raise errors.SoftwareRAIDError(msg)
+
+            rm_from_list = \
+                _determine_which_logical_disks_should_not_be_created(
+                    logical_disks, skip_list, delete_raid_devices,
+                    volume_name_of_raid_devices, cause_of_not_deleting,
+                    list_of_raids)
+            if 'esp' in list_of_raids:
+                # Note(kubajj): The EFI partition is present after deletion,
+                # therefore, it had to have 'keep' label in delete_raid_devices
+                # as it is on a holder disk with a safeguarded RAID array.
+                rd_name = [rd_name for rd_name, v_name in
+                           volume_name_of_raid_devices.items()
+                           if 'esp' == v_name]
+                if delete_raid_devices[rd_name[0]] == 'keep':
+                    list_of_raids.remove('esp')
+                    LOG.debug("Keeping EFI partition as it is on a holder "
+                              "disk with a safeguarded RAID array %s",
+                              cause_of_not_deleting.get(rd_name[0]))
+            # NOTE(kubajj): Raise an error if there is an existing software
+            # RAID device that either does not have a volume name or does not
+            # match one on the skip list
+            if list_of_raids:
+                msg = ("Existing Software RAID device detected that should"
+                       " not")
+                raise errors.SoftwareRAIDError(msg)
+            return rm_from_list
+
+        def _determine_which_logical_disks_should_not_be_created(
+                logical_disks, skip_list, delete_raid_devices,
+                volume_name_of_raid_devices, cause_of_not_deleting,
+                list_of_raids):
+            rm_from_list = []
+            for ld in logical_disks:
+                volume_name = ld.get('volume_name')
+
+                # Volume name in the list_of_raids
+                if volume_name in list_of_raids:
+                    # Remove LD that are on skip_list
+                    if volume_name in skip_list:
+                        LOG.debug("Software RAID device with volume name %s "
+                                  "exists and is, therefore, not going to be "
+                                  "created", volume_name)
+                    # Remove LD that are on the same disk as skip_list
+                    elif volume_name not in skip_list:
+                        # Fetch raid device using volume name
+                        rd_name = [rd_name for rd_name, v_name in
+                                   volume_name_of_raid_devices.items()
+                                   if volume_name == v_name]
+                        if delete_raid_devices[rd_name[0]] != 'wipe' or \
+                                cause_of_not_deleting.get(rd_name[0]) is None:
+                            msg = ("Existing Software RAID device detected "
+                                   "that should not")
+                            raise errors.SoftwareRAIDError(msg)
+
+                    list_of_raids.remove(volume_name)
+                    rm_from_list.append(ld)
+            return rm_from_list
 
         # No 'software' controller: do nothing. If 'controller' is
         # set to 'software' on only one of the drives, the validation
@@ -2994,29 +3236,12 @@ class GenericHardwareManager(HardwareManager):
 
         # Remove any logical disk from being eligible for inclusion in the
         # RAID if it's on the skip list
-        skip_list = self.get_skip_list_from_node(
-            node, just_raids=True)
+        skip_list = self.get_skip_list_from_node_for_raids(node)
         rm_from_list = []
         if skip_list:
-            present_raids = _get_volume_names_of_existing_raids()
-            if present_raids:
-                for ld in logical_disks:
-                    volume_name = ld.get('volume_name', None)
-                    if volume_name in skip_list \
-                            and volume_name in present_raids:
-                        rm_from_list.append(ld)
-                        LOG.debug("Software RAID device with volume name %s "
-                                  "exists and is, therefore, not going to be "
-                                  "created", volume_name)
-                        present_raids.remove(volume_name)
-            # NOTE(kubajj): Raise an error if there is an existing software
-            # RAID device that either does not have a volume name or does not
-            # match one on the skip list
-            if present_raids:
-                msg = ("Existing Software RAID device detected that should"
-                       " not")
-                raise errors.SoftwareRAIDError(msg)
-        logical_disks = [d for d in logical_disks if d not in rm_from_list]
+            rm_from_list = _create_raid_ignore_list(logical_disks, skip_list)
+
+            logical_disks = [d for d in logical_disks if d not in rm_from_list]
 
         # Log the validated target_raid_configuration.
         LOG.debug("Target Software RAID configuration: %s", raid_config)
@@ -3041,72 +3266,77 @@ class GenericHardwareManager(HardwareManager):
         partition_table_type = utils.get_partition_table_type_from_specs(node)
         target_boot_mode = utils.get_node_boot_mode(node)
 
-        parted_start_dict = raid_utils.create_raid_partition_tables(
-            block_devices, partition_table_type, target_boot_mode)
+        # Only create partitions if some are missing
+        # (this is no longer guaranteed)
+        if block_devices and logical_disks:
+            parted_start_dict = raid_utils.create_raid_partition_tables(
+                block_devices, partition_table_type, target_boot_mode)
 
-        LOG.debug("First available sectors per devices %s", parted_start_dict)
+            LOG.debug("First available sectors per devices %s",
+                      parted_start_dict)
 
-        # Reorder logical disks so that MAX comes last if any:
-        reordered_logical_disks = []
-        max_disk = None
-        for logical_disk in logical_disks:
-            psize = logical_disk['size_gb']
-            if psize == 'MAX':
-                max_disk = logical_disk
-            else:
-                reordered_logical_disks.append(logical_disk)
-        if max_disk:
-            reordered_logical_disks.append(max_disk)
-        logical_disks = reordered_logical_disks
+            # Reorder logical disks so that MAX comes last if any:
+            reordered_logical_disks = []
+            max_disk = None
+            for logical_disk in logical_disks:
+                psize = logical_disk['size_gb']
+                if psize == 'MAX':
+                    max_disk = logical_disk
+                else:
+                    reordered_logical_disks.append(logical_disk)
+            if max_disk:
+                reordered_logical_disks.append(max_disk)
+            logical_disks = reordered_logical_disks
 
-        # With the partitioning below, the first partition is not
-        # exactly the size_gb provided, but rather the size minus a small
-        # amount (often 2048*512B=1MiB, depending on the disk geometry).
-        # Easier to ignore. Another way could be to use sgdisk, which is really
-        # user-friendly to compute part boundaries automatically, instead of
-        # parted, then convert back to mbr table if needed and possible.
+            # With the partitioning below, the first partition is not
+            # exactly the size_gb provided, but rather the size minus a small
+            # amount (often 2048*512B=1MiB, depending on the disk geometry).
+            # Easier to ignore. Another way could be to use sgdisk, which is
+            # really user-friendly to compute part boundaries automatically,
+            # instead of parted, then convert back to mbr table if needed
+            # and possible.
 
-        for logical_disk in logical_disks:
-            # Note: from the doc,
-            # https://docs.openstack.org/ironic/latest/admin/raid.html#target-raid-configuration
-            # size_gb unit is GiB
+            for logical_disk in logical_disks:
+                # Note: from the doc,
+                # https://docs.openstack.org/ironic/latest/admin/raid.html#target-raid-configuration
+                # size_gb unit is GiB
 
-            psize = logical_disk['size_gb']
-            if psize == 'MAX':
-                psize = -1
-            else:
-                psize = int(psize)
+                psize = logical_disk['size_gb']
+                if psize == 'MAX':
+                    psize = -1
+                else:
+                    psize = int(psize)
 
-            # NOTE(dtantsur): populated in get_block_devices_for_raid
-            disk_names = logical_disk['block_devices']
-            for device in disk_names:
-                start = parted_start_dict[device]
-                start_str, end_str, end = (
-                    raid_utils.calc_raid_partition_sectors(psize, start)
-                )
-                try:
-                    LOG.debug("Creating partition on %(dev)s: %(str)s %(end)s",
-                              {'dev': device, 'str': start_str,
-                               'end': end_str})
+                # NOTE(dtantsur): populated in get_block_devices_for_raid
+                disk_names = logical_disk['block_devices']
+                for device in disk_names:
+                    start = parted_start_dict[device]
+                    start_str, end_str, end = (
+                        raid_utils.calc_raid_partition_sectors(psize, start)
+                    )
+                    try:
+                        LOG.debug("Creating partition on %(dev)s: %(str)s "
+                                  "%(end)s", {'dev': device, 'str': start_str,
+                                              'end': end_str})
 
-                    utils.execute('parted', device, '-s', '-a',
-                                  'optimal', '--', 'mkpart', 'primary',
-                                  start_str, end_str)
+                        utils.execute('parted', device, '-s', '-a',
+                                      'optimal', '--', 'mkpart', 'primary',
+                                      start_str, end_str)
 
-                except processutils.ProcessExecutionError as e:
-                    msg = "Failed to create partitions on {}: {}".format(
-                        device, e)
-                    raise errors.SoftwareRAIDError(msg)
+                    except processutils.ProcessExecutionError as e:
+                        msg = "Failed to create partitions on {}: {}".format(
+                            device, e)
+                        raise errors.SoftwareRAIDError(msg)
 
-                utils.rescan_device(device)
+                    utils.rescan_device(device)
 
-                parted_start_dict[device] = end
+                    parted_start_dict[device] = end
 
-        # Create the RAID devices. The indices mapping tracks the last used
-        # partition index for each physical device.
-        indices = {}
-        for index, logical_disk in enumerate(logical_disks):
-            raid_utils.create_raid_device(index, logical_disk, indices)
+            # Create the RAID devices. The indices mapping tracks the last used
+            # partition index for each physical device.
+            indices = {}
+            for index, logical_disk in enumerate(logical_disks):
+                raid_utils.create_raid_device(index, logical_disk, indices)
 
         LOG.info("Successfully created Software RAID")
 
@@ -3130,29 +3360,28 @@ class GenericHardwareManager(HardwareManager):
         def _scan_raids():
             utils.execute('mdadm', '--assemble', '--scan',
                           check_exit_code=False)
-            raid_devices = list_all_block_devices(block_type='raid',
+            # # NOTE(dszumski): Fetch all devices of type 'md'. This
+            # # will generally contain partitions on a software RAID
+            # # device, but crucially may also contain devices in a
+            # # broken state. See https://review.opendev.org/#/c/670807/
+            # # for more detail.
+            raid_devices = list_all_block_devices(block_type=['raid', 'md'],
                                                   ignore_raid=False,
                                                   ignore_empty=False)
-            # NOTE(dszumski): Fetch all devices of type 'md'. This
-            # will generally contain partitions on a software RAID
-            # device, but crucially may also contain devices in a
-            # broken state. See https://review.opendev.org/#/c/670807/
-            # for more detail.
-            raid_devices.extend(
-                list_all_block_devices(block_type='md',
-                                       ignore_raid=False,
-                                       ignore_empty=False)
-            )
             return raid_devices
 
         raid_devices = _scan_raids()
-        skip_list = self.get_skip_list_from_node(
-            node, just_raids=True)
+        skip_list = self.get_skip_list_from_node_for_raids(
+            node)
         attempts = 0
         while attempts < 2:
             attempts += 1
-            self._delete_config_pass(raid_devices, skip_list)
+            delete_raid_devices = self._delete_config_pass(raid_devices,
+                                                           skip_list)
             raid_devices = _scan_raids()
+            if skip_list:
+                raid_devices = [rd for rd in raid_devices if
+                                delete_raid_devices[rd.name] == 'delete']
             if not raid_devices:
                 break
         else:
@@ -3165,18 +3394,18 @@ class GenericHardwareManager(HardwareManager):
         all_holder_disks = []
         do_not_delete_devices = set()
         delete_partitions = {}
+        delete_raid_devices = {dev.name: 'delete' for dev in raid_devices}
+        volume_name_of_raid_devices = {}
+        cause_of_not_deleting = {}
+        if skip_list:
+            raid_skip_list_dict = self._handle_raid_skip_list(raid_devices,
+                                                              skip_list)
+            delete_raid_devices = raid_skip_list_dict['delete_raid_devices']
+            volume_name_of_raid_devices = raid_skip_list_dict[
+                'volume_name_of_raid_devices']
+            cause_of_not_deleting = raid_skip_list_dict[
+                'cause_of_not_deleting']
         for raid_device in raid_devices:
-            do_not_delete = False
-            volume_name = raid_utils.get_volume_name_of_raid_device(
-                raid_device.name)
-            if volume_name:
-                LOG.info("Software RAID device %(dev)s has volume name"
-                         "%(name)s", {'dev': raid_device.name,
-                                      'name': volume_name})
-                if skip_list and volume_name in skip_list:
-                    LOG.warning("RAID device %s will not be deleted",
-                                raid_device.name)
-                    do_not_delete = True
             component_devices = get_component_devices(raid_device.name)
             if not component_devices:
                 # A "Software RAID device" without components is usually
@@ -3187,74 +3416,101 @@ class GenericHardwareManager(HardwareManager):
                          "partition %s", raid_device.name)
                 continue
             holder_disks = get_holder_disks(raid_device.name)
-
-            if do_not_delete:
-                LOG.warning("Software RAID device %(dev)s is not going to be "
-                            "deleted as its volume name - %(vn)s - is on the "
-                            "skip list", {'dev': raid_device.name,
-                                          'vn': volume_name})
-            else:
-                LOG.info("Deleting Software RAID device %s", raid_device.name)
-            LOG.debug('Found component devices %s', component_devices)
-            LOG.debug('Found holder disks %s', holder_disks)
-
-            if not do_not_delete:
-                # Remove md devices.
-                try:
-                    utils.execute('wipefs', '-af', raid_device.name)
-                except processutils.ProcessExecutionError as e:
-                    LOG.warning('Failed to wipefs %(device)s: %(err)s',
-                                {'device': raid_device.name, 'err': e})
-                try:
-                    utils.execute('mdadm', '--stop', raid_device.name)
-                except processutils.ProcessExecutionError as e:
-                    LOG.warning('Failed to stop %(device)s: %(err)s',
-                                {'device': raid_device.name, 'err': e})
-
-                # Remove md metadata from component devices.
-                for component_device in component_devices:
-                    try:
-                        utils.execute('mdadm', '--examine',
-                                      component_device,
-                                      use_standard_locale=True)
-                    except processutils.ProcessExecutionError as e:
-                        if "No md superblock detected" in str(e):
-                            # actually not a component device
-                            continue
-                        else:
-                            msg = "Failed to examine device {}: {}".format(
-                                  component_device, e)
-                            raise errors.SoftwareRAIDError(msg)
-
-                    LOG.debug('Deleting md superblock on %s', component_device)
-                    try:
-                        utils.execute('mdadm', '--zero-superblock',
-                                      component_device)
-                    except processutils.ProcessExecutionError as e:
-                        LOG.warning('Failed to remove superblock from'
-                                    '%(device)s: %(err)s',
-                                    {'device': raid_device.name, 'err': e})
-                    if skip_list:
-                        dev, part = utils.split_device_and_partition_number(
-                            component_device)
-                        if dev in delete_partitions:
-                            delete_partitions[dev].append(part)
-                        else:
-                            delete_partitions[dev] = [part]
-            else:
-                for component_device in component_devices:
-                    do_not_delete_devices.add(component_device)
-
             # NOTE(arne_wiebalck): We cannot delete the partitions right
             # away since there may be other partitions on the same disks
             # which are members of other RAID devices. So we remember them
             # for later.
             all_holder_disks.extend(holder_disks)
-            if do_not_delete:
+            delete_raid_device = delete_raid_devices.get(raid_device.name)
+            if not delete_raid_device == 'delete':
+                for component_device in component_devices:
+                    do_not_delete_devices.add(component_device)
+                if delete_raid_device == 'keep':
+                    volume_name = volume_name_of_raid_devices[raid_device.name]
+                    if volume_name == 'esp':
+                        cause_volume_name = cause_of_not_deleting.get(
+                            raid_device.name)
+                        LOG.warning("EFI RAID device %(dev)s is not going "
+                                    "to be deleted because device %(cvn)s is "
+                                    "on the skip list and is present on the "
+                                    "same holder disk.",
+                                    {'dev': raid_device.name,
+                                     'cvn': cause_volume_name})
+                    else:
+                        LOG.warning("Software RAID device %(dev)s is not "
+                                    "going to be deleted as its volume name "
+                                    "- %(vn)s - is on the skip list",
+                                    {'dev': raid_device.name,
+                                     'vn': volume_name})
+                elif delete_raid_device == 'wipe':
+                    cause_volume_name = cause_of_not_deleting.get(
+                        raid_device.name)
+                    LOG.warning("Software RAID device %(dev)s is not going "
+                                "to be deleted because device %(cvn)s is on "
+                                "the skip list and is present on the same "
+                                "holder disk. The device will be wiped.",
+                                {'dev': raid_device.name,
+                                 'cvn': cause_volume_name})
+                    try:
+                        utils.execute('wipefs', '-af', raid_device.name)
+                    except processutils.ProcessExecutionError as e:
+                        LOG.warning('Failed to wipefs %(device)s: %(err)s',
+                                    {'device': raid_device.name, 'err': e})
+                else:
+                    LOG.warning("Software raid device %(device)s has unknown "
+                                "action %(action)s. Skipping.",
+                                {'device': raid_device.name,
+                                 'action': delete_raid_device})
+
                 LOG.warning("Software RAID device %s was not deleted",
                             raid_device.name)
-            else:
-                LOG.info('Deleted Software RAID device %s', raid_device.name)
+                continue
+
+            LOG.info("Deleting Software RAID device %s", raid_device.name)
+
+            # Remove md devices.
+            try:
+                utils.execute('wipefs', '-af', raid_device.name)
+            except processutils.ProcessExecutionError as e:
+                LOG.warning('Failed to wipefs %(device)s: %(err)s',
+                            {'device': raid_device.name, 'err': e})
+            try:
+                utils.execute('mdadm', '--stop', raid_device.name)
+            except processutils.ProcessExecutionError as e:
+                LOG.warning('Failed to stop %(device)s: %(err)s',
+                            {'device': raid_device.name, 'err': e})
+
+            # Remove md metadata from component devices.
+            for component_device in component_devices:
+                try:
+                    utils.execute('mdadm', '--examine',
+                                  component_device,
+                                  use_standard_locale=True)
+                except processutils.ProcessExecutionError as e:
+                    if "No md superblock detected" in str(e):
+                        # actually not a component device
+                        continue
+                    else:
+                        msg = "Failed to examine device {}: {}".format(
+                            component_device, e)
+                        raise errors.SoftwareRAIDError(msg)
+
+                LOG.debug('Deleting md superblock on %s', component_device)
+                try:
+                    utils.execute('mdadm', '--zero-superblock',
+                                  component_device)
+                except processutils.ProcessExecutionError as e:
+                    LOG.warning('Failed to remove superblock from'
+                                '%(device)s: %(err)s',
+                                {'device': raid_device.name, 'err': e})
+                if skip_list:
+                    dev, part = utils.split_device_and_partition_number(
+                        component_device)
+                    if dev in delete_partitions:
+                        delete_partitions[dev].append(part)
+                    else:
+                        delete_partitions[dev] = [part]
+            LOG.info('Deleted Software RAID device %s', raid_device.name)
 
         # Remove all remaining raid traces from any drives, in case some
         # drives or partitions have been member of some raid once
@@ -3310,7 +3566,7 @@ class GenericHardwareManager(HardwareManager):
         for holder_disk in all_holder_disks_uniq:
             if holder_disk in do_not_delete_disks:
                 # Remove just partitions not listed in keep_partitions
-                del_list = delete_partitions[holder_disk]
+                del_list = delete_partitions.get(holder_disk)
                 if del_list:
                     LOG.warning('Holder disk %(dev)s contains logical disk '
                                 'on the skip list. Deleting just partitions: '
@@ -3319,7 +3575,7 @@ class GenericHardwareManager(HardwareManager):
                     for part in del_list:
                         utils.execute('parted', holder_disk, 'rm', part)
                 else:
-                    LOG.warning('Holder disk %(dev)s contains only logical '
+                    LOG.warning('Holder disk %s contains only logical '
                                 'disk(s) on the skip list', holder_disk)
                 continue
             LOG.info('Removing partitions on holder disk %s', holder_disk)
@@ -3330,6 +3586,9 @@ class GenericHardwareManager(HardwareManager):
                             holder_disk, e)
 
         LOG.debug("Finished deleting Software RAID(s)")
+
+        # Return dictionary with deletion decisions for RAID devices
+        return delete_raid_devices
 
     def validate_configuration(self, raid_config, node):
         """Validate a (software) RAID configuration
@@ -3359,6 +3618,7 @@ class GenericHardwareManager(HardwareManager):
                    "two logical disks")
             raid_errors.append(msg)
 
+        raid_skip_list = self.get_skip_list_from_node_for_raids(node)
         volume_names = []
         # All disks need to be flagged for Software RAID
         for logical_disk in logical_disks:
@@ -3368,7 +3628,13 @@ class GenericHardwareManager(HardwareManager):
                 raid_errors.append(msg)
 
             volume_name = logical_disk.get('volume_name')
-            if volume_name is not None:
+            if volume_name is None:
+                if raid_skip_list:
+                    msg = ("All logical disks are required to have a volume "
+                           "name specified as a volume name is mentioned in "
+                           "the property skip block devices.")
+                    raid_errors.append(msg)
+            else:
                 if volume_name in volume_names:
                     msg = ("Duplicate software RAID device name %s "
                            "detected" % volume_name)
