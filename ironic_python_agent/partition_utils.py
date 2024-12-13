@@ -26,8 +26,6 @@ import shutil
 import stat
 import tempfile
 
-from ironic_lib import exception
-from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -39,7 +37,7 @@ import requests
 from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
-from ironic_python_agent import utils as ipa_utils
+from ironic_python_agent import utils
 
 
 LOG = log.getLogger()
@@ -72,20 +70,20 @@ def get_configdrive(configdrive, node_uuid, tempdir=None):
     # Check if the configdrive option is a HTTP URL or the content directly
     is_url = _is_http_url(configdrive)
     if is_url:
-        verify, cert = ipa_utils.get_ssl_client_options(CONF)
+        verify, cert = utils.get_ssl_client_options(CONF)
         timeout = CONF.image_download_connection_timeout
         # TODO(dtantsur): support proxy parameters from instance_info
         try:
             resp = requests.get(configdrive, verify=verify, cert=cert,
                                 timeout=timeout)
         except requests.exceptions.RequestException as e:
-            raise exception.InstanceDeployFailure(
+            raise errors.DeploymentError(
                 "Can't download the configdrive content for node %(node)s "
                 "from '%(url)s'. Reason: %(reason)s" %
                 {'node': node_uuid, 'url': configdrive, 'reason': e})
 
         if resp.status_code >= 400:
-            raise exception.InstanceDeployFailure(
+            raise errors.DeploymentError(
                 "Can't download the configdrive content for node %(node)s "
                 "from '%(url)s'. Got status code %(code)s, response "
                 "body %(body)s" %
@@ -122,7 +120,7 @@ def get_configdrive(configdrive, node_uuid, tempdir=None):
                             'cls': type(exc).__name__})
             if is_url:
                 error_msg += ' Downloaded from "%s".' % configdrive
-            raise exception.InstanceDeployFailure(error_msg)
+            raise errors.DeploymentError(error_msg)
 
     configdrive_mb = 0
     with gzip.GzipFile('configdrive', 'rb', fileobj=data) as gunzipped:
@@ -131,7 +129,7 @@ def get_configdrive(configdrive, node_uuid, tempdir=None):
         except EnvironmentError as e:
             # Delete the created file
             utils.unlink_without_raise(configdrive_file.name)
-            raise exception.InstanceDeployFailure(
+            raise errors.DeploymentError(
                 'Encountered error while decompressing and writing '
                 'config drive for node %(node)s. Error: %(exc)s' %
                 {'node': node_uuid, 'exc': e})
@@ -169,7 +167,7 @@ def get_labelled_partition(device_path, label, node_uuid):
                'for node %(node)s. Error: %(error)s' %
                {'disk': device_path, 'node': node_uuid, 'error': e})
         LOG.error(msg)
-        raise exception.InstanceDeployFailure(msg)
+        raise errors.DeploymentError(msg)
 
     found_part = None
     if output:
@@ -178,7 +176,7 @@ def get_labelled_partition(device_path, label, node_uuid):
                 if found_part:
                     found_2 = '/dev/%(part)s' % {'part': dev['NAME'].strip()}
                     found = [found_part, found_2]
-                    raise exception.InstanceDeployFailure(
+                    raise errors.DeploymentError(
                         'More than one partition with label "%(label)s" '
                         'exists on device %(device)s for node %(node)s: '
                         '%(found)s.' %
@@ -269,7 +267,7 @@ def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
         root_part = part_dict.get('root')
 
         if not disk_utils.is_block_device(root_part):
-            raise exception.InstanceDeployFailure(
+            raise errors.DeploymentError(
                 "Root device '%s' not found" % root_part)
 
         for part in ('swap', 'ephemeral', 'configdrive',
@@ -279,7 +277,7 @@ def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
                       "%(node)s.", {'part': part, 'dev': part_device,
                                     'node': node_uuid})
             if part_device and not disk_utils.is_block_device(part_device):
-                raise exception.InstanceDeployFailure(
+                raise errors.DeploymentError(
                     "'%(partition)s' device '%(part_device)s' not found" %
                     {'partition': part, 'part_device': part_device})
 
@@ -370,7 +368,7 @@ def create_config_drive_partition(node_uuid, device, configdrive):
 
         confdrive_mb, confdrive_file = get_configdrive(configdrive, node_uuid)
         if confdrive_mb > MAX_CONFIG_DRIVE_SIZE_MB:
-            raise exception.InstanceDeployFailure(
+            raise errors.DeploymentError(
                 'Config drive size exceeds maximum limit of 64MiB. '
                 'Size of the given config drive is %(size)d MiB for '
                 'node %(node)s.'
@@ -406,13 +404,13 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                     pp_count, lp_count = disk_utils.count_mbr_partitions(
                         device)
                 except ValueError as e:
-                    raise exception.InstanceDeployFailure(
+                    raise errors.DeploymentError(
                         'Failed to check the number of primary partitions '
                         'present on %(dev)s for node %(node)s. Error: '
                         '%(error)s' % {'dev': device, 'node': node_uuid,
                                        'error': e})
                 if pp_count > 3:
-                    raise exception.InstanceDeployFailure(
+                    raise errors.DeploymentError(
                         'Config drive cannot be created for node %(node)s. '
                         'Disk (%(dev)s) uses MBR partitioning and already '
                         'has %(parts)d primary partitions.'
@@ -443,7 +441,7 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                              for part in disk_utils.list_partitions(device)}
                 new_part = set(new_parts) - set(cur_parts)
                 if len(new_part) != 1:
-                    raise exception.InstanceDeployFailure(
+                    raise errors.DeploymentError(
                         'Disk partitioning failed on device %(device)s. '
                         'Unable to retrieve config drive partition '
                         'information.' % {'device': device})
@@ -460,7 +458,7 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                                'disk': device, 'node': node_uuid,
                                'uuid': part_uuid}
                     LOG.error(msg)
-                    raise exception.InstanceDeployFailure(msg)
+                    raise errors.DeploymentError(msg)
 
             disk_utils.udev_settle()
 
@@ -488,7 +486,7 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                  "copied onto partition %(part)s",
                  {'node': node_uuid, 'part': config_drive_part})
 
-    except exception.InstanceDeployFailure:
+    except errors.DeploymentError:
         # Since we no longer have a final action on the decorator, we need
         # to catch the failure, and still perform the cleanup.
         if confdrive_file:
@@ -500,7 +498,7 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                'for node %(node)s. Error: %(error)s' %
                {'disk': device, 'node': node_uuid, 'error': e})
         LOG.error(msg)
-        raise exception.InstanceDeployFailure(msg)
+        raise errors.DeploymentError(msg)
         # If the configdrive was requested make sure we delete the file
         # after copying the content to the partition
 
@@ -577,7 +575,7 @@ def _try_build_fat32_config_drive(partition, confdrive_file):
                'System. Due to the nature of configuration drive, it could '
                'have been incorrectly formatted. Operator investigation is '
                'required. Error: {}'.format(str(e)))
-        raise exception.InstanceDeployFailure(msg)
+        raise errors.DeploymentError(msg)
     finally:
         utils.execute('umount', conf_drive_temp)
         utils.execute('umount', new_drive_temp)
@@ -604,7 +602,7 @@ def _is_disk_larger_than_max_size(device, node_uuid):
                'Error: %(error)s' %
                {'disk': device, 'node': node_uuid, 'error': e})
         LOG.error(msg)
-        raise exception.InstanceDeployFailure(msg)
+        raise errors.DeploymentError(msg)
 
     disksize_mb = int(disksize_bytes.strip()) // 1024 // 1024
 
@@ -617,7 +615,7 @@ def get_partition(device, uuid):
               {'dev': device, 'uuid': uuid})
 
     try:
-        ipa_utils.rescan_device(device)
+        utils.rescan_device(device)
         lsblk, _ = utils.execute(
             'lsblk', '-PbioKNAME,UUID,PARTUUID,TYPE,LABEL', device)
         if lsblk:

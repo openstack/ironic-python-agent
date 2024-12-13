@@ -114,7 +114,7 @@ class TestInspect(base.IronicAgentTest):
         mock_call.assert_not_called()
         self.assertIsNone(result)
 
-    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
+    @mock.patch('ironic_python_agent.mdns.get_endpoint', autospec=True)
     def test_mdns(self, mock_mdns, mock_ext_mgr, mock_call):
         CONF.set_override('inspection_callback_url', 'mdns')
         mock_mdns.return_value = 'http://example', {

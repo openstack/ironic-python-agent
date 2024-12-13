@@ -14,8 +14,6 @@
 
 import json
 
-from ironic_lib import exception as lib_exc
-
 from ironic_python_agent import encoding
 from ironic_python_agent.tests.unit import base
 
@@ -73,10 +71,3 @@ class TestEncoder(base.IronicAgentTest):
         expected = {'jack': 'hello', 'jill': 'world'}
         obj = SerializableTesting('hello', 'world')
         self.assertEqual(expected, json.loads(self.encoder.encode(obj)))
-
-    def test_ironic_lib(self):
-        obj = lib_exc.InstanceDeployFailure(reason='boom')
-        encoded = json.loads(self.encoder.encode(obj))
-        self.assertEqual(500, encoded['code'])
-        self.assertEqual('InstanceDeployFailure', encoded['type'])
-        self.assertIn('boom', encoded['message'])

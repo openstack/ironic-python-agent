@@ -16,7 +16,6 @@ import base64
 import contextlib
 import os
 
-from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -89,7 +88,7 @@ def _inject_one(node, ports, fl, root_dev, http_get):
     with _find_and_mount_path(fl['path'], fl.get('partition'),
                               root_dev) as path:
         if fl.get('deleted'):
-            ironic_utils.unlink_without_raise(path)
+            utils.unlink_without_raise(path)
             return
 
         try:

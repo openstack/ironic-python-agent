@@ -14,13 +14,13 @@ import json
 import socket
 import time
 
-from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_log import log
 from tooz import coordination
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
+from ironic_python_agent import utils
 
 LOG = log.getLogger(__name__)
 

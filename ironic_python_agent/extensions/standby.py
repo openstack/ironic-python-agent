@@ -19,7 +19,6 @@ import tempfile
 import time
 from urllib import parse as urlparse
 
-from ironic_lib import exception
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -402,7 +401,7 @@ def _write_image(image_info, device, configdrive=None):
                          'totaltime': totaltime})
     try:
         disk_utils.fix_gpt_partition(device, node_uuid=None)
-    except exception.InstanceDeployFailure:
+    except errors.DeploymentError:
         # Note: the catch internal to the helper method logs any errors.
         pass
     return uuids
@@ -796,14 +795,14 @@ def _validate_partitioning(device):
             processutils.ProcessExecutionError, OSError) as e:
         msg = ("Unable to find a valid partition table on the disk after "
                f"writing the image. The image may be corrupted. Error: {e}")
-        raise exception.InstanceDeployFailure(msg)
+        raise errors.DeploymentError(msg)
 
     # Check if there is at least one partition in the partition table after
     # deploy
     if not nparts:
         msg = ("No partitions found on the device {} after writing "
                "the image.".format(device))
-        raise exception.InstanceDeployFailure(msg)
+        raise errors.DeploymentError(msg)
 
 
 class StandbyExtension(base.BaseAgentExtension):
@@ -890,7 +889,7 @@ class StandbyExtension(base.BaseAgentExtension):
         # Fix any gpt partition
         try:
             disk_utils.fix_gpt_partition(device, node_uuid=None)
-        except exception.InstanceDeployFailure:
+        except errors.DeploymentError:
             # Note: the catch internal to the helper method logs any errors.
             pass
         # Fix the root partition UUID

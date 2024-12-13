@@ -18,8 +18,6 @@ import os
 import stat
 from unittest import mock
 
-from ironic_lib import exception
-from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils.imageutils import format_inspector
@@ -27,9 +25,10 @@ from oslo_utils.imageutils import QemuImgInfo
 from oslo_utils import units
 
 from ironic_python_agent import disk_utils
-from ironic_python_agent.errors import InvalidImage
+from ironic_python_agent import errors
 from ironic_python_agent import qemu_img
 from ironic_python_agent.tests.unit import base
+from ironic_python_agent import utils
 
 CONF = cfg.CONF
 
@@ -559,7 +558,7 @@ class OtherFunctionTestCase(base.IronicAgentTest):
     def test_is_block_device_raises(self, mock_os):
         device = '/dev/disk/by-path/ip-1.2.3.4:5678-iscsi-iqn.fake-lun-9'
         mock_os.side_effect = OSError
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           disk_utils.is_block_device, device)
         mock_os.assert_has_calls([mock.call(device)] * 3)
 
@@ -569,7 +568,7 @@ class OtherFunctionTestCase(base.IronicAgentTest):
                           group='disk_utils')
         device = '/dev/disk/by-path/ip-1.2.3.4:5678-iscsi-iqn.fake-lun-9'
         mock_os.side_effect = OSError
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           disk_utils.is_block_device, device)
         mock_os.assert_has_calls([mock.call(device)] * 2)
 
@@ -656,7 +655,7 @@ Identified 1 problems!
     @mock.patch.object(disk_utils.LOG, 'error', autospec=True)
     def test_fix_gpt_structs_exc(self, mock_log, mock_execute):
         mock_execute.side_effect = processutils.ProcessExecutionError
-        self.assertRaisesRegex(exception.InstanceDeployFailure,
+        self.assertRaisesRegex(errors.DeploymentError,
                                'Failed to fix GPT data structures on disk',
                                disk_utils._fix_gpt_structs,
                                self.dev, self.node_uuid)
@@ -854,7 +853,7 @@ class WaitForDisk(base.IronicAgentTest):
                        side_effect=processutils.ProcessExecutionError(
                            stderr='fake'))
     def test_wait_for_disk_to_become_available_no_fuser(self, mock_exc):
-        self.assertRaises(exception.IronicException,
+        self.assertRaises(errors.RESTError,
                           disk_utils.wait_for_disk_to_become_available,
                           'fake-dev')
         fuser_cmd = ['fuser', 'fake-dev']
@@ -878,7 +877,7 @@ class WaitForDisk(base.IronicAgentTest):
                           'holding device fake-dev: 15503, 3919, 15510, '
                           '15511. Timed out waiting for completion.')
         self.assertRaisesRegex(
-            exception.IronicException,
+            errors.RESTError,
             expected_error,
             disk_utils.wait_for_disk_to_become_available,
             'fake-dev')
@@ -903,7 +902,7 @@ class WaitForDisk(base.IronicAgentTest):
                           'holding device fake-dev: 15503, 3919, 15510, '
                           '15511. Timed out waiting for completion.')
         self.assertRaisesRegex(
-            exception.IronicException,
+            errors.RESTError,
             expected_error,
             disk_utils.wait_for_disk_to_become_available,
             'fake-dev')
@@ -925,7 +924,7 @@ class WaitForDisk(base.IronicAgentTest):
                           'locks for device fake-dev. Timed out waiting '
                           'for completion.')
         self.assertRaisesRegex(
-            exception.IronicException,
+            errors.RESTError,
             expected_error,
             disk_utils.wait_for_disk_to_become_available,
             'fake-dev')
@@ -999,7 +998,7 @@ class GetAndValidateImageFormat(base.IronicAgentTest):
         CONF.set_override('disable_deep_image_inspection', False)
         fmt = 'qcow3'
         mock_ii.return_value = MockFormatInspectorCls(fmt, 0, True)
-        self.assertRaises(InvalidImage,
+        self.assertRaises(errors.InvalidImage,
                           disk_utils.get_and_validate_image_format,
                           '/fake/path', fmt)
         mock_ii.assert_called_once_with('/fake/path')
@@ -1010,7 +1009,7 @@ class GetAndValidateImageFormat(base.IronicAgentTest):
         CONF.set_override('disable_deep_image_inspection', False)
         fmt = 'qcow2'
         mock_ii.return_value = MockFormatInspectorCls('qcow3', 0, True)
-        self.assertRaises(InvalidImage,
+        self.assertRaises(errors.InvalidImage,
                           disk_utils.get_and_validate_image_format,
                           '/fake/path', fmt)
 
@@ -1058,11 +1057,11 @@ class ImageInspectionTest(base.IronicAgentTest):
     def test_image_inspection_fail_safety_check(self, mock_fi):
         inspector = MockFormatInspectorCls('qcow2', 0, False)
         mock_fi.return_value = inspector
-        self.assertRaises(InvalidImage, disk_utils._image_inspection,
+        self.assertRaises(errors.InvalidImage, disk_utils._image_inspection,
                           '/fake/path')
 
     @mock.patch.object(format_inspector, 'detect_file_format', autospec=True)
     def test_image_inspection_fail_format_error(self, mock_fi):
         mock_fi.side_effect = format_inspector.ImageFormatError
-        self.assertRaises(InvalidImage, disk_utils._image_inspection,
+        self.assertRaises(errors.InvalidImage, disk_utils._image_inspection,
                           '/fake/path')

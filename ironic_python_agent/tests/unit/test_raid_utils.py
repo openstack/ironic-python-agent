@@ -12,7 +12,6 @@
 
 from unittest import mock
 
-from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 
 from ironic_python_agent import disk_utils
@@ -158,7 +157,7 @@ class TestRaidUtils(base.IronicAgentTest):
     @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
                        return_value='/dev/md42')
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
     def test_prepare_boot_partitions_for_softraid_uefi_gpt(
             self, mock_efi_part, mock_execute, mock_dispatch,
@@ -216,9 +215,9 @@ class TestRaidUtils(base.IronicAgentTest):
     @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
                        return_value='/dev/md42')
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(disk_utils, 'find_efi_partition', autospec=True)
-    @mock.patch.object(ilib_utils, 'mkfs', autospec=True)
+    @mock.patch.object(utils, 'mkfs', autospec=True)
     def test_prepare_boot_partitions_for_softraid_uefi_gpt_esp_not_found(
             self, mock_mkfs, mock_efi_part, mock_execute, mock_dispatch,
             mock_free_raid_device, mock_rescan, mock_find_esp):
@@ -271,7 +270,7 @@ class TestRaidUtils(base.IronicAgentTest):
     @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
                        return_value='/dev/md42')
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_prepare_boot_partitions_for_softraid_uefi_gpt_efi_provided(
             self, mock_execute, mock_dispatch, mock_free_raid_device,
             mock_rescan, mock_find_esp):
@@ -321,7 +320,7 @@ class TestRaidUtils(base.IronicAgentTest):
         self.assertEqual(efi_part, '/dev/md42')
 
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True,
                        return_value='msdos')
     def test_prepare_boot_partitions_for_softraid_bios_msdos(
@@ -339,7 +338,7 @@ class TestRaidUtils(base.IronicAgentTest):
         self.assertIsNone(efi_part)
 
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch.object(ilib_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(disk_utils, 'get_partition_table_type', autospec=True,
                        return_value='gpt')
     def test_prepare_boot_partitions_for_softraid_bios_gpt(

@@ -14,10 +14,10 @@ import copy
 import re
 import shlex
 
-from ironic_lib import utils as il_utils
 from oslo_concurrency import processutils
 from oslo_log import log as logging
 
+from ironic_python_agent import device_hints
 from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent import utils
@@ -55,7 +55,7 @@ def get_block_devices_for_raid(block_devices, logical_disks):
             matching = []
             for phys_disk in logical_disk['physical_disks']:
                 candidates = [
-                    dev['name'] for dev in il_utils.find_devices_by_hints(
+                    dev['name'] for dev in device_hints.find_devices_by_hints(
                         serialized_devs, phys_disk)
                 ]
                 if not candidates:
@@ -404,7 +404,7 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
             utils.execute('wipefs', '-a', efi_part)
         else:
             fslabel = 'efi-part'
-            il_utils.mkfs(fs='vfat', path=md_device, label=fslabel)
+            utils.mkfs(fs='vfat', path=md_device, label=fslabel)
 
         return md_device
 

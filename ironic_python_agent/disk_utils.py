@@ -26,8 +26,6 @@ import re
 import stat
 import time
 
-from ironic_lib import exception
-from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import excutils
@@ -37,6 +35,7 @@ import tenacity
 from ironic_python_agent import disk_partitioner
 from ironic_python_agent import errors
 from ironic_python_agent import qemu_img
+from ironic_python_agent import utils
 
 CONF = cfg.CONF
 
@@ -364,7 +363,7 @@ def is_block_device(dev):
     msg = ("Unable to stat device %(dev)s after attempting to verify "
            "%(attempts)d times.") % {'dev': dev, 'attempts': attempts}
     LOG.error(msg)
-    raise exception.InstanceDeployFailure(msg)
+    raise errors.DeploymentError(msg)
 
 
 def dd(src, dst, conv_flags=None):
@@ -578,14 +577,12 @@ def destroy_disk_metadata(dev, node_uuid):
 
     try:
         wait_for_disk_to_become_available(dev)
-    except exception.IronicException as e:
-        raise exception.InstanceDeployFailure(
-            _('Destroying metadata failed on device %(device)s. '
-              'Error: %(error)s')
-            % {'device': dev, 'error': e})
+    except errors.RESTError as e:
+        raise errors.DeploymentError(
+            f'Destroying metadata failed on device {dev}s. Error: {e}')
 
-    LOG.info("Disk metadata on %(dev)s successfully destroyed for node "
-             "%(node)s", {'dev': dev, 'node': node_uuid})
+    LOG.info(f"Disk metadata on {dev} successfully destroyed for node "
+             f"{node_uuid}")
 
 
 def _fix_gpt_structs(device, node_uuid):
@@ -608,7 +605,7 @@ def _fix_gpt_structs(device, node_uuid):
                'for node %(node)s. Error: %(error)s' %
                {'disk': device, 'node': node_uuid, 'error': e})
         LOG.error(msg)
-        raise exception.InstanceDeployFailure(msg)
+        raise errors.DeploymentError(msg)
 
 
 def fix_gpt_partition(device, node_uuid):
@@ -630,7 +627,7 @@ def fix_gpt_partition(device, node_uuid):
                'for node %(node)s. Error: %(error)s' %
                {'disk': device, 'node': node_uuid, 'error': e})
         LOG.error(msg)
-        raise exception.InstanceDeployFailure(msg)
+        raise errors.DeploymentError(msg)
 
 
 def udev_settle():
@@ -785,13 +782,13 @@ def wait_for_disk_to_become_available(device):
         retry(_wait_for_disk)()
     except tenacity.RetryError:
         if pids[0]:
-            raise exception.IronicException(
+            raise errors.DeviceNotFound(
                 ('Processes with the following PIDs are holding '
                  'device %(device)s: %(pids)s. '
                  'Timed out waiting for completion.')
                 % {'device': device, 'pids': ', '.join(pids[0])})
         else:
-            raise exception.IronicException(
+            raise errors.DeviceNotFound(
                 ('Fuser exited with "%(fuser_err)s" while checking '
                  'locks for device %(device)s. Timed out waiting for '
                  'completion.') % {'device': device, 'fuser_err': stderr[0]})

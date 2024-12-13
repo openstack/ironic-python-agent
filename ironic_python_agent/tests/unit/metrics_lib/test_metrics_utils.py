@@ -15,8 +15,8 @@
 
 from oslo_config import cfg
 
+from ironic_python_agent import errors
 from ironic_python_agent.metrics_lib import metrics as metricslib
-from ironic_python_agent.metrics_lib import metrics_exception as exception
 from ironic_python_agent.metrics_lib import metrics_statsd
 from ironic_python_agent.metrics_lib import metrics_utils
 from ironic_python_agent.tests.unit import base
@@ -40,15 +40,15 @@ class TestGetLogger(base.IronicAgentTest):
         CONF.clear_override('backend', group='metrics')
 
     def test_nonexisting_backend(self):
-        self.assertRaises(exception.InvalidMetricConfig,
+        self.assertRaises(errors.InvalidMetricConfig,
                           metrics_utils.get_metrics_logger, 'foo', 'test')
 
     def test_numeric_prefix(self):
-        self.assertRaises(exception.InvalidMetricConfig,
+        self.assertRaises(errors.InvalidMetricConfig,
                           metrics_utils.get_metrics_logger, 1)
 
     def test_numeric_list_prefix(self):
-        self.assertRaises(exception.InvalidMetricConfig,
+        self.assertRaises(errors.InvalidMetricConfig,
                           metrics_utils.get_metrics_logger, (1, 2))
 
     def test_default_prefix(self):

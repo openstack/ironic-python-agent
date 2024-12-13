@@ -15,17 +15,16 @@
 
 from unittest import mock
 
-from ironic_lib import exception
-from ironic_lib.tests import base
-from ironic_lib import utils
-
 from ironic_python_agent import disk_partitioner
+from ironic_python_agent import errors
+from ironic_python_agent.tests.unit import base
+from ironic_python_agent import utils
 
 
 CONF = disk_partitioner.CONF
 
 
-class DiskPartitionerTestCase(base.IronicLibTestCase):
+class DiskPartitionerTestCase(base.IronicAgentTest):
 
     def test_add_partition(self):
         dp = disk_partitioner.DiskPartitioner('/dev/fake')
@@ -157,7 +156,7 @@ class DiskPartitionerTestCase(base.IronicLibTestCase):
             # Test as if the 'busybox' version of 'fuser' which does not have
             # stderr output
             mock_utils_exc.return_value = ("10000 10001", '')
-            self.assertRaises(exception.InstanceDeployFailure, dp.commit)
+            self.assertRaises(errors.DeploymentError, dp.commit)
 
         mock_disk_partitioner_exec.assert_called_once_with(
             mock.ANY, 'mklabel', 'msdos',
@@ -190,7 +189,7 @@ class DiskPartitionerTestCase(base.IronicLibTestCase):
             mock_gp.return_value = fake_parts
             mock_utils_exc.return_value = ('', "Specified filename /dev/fake"
                                                " does not exist.")
-            self.assertRaises(exception.InstanceDeployFailure, dp.commit)
+            self.assertRaises(errors.DeploymentError, dp.commit)
 
         mock_disk_partitioner_exec.assert_called_once_with(
             mock.ANY, 'mklabel', 'msdos',
