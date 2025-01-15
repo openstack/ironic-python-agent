@@ -227,7 +227,7 @@ def create_raid_device(index, logical_disk):
     volume_name = logical_disk.get('volume_name')
     try:
         if volume_name is None:
-            volume_name = md_device
+            volume_name = 'md%d' % index
         LOG.debug("Creating md device %(dev)s with name %(name)s"
                   "on %(comp)s",
                   {'dev': md_device, 'name': volume_name,
