@@ -156,6 +156,11 @@ class ImageDownloadError(RESTError):
         super(ImageDownloadError, self).__init__(details)
 
 
+class ImageDownloadOutofSpaceError(ImageDownloadError):
+    """Raised when an image download fails due to insufficient storage."""
+    pass
+
+
 class ImageChecksumError(RESTError):
     """Error raised when an image fails to verify against its checksum."""
 

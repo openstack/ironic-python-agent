@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fail fast when encountering disk space errors during image
+    downloads instead of attempting futile retries.

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
 import os
 import tempfile
 import time
@@ -1774,6 +1775,36 @@ class TestImageDownload(base.IronicAgentTest):
         self.assertEqual(3, requests_mock.call_count)
         sleep_mock.assert_called_with(10)
         self.assertEqual(2, sleep_mock.call_count)
+
+    @mock.patch('time.sleep', autospec=True)
+    def test_download_image_no_space_error_fatal(self, sleep_mock,
+                                                 requests_mock, hash_mock):
+        content = ['SpongeBob', 'SquarePants']
+        response = requests_mock.return_value
+        response.status_code = 200
+        response.iter_content.return_value = content
+
+        image_info = _build_fake_image_info()
+        hash_mock.return_value.hexdigest.return_value = image_info[
+            'os_hash_value']
+
+        mock_open = mock.mock_open()
+        mock_file = mock_open.return_value.__enter__.return_value
+        mock_file.write.side_effect = OSError(errno.ENOSPC,
+                                              'No space left on device')
+
+        with mock.patch('builtins.open', mock_open):
+            self.assertRaises(
+                errors.ImageDownloadOutofSpaceError,
+                standby._download_image,
+                image_info
+            )
+
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
+                                              stream=True, proxies={},
+                                              timeout=60)
+        sleep_mock.assert_not_called()
 
     @mock.patch.object(standby.LOG, 'warning', autospec=True)
     def test_download_image_and_checksum(self, warn_mock, requests_mock,

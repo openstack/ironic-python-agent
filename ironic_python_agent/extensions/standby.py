@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
 import hashlib
 import os
 import re
@@ -679,6 +680,8 @@ def _download_image(image_info):
 
     :param image_info: Image information dictionary.
     :raises: ImageDownloadError if the image download fails for any reason.
+    :raises: ImageDownloadOutofSpaceError if the image download fails
+             due to insufficient storage space.
     :raises: ImageChecksumError if the downloaded image's checksum does not
              match the one reported in image_info.
     """
@@ -691,12 +694,24 @@ def _download_image(image_info):
             with open(image_location, 'wb') as f:
                 try:
                     for chunk in image_download:
-                        f.write(chunk)
+                        try:
+                            f.write(chunk)
+                        except OSError as e:
+                            if e.errno == errno.ENOSPC:
+                                msg = ('Unable to write image to {}. Error: {}'
+                                       ).format(image_location, str(e))
+                                raise errors.ImageDownloadOutofSpaceError(
+                                    image_info['id'], msg)
+                            raise
                 except Exception as e:
+                    if isinstance(e, errors.ImageDownloadOutofSpaceError):
+                        raise
                     msg = 'Unable to write image to {}. Error: {}'.format(
                         image_location, str(e))
                     raise errors.ImageDownloadError(image_info['id'], msg)
             image_download.verify_image(image_location)
+        except errors.ImageDownloadOutofSpaceError:
+            raise
         except (errors.ImageDownloadError,
                 errors.ImageChecksumError) as e:
             if attempt == CONF.image_download_connection_retries:
