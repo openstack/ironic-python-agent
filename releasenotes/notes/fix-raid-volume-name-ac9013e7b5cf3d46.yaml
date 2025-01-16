@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The use of md_device as the default volume name if the volume name of a RAID
+    array hasn't been specified caused a 'Not POSIX compatible' error.
+    This has been fixed by using just the last part of the md_device.
+    Fixes https://bugs.launchpad.net/ironic-python-agent/+bug/2073406
