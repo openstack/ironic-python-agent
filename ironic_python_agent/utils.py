@@ -19,9 +19,11 @@ import copy
 import errno
 import glob
 import io
+import ipaddress
 import json
 import os
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -29,11 +31,12 @@ import sys
 import tarfile
 import tempfile
 import time
+import warnings
 
-from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import units
 import requests
 import tenacity
@@ -71,12 +74,135 @@ DEVICE_EXTRACTOR = re.compile(r'^(?:(.*\d)p|(.*\D))(?:\d+)$')
 _EARLY_LOG_BUFFER = []
 
 
-def execute(*cmd, **kwargs):
-    """Convenience wrapper around ironic_lib's execute() method.
+def execute(*cmd, use_standard_locale=False, log_stdout=True, **kwargs):
+    """Convenience wrapper around oslo's execute() method.
 
-    Executes and logs results from a system command.
+    Executes and logs results from a system command. See docs for
+    oslo_concurrency.processutils.execute for usage.
+
+    :param cmd: positional arguments to pass to processutils.execute()
+    :param use_standard_locale: Defaults to False. If set to True,
+                                execute command with standard locale
+                                added to environment variables.
+    :param log_stdout: Defaults to True. If set to True, logs the output.
+    :param kwargs: keyword arguments to pass to processutils.execute()
+    :returns: (stdout, stderr) from process execution
+    :raises: UnknownArgumentError on receiving unknown arguments
+    :raises: ProcessExecutionError
+    :raises: OSError
     """
-    return ironic_utils.execute(*cmd, **kwargs)
+    if use_standard_locale:
+        env = kwargs.pop('env_variables', os.environ.copy())
+        env['LC_ALL'] = 'C'
+        kwargs['env_variables'] = env
+
+    if kwargs.pop('run_as_root', False):
+        warnings.warn("run_as_root is deprecated and has no effect",
+                      DeprecationWarning)
+
+    def _log(stdout, stderr):
+        if log_stdout:
+            try:
+                LOG.debug('Command stdout is: "%s"', stdout)
+            except UnicodeEncodeError:
+                LOG.debug('stdout contains invalid UTF-8 characters')
+                stdout = (stdout.encode('utf8', 'surrogateescape')
+                          .decode('utf8', 'ignore'))
+                LOG.debug('Command stdout is: "%s"', stdout)
+        try:
+            LOG.debug('Command stderr is: "%s"', stderr)
+        except UnicodeEncodeError:
+            LOG.debug('stderr contains invalid UTF-8 characters')
+            stderr = (stderr.encode('utf8', 'surrogateescape')
+                      .decode('utf8', 'ignore'))
+            LOG.debug('Command stderr is: "%s"', stderr)
+
+    try:
+        result = processutils.execute(*cmd, **kwargs)
+    except FileNotFoundError:
+        with excutils.save_and_reraise_exception():
+            LOG.debug('Command not found: "%s"', ' '.join(map(str, cmd)))
+    except processutils.ProcessExecutionError as exc:
+        with excutils.save_and_reraise_exception():
+            _log(exc.stdout, exc.stderr)
+    else:
+        _log(result[0], result[1])
+        return result
+
+
+def mkfs(fs, path, label=None):
+    """Format a file or block device
+
+    :param fs: Filesystem type (examples include 'swap', 'ext3', 'ext4'
+               'btrfs', etc.)
+    :param path: Path to file or block device to format
+    :param label: Volume label to use
+    """
+    if fs == 'swap':
+        args = ['mkswap']
+    else:
+        args = ['mkfs', '-t', fs]
+    # add -F to force no interactive execute on non-block device.
+    if fs in ('ext3', 'ext4'):
+        args.extend(['-F'])
+    if label:
+        if fs in ('msdos', 'vfat'):
+            label_opt = '-n'
+        else:
+            label_opt = '-L'
+        args.extend([label_opt, label])
+    args.append(path)
+    try:
+        execute(*args, use_standard_locale=True)
+    except processutils.ProcessExecutionError as e:
+        with excutils.save_and_reraise_exception() as ctx:
+            if os.strerror(errno.ENOENT) in e.stderr:
+                ctx.reraise = False
+                LOG.exception('Failed to make file system. '
+                              'File system %s is not supported.', fs)
+                raise errors.FileSystemNotSupported(fs=fs)
+            else:
+                LOG.exception('Failed to create a file system '
+                              'in %(path)s. Error: %(error)s',
+                              {'path': path, 'error': e})
+
+
+def try_execute(*cmd, **kwargs):
+    """The same as execute but returns None on error.
+
+    Executes and logs results from a system command. See docs for
+    oslo_concurrency.processutils.execute for usage.
+
+    Instead of raising an exception on failure, this method simply
+    returns None in case of failure.
+
+    :param cmd: positional arguments to pass to processutils.execute()
+    :param kwargs: keyword arguments to pass to processutils.execute()
+    :raises: UnknownArgumentError on receiving unknown arguments
+    :returns: tuple of (stdout, stderr) or None in some error cases
+    """
+    try:
+        return execute(*cmd, **kwargs)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        LOG.debug('Command failed: %s', e)
+
+
+def parse_device_tags(output):
+    """Parse tags from the lsblk/blkid output.
+
+    Parses format KEY="VALUE" KEY2="VALUE2".
+
+    :return: a generator yielding dicts with information from each line.
+    """
+    for line in output.strip().split('\n'):
+        if line.strip():
+            try:
+                yield {key: value for key, value in
+                       (v.split('=', 1) for v in shlex.split(line))}
+            except ValueError as err:
+                raise ValueError(
+                    _("Malformed blkid/lsblk output line '%(line)s': %(err)s")
+                    % {'line': line, 'err': err})
 
 
 @contextlib.contextmanager
@@ -108,15 +234,15 @@ def mounted(source, dest=None, opts=None, fs_type=None,
 
     mounted = False
     try:
-        ironic_utils.execute("mount", source, dest, *params,
-                             attempts=mount_attempts, delay_on_retry=True)
+        execute("mount", source, dest, *params,
+                attempts=mount_attempts, delay_on_retry=True)
         mounted = True
         yield dest
     finally:
         if mounted:
             try:
-                ironic_utils.execute("umount", dest, attempts=umount_attempts,
-                                     delay_on_retry=True)
+                execute("umount", dest, attempts=umount_attempts,
+                        delay_on_retry=True)
             except (EnvironmentError,
                     processutils.ProcessExecutionError) as exc:
                 LOG.warning(
@@ -132,6 +258,16 @@ def mounted(source, dest=None, opts=None, fs_type=None,
                 LOG.warning(
                     'Unable to remove temporary location %(dest)s: %(err)s',
                     {'dest': dest, 'err': exc})
+
+
+def unlink_without_raise(path):
+    try:
+        os.unlink(path)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            return
+        else:
+            LOG.warning(f"Failed to unlink {path}, error: {e}")
 
 
 def _read_params_from_file(filepath):
@@ -181,7 +317,7 @@ def _find_vmedia_device_by_labels(labels):
         _early_log('Was unable to execute the lsblk command. %s', e)
         return
 
-    for device in ironic_utils.parse_device_tags(lsblk_output):
+    for device in parse_device_tags(lsblk_output):
         for label in labels:
             if label.upper() == device['LABEL'].upper():
                 candidates.append(device['KNAME'])
@@ -299,7 +435,7 @@ def _check_vmedia_device(vmedia_device_file):
                    'virtual media identification. %s', e)
         return False
     try:
-        for device in ironic_utils.parse_device_tags(output):
+        for device in parse_device_tags(output):
             if device['TYPE'] == 'part':
                 _early_log('Excluding device %s from virtual media'
                            'consideration as it is a partition.',
@@ -1040,3 +1176,25 @@ def is_char_device(path):
         # Likely because of insufficient permission,
         # race conditions or I/O related errors.
         return False
+
+
+def get_route_source(dest, ignore_link_local=True):
+    """Get the IP address to send packages to destination."""
+    try:
+        out, _err = execute('ip', 'route', 'get', dest)
+    except (EnvironmentError, processutils.ProcessExecutionError) as e:
+        LOG.warning('Cannot get route to host %(dest)s: %(err)s',
+                    {'dest': dest, 'err': e})
+        return
+
+    try:
+        source = out.strip().split('\n')[0].split('src')[1].split()[0]
+        if (ipaddress.ip_address(source).is_link_local
+                and ignore_link_local):
+            LOG.debug('Ignoring link-local source to %(dest)s: %(rec)s',
+                      {'dest': dest, 'rec': out})
+            return
+        return source
+    except (IndexError, ValueError):
+        LOG.debug('No route to host %(dest)s, route record: %(rec)s',
+                  {'dest': dest, 'rec': out})

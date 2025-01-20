@@ -22,8 +22,6 @@ import time
 from urllib import parse as urlparse
 
 import eventlet
-from ironic_lib import exception as lib_exc
-from ironic_lib import mdns
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -36,6 +34,7 @@ from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 from ironic_python_agent import inspector
 from ironic_python_agent import ironic_api_client
+from ironic_python_agent import mdns
 from ironic_python_agent import netutils
 from ironic_python_agent import utils
 
@@ -47,9 +46,6 @@ NETWORK_WAIT_TIMEOUT = 60
 
 # Time(in seconds) to wait before reattempt
 NETWORK_WAIT_RETRY = 5
-
-cfg.CONF.import_group('metrics', 'ironic_lib.metrics_utils')
-cfg.CONF.import_group('metrics_statsd', 'ironic_lib.metrics_statsd')
 
 Host = collections.namedtuple('Host', ['hostname', 'port'])
 
@@ -213,7 +209,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         if (not api_url or api_url == 'mdns') and not standalone:
             try:
                 api_url, params = mdns.get_endpoint('baremetal')
-            except lib_exc.ServiceLookupFailure:
+            except errors.ServiceLookupFailure:
                 if api_url:
                     # mDNS explicitly requested, report failure.
                     raise

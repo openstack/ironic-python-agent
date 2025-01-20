@@ -15,8 +15,6 @@ import shutil
 import tempfile
 from unittest import mock
 
-from ironic_lib import exception
-from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 import requests
@@ -28,6 +26,7 @@ from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
 from ironic_python_agent import qemu_img
 from ironic_python_agent.tests.unit import base
+from ironic_python_agent import utils
 
 
 CONF = cfg.CONF
@@ -114,7 +113,7 @@ class GetConfigdriveTestCase(base.IronicAgentTest):
 
     def test_get_configdrive_bad_url(self, mock_requests, mock_copy):
         mock_requests.side_effect = requests.exceptions.RequestException
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           partition_utils.get_configdrive,
                           'http://1.2.3.4/cd', 'fake-node-uuid')
         self.assertFalse(mock_copy.called)
@@ -122,13 +121,13 @@ class GetConfigdriveTestCase(base.IronicAgentTest):
     def test_get_configdrive_bad_status_code(self, mock_requests, mock_copy):
         mock_requests.return_value = mock.MagicMock(text='Not found',
                                                     status_code=404)
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           partition_utils.get_configdrive,
                           'http://1.2.3.4/cd', 'fake-node-uuid')
         self.assertFalse(mock_copy.called)
 
     def test_get_configdrive_base64_error(self, mock_requests, mock_copy):
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           partition_utils.get_configdrive,
                           'malformed', 'fake-node-uuid')
         self.assertFalse(mock_copy.called)
@@ -139,7 +138,7 @@ class GetConfigdriveTestCase(base.IronicAgentTest):
         mock_requests.return_value = mock.MagicMock(content='Zm9vYmFy',
                                                     status_code=200)
         mock_copy.side_effect = IOError
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           partition_utils.get_configdrive,
                           'http://1.2.3.4/cd', 'fake-node-uuid')
         mock_requests.assert_called_once_with('http://1.2.3.4/cd',
@@ -212,7 +211,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
                         'NAME="fake13" LABEL="%s"\n' %
                         (label, label))
         mock_execute.side_effect = [(None, ''), (lsblk_output, '')]
-        self.assertRaisesRegex(exception.InstanceDeployFailure,
+        self.assertRaisesRegex(errors.DeploymentError,
                                'fake .*fake12 .*fake13',
                                partition_utils.get_labelled_partition,
                                self.dev, self.config_part_label,
@@ -228,7 +227,7 @@ class GetLabelledPartitionTestCases(base.IronicAgentTest):
     @mock.patch.object(partition_utils.LOG, 'error', autospec=True)
     def test_get_partition_exc(self, mock_log, mock_execute):
         mock_execute.side_effect = processutils.ProcessExecutionError
-        self.assertRaisesRegex(exception.InstanceDeployFailure,
+        self.assertRaisesRegex(errors.DeploymentError,
                                'Failed to retrieve partition labels',
                                partition_utils.get_labelled_partition,
                                self.dev, self.config_part_label,
@@ -273,7 +272,7 @@ class IsDiskLargerThanMaxSizeTestCases(base.IronicAgentTest):
     @mock.patch.object(partition_utils.LOG, 'error', autospec=True)
     def test_is_disk_larger_than_max_size_exc(self, mock_log, mock_execute):
         mock_execute.side_effect = processutils.ProcessExecutionError
-        self.assertRaisesRegex(exception.InstanceDeployFailure,
+        self.assertRaisesRegex(errors.DeploymentError,
                                'Failed to get size of disk',
                                partition_utils._is_disk_larger_than_max_size,
                                self.dev, self.node_uuid)
@@ -316,7 +315,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
 
     def test_no_root_partition(self):
         self.mock_ibd.return_value = False
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           partition_utils.work_on_disk, self.dev, self.root_mb,
                           self.swap_mb, self.ephemeral_mb,
                           self.ephemeral_format, self.image_path,
@@ -335,7 +334,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         self.mock_ibd.side_effect = iter([True, False])
         calls = [mock.call(self.root_part),
                  mock.call(self.swap_part)]
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           partition_utils.work_on_disk, self.dev, self.root_mb,
                           self.swap_mb, self.ephemeral_mb,
                           self.ephemeral_format, self.image_path,
@@ -364,7 +363,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         calls = [mock.call(root_part),
                  mock.call(swap_part),
                  mock.call(ephemeral_part)]
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           partition_utils.work_on_disk, self.dev, self.root_mb,
                           self.swap_mb, ephemeral_mb, ephemeral_format,
                           self.image_path, self.node_uuid)
@@ -395,7 +394,7 @@ class WorkOnDiskTestCase(base.IronicAgentTest):
         calls = [mock.call(root_part),
                  mock.call(swap_part),
                  mock.call(configdrive_part)]
-        self.assertRaises(exception.InstanceDeployFailure,
+        self.assertRaises(errors.DeploymentError,
                           partition_utils.work_on_disk, self.dev, self.root_mb,
                           self.swap_mb, self.ephemeral_mb,
                           self.ephemeral_format, self.image_path,
@@ -1031,7 +1030,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
         # 2 primary partitions, 0 logical partitions
         mock_count.return_value = (2, 0)
 
-        self.assertRaisesRegex(exception.InstanceDeployFailure,
+        self.assertRaisesRegex(errors.DeploymentError,
                                'Disk partitioning failed on device',
                                partition_utils.create_config_drive_partition,
                                self.node_uuid, self.dev, config_url)
@@ -1103,7 +1102,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
 
         mock_execute.side_effect = processutils.ProcessExecutionError
 
-        self.assertRaisesRegex(exception.InstanceDeployFailure,
+        self.assertRaisesRegex(errors.DeploymentError,
                                'Failed to create config drive on disk',
                                partition_utils.create_config_drive_partition,
                                self.node_uuid, self.dev, config_url)
@@ -1161,7 +1160,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
         # 4 primary partitions, 0 logical partitions
         mock_count.return_value = (4, 0)
 
-        self.assertRaisesRegex(exception.InstanceDeployFailure,
+        self.assertRaisesRegex(errors.DeploymentError,
                                'Config drive cannot be created for node',
                                partition_utils.create_config_drive_partition,
                                self.node_uuid, self.dev, config_url)
@@ -1191,7 +1190,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
         mock_get_configdrive.return_value = (configdrive_mb, configdrive_file)
         mock_get_labelled_partition.return_value = None
 
-        self.assertRaisesRegex(exception.InstanceDeployFailure,
+        self.assertRaisesRegex(errors.DeploymentError,
                                'Config drive size exceeds maximum limit',
                                partition_utils.create_config_drive_partition,
                                self.node_uuid, self.dev, config_url)
@@ -1223,7 +1222,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
         mock_get_labelled_partition.return_value = None
         mock_count.side_effect = ValueError('Booooom')
 
-        self.assertRaisesRegex(exception.InstanceDeployFailure,
+        self.assertRaisesRegex(errors.DeploymentError,
                                'Failed to check the number of primary ',
                                partition_utils.create_config_drive_partition,
                                self.node_uuid, self.dev, config_url)
@@ -1501,7 +1500,7 @@ class TestConfigDriveTestRecovery(base.IronicAgentTest):
             mock_execute):
         mock_mkfs.side_effect = processutils.ProcessExecutionError('boom')
         self.assertRaisesRegex(
-            exception.InstanceDeployFailure,
+            errors.DeploymentError,
             'A failure occurred while attempting to format.*',
             partition_utils._try_build_fat32_config_drive,
             self.fake_dev,
@@ -1516,3 +1515,14 @@ class TestConfigDriveTestRecovery(base.IronicAgentTest):
         mock_mkfs.assert_called_once_with(fs='vfat', path=self.fake_dev,
                                           label='CONFIG-2')
         mock_copy.assert_not_called()
+
+
+class IsHttpUrlTestCase(base.IronicAgentTest):
+
+    def test__is_http_url(self):
+        self.assertTrue(partition_utils._is_http_url('http://127.0.0.1'))
+        self.assertTrue(partition_utils._is_http_url('https://127.0.0.1'))
+        self.assertTrue(partition_utils._is_http_url('HTTP://127.1.2.3'))
+        self.assertTrue(partition_utils._is_http_url('HTTPS://127.3.2.1'))
+        self.assertFalse(partition_utils._is_http_url('Zm9vYmFy'))
+        self.assertFalse(partition_utils._is_http_url('11111111'))

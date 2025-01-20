@@ -18,7 +18,6 @@ import tempfile
 import time
 from unittest import mock
 
-from ironic_lib import exception
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import units
@@ -339,7 +338,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         image_info = _build_fake_image_info()
         validate_mock.return_value = (image_info['disk_format'], 0)
 
-        fix_gpt_mock.side_effect = exception.InstanceDeployFailure
+        fix_gpt_mock.side_effect = errors.DeploymentError
         standby._write_image(image_info, device)
 
     @mock.patch('ironic_python_agent.qemu_img.convert_image', autospec=True)
@@ -897,7 +896,7 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_python_agent.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
-    @mock.patch('ironic_lib.utils.execute', autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_python_agent.disk_utils.list_partitions',
                 autospec=True)
     @mock.patch.object(partition_utils, 'create_config_drive_partition',
@@ -948,7 +947,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertEqual({'root uuid': 'ROOT'},
                          self.agent_extension.partition_uuids)
 
-    @mock.patch('ironic_lib.utils.execute', autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch('ironic_python_agent.disk_utils.list_partitions',
                 autospec=True)
     @mock.patch.object(partition_utils, 'create_config_drive_partition',
@@ -1021,7 +1020,7 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_python_agent.disk_utils.get_disk_identifier',
                 lambda dev: 'ROOT')
-    @mock.patch('ironic_lib.utils.execute', autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     @mock.patch.object(partition_utils, 'create_config_drive_partition',
                        autospec=True)
     @mock.patch('ironic_python_agent.disk_utils.list_partitions',
@@ -1113,7 +1112,7 @@ class TestStandbyExtension(base.IronicAgentTest):
 
     @mock.patch('ironic_python_agent.disk_utils.get_disk_identifier',
                 side_effect=OSError, autospec=True)
-    @mock.patch('ironic_lib.utils.execute',
+    @mock.patch('ironic_python_agent.utils.execute',
                 autospec=True)
     @mock.patch('ironic_python_agent.disk_utils.list_partitions',
                 autospec=True)
@@ -1165,7 +1164,7 @@ class TestStandbyExtension(base.IronicAgentTest):
                                         attempts=mock.ANY)
         self.assertEqual({}, self.agent_extension.partition_uuids)
 
-    @mock.patch('ironic_lib.utils.execute', mock.Mock())
+    @mock.patch('ironic_python_agent.utils.execute', mock.Mock())
     @mock.patch('ironic_python_agent.disk_utils.list_partitions',
                 lambda _dev: [mock.Mock()])
     @mock.patch('ironic_python_agent.disk_utils.get_disk_identifier',

@@ -18,7 +18,6 @@ import json
 import os
 import time
 
-from ironic_lib import mdns
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -31,6 +30,7 @@ from ironic_python_agent import config
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
+from ironic_python_agent import mdns
 from ironic_python_agent import utils
 
 

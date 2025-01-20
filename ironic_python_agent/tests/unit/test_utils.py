@@ -25,35 +25,20 @@ import tempfile
 import time
 from unittest import mock
 
-from ironic_lib import utils as ironic_utils
 from oslo_concurrency import processutils
 import requests
 import testtools
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
-from ironic_python_agent.tests.unit import base as ironic_agent_base
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
-class ExecuteTestCase(ironic_agent_base.IronicAgentTest):
-    # This test case does call utils.execute(), so don't block access to the
-    # execute calls.
-    block_execute = False
-
-    # We do mock out the call to ironic_utils.execute() so we don't actually
-    # 'execute' anything, as utils.execute() calls ironic_utils.execute()
-    @mock.patch.object(ironic_utils, 'execute', autospec=True)
-    def test_execute(self, mock_execute):
-        utils.execute('/usr/bin/env', 'false', check_exit_code=False)
-        mock_execute.assert_called_once_with('/usr/bin/env', 'false',
-                                             check_exit_code=False)
-
-
 @mock.patch('shutil.rmtree', autospec=True)
-@mock.patch.object(ironic_utils, 'execute', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 @mock.patch('tempfile.mkdtemp', autospec=True)
-class MountedTestCase(ironic_agent_base.IronicAgentTest):
+class MountedTestCase(base.IronicAgentTest):
 
     def test_temporary(self, mock_temp, mock_execute, mock_rmtree):
         with utils.mounted('/dev/fake') as path:
@@ -123,7 +108,7 @@ class MountedTestCase(ironic_agent_base.IronicAgentTest):
         self.assertFalse(mock_rmtree.called)
 
 
-class GetAgentParamsTestCase(ironic_agent_base.IronicAgentTest):
+class GetAgentParamsTestCase(base.IronicAgentTest):
 
     @mock.patch('oslo_log.log.getLogger', autospec=True)
     @mock.patch('builtins.open', autospec=True)
@@ -352,7 +337,7 @@ class TestFailures(testtools.TestCase):
         self.assertRaisesRegex(FakeException, 'foo', f.raise_if_needed)
 
 
-class TestUtils(ironic_agent_base.IronicAgentTest):
+class TestUtils(base.IronicAgentTest):
 
     def _get_journalctl_output(self, mock_execute, lines=None, units=None):
         contents = b'Krusty Krab'
@@ -870,7 +855,7 @@ class TestRemoveKeys(testtools.TestCase):
 
 
 @mock.patch.object(utils, 'execute', autospec=True)
-class TestClockSyncUtils(ironic_agent_base.IronicAgentTest):
+class TestClockSyncUtils(base.IronicAgentTest):
 
     def test_determine_time_method_none(self, mock_execute):
         mock_execute.side_effect = OSError
@@ -1113,7 +1098,7 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
 
 
 @mock.patch.object(requests, 'get', autospec=True)
-class TestStreamingClient(ironic_agent_base.IronicAgentTest):
+class TestStreamingClient(base.IronicAgentTest):
 
     def test_ok(self, mock_get):
         client = utils.StreamingClient()
@@ -1142,7 +1127,7 @@ class TestStreamingClient(ironic_agent_base.IronicAgentTest):
         self.assertEqual(2, mock_get.call_count)
 
 
-class TestCheckVirtualMedia(ironic_agent_base.IronicAgentTest):
+class TestCheckVirtualMedia(base.IronicAgentTest):
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_check_vmedia_device(self, mock_execute):
@@ -1209,7 +1194,7 @@ class TestCheckVirtualMedia(ironic_agent_base.IronicAgentTest):
                                         '/dev/sdh')
 
 
-class TestCheckEarlyLogging(ironic_agent_base.IronicAgentTest):
+class TestCheckEarlyLogging(base.IronicAgentTest):
 
     @mock.patch.object(utils, 'LOG', autospec=True)
     def test_early_logging_goes_to_logger(self, mock_log):
@@ -1232,7 +1217,7 @@ class TestCheckEarlyLogging(ironic_agent_base.IronicAgentTest):
         info.assert_has_calls(expected_calls)
 
 
-class TestUnmountOfConfig(ironic_agent_base.IronicAgentTest):
+class TestUnmountOfConfig(base.IronicAgentTest):
 
     @mock.patch.object(utils, '_early_log', autospec=True)
     @mock.patch.object(os.path, 'ismount', autospec=True)
@@ -1247,3 +1232,188 @@ class TestUnmountOfConfig(ironic_agent_base.IronicAgentTest):
         mock_exec.assert_has_calls([
             mock.call('umount', '/mnt/config'),
             mock.call('umount', '/mnt/config')])
+
+
+class BareMetalUtilsTestCase(base.IronicAgentTest):
+
+    def test_unlink(self):
+        with mock.patch.object(os, "unlink", autospec=True) as unlink_mock:
+            unlink_mock.return_value = None
+            utils.unlink_without_raise("/fake/path")
+            unlink_mock.assert_called_once_with("/fake/path")
+
+    def test_unlink_ENOENT(self):
+        with mock.patch.object(os, "unlink", autospec=True) as unlink_mock:
+            unlink_mock.side_effect = OSError(errno.ENOENT)
+            utils.unlink_without_raise("/fake/path")
+            unlink_mock.assert_called_once_with("/fake/path")
+
+
+class ExecuteTestCase(base.IronicAgentTest):
+    # Allow calls to utils.execute() and related functions
+    block_execute = False
+
+    @mock.patch.object(processutils, 'execute', autospec=True)
+    @mock.patch.object(os.environ, 'copy', return_value={}, autospec=True)
+    def test_execute_use_standard_locale_no_env_variables(self, env_mock,
+                                                          execute_mock):
+        utils.execute('foo', use_standard_locale=True)
+        execute_mock.assert_called_once_with('foo',
+                                             env_variables={'LC_ALL': 'C'})
+
+    @mock.patch.object(processutils, 'execute', autospec=True)
+    def test_execute_use_standard_locale_with_env_variables(self,
+                                                            execute_mock):
+        utils.execute('foo', use_standard_locale=True,
+                      env_variables={'foo': 'bar'})
+        execute_mock.assert_called_once_with('foo',
+                                             env_variables={'LC_ALL': 'C',
+                                                            'foo': 'bar'})
+
+    @mock.patch.object(processutils, 'execute', autospec=True)
+    def test_execute_not_use_standard_locale(self, execute_mock):
+        utils.execute('foo', use_standard_locale=False,
+                      env_variables={'foo': 'bar'})
+        execute_mock.assert_called_once_with('foo',
+                                             env_variables={'foo': 'bar'})
+
+    @mock.patch.object(utils, 'LOG', autospec=True)
+    def _test_execute_with_log_stdout(self, log_mock, log_stdout=None):
+        with mock.patch.object(
+                processutils, 'execute', autospec=True) as execute_mock:
+            execute_mock.return_value = ('stdout', 'stderr')
+            if log_stdout is not None:
+                utils.execute('foo', log_stdout=log_stdout)
+            else:
+                utils.execute('foo')
+            execute_mock.assert_called_once_with('foo')
+            name, args, kwargs = log_mock.debug.mock_calls[0]
+            if log_stdout is False:
+                self.assertEqual(1, log_mock.debug.call_count)
+                self.assertNotIn('stdout', args[0])
+            else:
+                self.assertEqual(2, log_mock.debug.call_count)
+                self.assertIn('stdout', args[0])
+
+    def test_execute_with_log_stdout_default(self):
+        self._test_execute_with_log_stdout()
+
+    def test_execute_with_log_stdout_true(self):
+        self._test_execute_with_log_stdout(log_stdout=True)
+
+    def test_execute_with_log_stdout_false(self):
+        self._test_execute_with_log_stdout(log_stdout=False)
+
+    @mock.patch.object(utils, 'LOG', autospec=True)
+    @mock.patch.object(processutils, 'execute', autospec=True)
+    def test_execute_command_not_found(self, execute_mock, log_mock):
+        execute_mock.side_effect = FileNotFoundError
+        self.assertRaises(FileNotFoundError, utils.execute, 'foo')
+        execute_mock.assert_called_once_with('foo')
+        name, args, kwargs = log_mock.debug.mock_calls[0]
+        self.assertEqual(1, log_mock.debug.call_count)
+        self.assertIn('not found', args[0])
+
+
+class MkfsTestCase(base.IronicAgentTest):
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_mkfs(self, execute_mock):
+        utils.mkfs('ext4', '/my/block/dev')
+        utils.mkfs('msdos', '/my/msdos/block/dev')
+        utils.mkfs('swap', '/my/swap/block/dev')
+
+        expected = [mock.call('mkfs', '-t', 'ext4', '-F', '/my/block/dev',
+                              use_standard_locale=True),
+                    mock.call('mkfs', '-t', 'msdos', '/my/msdos/block/dev',
+                              use_standard_locale=True),
+                    mock.call('mkswap', '/my/swap/block/dev',
+                              use_standard_locale=True)]
+        self.assertEqual(expected, execute_mock.call_args_list)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_mkfs_with_label(self, execute_mock):
+        utils.mkfs('ext4', '/my/block/dev', 'ext4-vol')
+        utils.mkfs('msdos', '/my/msdos/block/dev', 'msdos-vol')
+        utils.mkfs('swap', '/my/swap/block/dev', 'swap-vol')
+
+        expected = [mock.call('mkfs', '-t', 'ext4', '-F', '-L', 'ext4-vol',
+                              '/my/block/dev',
+                              use_standard_locale=True),
+                    mock.call('mkfs', '-t', 'msdos', '-n', 'msdos-vol',
+                              '/my/msdos/block/dev',
+                              use_standard_locale=True),
+                    mock.call('mkswap', '-L', 'swap-vol',
+                              '/my/swap/block/dev',
+                              use_standard_locale=True)]
+        self.assertEqual(expected, execute_mock.call_args_list)
+
+    @mock.patch.object(utils, 'execute', autospec=True,
+                       side_effect=processutils.ProcessExecutionError(
+                           stderr=os.strerror(errno.ENOENT)))
+    def test_mkfs_with_unsupported_fs(self, execute_mock):
+        self.assertRaises(errors.FileSystemNotSupported,
+                          utils.mkfs, 'foo', '/my/block/dev')
+
+    @mock.patch.object(utils, 'execute', autospec=True,
+                       side_effect=processutils.ProcessExecutionError(
+                           stderr='fake'))
+    def test_mkfs_with_unexpected_error(self, execute_mock):
+        self.assertRaises(processutils.ProcessExecutionError, utils.mkfs,
+                          'ext4', '/my/block/dev', 'ext4-vol')
+
+
+@mock.patch.object(utils, 'execute', autospec=True)
+class GetRouteSourceTestCase(base.IronicAgentTest):
+
+    def test_get_route_source_ipv4(self, mock_execute):
+        mock_execute.return_value = ('XXX src 1.2.3.4 XXX\n    cache', None)
+
+        source = utils.get_route_source('XXX')
+        self.assertEqual('1.2.3.4', source)
+
+    def test_get_route_source_ipv6(self, mock_execute):
+        mock_execute.return_value = ('XXX src 1:2::3:4 metric XXX\n    cache',
+                                     None)
+
+        source = utils.get_route_source('XXX')
+        self.assertEqual('1:2::3:4', source)
+
+    def test_get_route_source_ipv6_linklocal(self, mock_execute):
+        mock_execute.return_value = (
+            'XXX src fe80::1234:1234:1234:1234 metric XXX\n    cache', None)
+
+        source = utils.get_route_source('XXX')
+        self.assertIsNone(source)
+
+    def test_get_route_source_ipv6_linklocal_allowed(self, mock_execute):
+        mock_execute.return_value = (
+            'XXX src fe80::1234:1234:1234:1234 metric XXX\n    cache', None)
+
+        source = utils.get_route_source('XXX', ignore_link_local=False)
+        self.assertEqual('fe80::1234:1234:1234:1234', source)
+
+    def test_get_route_source_indexerror(self, mock_execute):
+        mock_execute.return_value = ('XXX src \n    cache', None)
+
+        source = utils.get_route_source('XXX')
+        self.assertIsNone(source)
+
+
+class ParseDeviceTagsTestCase(base.IronicAgentTest):
+
+    def test_empty(self):
+        result = utils.parse_device_tags("\n\n")
+        self.assertEqual([], list(result))
+
+    def test_parse(self):
+        tags = """
+ PTUUID="00016a50" PTTYPE="dos" LABEL=""
+TYPE="vfat" PART_ENTRY_SCHEME="gpt" PART_ENTRY_NAME="EFI System Partition"
+        """
+        result = list(utils.parse_device_tags(tags))
+        self.assertEqual([
+            {'PTUUID': '00016a50', 'PTTYPE': 'dos', 'LABEL': ''},
+            {'TYPE': 'vfat', 'PART_ENTRY_SCHEME': 'gpt',
+             'PART_ENTRY_NAME': 'EFI System Partition'}
+        ], result)

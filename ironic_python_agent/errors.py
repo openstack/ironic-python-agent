@@ -390,3 +390,35 @@ class InvalidImage(DeploymentError):
 
     def __init__(self, details=None):
         super(InvalidImage, self).__init__(details)
+
+
+class FileSystemNotSupported(RESTError):
+    """Error raised when a file system is not supported."""
+
+    def __init__(self, fs):
+        details = (f"Failed to create a file system. File system {fs} is not "
+                   "supported.")
+        self.message = details
+        super(RESTError, self).__init__(details)
+
+
+class InvalidMetricConfig(RESTError):
+    """Error raised when a metric config is invalid."""
+
+    message = "Invalid value for metrics config option."
+
+
+class MetricsNotSupported(RESTError):
+    """Error raised when a metrics action is not supported."""
+
+    message = ("Metrics action is not supported. You may need to "
+               "adjust the [metrics] section in ironic.conf.")
+
+
+class ServiceLookupFailure(RESTError):
+    """Error raised when an mdns service lookup fails."""
+
+    def __init__(self, service="unknown"):
+        details = f"Cannot find {service} service through multicast."
+        self.message = details
+        super(RESTError, self).__init__(details)

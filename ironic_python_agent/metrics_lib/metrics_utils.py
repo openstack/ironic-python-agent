@@ -15,9 +15,9 @@
 
 from oslo_config import cfg
 
+from ironic_python_agent import errors
 from ironic_python_agent.metrics_lib import metrics
 from ironic_python_agent.metrics_lib import metrics_collector
-from ironic_python_agent.metrics_lib import metrics_exception as exception
 from ironic_python_agent.metrics_lib import metrics_statsd
 
 metrics_opts = [
@@ -70,7 +70,7 @@ def get_metrics_logger(prefix='', backend=None, host=None, delimiter='.'):
         msg = ("This metric prefix (%s) is of unsupported type. "
                "Value should be a string or None"
                % str(prefix))
-        raise exception.InvalidMetricConfig(msg)
+        raise errors.InvalidMetricConfig(msg)
 
     if CONF.metrics.prepend_host and host:
         if CONF.metrics.prepend_host_reverse:
@@ -99,4 +99,4 @@ def get_metrics_logger(prefix='', backend=None, host=None, delimiter='.'):
         msg = ("The backend is set to an unsupported type: "
                "%s. Value should be 'noop' or 'statsd'."
                % backend)
-        raise exception.InvalidMetricConfig(msg)
+        raise errors.InvalidMetricConfig(msg)

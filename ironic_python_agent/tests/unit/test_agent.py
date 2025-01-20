@@ -19,7 +19,6 @@ import time
 from unittest import mock
 from unittest.mock import sentinel
 
-from ironic_lib import exception as lib_exc
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from stevedore import extension
@@ -323,7 +322,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
         self.assertTrue(CONF.md5_enabled)
 
-    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
+    @mock.patch('ironic_python_agent.mdns.get_endpoint', autospec=True)
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -378,7 +377,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                          mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
 
-    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
+    @mock.patch('ironic_python_agent.mdns.get_endpoint', autospec=True)
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -625,7 +624,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
 
     @mock.patch.object(hardware, '_enable_multipath', autospec=True)
-    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
+    @mock.patch('ironic_python_agent.mdns.get_endpoint', autospec=True)
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -644,7 +643,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                                 mock_wait,
                                                 mock_mdns,
                                                 mock_mpath):
-        mock_mdns.side_effect = lib_exc.ServiceLookupFailure()
+        mock_mdns.side_effect = errors.ServiceLookupFailure()
         # If inspection_callback_url is configured and api_url is not when the
         # agent starts, ensure that the inspection will be called and wsgi
         # server will work as usual. Also, make sure api_client and heartbeater
@@ -684,7 +683,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertFalse(mock_dispatch.called)
 
     @mock.patch.object(hardware, '_enable_multipath', autospec=True)
-    @mock.patch('ironic_lib.mdns.get_endpoint', autospec=True)
+    @mock.patch('ironic_python_agent.mdns.get_endpoint', autospec=True)
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
@@ -703,7 +702,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                                mock_wait,
                                                mock_mdns,
                                                mock_mpath):
-        mock_mdns.side_effect = lib_exc.ServiceLookupFailure()
+        mock_mdns.side_effect = errors.ServiceLookupFailure()
         # If both api_url and inspection_callback_url are not configured when
         # the agent starts, ensure that the inspection will be skipped and wsgi
         # server will work as usual. Also, make sure api_client and heartbeater

@@ -18,7 +18,6 @@ import shutil
 import tempfile
 from unittest import mock
 
-from ironic_lib import utils as ilib_utils
 from oslo_concurrency import processutils
 
 from ironic_python_agent import disk_utils
@@ -30,13 +29,14 @@ from ironic_python_agent import partition_utils
 from ironic_python_agent import raid_utils
 from ironic_python_agent.tests.unit import base
 from ironic_python_agent.tests.unit.samples import hardware_samples as hws
+from ironic_python_agent import utils
 
 
 EFI_RESULT = ''.encode('utf-16')
 
 
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-@mock.patch.object(ilib_utils, 'execute', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 @mock.patch.object(tempfile, 'mkdtemp', lambda *_: '/tmp/fake-dir')
 @mock.patch.object(shutil, 'rmtree', lambda *_: None)
 class TestImageExtension(base.IronicAgentTest):

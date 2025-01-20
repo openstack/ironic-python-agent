@@ -13,20 +13,20 @@
 import os
 from unittest import mock
 
-from ironic_lib.tests import base
-from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import imageutils
 
 from ironic_python_agent import errors
 from ironic_python_agent import qemu_img
+from ironic_python_agent.tests.unit import base
+from ironic_python_agent import utils
 
 
 CONF = cfg.CONF
 
 
-class ImageInfoTestCase(base.IronicLibTestCase):
+class ImageInfoTestCase(base.IronicAgentTest):
 
     @mock.patch.object(os.path, 'exists', return_value=False, autospec=True)
     def test_image_info_path_doesnt_exist_disabled(self, path_exists_mock):
@@ -79,7 +79,7 @@ class ImageInfoTestCase(base.IronicLibTestCase):
         image_info_mock.assert_not_called()
 
 
-class ConvertImageTestCase(base.IronicLibTestCase):
+class ConvertImageTestCase(base.IronicAgentTest):
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_convert_image_disabled(self, execute_mock):

@@ -13,7 +13,6 @@
 import logging
 import os
 
-from ironic_lib import utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import imageutils
@@ -21,6 +20,7 @@ from oslo_utils import units
 import tenacity
 
 from ironic_python_agent import errors
+from ironic_python_agent import utils
 
 """
 Imported from ironic_lib/qemu-img.py from commit

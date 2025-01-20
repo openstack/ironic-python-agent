@@ -22,9 +22,10 @@ https://opendev.org/openstack/ironic-lib/commit/42fa5d63861ba0f04b9a4f67212173d7
 
 import logging
 
-from ironic_lib import exception
-from ironic_lib import utils
 from oslo_config import cfg
+
+from ironic_python_agent import errors
+from ironic_python_agent import utils
 
 CONF = cfg.CONF
 
@@ -116,7 +117,7 @@ class DiskPartitioner(object):
         try:
             from ironic_python_agent import disk_utils  # circular dependency
             disk_utils.wait_for_disk_to_become_available(self._device)
-        except exception.IronicException as e:
-            raise exception.InstanceDeployFailure(
+        except errors.RESTError as e:
+            raise errors.DeploymentError(
                 ('Disk partitioning failed on device %(device)s. '
                  'Error: %(error)s') % {'device': self._device, 'error': e})

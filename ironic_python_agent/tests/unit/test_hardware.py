@@ -25,7 +25,6 @@ import stat
 import time
 from unittest import mock
 
-from ironic_lib import utils as il_utils
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_utils import units
@@ -349,7 +348,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertIn(if_names[0], result)
         self.assertEqual(expected_lldp_data, result)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bios_given_nic_name_ok(self, mock_execute):
         interface_name = 'eth0'
         mock_execute.return_value = ('em0\n', '')
@@ -358,7 +357,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mock_execute.assert_called_once_with('biosdevname', '-i',
                                              interface_name)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bios_given_nic_name_oserror(self, mock_execute):
         interface_name = 'eth0'
         mock_execute.side_effect = OSError()
@@ -367,7 +366,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mock_execute.assert_called_once_with('biosdevname', '-i',
                                              interface_name)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(hardware, 'LOG', autospec=True)
     def test_get_bios_given_nic_name_process_exec_err4(self, mock_log,
                                                        mock_execute):
@@ -384,7 +383,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mock_execute.assert_called_once_with('biosdevname', '-i',
                                              interface_name)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(hardware, 'LOG', autospec=True)
     def test_get_bios_given_nic_name_process_exec_err3(self, mock_log,
                                                        mock_execute):
@@ -404,7 +403,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_os_install_device(self, mocked_execute, mock_cached_node,
                                    mocked_listdir, mocked_readlink,
                                    mocked_mpath):
@@ -423,7 +422,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_os_install_device_multipath(
             self, mocked_execute, mock_cached_node,
             mocked_listdir, mocked_readlink,
@@ -502,7 +501,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_os_install_device_not_multipath(
             self, mocked_execute, mock_cached_node,
             mocked_listdir, mocked_readlink, mocked_mpath):
@@ -584,7 +583,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_os_install_device_raid(self, mocked_execute,
                                         mock_cached_node, mocked_listdir,
                                         mocked_readlink, mocked_mpath):
@@ -616,7 +615,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'readlink', autospec=True)
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_os_install_device_fails(self, mocked_execute,
                                          mock_cached_node,
                                          mocked_listdir, mocked_readlink,
@@ -943,7 +942,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             self.assertEqual('fake-vendor', vendor)
 
     @mock.patch("builtins.open", new_callable=mock.mock_open)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_cpus_max_mhz_flag_fallback(self, mocked_execute, mocked_open):
         mocked_execute.side_effect = [(hws.LSCPU_OUTPUT, '')]
 
@@ -966,7 +965,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(["WARNING:root:Test Placeholder"], cm.output)
 
     @mock.patch("builtins.open", new_callable=mock.mock_open)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_cpus_max_mhz_and_flag_fallback(
         self, mocked_execute, mocked_open
     ):
@@ -992,7 +991,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(["WARNING:root:Test Placeholder"], cm.output)
 
     @mock.patch("builtins.open", new_callable=mock.mock_open)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_cpus_multi(self, mocked_execute, mocked_open):
         mocked_execute.side_effect = [(hws.LSCPU_OUTPUT, '')]
         mocked_open.side_effect = [
@@ -1023,7 +1022,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(["WARNING:root:Test Placeholder"], cm.output)
 
     @mock.patch("builtins.open", new_callable=mock.mock_open)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_cpus_no_flags(self, mocked_execute, mocked_open):
         mocked_execute.side_effect = [(hws.LSCPU_OUTPUT_NO_FLAGS, '')]
 
@@ -1045,7 +1044,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(["WARNING:root:No CPU flags found"], cm.output)
 
     @mock.patch("builtins.open", new_callable=mock.mock_open)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_cpus_illegal_flags(self, mocked_execute, mocked_open):
         mocked_execute.side_effect = [(hws.LSCPU_OUTPUT_NO_FLAGS, '')]
         mocked_open.side_effect = [
@@ -1069,7 +1068,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             "WARNING:root:No CPU flags found"], cm.output)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_psutil_v1(self, mocked_execute, mocked_psutil):
         mocked_psutil.return_value.total = 3952 * 1024 * 1024
         mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_V1
@@ -1079,7 +1078,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(4096, mem.physical_mb)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_psutil_v2(self, mocked_execute, mocked_psutil):
         mocked_psutil.return_value.total = 3952 * 1024 * 1024
         mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_V2
@@ -1089,7 +1088,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(65536, mem.physical_mb)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_psutil_bank_size(self, mocked_execute, mocked_psutil):
         mocked_psutil.return_value.total = 3952 * 1024 * 1024
         mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_NO_MEMORY_BANK_SIZE
@@ -1099,7 +1098,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(65536, mem.physical_mb)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_psutil_exception_v1(self, mocked_execute,
                                             mocked_psutil):
         mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_V1
@@ -1110,7 +1109,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(4096, mem.physical_mb)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_psutil_exception_v2(self, mocked_execute,
                                             mocked_psutil):
         mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_V2
@@ -1121,7 +1120,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(65536, mem.physical_mb)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_lshw_exception(self, mocked_execute, mocked_psutil):
         mocked_execute.side_effect = OSError()
         mocked_psutil.return_value.total = 3952 * 1024 * 1024
@@ -1131,7 +1130,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertIsNone(mem.physical_mb)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_arm64_lshw(self, mocked_execute, mocked_psutil):
         mocked_psutil.return_value.total = 3952 * 1024 * 1024
         mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_ARM64
@@ -1141,7 +1140,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual(3952, mem.physical_mb)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_memory_lshw_list(self, mocked_execute, mocked_psutil):
         mocked_psutil.return_value.total = 3952 * 1024 * 1024
         mocked_execute.return_value = (f"[{hws.LSHW_JSON_OUTPUT_V2[0]}]", "")
@@ -1378,7 +1377,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device(self, mocked_execute, mocked_udev,
                                    mocked_dev_vendor, mock_listdir,
                                    mock_readlink):
@@ -1503,7 +1502,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_all_serial(self, mocked_execute,
                                               mocked_udev, mocked_dev_vendor,
                                               mock_listdir, mock_readlink):
@@ -1635,7 +1634,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_hctl_fail(self, mocked_execute, mocked_udev,
                                              mocked_dev_vendor,
                                              mocked_listdir,
@@ -1658,7 +1657,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_with_udev(self, mocked_execute, mocked_udev,
                                              mocked_dev_vendor, mocked_listdir,
                                              mocked_readlink, mocked_mpath):
@@ -1784,7 +1783,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(os, 'listdir', autospec=True)
     @mock.patch.object(hardware, '_get_device_info', autospec=True)
     @mock.patch.object(pyudev.Devices, 'from_device_file', autospec=False)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_list_all_block_device_with_only_udev(self,
                                                   mocked_execute,
                                                   mocked_udev,
@@ -1976,7 +1975,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_read_only_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_success(self, mocked_execute,
                                             mocked_ro_device,
                                             mocked_raid_member
@@ -2012,7 +2011,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_read_only_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_success_no_smartctl(self, mocked_execute,
                                                         mocked_ro_device,
                                                         mocked_raid_member):
@@ -2048,7 +2047,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_read_only_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_nosecurity_shred(self, mocked_execute,
                                                  mocked_ro_device,
                                                  mocked_raid_member
@@ -2077,7 +2076,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_read_only_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_notsupported_shred(self, mocked_execute,
                                                    mocked_ro_device,
                                                    mocked_raid_member
@@ -2109,7 +2108,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_read_only_device', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_virtual_media_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_smartctl_unsupported_shred(self,
                                                            mocked_execute,
                                                            mocked_vm_member,
@@ -2145,7 +2144,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_read_only_device', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_virtual_media_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_smartctl_fails_security_fallback_to_shred(
             self, mocked_execute, mocked_vm_member,
             mock_ro_device, mocked_raid_member):
@@ -2175,7 +2174,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_read_only_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_shred_uses_internal_info(self, mocked_execute,
                                                          mocked_ro_device,
                                                          mocked_raid_member
@@ -2209,7 +2208,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_read_only_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_shred_0_pass_no_zeroize(self, mocked_execute,
                                                         mock_read_only_member,
                                                         mocked_raid_member):
@@ -2285,7 +2284,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_exists.assert_called_once_with('/dev/disk/by-label/ir-vfd-dev')
         self.assertFalse(mocked_link.called)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_shred_fail_oserror(self, mocked_execute):
         mocked_execute.side_effect = OSError
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
@@ -2296,7 +2295,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             'shred', '--force', '--zero', '--verbose', '--iterations', '1',
             '/dev/sda')
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_shred_fail_processerror(self, mocked_execute):
         mocked_execute.side_effect = processutils.ProcessExecutionError
         block_device = hardware.BlockDevice('/dev/sda', 'big', 1073741824,
@@ -2313,7 +2312,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_virtual_media_device', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_linux_raid_member', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_security_unlock_fallback_pass(
             self, mocked_execute, mocked_raid_member, mocked_vm_member,
             mocked_ro_device):
@@ -2353,7 +2352,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_security_enabled(
             self, mocked_execute, mock_shred, mocked_raid_member,
             mocked_ro_device, mocked_vm_member):
@@ -2396,7 +2395,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_security_enabled_unlock_attempt(
             self, mocked_execute, mock_shred, mocked_raid_member,
             mocked_ro_device, mocked_vm_member):
@@ -2423,7 +2422,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.hardware.erase_block_device(self.node, block_device)
         self.assertFalse(mock_shred.called)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__ata_erase_security_enabled_unlock_exception(
             self, mocked_execute):
         # test that an exception is thrown when security unlock fails with
@@ -2449,7 +2448,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.assert_any_call('hdparm', '--user-master', 'u',
                                        '--security-unlock', 'NULL', '/dev/sda')
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__ata_erase_security_enabled_set_password_exception(
             self, mocked_execute):
         hdparm_output = create_hdparm_info(
@@ -2468,7 +2467,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware._ata_erase,
                           block_device)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__ata_erase_security_erase_exec_exception(
             self, mocked_execute):
         # Exception on security erase
@@ -2501,7 +2500,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_frozen(self, mocked_execute, mock_shred,
                                            mocked_raid_member,
                                            mocked_ro_device,
@@ -2535,7 +2534,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_failed(self, mocked_execute, mock_shred,
                                            mocked_raid_member,
                                            mocked_ro_device,
@@ -2577,7 +2576,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_failed_continued(
             self, mocked_execute, mock_shred, mocked_raid_member,
             mocked_ro_device, mocked_vm_member):
@@ -2617,7 +2616,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        '_is_linux_raid_member', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager, '_shred_block_device',
                        autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_ata_erase_disabled(
             self, mocked_execute, mock_shred,
             mocked_raid_member,
@@ -2641,7 +2640,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                            '_is_read_only_device', autospec=True)
         @mock.patch.object(hardware.GenericHardwareManager,
                            '_is_linux_raid_member', autospec=True)
-        @mock.patch.object(il_utils, 'execute', autospec=True)
+        @mock.patch.object(utils, 'execute', autospec=True)
         def test_security_erase_option(test_case,
                                        enhanced_erase,
                                        expected_option,
@@ -2714,7 +2713,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ])
 
     @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_nvme_erase', autospec=True)
@@ -2748,7 +2747,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ])
 
     @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_nvme_erase', autospec=True)
@@ -2783,7 +2782,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_virtual_media_device', autospec=True)
     @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        'list_block_devices', autospec=True)
     @mock.patch.object(disk_utils, 'destroy_disk_metadata', autospec=True)
@@ -2840,7 +2839,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_read_only_device', autospec=True)
     @mock.patch.object(hardware, 'safety_check_block_device', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_virtual_media_device', autospec=True)
     @mock.patch.object(hardware.GenericHardwareManager,
@@ -2940,14 +2939,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call(self.node, '/dev/sda')
         ])
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__is_linux_raid_member(self, mocked_execute):
         raid_member = hardware.BlockDevice('/dev/sda1', 'small', 65535, False)
         mocked_execute.return_value = ('linux_raid_member host.domain:0 '
                                        '85fa41e4-e0ae'), ''
         self.assertTrue(self.hardware._is_linux_raid_member(raid_member))
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__is_linux_raid_member_false(self, mocked_execute):
         raid_member = hardware.BlockDevice('/dev/md0', 'small', 65535, False)
         mocked_execute.return_value = 'md0', ''
@@ -3039,7 +3038,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address(self, mocked_execute, mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
         mocked_execute.return_value = '192.1.2.3\n', ''
@@ -3047,7 +3046,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address_virt(self, mocked_execute,
                                   mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3056,7 +3055,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address_zeroed(self, mocked_execute,
                                     mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3065,7 +3064,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address_invalid(self, mocked_execute,
                                      mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3076,7 +3075,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address_random_error(self, mocked_execute,
                                           mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3085,7 +3084,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address_iterate_channels(self, mocked_execute,
                                               mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3106,7 +3105,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address_not_available(self, mocked_execute,
                                            mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3115,7 +3114,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_not_available(self, mocked_execute,
                                        mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3125,7 +3124,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac(self, mocked_execute, mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
         mocked_execute.return_value = '192.1.2.3\n01:02:03:04:05:06', ''
@@ -3133,7 +3132,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_virt(self, mocked_execute, mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
         mocked_execute.side_effect = processutils.ProcessExecutionError()
@@ -3141,7 +3140,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_zeroed(self, mocked_execute,
                                 mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3151,7 +3150,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_invalid(self, mocked_execute,
                                  mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3163,7 +3162,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_random_error(self, mocked_execute,
                                       mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3173,7 +3172,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_iterate_channels(self, mocked_execute,
                                           mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3198,7 +3197,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_for_ipv6(self, mocked_execute,
                                   mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3216,7 +3215,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_with_invalid_ipv6(self, mocked_execute,
                                            mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3235,7 +3234,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_with_valid_ipv6_and_invalid_mac(
             self, mocked_execute, mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3254,7 +3253,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_no_valid_ip_or_ipv6(self,
                                              mocked_execute,
                                              mock_ipmi_device_exists):
@@ -3274,7 +3273,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_iterate_channels_ipv6(self,
                                                mocked_execute,
                                                mock_ipmi_device_exists):
@@ -3306,7 +3305,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_not_enabled(self, mocked_execute,
                                            mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3315,7 +3314,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_dynamic_address(self, mocked_execute,
                                                mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3328,7 +3327,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_static_address_both(self, mocked_execute,
                                                    mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3344,7 +3343,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_virt(self, mocked_execute,
                                     mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3353,7 +3352,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_invalid_enables(self, mocked_execute,
                                                mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3367,7 +3366,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_invalid_get_address(self, mocked_execute,
                                                    mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3385,7 +3384,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
     @mock.patch.object(hardware, 'LOG', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_ipmitool_invalid_stdout_format(
             self, mocked_execute, mocked_log, mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3405,7 +3404,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_channel_7(self, mocked_execute,
                                          mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = True
@@ -3429,7 +3428,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_address_no_ipmi_device(self, mock_execute,
                                             mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = False
@@ -3438,7 +3437,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_mac_no_ipmi_device(self, mock_execute,
                                         mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = False
@@ -3447,7 +3446,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        'any_ipmi_device_exists', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_bmc_v6address_no_ipmi_device(self, mock_execute,
                                               mock_ipmi_device_exists):
         mock_ipmi_device_exists.return_value = False
@@ -3488,7 +3487,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware.clean_uefi_nvram, self.node, [],
                           match_patterns=[')oo('])
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_no_configuration(self, mocked_execute):
         self.assertRaises(errors.SoftwareRAIDError,
                           self.hardware.validate_configuration,
@@ -3560,7 +3559,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=False)
     def test_create_configuration(self, mocked_os_path_isdir, mocked_execute,
                                   mock_list_parts, mocked_actual_comp):
@@ -3655,7 +3654,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_raid_5(self, mocked_execute,
                                          mock_list_parts, mocked_actual_comp):
         node = self.node
@@ -3756,7 +3755,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_raid_6(self, mocked_execute,
                                          mock_list_parts, mocked_actual_comp):
         node = self.node
@@ -3873,7 +3872,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=True)
     def test_create_configuration_efi(self, mocked_os_path_isdir,
                                       mocked_execute, mock_list_parts,
@@ -3954,7 +3953,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=False)
     def test_create_configuration_force_gpt_with_disk_label(
             self, mocked_os_path_isdir, mocked_execute, mock_list_part,
@@ -4041,7 +4040,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=False)
     def test_create_configuration_no_max(self, _mocked_isdir, mocked_execute,
                                          mock_list_parts, mocked_actual_comp):
@@ -4123,7 +4122,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=False)
     def test_create_configuration_max_is_first_logical(self, _mocked_isdir,
                                                        mocked_execute,
@@ -4208,7 +4207,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_with_hints(self, mocked_execute,
                                              mock_list_parts,
                                              mocked_actual_comp):
@@ -4301,7 +4300,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call(x) for x in ['/dev/sda', '/dev/sdb']
         ])
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=False)
     def test_create_configuration_invalid_raid_config(self,
                                                       mocked_os_path_is_dir,
@@ -4326,7 +4325,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware.create_configuration,
                           self.node, [])
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_invalid_hints(self, mocked_execute):
         for hints in [
                 [],
@@ -4349,7 +4348,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                               self.hardware.create_configuration,
                               self.node, [])
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_mismatching_hints(self, mocked_execute):
         device1 = hardware.BlockDevice('/dev/sda', 'sda', 107374182400, True)
         device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
@@ -4381,7 +4380,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                    self.node, [])
 
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=False)
     def test_create_configuration_partitions_detected(self,
                                                       mocked_os_path_is_dir,
@@ -4420,7 +4419,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=False)
     def test_create_configuration_device_handling_failures(
             self, mocked_os_path_is_dir, mocked_execute, mock_list_parts):
@@ -4488,7 +4487,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_device_handling_failures_raid5(
             self, mocked_execute, mock_list_parts):
         raid_config = {
@@ -4522,7 +4521,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                self.hardware.create_configuration,
                                self.node, [])
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_device_handling_failures_raid6(
             self, mocked_execute):
         raid_config = {
@@ -4567,7 +4566,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=True)
     def test_create_configuration_with_nvme(self, mocked_os_path_isdir,
                                             mocked_execute, mock_list_parts,
@@ -4648,7 +4647,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=True)
     def test_create_configuration_failure_with_nvme(self,
                                                     mocked_os_path_isdir,
@@ -4720,7 +4719,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_with_skip_list(
             self, mocked_execute, mock_list_parts, mocked_list_all_devices,
             mocked_actual_comp, mocked_get_volume_name):
@@ -4802,7 +4801,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(raid_utils, 'get_volume_name_of_raid_device',
                        autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_skip_list_existing_device_does_not_match(
             self, mocked_execute, mocked_list_all_devices,
             mocked_get_volume_name):
@@ -4853,7 +4852,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_with_skip_list_no_existing_device(
             self, mocked_execute, mock_list_parts,
             mocked_list_all_devices, mocked_actual_comp):
@@ -4952,7 +4951,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_configuration_with_complete_skip_list(
             self, mocked_execute, mocked_ls_all_devs,
             mocked_actual_comp, mocked_get_volume_name):
@@ -5003,7 +5002,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ])
         self.assertEqual(2, mocked_execute.call_count)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_md_uuid(self, mocked_execute):
         mocked_execute.side_effect = [(hws.MDADM_DETAIL_OUTPUT, '')]
         md_uuid = hardware._get_md_uuid('/dev/md0')
@@ -5011,7 +5010,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware, '_get_md_uuid', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_component_devices(self, mocked_execute,
                                    mocked_list_all_block_devices,
                                    mocked_md_uuid):
@@ -5046,13 +5045,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('mdadm', '--examine', '/dev/sdz1',
                       use_standard_locale=True)])
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks(self, mocked_execute):
         mocked_execute.side_effect = [(hws.MDADM_DETAIL_OUTPUT, '')]
         holder_disks = hardware.get_holder_disks('/dev/md0')
         self.assertEqual(['/dev/vde', '/dev/vdf'], holder_disks)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'exists', autospec=True)
     @mock.patch.object(os, 'stat', autospec=True)
     def test_get_holder_disks_with_whole_device(self, mocked_stat,
@@ -5065,13 +5064,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         holder_disks = hardware.get_holder_disks('/dev/md0')
         self.assertEqual(['/dev/vde', '/dev/vdf'], holder_disks)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks_with_nvme(self, mocked_execute):
         mocked_execute.side_effect = [(hws.MDADM_DETAIL_OUTPUT_NVME, '')]
         holder_disks = hardware.get_holder_disks('/dev/md0')
         self.assertEqual(['/dev/nvme0n1', '/dev/nvme1n1'], holder_disks)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks_unexpected_devices(self, mocked_execute):
         side_effect = hws.MDADM_DETAIL_OUTPUT_NVME.replace('nvme1n1p1',
                                                            'notmatching1a')
@@ -5083,14 +5082,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             r'/dev/notmatching1a$',
             hardware.get_holder_disks, '/dev/md0')
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks_broken_raid0(self, mocked_execute):
         mocked_execute.side_effect = [(hws.MDADM_DETAIL_OUTPUT_BROKEN_RAID0,
                                        '')]
         holder_disks = hardware.get_holder_disks('/dev/md126')
         self.assertEqual(['/dev/sda'], holder_disks)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_holder_disks_poisoned_output(self, mocked_execute):
         mocked_execute.side_effect = [(hws.MDADM_DETAIL_POISONED, '')]
         holder_disks = hardware.get_holder_disks('/dev/md0')
@@ -5101,7 +5100,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
     @mock.patch.object(hardware, 'get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_delete_configuration(self, mocked_execute, mocked_list,
                                   mocked_get_component, mocked_get_holder,
                                   mocked_get_volume_name):
@@ -5195,7 +5194,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(hardware, 'get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_delete_configuration_partition(self, mocked_execute, mocked_list,
                                             mocked_get_component,
                                             mocked_get_volume_name):
@@ -5224,7 +5223,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(hardware, 'get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_delete_configuration_failure_blocks_remaining(
             self, mocked_execute, mocked_list, mocked_get_component,
             mocked_get_volume_name):
@@ -5269,7 +5268,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
     @mock.patch.object(hardware, 'get_component_devices', autospec=True)
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_delete_configuration_skip_list(self, mocked_execute, mocked_list,
                                             mocked_get_component,
                                             mocked_get_holder,
@@ -5335,7 +5334,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call('mdadm', '--assemble', '--scan', check_exit_code=False),
         ])
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_valid_raid1(self, mocked_execute):
         raid_config = {
             "logical_disks": [
@@ -5349,7 +5348,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertIsNone(self.hardware.validate_configuration(raid_config,
                                                                self.node))
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_valid_raid1_raidN(self, mocked_execute):
         raid_config = {
             "logical_disks": [
@@ -5369,7 +5368,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertIsNone(self.hardware.validate_configuration(raid_config,
                                                                self.node))
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_invalid_MAX_MAX(self, mocked_execute):
         raid_config = {
             "logical_disks": [
@@ -5390,7 +5389,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware.validate_configuration,
                           raid_config, self.node)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_invalid_raid_level(self, mocked_execute):
         raid_config = {
             "logical_disks": [
@@ -5411,7 +5410,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware.validate_configuration,
                           raid_config, self.node)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_invalid_no_of_raids(self, mocked_execute):
         raid_config = {
             "logical_disks": [
@@ -5436,7 +5435,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware.validate_configuration,
                           raid_config, self.node)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_invalid_duplicate_volume_name(
             self, mocked_execute):
         raid_config = {
@@ -5460,7 +5459,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           self.hardware.validate_configuration,
                           raid_config, self.node)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_system_vendor_info(self, mocked_execute):
         mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_V1
         vendor_info = self.hardware.get_system_vendor_info()
@@ -5472,7 +5471,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('', vendor_info.firmware.build_date)
         self.assertEqual('', vendor_info.firmware.version)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_system_vendor_info_lshw_list(self, mocked_execute):
         mocked_execute.return_value = (f"[{hws.LSHW_JSON_OUTPUT_V2[0]}]", "")
         vendor_info = self.hardware.get_system_vendor_info()
@@ -5483,7 +5482,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('03/30/2023', vendor_info.firmware.build_date)
         self.assertEqual('1.2.3', vendor_info.firmware.version)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_system_vendor_info_failure(self, mocked_execute):
         mocked_execute.side_effect = processutils.ProcessExecutionError()
         vendor_info = self.hardware.get_system_vendor_info()
@@ -5494,7 +5493,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('', vendor_info.firmware.build_date)
         self.assertEqual('', vendor_info.firmware.version)
 
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_get_usb_devices(self, mocked_execute):
 
         device = hardware.USBInfo('MyProduct', 'MyVendor', 'USB:1:2')
@@ -5530,7 +5529,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_linux_raid_member', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_nvme_crypto_success(self, mocked_execute,
                                                     mocked_raid_member):
         info = self.node['driver_internal_info']
@@ -5554,7 +5553,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_linux_raid_member', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_nvme_userdata_success(self, mocked_execute,
                                                       mocked_raid_member):
         info = self.node['driver_internal_info']
@@ -5578,7 +5577,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_linux_raid_member', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_nvme_failed(self, mocked_execute,
                                             mocked_raid_member):
         info = self.node['driver_internal_info']
@@ -5596,7 +5595,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(hardware.GenericHardwareManager,
                        '_is_linux_raid_member', autospec=True)
-    @mock.patch.object(il_utils, 'execute', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_erase_block_device_nvme_format_unsupported(self, mocked_execute,
                                                         mocked_raid_member):
         info = self.node['driver_internal_info']
@@ -5749,7 +5748,7 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
 
 
 @mock.patch.object(os, 'listdir', lambda *_: [])
-@mock.patch.object(il_utils, 'execute', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 class TestModuleFunctions(base.IronicAgentTest):
 
     @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
@@ -5929,7 +5928,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.assert_has_calls([
             mock.call('iscsistart', '-f')])
 
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'try_execute', autospec=True)
     def test__load_ipmi_modules(self, mocked_try_execute, me):
         hardware._load_ipmi_modules()
         mocked_try_execute.assert_has_calls([
@@ -5938,7 +5937,7 @@ class TestModuleFunctions(base.IronicAgentTest):
             mock.call('modprobe', 'ipmi_si')])
 
 
-@mock.patch.object(il_utils, 'execute', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 class TestMultipathEnabled(base.IronicAgentTest):
 
     @mock.patch.object(os.path, 'isfile', autospec=True)
@@ -6036,7 +6035,7 @@ class TestMultipathEnabled(base.IronicAgentTest):
         ])
 
     @mock.patch.object(hardware, '_load_multipath_modules', autospec=True)
-    @mock.patch.object(il_utils, 'try_execute', autospec=True)
+    @mock.patch.object(utils, 'try_execute', autospec=True)
     def test_enable_multipath_not_found_mpath_config(self,
                                                      mock_try_exec,
                                                      mock_modules,
@@ -6153,7 +6152,7 @@ class TestAPIClientSaveAndUse(base.IronicAgentTest):
         mock_dispatch.assert_has_calls(calls)
 
 
-@mock.patch.object(il_utils, 'execute', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 class TestProtectedDiskSafetyChecks(base.IronicAgentTest):
 
     def test_special_filesystem_guard_not_enabled(self, mock_execute):
@@ -6203,7 +6202,7 @@ class TestProtectedDiskSafetyChecks(base.IronicAgentTest):
             self.assertEqual(1, mock_execute.call_count)
 
 
-@mock.patch.object(il_utils, 'execute', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 class TestCollectSystemLogs(base.IronicAgentTest):
 
     def setUp(self):
@@ -6264,7 +6263,7 @@ FakeAddr = namedtuple('FakeAddr', ('family', 'address'))
 @mock.patch('os.listdir', autospec=True)
 @mock.patch('os.path.exists', autospec=True)
 @mock.patch('builtins.open', autospec=True)
-@mock.patch.object(il_utils, 'execute', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
 class TestListNetworkInterfaces(base.IronicAgentTest):
 
@@ -6802,7 +6801,7 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
 
 
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-@mock.patch.object(il_utils, 'execute', autospec=True)
+@mock.patch.object(utils, 'execute', autospec=True)
 class TestFullSync(base.IronicAgentTest):
     def setUp(self):
         super().setUp()

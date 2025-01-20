@@ -14,20 +14,19 @@
 import subprocess
 from unittest import mock
 
-import ironic_lib
 from oslo_concurrency import processutils
 
-from ironic_python_agent.tests.unit import base as ironic_agent_base
+from ironic_python_agent.tests.unit import base
 from ironic_python_agent import utils
 
 
-class BlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
+class BlockExecuteTestCase(base.IronicAgentTest):
     """Test to ensure we block access to the 'execute' type functions"""
 
     def test_exception_raised_for_execute(self):
-        execute_functions = (ironic_lib.utils.execute, processutils.execute,
-                             subprocess.call, subprocess.check_call,
-                             subprocess.check_output, utils.execute)
+        execute_functions = (processutils.execute, subprocess.call,
+                             subprocess.check_call, subprocess.check_output,
+                             utils.execute)
 
         for function_name in execute_functions:
             exc = self.assertRaises(Exception, function_name, ["echo", "%s" % function_name])  # noqa
@@ -35,7 +34,7 @@ class BlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
             # get H202 error in 'pep8' check.
 
             self.assertEqual(
-                "Don't call ironic_lib.utils.execute() / "
+                "Don't call utils.execute() / "
                 "processutils.execute() or similar functions in tests!",
                 "%s" % exc)
 
@@ -51,17 +50,14 @@ class BlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
         self.assertEqual(2, mock_exec.call_count)
 
 
-class DontBlockExecuteTestCase(ironic_agent_base.IronicAgentTest):
+class DontBlockExecuteTestCase(base.IronicAgentTest):
     """Ensure we can turn off blocking access to 'execute' type functions"""
 
     # Don't block the execute function
     block_execute = False
 
-    @mock.patch.object(ironic_lib.utils, "execute", autospec=True)
+    @mock.patch.object(utils, "execute", autospec=True)
     def test_no_exception_raised_for_execute(self, mock_exec):
-        # Make sure we can call utils.execute() even though we didn't mock it.
-        # We do mock ironic_lib.utils.execute() so we don't actually execute
-        # anything.
         utils.execute("ls")
         utils.execute("echo")
         self.assertEqual(2, mock_exec.call_count)

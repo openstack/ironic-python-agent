@@ -18,7 +18,7 @@ import functools
 import random
 import time
 
-from ironic_python_agent.metrics_lib import metrics_exception as exception
+from ironic_python_agent import errors
 
 
 class Timer(object):
@@ -28,7 +28,7 @@ class Timer(object):
     context manager, and emits the time as the metric value. It is bound to
     this MetricLogger.  For example::
 
-      from ironic_lib import metrics_utils
+      from ironic_python_agent.metrics_lib import metrics_utils
 
       METRICS = metrics_utils.get_metrics_logger()
 
@@ -82,7 +82,7 @@ class Counter(object):
     context manager is executed. It is bound to this MetricLogger. For
     example::
 
-      from ironic_lib import metrics_utils
+      from ironic_python_agent.metrics_lib import metrics_utils
 
       METRICS = metrics_utils.get_metrics_logger()
 
@@ -141,7 +141,7 @@ class Gauge(object):
     every time the method is executed. It is bound to this MetricLogger. For
     example::
 
-      from ironic_lib import metrics_utils
+      from ironic_python_agent.metrics_lib import metrics_utils
 
       METRICS = metrics_utils.get_metrics_logger()
 
@@ -291,7 +291,7 @@ class MetricLogger(object, metaclass=abc.ABCMeta):
 
     def get_metrics_data(self):
         """Return the metrics collection, if available."""
-        raise exception.MetricsNotSupported()
+        raise errors.MetricsNotSupported()
 
 
 class NoopMetricLogger(MetricLogger):

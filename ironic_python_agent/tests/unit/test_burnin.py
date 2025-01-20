@@ -12,7 +12,6 @@
 
 from unittest import mock
 
-from ironic_lib import utils
 from oslo_concurrency import processutils
 from tooz import coordination
 
@@ -20,6 +19,7 @@ from ironic_python_agent import burnin
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent.tests.unit import base
+from ironic_python_agent import utils
 
 
 SMART_OUTPUT_JSON_COMPLETED = ("""

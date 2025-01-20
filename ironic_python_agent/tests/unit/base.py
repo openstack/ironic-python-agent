@@ -17,7 +17,6 @@
 
 import subprocess
 
-import ironic_lib
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
@@ -28,6 +27,7 @@ from oslotest import base as test_base
 from ironic_python_agent import config
 from ironic_python_agent.extensions import base as ext_base
 from ironic_python_agent import hardware
+from ironic_python_agent import utils
 
 CONF = cfg.CONF
 
@@ -56,12 +56,11 @@ class IronicAgentTest(test_base.BaseTestCase):
             # mock it causes things to not work correctly. As doing an
             # autospec=True causes strangeness. By using a simple function we
             # can then mock it without issue.
-            self.patch(ironic_lib.utils, 'execute', do_not_call)
+            self.patch(utils, 'execute', do_not_call)
             self.patch(processutils, 'execute', do_not_call)
             self.patch(subprocess, 'call', do_not_call)
             self.patch(subprocess, 'check_call', do_not_call)
             self.patch(subprocess, 'check_output', do_not_call)
-            # ironic_python_agent.utils.execute is an alias of ironic_lib one
 
         ext_base._EXT_MANAGER = None
         hardware._CACHED_HW_INFO = None
@@ -87,5 +86,5 @@ class IronicAgentTest(test_base.BaseTestCase):
 def do_not_call(*args, **kwargs):
     """Helper function to raise an exception if it is called"""
     raise Exception(
-        "Don't call ironic_lib.utils.execute() / "
+        "Don't call utils.execute() / "
         "processutils.execute() or similar functions in tests!")
