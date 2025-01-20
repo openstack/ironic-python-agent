@@ -698,13 +698,13 @@ def _download_image(image_info):
                         except OSError as e:
                             if e.errno == errno.ENOSPC:
                                 msg = ('Unable to write image to {}. Error: {}'
-                                       ).format(image_location, str(e))
+                                       ).format(image_location, e)
                                 raise errors.ImageDownloadOutofSpaceError(
                                     image_info['id'], msg)
                             raise
+                except errors.ImageDownloadOutofSpaceError:
+                    raise
                 except Exception as e:
-                    if isinstance(e, errors.ImageDownloadOutofSpaceError):
-                        raise
                     msg = 'Unable to write image to {}. Error: {}'.format(
                         image_location, str(e))
                     raise errors.ImageDownloadError(image_info['id'], msg)
