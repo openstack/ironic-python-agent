@@ -129,9 +129,14 @@ def _load_ipmi_modules():
     This is required to be called at least once before attempting to use
     ipmitool or related tools.
     """
-    utils.try_execute('modprobe', 'ipmi_msghandler')
-    utils.try_execute('modprobe', 'ipmi_devintf')
-    utils.try_execute('modprobe', 'ipmi_si')
+
+    ipmi_drivers = ['ipmi_msghandler', 'ipmi_devintf', 'ipmi_si']
+    for ipmi_driver in ipmi_drivers:
+        try:
+            processutils.execute('modprobe', ipmi_driver)
+        except (processutils.ProcessExecutionError, OSError):
+            LOG.debug("IPMI driver %s not supported or not present",
+                      ipmi_driver)
 
 
 def _load_multipath_modules():
