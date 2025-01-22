@@ -1991,6 +1991,7 @@ class GenericHardwareManager(HardwareManager):
             return
         for dev in self._list_erasable_devices(node):
             safety_check_block_device(node, dev.name)
+            secure_erase_error = None
             try:
                 if self._is_nvme(dev):
                     execute_nvme_erase = info.get(
