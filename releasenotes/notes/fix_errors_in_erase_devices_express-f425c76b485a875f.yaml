@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Prevent the UnboundLocalError in erase_devices_express,
+    for example, on a disk failure.
