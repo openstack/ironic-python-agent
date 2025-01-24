@@ -201,7 +201,7 @@ def parse_device_tags(output):
                        (v.split('=', 1) for v in shlex.split(line))}
             except ValueError as err:
                 raise ValueError(
-                    _("Malformed blkid/lsblk output line '%(line)s': %(err)s")
+                    ("Malformed blkid/lsblk output line '%(line)s': %(err)s")
                     % {'line': line, 'err': err})
 
 
