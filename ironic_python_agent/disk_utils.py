@@ -581,8 +581,8 @@ def destroy_disk_metadata(dev, node_uuid):
         raise errors.DeploymentError(
             f'Destroying metadata failed on device {dev}s. Error: {e}')
 
-    LOG.info(f"Disk metadata on {dev} successfully destroyed for node "
-             f"{node_uuid}")
+    LOG.info("Disk metadata on %s successfully destroyed for node "
+             "%s", dev, node_uuid)
 
 
 def _fix_gpt_structs(device, node_uuid):

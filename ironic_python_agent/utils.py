@@ -267,7 +267,7 @@ def unlink_without_raise(path):
         if e.errno == errno.ENOENT:
             return
         else:
-            LOG.warning(f"Failed to unlink {path}, error: {e}")
+            LOG.warning("Failed to unlink %s, error: %s", path, e)
 
 
 def _read_params_from_file(filepath):

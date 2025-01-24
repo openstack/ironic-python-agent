@@ -124,8 +124,8 @@ class Zeroconf(object):
                     f'None of addresses {all_addr} for service %('
                     '{service_type} are valid')
             else:
-                LOG.warning(f'None of addresses {all_addr} seem routable, '
-                            f'using {fallback}')
+                LOG.warning('None of addresses %s seem routable, '
+                            'using %s', all_addr, fallback)
                 address = fallback
 
         properties = {}
