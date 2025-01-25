@@ -23,6 +23,7 @@ from oslo_config import cfg
 from oslo_utils import units
 import requests
 
+from ironic_python_agent import disk_utils
 from ironic_python_agent import errors
 from ironic_python_agent.extensions import standby
 from ironic_python_agent import hardware
@@ -1682,6 +1683,403 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         self.assertEqual(expected_uuid, work_on_disk_mock.return_value)
         self.assertIsNone(node_uuid)
+
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(partition_utils, 'create_config_drive_partition',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_download_container_and_bootc_install',
+                       autospec=True)
+    @mock.patch.object(standby, '_validate_partitioning',
+                       autospec=True)
+    def test_execute_bootc_install(
+            self,
+            validate_mock,
+            install_mock,
+            config_drive_mock,
+            dispatch_mock):
+        fake_instance_info = {'bootc_authorized_keys': 'pubkey',
+                              'bootc_tpm2_luks': True}
+        dispatch_mock.return_value = '/dev/fake'
+        res = self.agent_extension.execute_bootc_install(
+            image_source='oci://foo',
+            instance_info=fake_instance_info,
+            pull_secret='secret',
+            configdrive='config!')
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
+        config_drive_mock.assert_called_once_with('local', '/dev/fake',
+                                                  'config!')
+        install_mock.assert_called_once_with(mock.ANY, 'oci://foo',
+                                             '/dev/fake', 'secret',
+                                             True, 'pubkey')
+        expected = ('execute_bootc_install: Container image (oci://foo) '
+                    'written to device /dev/fake')
+        self.assertEqual(expected, res.command_result['result'])
+        self.assertEqual('SUCCEEDED', res.command_status)
+
+    @mock.patch.object(standby.LOG, 'error', autospec=True)
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(partition_utils, 'create_config_drive_partition',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_download_container_and_bootc_install',
+                       autospec=True)
+    @mock.patch.object(standby, '_validate_partitioning',
+                       autospec=True)
+    def test_execute_bootc_install_disabled(
+            self,
+            validate_mock,
+            install_mock,
+            config_drive_mock,
+            dispatch_mock,
+            error_mock):
+        CONF.set_override('disable_bootc_deploy', True)
+        fake_instance_info = {'bootc_authorized_keys': 'pubkey',
+                              'bootc_tpm2_luks': True}
+        dispatch_mock.return_value = '/dev/fake'
+        async_res = self.agent_extension.execute_bootc_install(
+            image_source='oci://foo',
+            instance_info=fake_instance_info,
+            pull_secret='secret',
+            configdrive='config!')
+        dispatch_mock.assert_not_called()
+        config_drive_mock.assert_not_called()
+        install_mock.assert_not_called()
+        async_res.join()
+        self.assertEqual('FAILED', async_res.command_status)
+        error_mock.assert_called_once_with(
+            'A bootc based deployment was requested for %s, '
+            'however bootc based deployment is disabled.',
+            'oci://foo')
+
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(partition_utils, 'create_config_drive_partition',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_download_container_and_bootc_install',
+                       autospec=True)
+    @mock.patch.object(standby, '_validate_partitioning',
+                       autospec=True)
+    def test_execute_bootc_install_minimal(
+            self,
+            validate_mock,
+            install_mock,
+            config_drive_mock,
+            dispatch_mock):
+        fake_instance_info = {}
+        dispatch_mock.return_value = '/dev/fake'
+
+        res = self.agent_extension.execute_bootc_install(
+            image_source='oci://foo',
+            instance_info=fake_instance_info,
+            pull_secret=None,
+            configdrive=None)
+        dispatch_mock.assert_called_once_with('get_os_install_device',
+                                              permit_refresh=True)
+        config_drive_mock.assert_not_called()
+        install_mock.assert_called_once_with(mock.ANY, 'oci://foo',
+                                             '/dev/fake', None,
+                                             False, None)
+        expected = ('execute_bootc_install: Container image (oci://foo) '
+                    'written to device /dev/fake')
+        self.assertEqual(expected, res.command_result['result'])
+        self.assertEqual('SUCCEEDED', res.command_status)
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch.object(disk_utils, 'get_dev_byte_size',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_authorized_keys',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_no_pivot_root',
+                       autospec=True)
+    def test__download_container_and_bootc_install(
+            self,
+            no_pivot_mock,
+            write_container_auth_mock,
+            write_authorized_keys_mock,
+            get_size_mock,
+            execute_mock):
+        get_size_mock.return_value = 2000000000
+        execute_mock.side_effect = iter([
+            (('Enforcing\n'), ()),
+            ((), ())])
+        write_authorized_keys_mock.return_value = '/tmp/fake/file'
+        self.agent_extension._download_container_and_bootc_install(
+            'oci://foo/container', '/dev/fake', 'secret', False, 'keys!')
+        no_pivot_mock.assert_called_once()
+        write_container_auth_mock.assert_called_once_with(mock.ANY,
+                                                          'secret',
+                                                          'foo')
+        get_size_mock.assert_called_once_with('/dev/fake')
+        execute_mock.assert_has_calls([
+            mock.call('getenforce', use_standard_locale=True),
+            mock.call(
+                'podman', '--log-level=debug', 'run', '--rm',
+                '--privileged',
+                '--pid=host',
+                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/dev:/dev', '--retry-delay=5s',
+                '--authfile=/root/.config/containers/auth.json',
+                '-v', '/tmp:/tmp', '--security-opt',
+                'label=type:unconfined_t', 'foo/container',
+                'bootc', 'install', 'to-disk', '--wipe',
+                '--skip-fetch-check', '--root-size=1139M',
+                '--root-ssh-authorized-keys=/tmp/fake/file',
+                '/dev/fake', use_standard_locale=True)
+        ])
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch.object(disk_utils, 'get_dev_byte_size',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_authorized_keys',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_no_pivot_root',
+                       autospec=True)
+    def test__download_container_and_bootc_install_luks(
+            self,
+            no_pivot_mock,
+            write_container_auth_mock,
+            write_authorized_keys_mock,
+            get_size_mock,
+            execute_mock):
+        get_size_mock.return_value = 2000000000
+        execute_mock.side_effect = iter([
+            (('Enforcing\n'), ()),
+            ((), ())])
+        write_authorized_keys_mock.return_value = '/tmp/fake/file'
+        self.agent_extension._download_container_and_bootc_install(
+            'oci://foo/container', '/dev/fake', 'secret', True, 'keys!')
+        no_pivot_mock.assert_called_once()
+        write_container_auth_mock.assert_called_once_with(mock.ANY,
+                                                          'secret',
+                                                          'foo')
+        get_size_mock.assert_called_once_with('/dev/fake')
+        execute_mock.assert_has_calls([
+            mock.call('getenforce', use_standard_locale=True),
+            mock.call(
+                'podman', '--log-level=debug', 'run', '--rm',
+                '--privileged',
+                '--pid=host',
+                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/dev:/dev', '--retry-delay=5s',
+                '--authfile=/root/.config/containers/auth.json',
+                '-v', '/tmp:/tmp', '--security-opt',
+                'label=type:unconfined_t', 'foo/container',
+                'bootc', 'install', 'to-disk', '--wipe',
+                '--skip-fetch-check', '--root-size=1139M',
+                '--block-setup=tpm2-luks',
+                '--root-ssh-authorized-keys=/tmp/fake/file',
+                '/dev/fake', use_standard_locale=True)
+        ])
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch.object(disk_utils, 'get_dev_byte_size',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_authorized_keys',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_no_pivot_root',
+                       autospec=True)
+    def test__download_container_and_bootc_install_no_selinux_keys_auth(
+            self,
+            no_pivot_mock,
+            write_container_auth_mock,
+            write_authorized_keys_mock,
+            get_size_mock,
+            execute_mock):
+        get_size_mock.return_value = 15000000000
+        execute_mock.side_effect = iter([
+            OSError(),
+            ((), ())])
+        write_authorized_keys_mock.return_value = '/tmp/fake/file'
+
+        self.agent_extension._download_container_and_bootc_install(
+            'oci://foo/container', '/dev/fake', None, False, None)
+
+        no_pivot_mock.assert_called_once()
+        write_container_auth_mock.assert_not_called()
+        get_size_mock.assert_called_once_with('/dev/fake')
+        execute_mock.assert_has_calls([
+            mock.call('getenforce', use_standard_locale=True),
+            mock.call(
+                'podman', '--log-level=debug', 'run', '--rm',
+                '--privileged',
+                '--pid=host',
+                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/dev:/dev', '--retry-delay=5s',
+                'foo/container',
+                'bootc', 'install', 'to-disk', '--wipe',
+                '--skip-fetch-check', '--root-size=13537M',
+                '--disable-selinux',
+                '/dev/fake', use_standard_locale=True)
+        ])
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch.object(disk_utils, 'get_dev_byte_size',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_authorized_keys',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_no_pivot_root',
+                       autospec=True)
+    def test__download_container_and_bootc_install_errors_no_bootc(
+            self,
+            no_pivot_mock,
+            write_container_auth_mock,
+            write_authorized_keys_mock,
+            get_size_mock,
+            execute_mock):
+        get_size_mock.return_value = 15000000000
+        execute_mock.side_effect = iter([
+            OSError(),
+            (('Error executable file `bootc` not found and'), ())])
+        write_authorized_keys_mock.return_value = '/tmp/fake/file'
+
+        self.assertRaisesRegex(
+            errors.ImageDownloadError,
+            ('Container does not contain the required bootc binary '
+             'and thus cannot be deployed.'),
+            self.agent_extension._download_container_and_bootc_install,
+            'oci://foo/container', '/dev/fake', None, False, None)
+
+        no_pivot_mock.assert_called_once()
+        write_container_auth_mock.assert_not_called()
+        get_size_mock.assert_called_once_with('/dev/fake')
+        execute_mock.assert_has_calls([
+            mock.call('getenforce', use_standard_locale=True),
+            mock.call(
+                'podman', '--log-level=debug', 'run', '--rm',
+                '--privileged',
+                '--pid=host',
+                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/dev:/dev', '--retry-delay=5s',
+                'foo/container',
+                'bootc', 'install', 'to-disk', '--wipe',
+                '--skip-fetch-check', '--root-size=13537M',
+                '--disable-selinux',
+                '/dev/fake', use_standard_locale=True)
+        ])
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch.object(disk_utils, 'get_dev_byte_size',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_authorized_keys',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_no_pivot_root',
+                       autospec=True)
+    def test__download_container_and_bootc_install_podman_errors(
+            self,
+            no_pivot_mock,
+            write_container_auth_mock,
+            write_authorized_keys_mock,
+            get_size_mock,
+            execute_mock):
+        get_size_mock.return_value = 15000000000
+        execute_mock.side_effect = iter([
+            OSError(),
+            processutils.ProcessExecutionError()])
+        write_authorized_keys_mock.return_value = '/tmp/fake/file'
+        self.assertRaisesRegex(
+            errors.ImageWriteError,
+            ('Error writing image to device: Writing image to device '
+             '/dev/fake failed with'),
+            self.agent_extension._download_container_and_bootc_install,
+            'oci://foo/container', '/dev/fake', None, False, None)
+        no_pivot_mock.assert_called_once()
+        write_container_auth_mock.assert_not_called()
+        get_size_mock.assert_called_once_with('/dev/fake')
+        execute_mock.assert_has_calls([
+            mock.call('getenforce', use_standard_locale=True),
+            mock.call(
+                'podman', '--log-level=debug', 'run', '--rm',
+                '--privileged',
+                '--pid=host',
+                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/dev:/dev', '--retry-delay=5s',
+                'foo/container',
+                'bootc', 'install', 'to-disk', '--wipe',
+                '--skip-fetch-check', '--root-size=13537M',
+                '--disable-selinux',
+                '/dev/fake', use_standard_locale=True)
+        ])
+
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    @mock.patch('builtins.open', new_callable=mock.mock_open())
+    def test__write_no_pivot_root(self, mock_open, mkdir_mock):
+        self.agent_extension._write_no_pivot_root()
+        mkdir_mock.assert_called_once_with(
+            '/etc/containers/containers.conf.d',
+            exist_ok=True)
+        mock_open.assert_called_once_with(
+            '/etc/containers/containers.conf.d/01-ipa.conf', 'w')
+        mock_write = mock_open.return_value.__enter__.return_value.write
+        mock_write.assert_called_once_with(
+            '[engine]\nno_pivot_root = true\n')
+
+    @mock.patch.object(os, 'makedirs', autospec=True)
+    @mock.patch('builtins.open', new_callable=mock.mock_open())
+    def test__write_container_auth(self, mock_open, mkdir_mock):
+        self.agent_extension._write_container_auth(
+            b'c2VjcmV0', 'foo.tld')
+        mkdir_mock.assert_called_once_with(
+            '/root/.config/containers',
+            mode=0o700,
+            exist_ok=True)
+        mock_open.assert_called_once_with(
+            '/root/.config/containers/auth.json', 'w')
+        mock_write = mock_open.return_value.__enter__.return_value.write
+        # NOTE(TheJulia): This is a side effect of using json.dump to make
+        # the actual write call, and python internally does buffered io which
+        # should concatenate the writes together appropriately as needed.
+        mock_write.assert_has_calls([
+            mock.call('{'),
+            mock.call('"auths"'),
+            mock.call(': '),
+            mock.call('{'),
+            mock.call('"foo.tld"'),
+            mock.call(': '),
+            mock.call('{'),
+            mock.call('"auth"'),
+            mock.call(': '),
+            mock.call('"secret"'),
+            mock.call('}'),
+            mock.call('}'),
+            mock.call('}')
+        ])
+
+    @mock.patch.object(os, 'close', autospec=True)
+    @mock.patch.object(os, 'write', autospec=True)
+    @mock.patch.object(tempfile, 'mkstemp', autospec=True)
+    def test__write_authorized_keys(self, mock_temp, mock_write, mock_close):
+        mock_temp.return_value = ('fd', '/tmp/path')
+        self.agent_extension._write_authorized_keys('the-key')
+        mock_temp.assert_called_once_with(text=True)
+        mock_write.assert_called_once_with('fd', b'the-key')
+        mock_close.assert_called_once()
 
 
 @mock.patch('hashlib.new', autospec=True)
