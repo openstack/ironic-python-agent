@@ -1,3 +1,14 @@
 [build-system]
 requires = ["pbr>=6.0.0", "setuptools>=64.0.0"]
 build-backend = "pbr.build"
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.lint]
+select = [
+    "E",        # pycodestyle (error)
+    "F",        # pyflakes
+    "G",        # flake8-logging-format
+    "LOG",      # flake8-logging
+]
