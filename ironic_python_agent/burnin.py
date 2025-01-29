@@ -28,71 +28,79 @@ NETWORK_BURNIN_ROLES = frozenset(['writer', 'reader'])
 NETWORK_READER_CYCLE = 30
 
 
-def stress_ng_cpu(node):
-    """Burn-in the CPU with stress-ng
+def stress_ng(node, stressor_type, default_timeout=86400):
+    """Run stress-ng for different stressor types
 
-    Run stress-ng on a configurable number of CPUs for
-    a configurable amount of time. Without config use
-    all CPUs and stress them for 24 hours.
+    Burn-in a configurable number of CPU/VM with stress-ng,
+    for a configurable amount of time but default of 24 hours.
 
     :param node: Ironic node object
+    :param stressor_type: 'cpu' or 'vm'
+    :param default_timeout: Default timeout in seconds (default: 86400)
+
+    :raises: ValueError if an unknown stressor_type is provided
     :raises: CommandExecutionError if the execution of stress-ng fails.
     """
+    stressor_type = stressor_type.lower()
+    if stressor_type not in ['cpu', 'vm']:
+        raise ValueError("Unknown stressor type: %s" % stressor_type)
+
     info = node.get('driver_info', {})
-    cpu = info.get('agent_burnin_cpu_cpu', 0)
-    timeout = info.get('agent_burnin_cpu_timeout', 86400)
-    outputfile = info.get('agent_burnin_cpu_outputfile', None)
+    stressor_suffix = {'cpu': 'cpu'}
 
-    args = ('stress-ng', '--cpu', cpu, '--timeout', timeout,
-            '--metrics-brief')
+    if stressor_type == 'vm':
+        count_key = 'agent_burnin_%s_vm' % stressor_type
+        bytes_key = 'agent_burnin_%s_vm-bytes' % stressor_type
+    else:
+        count_key = 'agent_burnin_%s_%s' % (stressor_type,
+                                            stressor_suffix[stressor_type])
+        bytes_key = None
+
+    timeout_key = 'agent_burnin_%s_timeout' % stressor_type
+    outputfile_key = 'agent_burnin_%s_outputfile' % stressor_type
+
+    count = info.get(count_key, 0)
+    timeout = info.get(timeout_key, default_timeout)
+    outputfile = info.get(outputfile_key)
+
+    args = ['stress-ng', '--%s' % stressor_type, count, '--timeout', timeout]
+
+    if stressor_type == 'vm':
+        vm_bytes = info.get(bytes_key, '98%')
+        args.extend(['--vm-bytes', vm_bytes])
+
+    args.extend(['--metrics-brief'])
+
     if outputfile:
-        args += ('--log-file', outputfile,)
+        args.extend(['--log-file', outputfile])
 
-    LOG.debug('Burn-in stress_ng_cpu command: %s', args)
+    LOG.debug('Burn-in stress_ng_%s command: %s', stressor_type, args)
 
     try:
         _, err = utils.execute(*args)
         # stress-ng reports on stderr only
         LOG.info(err)
     except (processutils.ProcessExecutionError, OSError) as e:
-        error_msg = "stress-ng (cpu) failed with error %s" % e
+        error_msg = 'stress-ng (%s) failed with error %s' % (stressor_type, e)
         LOG.error(error_msg)
         raise errors.CommandExecutionError(error_msg)
 
 
+def stress_ng_cpu(node):
+    """Burn-in the CPU with stress-ng"""
+    stress_ng(node, 'cpu')
+
+
 def stress_ng_vm(node):
-    """Burn-in the memory with the vm stressor in stress-ng
+    """Burn-in the memory with the vm stressor in stress-ng.
 
     Run stress-ng with a configurable number of workers on
     a configurable amount of the available memory for
     a configurable amount of time. Without config use
     as many workers as CPUs, 98% of the memory and stress
     it for 24 hours.
-
-    :param node: Ironic node object
-    :raises: CommandExecutionError if the execution of stress-ng fails.
     """
-    info = node.get('driver_info', {})
-    vm = info.get('agent_burnin_vm_vm', 0)
-    vm_bytes = info.get('agent_burnin_vm_vm-bytes', '98%')
-    timeout = info.get('agent_burnin_vm_timeout', 86400)
-    outputfile = info.get('agent_burnin_vm_outputfile', None)
-
-    args = ('stress-ng', '--vm', vm, '--vm-bytes', vm_bytes,
-            '--timeout', timeout, '--metrics-brief')
-    if outputfile:
-        args += ('--log-file', outputfile,)
-
-    LOG.debug('Burn-in stress_ng_vm command: %s', args)
-
-    try:
-        _, err = utils.execute(*args)
-        # stress-ng reports on stderr only
-        LOG.info(err)
-    except (processutils.ProcessExecutionError, OSError) as e:
-        error_msg = "stress-ng (vm) failed with error %s" % e
-        LOG.error(error_msg)
-        raise errors.CommandExecutionError(error_msg)
+    stress_ng(node, 'vm')
 
 
 def _smart_test_status(device):
@@ -420,3 +428,84 @@ def fio_network(node):
         irole = "reader" if (role == "writer") else "writer"
         logfilename = outputfile + '.' + irole
     _do_fio_network(not role == 'writer', runtime, partner, logfilename)
+
+
+def _gpu_burn_check_count(install_dir, count):
+    """Check the count of GPUs with gpu-burn
+
+    Run a check to confirm how many GPUs are seen by the OS.
+
+    :param install_dir: The location where gpu-burn has been installed.
+    :param count: The number of expected GPUs.
+
+    :raises: CleaningError if the incorrect number of GPUs found.
+    :raises: CommandExecutionError if the execution of gpu-burn fails.
+
+     """
+    args = ['./gpu_burn', '-l']
+    LOG.debug('Burn-in gpu count command: %s', args)
+    try:
+        out, _ = utils.execute(*args, cwd=install_dir)
+        # gpu-burn reports on stdout
+        LOG.debug(out)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        error_msg = 'gpu-burn failed with error %s' % e
+        LOG.error(error_msg)
+        raise errors.CommandExecutionError(error_msg)
+
+    gpu_data = [i for i in out.splitlines() if i.startswith('ID')]
+    gpu_count = len(gpu_data)
+    if gpu_count != count:
+        error_msg = ("gpu-burn failed to find the correct number of gpus. "
+                     "%s found but %s expected." % (gpu_count, count))
+        LOG.error(error_msg)
+        raise errors.CleaningError(error_msg)
+
+
+def _gpu_burn_run(install_dir, memory, timeout=86400):
+    """Burn-in the GPU with gpu-burn
+
+    Run a GPU burn-in job for a configurable amount of time.
+
+    :param install_dir: The location where gpu-burn has been installed.
+    :param memory: Use N% or X MB of the available GPU memory.
+    :param timeout: Timeout in seconds (default: 86400).
+
+    :raises: CommandExecutionError if the execution of gpu-burn fails.
+    """
+
+    args = ['./gpu_burn', '-m', memory, timeout]
+    LOG.debug('Burn-in gpu command: %s', args)
+    try:
+        out, _ = utils.execute(*args, cwd=install_dir)
+        # gpu-burn reports on stdout
+        LOG.debug(out)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        error_msg = 'gpu-burn failed with error %s' % e
+        LOG.error(error_msg)
+        raise errors.CommandExecutionError(error_msg)
+
+
+def gpu_burn(node):
+    """Burn-in and check correct count of GPUs using gpu-burn
+
+    Check that the expected number of GPUs are available on the node
+    and run a GPU burn-in job for a configurable amount of time.
+
+    :param node: Ironic node object
+    """
+    info = node.get('driver_info', {})
+
+    install_dir = info.get('agent_burnin_gpu_install_dir', '/opt/gpu-burn')
+    timeout = info.get('agent_burnin_gpu_timeout', 86400)
+    memory = info.get('agent_burnin_gpu_memory', '95%')
+    count = info.get('agent_burnin_gpu_count', 0)
+
+    # Only check count if an expected number of GPUs has been configured
+    if count > 0:
+        _gpu_burn_check_count(install_dir, count)
+    else:
+        LOG.debug("Burn-in gpu skipping expected number of GPUs check as "
+                  "'agent_burnin_gpu_count' set to 0")
+
+    _gpu_burn_run(install_dir, memory, timeout)

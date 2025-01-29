@@ -2063,6 +2063,14 @@ class GenericHardwareManager(HardwareManager):
         """
         burnin.stress_ng_cpu(node)
 
+    def burnin_gpu(self, node, ports):
+        """Burn-in the GPU
+
+        :param node: Ironic node object
+        :param ports: list of Ironic port objects
+        """
+        burnin.gpu_burn(node)
+
     def burnin_disk(self, node, ports):
         """Burn-in the disk
 
@@ -2657,6 +2665,13 @@ class GenericHardwareManager(HardwareManager):
                 'abortable': True
             },
             {
+                'step': 'burnin_gpu',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
                 'step': 'burnin_disk',
                 'priority': 0,
                 'interface': 'deploy',
@@ -2747,6 +2762,13 @@ class GenericHardwareManager(HardwareManager):
             },
             {
                 'step': 'burnin_cpu',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
+                'step': 'burnin_gpu',
                 'priority': 0,
                 'interface': 'deploy',
                 'reboot_requested': False,

@@ -254,6 +254,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                 'abortable': True
             },
             {
+                'step': 'burnin_gpu',
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+                'abortable': True
+            },
+            {
                 'step': 'burnin_disk',
                 'priority': 0,
                 'interface': 'deploy',
