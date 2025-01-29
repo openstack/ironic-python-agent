@@ -906,7 +906,7 @@ def update_nvidia_nic_firmware_image(images):
     :param images:     list of images
     :raises:    InvalidFirmwareImageConfig
     """
-    if not type(images) is list:
+    if type(images) is not list:
         err = 'The images must be a list of images, %s' % images
         raise InvalidFirmwareImageConfig(details=err)
     check_prereq()
@@ -924,7 +924,7 @@ def update_nvidia_nic_firmware_settings(settings):
     :param settings:     list of settings
     :raises:    InvalidFirmwareSettingsConfig
     """
-    if not type(settings) is list:
+    if type(settings) is not list:
         err = 'The settings must be  list of settings, %s' % settings
         raise InvalidFirmwareSettingsConfig(details=err)
     check_prereq()

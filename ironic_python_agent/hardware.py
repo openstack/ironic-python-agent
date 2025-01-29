@@ -2803,7 +2803,7 @@ class GenericHardwareManager(HardwareManager):
             match_patterns = DEFAULT_CLEAN_UEFI_NVRAM_MATCH_PATTERNS
         validation_error = ('The match_patterns must be a list of strings: '
                             '{}').format(match_patterns)
-        if not type(match_patterns) is list:
+        if type(match_patterns) is not list:
             raise errors.InvalidCommandParamsError(validation_error)
         patterns = []
         for item in match_patterns:
