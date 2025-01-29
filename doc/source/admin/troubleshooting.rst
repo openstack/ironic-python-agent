@@ -277,6 +277,6 @@ Edit /etc/ironic_python_agent/ironic_python_agent.conf and set the parameter
 
 References
 ==========
-.. [0] `Dynamic-login DIB element`: https://github.com/openstack/diskimage-builder/tree/master/diskimage_builder/elements/dynamic-login
-.. [1] `DevUser DIB element`: https://github.com/openstack/diskimage-builder/tree/master/diskimage_builder/elements/devuser
-.. [2] `ironic-python-agent-builder`: https://docs.openstack.org/ironic-python-agent-builder/latest/install/index.html
+.. [0] Dynamic-login DIB element: https://github.com/openstack/diskimage-builder/tree/master/diskimage_builder/elements/dynamic-login
+.. [1] DevUser DIB element: https://github.com/openstack/diskimage-builder/tree/master/diskimage_builder/elements/devuser
+.. [2] ironic-python-agent-builder: https://docs.openstack.org/ironic-python-agent-builder/latest/install/index.html

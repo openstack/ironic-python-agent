@@ -21,11 +21,11 @@ How are methods executed on HardwareManagers?
 ---------------------------------------------
 Methods that modify hardware are dispatched to each hardware manager in
 priority order. When a method is dispatched, if a hardware manager does not
-have a method by that name or raises `IncompatibleHardwareMethodError`, IPA
+have a method by that name or raises ``IncompatibleHardwareMethodError``, IPA
 continues on to the next hardware manager. Any hardware manager that returns
 a result from the method call is considered a success and its return value
 passed on to whatever dispatched the method. If the method is unable to run
-successfully on any hardware managers, `HardwareManagerMethodNotFound` is
+successfully on any hardware managers, ``HardwareManagerMethodNotFound`` is
 raised.
 
 Why build a custom HardwareManager?
@@ -65,11 +65,11 @@ in :ironic-doc:`Ironic Cleaning </admin/cleaning.html>`. A node will perform
 a set of cleaning steps any time the node is deleted by a tenant or moved from
 ``manageable`` state to ``available`` state. Ironic will query
 IPA for a list of clean steps that should be executed on the node. IPA
-will dispatch a call to `get_clean_steps()` on all available hardware managers
-and then return the combined list to Ironic.
+will dispatch a call to ``get_clean_steps()`` on all available hardware
+managers and then return the combined list to Ironic.
 
 To expose extra clean steps, the custom hardware manager should have a function
-named `get_clean_steps()` which returns a list of dictionaries. The
+named ``get_clean_steps()`` which returns a list of dictionaries. The
 dictionaries should be in the form:
 
 .. code-block:: python
@@ -89,18 +89,18 @@ dictionaries should be in the form:
             }
         ]
 
-Then, you should create functions which match each of the `step` keys in
-the clean steps you return. The functions will take two parameters: `node`,
-a dictionary representation of the Ironic node, and `ports`, a list of
-dictionary representations of the Ironic ports attached to `node`.
+Then, you should create functions which match each of the ``step`` keys in
+the clean steps you return. The functions will take two parameters: ``node``,
+a dictionary representation of the Ironic node, and ``ports``, a list of
+dictionary representations of the Ironic ports attached to ``node``.
 
-When a clean step is executed in IPA, the `step` key will be sent to the
+When a clean step is executed in IPA, the ``step`` key will be sent to the
 hardware managers in hardware support order, using
-`hardware.dispatch_to_managers()`. For each hardware manager, if the manager
-has a function matching the `step` key, it will be executed. If the function
+``hardware.dispatch_to_managers()``. For each hardware manager, if the manager
+has a function matching the ``step`` key, it will be executed. If the function
 returns a value (including None), that value is returned to Ironic and no
 further managers are called. If the function raises
-`IncompatibleHardwareMethodError`, the next manager will be called. If the
+``IncompatibleHardwareMethodError``, the next manager will be called. If the
 function raises any other exception, the command will be considered failed,
 the command result's error message will be set to the exception's error
 message, and no further managers will be called. An example step:
@@ -159,7 +159,7 @@ function with extra parameters.
 
 .. note::
 
-    If two managers return steps with the same `step` key, the priority will
+    If two managers return steps with the same ``step`` key, the priority will
     be set to whichever manager has a higher hardware support level and then
     use the higher priority in the case of a tie.
 
@@ -319,10 +319,10 @@ Priority
 ~~~~~~~~
 A hardware manager has a single overall priority, which should be based on how
 well it supports a given piece of hardware. At load time, IPA executes
-`evaluate_hardware_support()` on each hardware manager. This method should
+``evaluate_hardware_support()`` on each hardware manager. This method should
 return an int representing hardware manager priority, based on what it detects
 about the platform it's running on. Suggested values are included in the
-`HardwareSupport` class. Returning a value of 0 aka `HardwareSupport.NONE`,
+``HardwareSupport`` class. Returning a value of 0 aka ``HardwareSupport.NONE``,
 will prevent the hardware manager from being used. IPA will never ship a
 hardware manager with a priority higher than 3, aka
-`HardwareSupport.SERVICE_PROVIDER`.
+``HardwareSupport.SERVICE_PROVIDER``.
