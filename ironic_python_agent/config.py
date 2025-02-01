@@ -256,7 +256,7 @@ cli_opts = [
     cfg.StrOpt('ntp_server',
                default=APARAMS.get('ipa-ntp-server', None),
                help='Address of a single NTP server against which the '
-                    'agent should sync the hardware clock prior to '
+                    'agent should sync the system software clock prior to '
                     'rebooting to an instance.'),
     cfg.BoolOpt('fail_if_clock_not_set',
                 default=False,
