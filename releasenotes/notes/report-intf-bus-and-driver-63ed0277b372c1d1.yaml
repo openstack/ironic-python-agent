@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adds support to collect pci address and driver information for interfaces.

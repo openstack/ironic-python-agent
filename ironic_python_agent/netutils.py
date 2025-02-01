@@ -280,6 +280,24 @@ def interface_has_carrier(interface_name):
         return False
 
 
+def get_interface_pci_address(interface_name):
+    path = '/sys/class/net/{}/device'.format(interface_name)
+    try:
+        return os.path.basename(os.readlink(path))
+    except FileNotFoundError:
+        LOG.debug('No bus address found for interface %s',
+                  interface_name)
+
+
+def get_interface_driver(interface_name):
+    path = '/sys/class/net/{}/device/driver'.format(interface_name)
+    try:
+        return os.path.basename(os.readlink(path))
+    except FileNotFoundError:
+        LOG.debug('No driver found for interface %s',
+                  interface_name)
+
+
 def wrap_ipv6(ip):
     if netutils.is_valid_ipv6(ip):
         return "[%s]" % ip

@@ -822,11 +822,13 @@ class NetworkInterface(encoding.SerializableComparable):
     serializable_fields = ('name', 'mac_address', 'ipv4_address',
                            'ipv6_address', 'has_carrier', 'lldp',
                            'vendor', 'product', 'client_id',
-                           'biosdevname', 'speed_mbps')
+                           'biosdevname', 'speed_mbps', 'pci_address',
+                           'driver')
 
     def __init__(self, name, mac_addr, ipv4_address=None, ipv6_address=None,
                  has_carrier=True, lldp=None, vendor=None, product=None,
-                 client_id=None, biosdevname=None, speed_mbps=None):
+                 client_id=None, biosdevname=None, speed_mbps=None,
+                 pci_address=None, driver=None):
         self.name = name
         self.mac_address = mac_addr
         self.ipv4_address = ipv4_address
@@ -837,6 +839,8 @@ class NetworkInterface(encoding.SerializableComparable):
         self.product = product
         self.biosdevname = biosdevname
         self.speed_mbps = speed_mbps
+        self.pci_address = pci_address
+        self.driver = driver
         # client_id is used for InfiniBand only. we calculate the DHCP
         # client identifier Option to allow DHCP to work over InfiniBand.
         # see https://tools.ietf.org/html/rfc4390
@@ -1469,7 +1473,10 @@ class GenericHardwareManager(HardwareManager):
             vendor=_get_device_info(interface_name, 'net', 'vendor'),
             product=_get_device_info(interface_name, 'net', 'device'),
             biosdevname=self.get_bios_given_nic_name(interface_name),
-            speed_mbps=self._get_network_speed(interface_name))
+            speed_mbps=self._get_network_speed(interface_name),
+            pci_address=netutils.get_interface_pci_address(interface_name),
+            driver=netutils.get_interface_driver(interface_name)
+        )
 
     def get_ipv4_addr(self, interface_id):
         return netutils.get_ipv4_addr(interface_id)
