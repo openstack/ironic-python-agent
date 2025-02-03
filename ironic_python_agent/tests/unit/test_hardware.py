@@ -6597,6 +6597,54 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
         self.assertTrue(interfaces[0].has_carrier)
         self.assertEqual('', interfaces[0].biosdevname)
 
+    @mock.patch.object(netutils, 'get_interface_driver', autospec=True)
+    @mock.patch.object(netutils, 'get_interface_pci_address', autospec=True)
+    def test_list_network_interfaces_with_pci_address(self,
+                                                      mock_get_pci,
+                                                      mock_get_driver,
+                                                      mock_has_carrier,
+                                                      mocked_execute,
+                                                      mocked_open,
+                                                      mocked_exists,
+                                                      mocked_listdir,
+                                                      mocked_net_if_addrs,
+                                                      mockedget_managers,
+                                                      mocked_lshw):
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_net_if_addrs.return_value = {
+            'lo': [
+                FakeAddr(socket.AF_INET, '127.0.0.1'),
+                FakeAddr(socket.AF_INET6, '::1'),
+                FakeAddr(socket.AF_PACKET, '00:00:00:00:00:00')
+            ],
+            'eth0': [
+                FakeAddr(socket.AF_INET, '192.168.1.2'),
+                FakeAddr(socket.AF_INET6, 'fd00::101'),
+                FakeAddr(socket.AF_PACKET, '00:0c:29:8c:11:b1')
+            ]
+        }
+        mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = True
+        mock_get_pci.return_value = '0000:02:00.0'
+        mock_get_driver.return_value = 'e1000e'
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertIsNone(interfaces[0].lldp)
+        self.assertTrue(interfaces[0].has_carrier)
+        self.assertEqual('em0', interfaces[0].biosdevname)
+        self.assertIsNone(interfaces[0].speed_mbps)
+        self.assertEqual('0000:02:00.0', interfaces[0].pci_address)
+        self.assertEqual('e1000e', interfaces[0].driver)
+
     def test_list_network_vlan_interfaces(self,
                                           mock_has_carrier,
                                           mocked_execute,
