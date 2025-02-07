@@ -46,7 +46,8 @@
     name: ipa-tempest-uefi-redfish-vmedia-src
     parent: ironic-ipa-base
     required-projects:
-      - opendev.org/openstack/sushy-tools
+      - name: opendev.org/openstack/sushy-tools
+        override-checkout: 1.3.0
     vars:
       devstack_services:
         s-account: True
