@@ -388,6 +388,11 @@ cli_opts = [
                      'image validation logic will fail the deployment '
                      'process. This check is skipped if deep image '
                      'inspection is disabled.'),
+    cfg.BoolOpt('disable_bootc_deploy',
+                default=False,
+                help='This disables bootc deployment methods in the ramdisk '
+                     'because the bootc command inside of the ramdisk '
+                     'comes from the supplied image to be deployed.'),
 ]
 
 disk_utils_opts = [

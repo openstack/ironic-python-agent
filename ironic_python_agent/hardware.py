@@ -2739,6 +2739,16 @@ class GenericHardwareManager(HardwareManager):
                 'reboot_requested': False,
                 'argsinfo': inject_files.ARGSINFO,
             },
+            {
+                'step': 'execute_bootc_install',
+                # NOTE(TheJulia): Similar to write_image above, this step
+                # has to be called directly by a driver to represent the
+                # flow, hence no priority here and realistically it also
+                # doesn't really matter.
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
+            },
         ]
 
     # TODO(TheJulia): There has to be a better way, we should
@@ -2814,6 +2824,16 @@ class GenericHardwareManager(HardwareManager):
                 'interface': 'deploy',
                 'reboot_requested': False,
                 'argsinfo': inject_files.ARGSINFO,
+            },
+            {
+                'step': 'execute_bootc_install',
+                # NOTE(TheJulia): Similar to write_image above, this step
+                # has to be called directly by a driver to represent the
+                # flow, hence no priority here and realistically it also
+                # doesn't really matter.
+                'priority': 0,
+                'interface': 'deploy',
+                'reboot_requested': False,
             },
         ]
         # TODO(TheJulia): Consider erase_devices and friends...
@@ -3378,6 +3398,33 @@ class GenericHardwareManager(HardwareManager):
         """
         ext = ext_base.get_extension('standby')
         cmd = ext.prepare_image(image_info=image_info, configdrive=configdrive)
+        # The result is asynchronous, wait here.
+        return cmd.wait()
+
+    def execute_bootc_install(self, node, ports, image_source, configdrive,
+                              oci_pull_secret):
+        """Deploy a container using bootc install.
+
+        Downloads, runs, and leverages bootc install to deploy the desired
+        container to the disk using bootc and writes any configuration
+        drive to the disk if necessary.
+
+        :param node: A dictionary of the node object
+        :param ports: A list of dictionaries containing information
+                      of ports for the node
+        :param image_info: Image information dictionary.
+        :param configdrive: A string containing the location of the config
+                            drive as a URL OR the contents (as gzip/base64)
+                            of the configdrive. Optional, defaults to None.
+        :param oci_pull_secret: The base64 encoded pull secret to utilize
+                                to retrieve the user requested container.
+        """
+        ext = ext_base.get_extension('standby')
+        cmd = ext.execute_bootc_install(
+            image_source=image_source,
+            instance_info=node.get('instance_info'),
+            pull_secret=oci_pull_secret,
+            configdrive=configdrive)
         # The result is asynchronous, wait here.
         return cmd.wait()
 

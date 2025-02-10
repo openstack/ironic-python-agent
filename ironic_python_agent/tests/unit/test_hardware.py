@@ -34,6 +34,7 @@ from stevedore import extension
 from ironic_python_agent import disk_utils
 from ironic_python_agent import efi_utils
 from ironic_python_agent import errors
+from ironic_python_agent.extensions import base as ext_base
 from ironic_python_agent import hardware
 from ironic_python_agent import netutils
 from ironic_python_agent import raid_utils
@@ -6916,3 +6917,24 @@ class TestFullSync(base.IronicAgentTest):
             mock.call('blockdev', '--flushbufs', '/dev/sda'),
             mock.call('blockdev', '--flushbufs', '/dev/nvme0n1'),
         ])
+
+
+class TestExecuteBootCInstall(base.IronicAgentTest):
+
+    def setUp(self):
+        super().setUp()
+        self.hardware = hardware.GenericHardwareManager()
+
+    @mock.patch.object(ext_base, 'get_extension', autospec=True)
+    def test_execute_bootc_install(self, mock_get_ext):
+        ext = mock.Mock()
+        node = {'name': 'node-0', 'instance_info': {'foo': 'bar'}}
+        mock_get_ext.return_value = ext
+        self.hardware.execute_bootc_install(node, [], 'oci://foo',
+                                            None, 'secret')
+        ext.execute_bootc_install.assert_called_once_with(
+            image_source='oci://foo',
+            instance_info={'foo': 'bar'},
+            pull_secret='secret',
+            configdrive=None)
+        mock_get_ext.assert_called_once_with('standby')

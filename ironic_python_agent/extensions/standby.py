@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import errno
 import hashlib
+import json
 import os
 import re
 import tempfile
@@ -1109,3 +1111,240 @@ class StandbyExtension(base.BaseAgentExtension):
             LOG.error(msg)
             if CONF.fail_if_clock_not_set or not ignore_errors:
                 raise errors.ClockSyncError(msg)
+
+    @base.async_command('execute_bootc_install')
+    def execute_bootc_install(self, image_source, instance_info={},
+                              pull_secret=None, configdrive=None):
+        """Asynchronously prepares specified image on local OS install device.
+
+        Identifies target disk device to deploy onto, and extracts necessary
+        configuration data to trigger podman, triggers podman, verifies
+        partitioning changes were made, and finally executes configuration
+        drive write-out.
+
+        :param image_source: The OCI Container registry URL supplied by Ironic.
+        :param instance_info: An Ironic Node's instance_info filed for user
+            requested specific configuration details be extracted.
+        :param pull_secret: The user requested or system required pull secret
+            to authenticate to remote container image registries.
+        :param configdrive: The user requested configuration drive content
+            supplied by Ironic's step execution command.
+
+        :raises: ImageDownloadError if the image download encounters an error.
+        :raises: ImageChecksumError if the checksum of the local image does not
+             match the checksum as reported by glance in image_info.
+        :raises: ImageWriteError if writing the image fails.
+        :raises: InstanceDeployFailure if failed to create config drive.
+             large to store on the given device.
+        """
+        LOG.debug('Preparing container %s for bootc.', image_source)
+        if CONF.disable_bootc_deploy:
+            LOG.error('A bootc based deployment was requested for %s, '
+                      'however bootc based deployment is disabled.',
+                      image_source)
+            raise errors.CommandExecutionError(
+                details=("The bootc deploy interface is administratively "
+                         "disable. Deployment cannot proceed."))
+        device = hardware.dispatch_to_managers('get_os_install_device',
+                                               permit_refresh=True)
+        authorized_keys = instance_info.get('bootc_authorized_keys', None)
+        tpm2_luks = instance_info.get('bootc_tpm2_luks', False)
+        self._download_container_and_bootc_install(image_source, device,
+                                                   pull_secret, tpm2_luks,
+                                                   authorized_keys)
+
+        _validate_partitioning(device)
+
+        # For partition images the configdrive creation is taken care by
+        # partition_utils.work_on_disk(), invoked from either
+        # _write_partition_image or _cache_and_write_image above.
+        # Handle whole disk images explicitly now.
+        if configdrive:
+            partition_utils.create_config_drive_partition('local',
+                                                          device,
+                                                          configdrive)
+
+        msg = f'Container image ({image_source}) written to device {device}'
+        LOG.info(msg)
+        return msg
+
+    def _download_container_and_bootc_install(self, image_source,
+                                              device, pull_secret,
+                                              tpm2_luks, authorized_keys):
+        """Downloads container and triggers bootc install.
+
+        :param image_source: The user requested image_source to
+            deploy to the hard disk.
+        :param device: The device to deploy to.
+        :param pull_secret: A pull secret to interact with a remote
+            container image registry.
+        :param tpm2_luks: Boolean value if LUKS should be requested.
+        :param authorized_keys: The authorized keys string data
+            to supply to podman, if applicable.
+        :raises: ImageDownloadError If the downloaded container
+                 lacks the ``bootc`` command.
+        :raises: ImageWriteError If the execution of podman fails.
+        """
+        # First, disable pivot_root in podman because it cannot be
+        # performed on top of a ramdisk filesystem.
+        self._write_no_pivot_root()
+
+        # Identify the URL, specifically so we drop
+        url = urlparse.urlparse(image_source)
+
+        # This works because the path is maintained.
+        container_url = url.netloc + url.path
+
+        if pull_secret:
+            self._write_container_auth(pull_secret, url.netloc)
+
+        # Get the disk size, and convert it to megabtyes.
+        disk_size = disk_utils.get_dev_byte_size(device) // 1024 // 1024
+
+        # Ensure we leave enough space for a configuration drive,
+        # and ESP partition.
+        # NOTE(TheJulia): bootc leans towards a 512 MB EFI partition.
+        disk_size = disk_size - 768
+        # Convert from a float to string.
+        disk_size = str(disk_size)
+
+        # Determine the status of selinux.
+        selinux = False
+        try:
+            stdout, _ = utils.execute("getenforce", use_standard_locale=True)
+            if stdout.startswith('Enforcing'):
+                selinux = True
+        except (processutils.ProcessExecutionError,
+                errors.CommandExecutionError,
+                OSError):
+            pass
+
+        # Execute Podman to run bootc from the container.
+        #
+        # This has to run as a privileged operation, mapping the container
+        # assets from the runtime to inside of the container environment,
+        # and pass the device through.
+        #
+        # As for bootc itself...
+        # --skip-fetch-check disables an internal check to bootc to make sure
+        # it can retrieve updates from the remote registry, which is fine if
+        # credentials are already in the container or we embed the credentials,
+        # but that is not the best idea.
+        # --disable-selinux is alternatively needed if selinux is *not*
+        # enabled on the host.
+        command = [
+            'podman',
+            '--log-level=debug',
+            'run', '--rm', '--privileged', '--pid=host',
+            '-v', '/var/lib/containers:/var/lib/containers',
+            '-v', '/dev:/dev',
+            # By default, podman's retry starts at 3s and extends
+            # expentionally, which can lead to podman appearing
+            # to hang when downloading. This pins it so it just
+            # retires in relatively short order.
+            '--retry-delay=5s',
+        ]
+        if pull_secret:
+            command.append('--authfile=/root/.config/containers/auth.json')
+        if authorized_keys:
+            # NOTE(TheJulia): Bandit flags on this, but we need a folder which
+            # should exist in the container *and* locally to the ramdisk.
+            # As such, flagging with nosec.
+            command.extend(['-v', '/tmp:/tmp'])  # nosec B108
+        if selinux:
+            command.extend([
+                '--security-opt', 'label=type:unconfined_t'
+            ])
+        command.extend([
+            container_url,
+            'bootc', 'install', 'to-disk',
+            '--wipe', '--skip-fetch-check',
+            '--root-size=' + disk_size + 'M'
+        ])
+        if tpm2_luks:
+            command.append('--block-setup=tpm2-luks')
+        if authorized_keys:
+            key_file = self._write_authorized_keys(authorized_keys)
+            command.append(f'--root-ssh-authorized-keys={key_file}')
+
+        if not selinux:
+            # For SELinux to be applied, per the bootc docs, you must have
+            # SELinux enabled on the host system.
+            command.append('--disable-selinux')
+
+        command.append(device)
+
+        try:
+            stdout, stderr = utils.execute(*command, use_standard_locale=True)
+        except processutils.ProcessExecutionError as e:
+            LOG.debug('Failed to execute podman: %s', e)
+            raise errors.ImageWriteError(device, e.exit_code, e.stdout,
+                                         e.stderr)
+        for output in [stdout, stderr]:
+            if 'executable file `bootc` not found' in output:
+                # This is the case where the container doesn't actually
+                # support bootc, because it lacks the bootc tool.
+                # This should be stderr, but appears in stdout. Check both
+                # just on the safe side.
+                raise errors.ImageDownloadError(
+                    image_source,
+                    "Container does not contain the required bootc binary "
+                    "and thus cannot be deployed."
+                )
+
+    def _write_no_pivot_root(self):
+        """Writes a podman no-pivot configuration."""
+        # This method writes a configuration to tell podman
+        # to *don't* attempt to pivot_root on the ramdisk, because
+        # it won't work. In essence, just setting the environment,
+        # to actually execute a container.
+        path = '/etc/containers/containers.conf.d'
+        os.makedirs(path, exist_ok=True)
+        file_path = os.path.join(path, '01-ipa.conf')
+        file_content = '[engine]\nno_pivot_root = true\n'
+        with open(file_path, 'w') as file:
+            file.write(file_content)
+
+    def _write_container_auth(self, pull_secret, netloc):
+        """Write authentication configuration for container registry auth.
+
+        :param pull_secret: The authorization pull secret string for
+                            interacting with a remote container registry.
+        :param netloc: The FQDN, or network location portion of the URL
+                       used to access the container registry.
+        """
+        # extract secret
+        decoded_pull_secret = base64.standard_b64decode(
+            pull_secret
+        ).decode()
+
+        # Generate a dict which will emulate our container auth
+        # configuration.
+        auth_dict = {
+            "auths": {netloc: {"auth": decoded_pull_secret}}}
+
+        # Make the folders to $HOME/.config/containers/auth.json
+        # which would normally be generated by podman login, but
+        # we don't need to actually do that as we have a secret.
+        # Default to root, as we don't launch IPA with a HOME
+        # folder in most cases.
+        home = '/root'
+        folder = os.path.join(home, '.config/containers')
+        os.makedirs(folder, mode=0o700, exist_ok=True)
+        auth_path = os.path.join(folder, 'auth.json')
+
+        # Save the pull secret
+        with open(auth_path, 'w') as file:
+            json.dump(auth_dict, file)
+
+    def _write_authorized_keys(self, authorized_keys):
+        """Write a temporary authorized keys file for bootc use."""
+        # Write authorized_keys content to a temporary file
+        # on the temporary folder path structure which can be
+        # accessed by podman. On linux in our ramdisks, this
+        # should always be /tmp. We then return the absolute
+        # file path for podman to leverage.
+        fd, file_path = tempfile.mkstemp(text=True)
+        os.write(fd, authorized_keys.encode())
+        os.close(fd)
+        return file_path
