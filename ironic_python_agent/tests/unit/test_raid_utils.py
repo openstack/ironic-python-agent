@@ -57,7 +57,7 @@ class TestRaidUtils(base.IronicAgentTest):
 
         mock_execute.assert_called_once_with(
             'mdadm', '--create', '/dev/md0', '--force', '--run',
-            '--metadata=1', '--level', '1', '--name', '/dev/md0',
+            '--metadata=1', '--level', '1', '--name', 'md0',
             '--raid-devices', 3, '/dev/sda1', '/dev/sdb1', '/dev/sdc1')
 
     @mock.patch.object(raid_utils, '_get_actual_component_devices',
@@ -97,7 +97,7 @@ class TestRaidUtils(base.IronicAgentTest):
 
         expected_calls = [
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
-                      '--metadata=1', '--level', '1', '--name', '/dev/md0',
+                      '--metadata=1', '--level', '1', '--name', 'md0',
                       '--raid-devices', 3, '/dev/sda1', '/dev/sdb1',
                       '/dev/sdc1'),
             mock.call('mdadm', '--add', '/dev/md0', '/dev/sdb1',
