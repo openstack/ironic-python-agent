@@ -257,6 +257,17 @@ class TestStandbyExtension(base.IronicAgentTest):
             standby._gen_auth_from_oslo_conf_user_pass(image_info['id'])
         self.assertIsNone(return_auth)
 
+    def test_load_auth_header_from_image_info(self):
+        image_info = _build_fake_image_info()
+        image_info['image_request_authorization'] = b'QmVhcmVyIGYwMA=='
+        return_auth = standby._load_supplied_authorization(image_info)
+        self.assertEqual('Bearer f00', return_auth.authorization)
+
+    def test_load_auth_header_from_image_info_none(self):
+        image_info = _build_fake_image_info()
+        return_auth = standby._load_supplied_authorization(image_info)
+        self.assertIsNone(return_auth)
+
     def test_verify_basic_auth_creds_empty_user(self):
         image_info = _build_fake_image_info()
         self.assertRaises(errors.ImageDownloadError,
@@ -689,6 +700,36 @@ class TestStandbyExtension(base.IronicAgentTest):
                                               cert=None, verify=True,
                                               stream=True, proxies={},
                                               timeout=60, auth=correct_auth)
+        write = file_mock.write
+        write.assert_any_call('some')
+        write.assert_any_call('content')
+        self.assertEqual(2, write.call_count)
+
+    @mock.patch('hashlib.new', autospec=True)
+    @mock.patch('builtins.open', autospec=True)
+    @mock.patch('requests.get', autospec=True)
+    def test_download_image_conductor_auth(self,
+                                           requests_mock,
+                                           open_mock,
+                                           hash_mock):
+        image_info = _build_fake_image_info()
+        image_info['image_request_authorization'] = b'QmVhcmVyIGYwMA=='
+        correct_auth = standby.SuppliedAuth('Bearer f00')
+        response = requests_mock.return_value
+        response.status_code = 200
+        response.iter_content.return_value = ['some', 'content']
+        file_mock = mock.Mock()
+        open_mock.return_value.__enter__.return_value = file_mock
+        file_mock.read.return_value = None
+        hexdigest_mock = hash_mock.return_value.hexdigest
+        hexdigest_mock.return_value = image_info['os_hash_value']
+
+        standby._download_image(image_info)
+        requests_mock.assert_called_once_with(image_info['urls'][0],
+                                              cert=None, verify=True,
+                                              stream=True, proxies={},
+                                              timeout=60, auth=correct_auth)
+        self.assertEqual('Bearer f00', correct_auth.authorization)
         write = file_mock.write
         write.assert_any_call('some')
         write.assert_any_call('content')
