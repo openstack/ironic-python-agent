@@ -15,6 +15,7 @@
 import collections
 import importlib.metadata
 import ipaddress
+import os
 import random
 import socket
 import threading
@@ -564,7 +565,19 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                 LOG.error('Neither ipa-api-url nor inspection_callback_url'
                           'found, please check your pxe append parameters.')
 
-        self.serve_ipa_api()
+        in_rescued_mode = os.path.exists('/etc/.rescued')
+        if not in_rescued_mode:
+            self.serve_ipa_api()
+        else:
+            # NOTE(cid): In rescued state, we don't call _lockdown_system() as
+            # it brings down network interfaces which should be preserved for
+            # rescue operations.
+            LOG.info('Found rescue state marker file, locking down IPA '
+                     'in disabled mode')
+            self.heartbeater.stop()
+            self.serve_api = False
+            while True:
+                time.sleep(100)
 
         if not self.standalone and self.api_urls:
             self.heartbeater.stop()

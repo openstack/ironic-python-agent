@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Prevents IPA from restarting on tenant networks during rescue
+    operations by adding proper lockdown.
