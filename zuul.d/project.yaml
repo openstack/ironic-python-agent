@@ -25,7 +25,6 @@
         # Non-voting jobs
         - ipa-tempest-ironic-inspector-src:
             voting: false
-        - ipa-tox-codespell
     gate:
       jobs:
         - openstack-tox-functional
@@ -34,7 +33,6 @@
         - ipa-tempest-uefi-redfish-vmedia-src
         - metalsmith-integration-ipa-src-uefi
         - ironic-standalone-ipa-src
-        - ipa-tox-codespell
     post:
       jobs:
         - ironic-python-agent-build-image-tinyipa
