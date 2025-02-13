@@ -37,7 +37,8 @@ class TestCommands(base.FunctionalBase):
         # success is required for steps 3 and 4 to succeed.
         command = {'name': 'clean.get_clean_steps',
                    'params': {'node': self.node, 'ports': {}}}
-        response = self.request('post', 'commands', json=command,
+        response = self.request('post', 'commands/?agent_token=678123',
+                                json=command,
                                 headers={'Content-Type': 'application/json'})
         self.assertIsNone(response['command_error'])
 
@@ -63,7 +64,8 @@ class TestCommands(base.FunctionalBase):
 
     def step_5_run_non_existent_command(self):
         fake_command = {'name': 'bad_extension.fake_command', 'params': {}}
-        self.request('post', 'commands', expect_error=404, json=fake_command)
+        self.request('post', 'commands/?agent_token=678123',
+                     expect_error=404, json=fake_command)
 
     def positive_get_post_command_steps(self):
         """Returns generator with test steps sorted by step number."""

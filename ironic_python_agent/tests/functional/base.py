@@ -49,7 +49,7 @@ class FunctionalBase(test_base.BaseTestCase):
             lookup_timeout=300,
             lookup_interval=1,
             standalone=True,
-            agent_token=None)
+            agent_token='678123')
         self.process = multiprocessing.Process(
             target=self.agent.run)
         self.process.start()
