@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    In rescued state, prevent IPA from restarting to avoid exposing its API
+    on tenant networks.

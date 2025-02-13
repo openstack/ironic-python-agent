@@ -274,6 +274,61 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         data = response.json
         self.assertEqual(serialized_cmd_result, data)
 
+    def test_list_commands_with_token(self):
+        agent_token = str('0123456789' * 10)
+        cmd_result = base.SyncCommandResult('do_things',
+                                            {'key': 'value'},
+                                            True,
+                                            {'test': 'result'})
+        self.mock_agent.list_command_results.return_value = [cmd_result]
+        self.mock_agent.validate_agent_token.return_value = True
+
+        response = self.get_json('/commands?agent_token=%s' % agent_token)
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(1, self.mock_agent.list_command_results.call_count)
+
+    def test_get_command_with_token(self):
+        agent_token = str('0123456789' * 10)
+        cmd_result = base.SyncCommandResult('do_things',
+                                            {'key': 'value'},
+                                            True,
+                                            {'test': 'result'})
+        self.mock_agent.get_command_result.return_value = cmd_result
+        self.mock_agent.validate_agent_token.return_value = True
+
+        response = self.get_json(
+            '/commands/abc123?agent_token=%s' % agent_token)
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(cmd_result.serialize(), response.json)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(1, self.mock_agent.get_command_result.call_count)
+
+    def test_list_commands_with_token_invalid(self):
+        agent_token = str('0123456789' * 10)
+        self.mock_agent.validate_agent_token.return_value = False
+
+        response = self.get_json('/commands?agent_token=%s' % agent_token,
+                                 expect_errors=True)
+
+        self.assertEqual(401, response.status_code)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(0, self.mock_agent.list_command_results.call_count)
+
+    def test_get_command_with_token_invalid(self):
+        agent_token = str('0123456789' * 10)
+        self.mock_agent.validate_agent_token.return_value = False
+
+        response = self.get_json(
+            '/commands/abc123?agent_token=%s' % agent_token,
+            expect_errors=True)
+
+        self.assertEqual(401, response.status_code)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(0, self.mock_agent.get_command_result.call_count)
+
     def test_execute_agent_command_with_token(self):
         agent_token = str('0123456789' * 10)
         command = {
