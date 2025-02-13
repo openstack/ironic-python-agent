@@ -1014,6 +1014,18 @@ class GetAndValidateImageFormat(base.IronicAgentTest):
                           '/fake/path', fmt)
 
     @mock.patch.object(disk_utils, '_image_inspection', autospec=True)
+    def test_format_unknown_happy(self, mock_ii):
+        """ironic_disk_format=unknown, but we detect it as a qcow3"""
+        CONF.set_override('disable_deep_image_inspection', False)
+        fmt = 'unknown'
+        mock_ii.return_value = MockFormatInspectorCls('qcow2', 0, True)
+        self.assertEqual(
+            ('qcow2', 0),
+            disk_utils.get_and_validate_image_format('/fake/path', fmt)
+        )
+        mock_ii.assert_called_once_with('/fake/path')
+
+    @mock.patch.object(disk_utils, '_image_inspection', autospec=True)
     @mock.patch.object(qemu_img, 'image_info', autospec=True)
     def test_format_mismatch_but_disabled(self, mock_info, mock_ii):
         """qcow3 ironic_disk_format ignored because deep inspection disabled"""
