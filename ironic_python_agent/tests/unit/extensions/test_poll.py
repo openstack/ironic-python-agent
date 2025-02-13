@@ -42,8 +42,7 @@ class TestPollExtension(base.IronicAgentTest):
     def test_set_node_info_success(self):
         self.mock_agent.standalone = True
         node_info = {'node': {'uuid': 'fake-node', 'properties': {}},
-                     'config': {'agent_token_required': True,
-                                'agent_token': 'blah' * 8}}
+                     'config': {'agent_token': 'blah' * 8}}
         result = self.agent_extension.set_node_info(node_info=node_info)
         self.mock_agent.process_lookup_data.assert_called_once_with(node_info)
         self.assertEqual('SUCCEEDED', result.command_status)
@@ -51,8 +50,7 @@ class TestPollExtension(base.IronicAgentTest):
     def test_set_node_info_not_standalone(self):
         self.mock_agent.standalone = False
         node_info = {'node': {'uuid': 'fake-node', 'properties': {}},
-                     'config': {'agent_token_required': True,
-                                'agent_token': 'blah' * 8}}
+                     'config': {'agent_token': 'blah' * 8}}
         self.assertRaises(errors.InvalidCommandError,
                           self.agent_extension.set_node_info,
                           node_info=node_info)
