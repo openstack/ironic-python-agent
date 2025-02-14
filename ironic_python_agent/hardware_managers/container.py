@@ -10,7 +10,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+from ironic_python_agent import errors
 from ironic_python_agent import hardware
 from ironic_python_agent import utils
 from oslo_config import cfg
@@ -27,24 +27,9 @@ class ContainerHardwareManager(hardware.HardwareManager):
 
     HARDWARE_MANAGER_NAME = "ContainerHardwareManager"
     HARDWARE_MANAGER_VERSION = "1"
-    ALLOW_ARBITARY_CONTAINERS = CONF.container.allow_arbitrary_containers
-    ALLOWED_CONTAINERS = CONF.container.allowed_containers
 
     def __init__(self):
-        """Dynamically create cleanup methods."""
-        self.STEPS = self._load_steps_from_yaml(
-            CONF.container.container_steps_file)
-        LOG.debug("Loaded steps: %s", self.STEPS)
-        for step in self.STEPS:
-            if not self.ALLOW_ARBITARY_CONTAINERS:
-                if step['image'] not in self.ALLOWED_CONTAINERS:
-                    LOG.debug(
-                        "%s is not registered as ALLOWED_CONTAINERS "
-                        "in ironic-python-agent.conf", step['image']
-                    )
-
-                    continue
-            setattr(self, step["name"], self._create_cleanup_method(step))
+        self.STEPS = None
 
     def _load_steps_from_yaml(self, file_path):
         """Load steps from YAML file."""
@@ -58,52 +43,86 @@ class ContainerHardwareManager(hardware.HardwareManager):
 
     def evaluate_hardware_support(self):
         """Determine if container runner exists and return support level."""
-        try:
-            stdout, _ = utils.execute("which", CONF.container.runner)
-            if stdout.strip():
+        containers_runners = ["podman", "docker"]
+        for runner in containers_runners:
+            try:
+                stdout, _ = utils.execute("which", runner)
                 LOG.debug("Found %s, returning MAINLINE",
-                          CONF.container.runner)
+                          runner)
                 return hardware.HardwareSupport.MAINLINE
-        except Exception as e:
-            LOG.debug("Error checking container runner: %s", str(e))
+            except Exception as e:
+                LOG.debug("Error checking container runner: %s", e)
         LOG.debug("No container runner found, returning NONE")
         return hardware.HardwareSupport.NONE
 
     def get_clean_steps(self, node, ports):
         """Dynamically generate cleaning steps."""
+        self.STEPS = self._load_steps_from_yaml(
+            CONF.container['container_steps_file'])
         steps = []
         for step in self.STEPS:
-            steps.append(
-                {
-                    "step": step["name"],
-                    "priority": step["priority"],
-                    "interface": step['interface'],
-                    "reboot_requested": step['reboot_requested'],
-                    "abortable": step["abortable"],
-                }
-            )
+            try:
+                steps.append(
+                    {
+                        "step": step["name"],
+                        "priority": step["priority"],
+                        "interface": step['interface'],
+                        "reboot_requested": step['reboot_requested'],
+                        "abortable": step["abortable"],
+                    }
+                )
+            except KeyError as e:
+                missing_key = str(e)
+                step_name = step.get("name", "unknown")
+                LOG.exception("Missing key '%s' in cleaning step: %s",
+                              missing_key, step_name)
+                raise errors.HardwareManagerConfigurationError(
+                    f"Missing required key '{missing_key}' in cleaning step:\
+                    {step_name}"
+                )
         return steps
 
-    def _create_cleanup_method(self, step):
-        """Return a function that runs the container with the given image."""
+    def __getattr__(self, name):
+        ALLOW_ARBITRARY_CONTAINERS = CONF.container
+        ['allow_arbitrary_containers']
+        ALLOWED_CONTAINERS = CONF.container['allowed_containers']
+        if self.STEPS is None:
+            self.STEPS = self._load_steps_from_yaml(
+                CONF.container['container_steps_file'])
 
-        def _cleanup(node, ports):
-            try:
-                utils.execute(
-                    CONF.container.runner,
-                    "pull",
-                    *step.get("pull_options", CONF.container.pull_options),
-                    step["image"],
-                )
-                utils.execute(
-                    CONF.container.runner,
-                    "run",
-                    *step.get("run_options", CONF.container.run_options),
-                    step["image"],
-                )
-            except Exception as e:
-                LOG.exception("Error during cleanup: %s", e)
-                raise
-            return True
+        for step in self.STEPS:
+            if step.get('name') == name:
+                if not ALLOW_ARBITRARY_CONTAINERS:
+                    if step.get('image') not in ALLOWED_CONTAINERS:
+                        LOG.debug(
+                            "%s is not registered as ALLOWED_CONTAINERS "
+                            "in ironic-python-agent.conf", step.get('image')
+                        )
+                        continue
 
-        return _cleanup
+                def run_container_steps(*args, **kwargs):
+                    try:
+                        utils.execute(
+                            CONF.container.runner,
+                            "pull",
+                            *step.get("pull_options",
+                                      CONF.container.pull_options),
+                            step.get("image"),
+                        )
+                        LOG.info("Container image '%s' pulled",
+                                 step.get("image"))
+                        utils.execute(
+                            CONF.container.runner,
+                            "run",
+                            *step.get("run_options",
+                                      CONF.container.run_options),
+                            step.get("image"),
+                        )
+                        LOG.info("Container image '%s' completed",
+                                 step.get("image"))
+                    except Exception as e:
+                        LOG.exception("Error during cleanup: %s", e)
+                        raise
+                return run_container_steps
+        raise AttributeError(
+            "%s object has no attribute %s", self.__class__.__name__, name)

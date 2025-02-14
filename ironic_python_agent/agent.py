@@ -455,6 +455,9 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         # Update config with values from Ironic
         config = content.get('config', {})
+        if config.get('agent_containers'):
+            for opt, val in config['agent_containers'].items():
+                cfg.CONF.set_override(opt, val, group='container')
         if config.get('metrics'):
             for opt, val in config.items():
                 setattr(cfg.CONF.metrics, opt, val)

@@ -268,6 +268,15 @@ class HardwareManagerMethodNotFound(RESTError):
         super(HardwareManagerMethodNotFound, self).__init__(details)
 
 
+class HardwareManagerConfigurationError(RESTError):
+    """Error raised when a hardware manager has invalid configuration."""
+
+    message = 'Hardware manager configuration error'
+
+    def __init__(self, details=None):
+        super(HardwareManagerConfigurationError, self).__init__(details)
+
+
 class IncompatibleHardwareMethodError(RESTError):
     """Error raised when HardwareManager method incompatible with hardware."""
 

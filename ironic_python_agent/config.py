@@ -443,6 +443,13 @@ disk_part_opts = [
 ]
 
 container_opts = [
+    cfg.BoolOpt('allow_arbitrary_containers',
+                default=False,
+                help='Allow arbitrary containers to be run'
+                     'without restriction.'),
+    cfg.ListOpt('allowed_containers',
+                default=[],
+                help='List of allowed containers that can be run.'),
     cfg.StrOpt('container_steps_file',
                default='/etc/ironic-python-agent.d/mysteps.yaml',
                help='Path to the YAML file containing container-based'
@@ -457,13 +464,9 @@ container_opts = [
     cfg.ListOpt('run_options',
                 default=['--rm', '--network=host', '--tls-verify=false'],
                 help='Options to use when running containers.'),
-    cfg.BoolOpt('allow_arbitrary_containers',
-                default=False,
-                help='Allow arbitrary containers to be run'
-                     'without restriction.'),
-    cfg.ListOpt('allowed_containers',
-                default=[],
-                help='List of allowed containers that can be run.'),
+    cfg.StrOpt('container_conf_file',
+               default='/etc/containers/containers.conf',
+               help='Path to the container configuration file in the IPA RAM')
 ]
 
 

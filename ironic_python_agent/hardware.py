@@ -3652,6 +3652,8 @@ def dispatch_to_managers(method, *args, **kwargs):
     :param kwargs: keyword arguments to dispatched method
 
     :returns: result of successful dispatch of method
+    :raises HardwareManagerConfigurationError: if a hardware manager is
+      misconfigured
     :raises HardwareManagerMethodNotFound: if all managers failed the method
     :raises HardwareManagerNotFound: if no valid hardware managers found
     """
@@ -3660,6 +3662,11 @@ def dispatch_to_managers(method, *args, **kwargs):
         if getattr(manager, method, None):
             try:
                 return getattr(manager, method)(*args, **kwargs)
+            except errors.HardwareManagerConfigurationError as e:
+                LOG.error('Configuration error in HardwareManager'
+                          ' %(manager)s: %(e)s',
+                          {'manager': manager, 'e': e})
+                raise
             except errors.IncompatibleHardwareMethodError:
                 LOG.debug('HardwareManager %(manager)s does not '
                           'support %(method)s',
