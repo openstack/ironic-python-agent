@@ -1,5 +1,8 @@
 ---
 features:
   - |
-    Adds support to Ironic-Python-Agent for it to facilitate deployment
-    of bootable containers.
+    Adds support to Ironic-Python-Agent to facilitate deployment
+    of bootable containers. This is an experimental feature for
+    standalone users. Operators wishing to disable this feature,
+    can leverage the ``[DEFAULT]disable_bootc_deploy`` option in
+    ``ironic-python-agent.conf``.
