@@ -84,12 +84,29 @@ class TestRescueExtension(test_base.BaseTestCase):
         for passwd in passwds:
             self._write_password_hashed_test(passwd)
 
+    @mock.patch('builtins.open', autospec=True)
     @mock.patch('ironic_python_agent.extensions.rescue.RescueExtension.'
                 'write_rescue_password', autospec=True)
-    def test_finalize_rescue(self, mock_write_rescue_password):
+    def test_finalize_rescue(self, mock_write_rescue_password, mock_open):
         self.agent_extension.agent.serve_api = True
         self.agent_extension.finalize_rescue(rescue_password='password')
         mock_write_rescue_password.assert_called_once_with(
             mock.ANY,
             rescue_password='password', hashed=False)
         self.assertFalse(self.agent_extension.agent.serve_api)
+        mock_open.assert_called_once_with('/etc/.rescued', 'w')
+
+    @mock.patch('builtins.open', autospec=True)
+    @mock.patch('ironic_python_agent.extensions.rescue.RescueExtension.'
+                'write_rescue_password', autospec=True)
+    def test_finalize_rescue_write_failure(self, mock_write_rescue_password,
+                                           mock_open):
+        """Test that finalize_rescue handles file write failure or no file."""
+        mock_open.side_effect = IOError("Failed to write file")
+        self.agent_extension.agent.serve_api = True
+        self.agent_extension.finalize_rescue(rescue_password='password')
+        mock_write_rescue_password.assert_called_once_with(
+            mock.ANY,
+            rescue_password='password', hashed=False)
+        self.assertFalse(self.agent_extension.agent.serve_api)
+        mock_open.assert_called_once_with('/etc/.rescued', 'w')

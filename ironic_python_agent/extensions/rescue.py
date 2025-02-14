@@ -57,6 +57,12 @@ class RescueExtension(base.BaseAgentExtension):
     def finalize_rescue(self, rescue_password="", hashed=False):
         """Sets the rescue password for the rescue user."""
         self.write_rescue_password(rescue_password, hashed)
+
+        try:
+            open('/etc/.rescued', 'w')
+        except Exception as exc:
+            LOG.warning('Failed to create rescue state file marker: %s', exc)
+
         # IPA will terminate after the result of finalize_rescue is returned to
         # ironic to avoid exposing the IPA API to a tenant or public network
         self.agent.serve_api = False
