@@ -580,10 +580,16 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
-    def test_run_with_inspection(self, mock_list_hardware, mock_wsgi,
-                                 mock_dispatch, mock_inspector, mock_wait,
-                                 mock_mpath):
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.container.'
+        'ContainerHardwareManager.evaluate_hardware_support',
+        autospec=True
+    )
+    def test_run_with_inspection(self, mock_hardware, mock_list_hardware,
+                                 mock_wsgi, mock_dispatch, mock_inspector,
+                                 mock_wait, mock_mpath):
         CONF.set_override('inspection_callback_url', 'http://foo/bar')
+        mock_hardware.return_value = 0
 
         def set_serve_api():
             self.agent.serve_api = False
@@ -635,7 +641,13 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.container.'
+        'ContainerHardwareManager.evaluate_hardware_support',
+        autospec=True
+    )
     def test_run_with_inspection_without_apiurl(self,
+                                                mock_hardware,
                                                 mock_list_hardware,
                                                 mock_wsgi,
                                                 mock_dispatch,
@@ -649,6 +661,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         # server will work as usual. Also, make sure api_client and heartbeater
         # will not be initialized in this case.
         CONF.set_override('inspection_callback_url', 'http://foo/bar')
+        mock_hardware.return_value = 0
 
         self.agent = agent.IronicPythonAgent(None,
                                              agent.Host('203.0.113.1', 9990),
@@ -694,7 +707,13 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.container.'
+        'ContainerHardwareManager.evaluate_hardware_support',
+        autospec=True
+    )
     def test_run_without_inspection_and_apiurl(self,
+                                               mock_hardware,
                                                mock_list_hardware,
                                                mock_wsgi,
                                                mock_dispatch,
@@ -703,6 +722,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                                mock_mdns,
                                                mock_mpath):
         mock_mdns.side_effect = errors.ServiceLookupFailure()
+        mock_hardware.return_value = 0
         # If both api_url and inspection_callback_url are not configured when
         # the agent starts, ensure that the inspection will be skipped and wsgi
         # server will work as usual. Also, make sure api_client and heartbeater
@@ -1090,11 +1110,18 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
                        autospec=True)
     @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
                 autospec=True)
-    def test_with_network_interface(self, mock_cna, mock_get_ipv4, mock_mpath,
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.container.'
+        'ContainerHardwareManager.evaluate_hardware_support',
+        autospec=True
+    )
+    def test_with_network_interface(self, mock_hardware, mock_cna,
+                                    mock_get_ipv4, mock_mpath,
                                     mock_exec, mock_getaddrinfo):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = '1.2.3.4'
         mock_cna.return_value = False
+        mock_hardware.return_value = 0
 
         self.agent.set_agent_advertise_addr()
 
@@ -1109,12 +1136,19 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
                        autospec=True)
     @mock.patch('ironic_python_agent.hardware_managers.cna._detect_cna_card',
                 autospec=True)
-    def test_with_network_interface_failed(self, mock_cna, mock_get_ipv4,
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.container.'
+        'ContainerHardwareManager.evaluate_hardware_support',
+        autospec=True
+    )
+    def test_with_network_interface_failed(self, mock_hardware,
+                                           mock_cna, mock_get_ipv4,
                                            mock_mpath, mock_exec,
                                            mock_getaddrinfo):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = None
         mock_cna.return_value = False
+        mock_hardware.return_value = 0
 
         self.assertRaises(errors.LookupAgentIPError,
                           self.agent.set_agent_advertise_addr)

@@ -442,13 +442,39 @@ disk_part_opts = [
                     ' having failed.')
 ]
 
+container_opts = [
+    cfg.StrOpt('container_steps_file',
+               default='/etc/ironic-python-agent.d/mysteps.yaml',
+               help='Path to the YAML file containing container-based'
+                    'cleaning steps.'),
+    cfg.StrOpt('runner',
+               default='podman',
+               choices=['podman', 'docker'],
+               help='Container runtime to use for cleaning steps.'),
+    cfg.ListOpt('pull_options',
+                default=['--tls-verify=false'],
+                help='Options to use when pulling container images.'),
+    cfg.ListOpt('run_options',
+                default=['--rm', '--network=host', '--tls-verify=false'],
+                help='Options to use when running containers.'),
+    cfg.BoolOpt('allow_arbitrary_containers',
+                default=False,
+                help='Allow arbitrary containers to be run'
+                     'without restriction.'),
+    cfg.ListOpt('allowed_containers',
+                default=[],
+                help='List of allowed containers that can be run.'),
+]
+
 
 def list_opts():
     return [('DEFAULT', cli_opts),
             ('disk_utils', disk_utils_opts),
             ('disk_partitioner', disk_part_opts),
             ('metrics', metrics_opts),
-            ('metrics_statsd', statsd_opts)]
+            ('metrics_statsd', statsd_opts),
+            ('container', container_opts)
+            ]
 
 
 def populate_config():
@@ -458,6 +484,7 @@ def populate_config():
     CONF.register_opts(disk_part_opts, group='disk_partitioner')
     CONF.register_opts(metrics_opts, group='metrics')
     CONF.register_opts(statsd_opts, group='metrics_statsd')
+    CONF.register_opts(container_opts, group='container')
 
 
 def override(params):
