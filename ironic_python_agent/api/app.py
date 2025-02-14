@@ -84,6 +84,14 @@ def format_exception(value):
 
 class Application(object):
 
+    def require_agent_token(func):
+        def wrapper(self, request, *args, **kwargs):
+            token = request.args.get('agent_token', None)
+            if not self.agent.validate_agent_token(token):
+                raise http_exc.Unauthorized('Token invalid.')
+            return func(self, request, *args, **kwargs)
+        return wrapper
+
     def __init__(self, agent, conf):
         """Set up the API app.
 
@@ -199,11 +207,13 @@ class Application(object):
             status = self.agent.get_status()
             return jsonify(status)
 
+    @require_agent_token
     def api_list_commands(self, request):
         with metrics_utils.get_metrics_logger(__name__).timer('list_commands'):
             results = self.agent.list_command_results()
             return jsonify({'commands': results})
 
+    @require_agent_token
     def api_get_command(self, request, cmd):
         with metrics_utils.get_metrics_logger(__name__).timer('get_command'):
             result = self.agent.get_command_result(cmd)
@@ -214,16 +224,13 @@ class Application(object):
 
             return jsonify(result)
 
+    @require_agent_token
     def api_run_command(self, request):
         body = request.get_json(force=True)
         if ('name' not in body or 'params' not in body
                 or not isinstance(body['params'], dict)):
             raise http_exc.BadRequest('Missing or invalid name or params')
 
-        token = request.args.get('agent_token', None)
-        if not self.agent.validate_agent_token(token):
-            raise http_exc.Unauthorized(
-                'Token invalid.')
         with metrics_utils.get_metrics_logger(__name__).timer('run_command'):
             result = self.agent.execute_command(body['name'], **body['params'])
             wait = request.args.get('wait')
