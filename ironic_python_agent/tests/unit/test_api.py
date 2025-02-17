@@ -260,6 +260,32 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
             ],
         }, response.json)
 
+    def test_list_commands_with_token(self):
+        agent_token = str('0123456789' * 10)
+        cmd_result = base.SyncCommandResult('do_things',
+                                            {'key': 'value'},
+                                            True,
+                                            {'test': 'result'})
+        self.mock_agent.list_command_results.return_value = [cmd_result]
+        self.mock_agent.validate_agent_token.return_value = True
+
+        response = self.get_json('/commands?agent_token=%s' % agent_token)
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(1, self.mock_agent.list_command_results.call_count)
+
+    def test_list_commands_with_token_invalid(self):
+        agent_token = str('0123456789' * 10)
+        self.mock_agent.validate_agent_token.return_value = False
+
+        response = self.get_json('/commands?agent_token=%s' % agent_token,
+                                 expect_errors=True)
+
+        self.assertEqual(401, response.status_code)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(0, self.mock_agent.list_command_results.call_count)
+
     def test_get_command_result(self):
         cmd_result = base.SyncCommandResult('do_things',
                                             {'key': 'value'},
@@ -273,6 +299,76 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual(200, response.status_code)
         data = response.json
         self.assertEqual(serialized_cmd_result, data)
+
+    def test_get_command_with_token(self):
+        agent_token = str('0123456789' * 10)
+        cmd_result = base.SyncCommandResult('do_things',
+                                            {'key': 'value'},
+                                            True,
+                                            {'test': 'result'})
+        self.mock_agent.get_command_result.return_value = cmd_result
+        self.mock_agent.validate_agent_token.return_value = True
+
+        response = self.get_json(
+            '/commands/abc123?agent_token=%s' % agent_token)
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual(cmd_result.serialize(), response.json)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(1, self.mock_agent.get_command_result.call_count)
+
+    def test_get_command_with_token_invalid(self):
+        agent_token = str('0123456789' * 10)
+        self.mock_agent.validate_agent_token.return_value = False
+
+        response = self.get_json(
+            '/commands/abc123?agent_token=%s' % agent_token,
+            expect_errors=True)
+
+        self.assertEqual(401, response.status_code)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(0, self.mock_agent.get_command_result.call_count)
+
+    def test_get_command_locks_out_with_token(self):
+        """Tests agent backwards compatibility and verifies upgrade lockout."""
+        cmd_result = base.SyncCommandResult('do_things',
+                                            {'key': 'value'},
+                                            True,
+                                            {'test': 'result'})
+        cmd_result.serialize()
+        self.mock_agent.get_command_result.return_value = cmd_result
+        agent_token = str('0123456789' * 10)
+        self.mock_agent.validate_agent_token.return_value = False
+
+        # Backwards compatible operation check.
+        response = self.get_json(
+            '/commands/abc123')
+        self.assertEqual(200, response.status_code)
+        self.assertFalse(self.app.security_get_token_support)
+        self.assertEqual(1, self.mock_agent.get_command_result.call_count)
+        self.mock_agent.reset_mock()
+
+        # Check with a newer ironic sending an agent_token upon the command.
+        # For context, in this case the token is wrong intentionally.
+        # It doesn't have to be right, but what we're testing is the
+        # submission of any value triggers the lockout
+        response = self.get_json(
+            '/commands/abc123?agent_token=%s' % agent_token,
+            expect_errors=True)
+        self.assertTrue(self.app.security_get_token_support)
+        self.assertEqual(401, response.status_code)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(0, self.mock_agent.get_command_result.call_count)
+
+        # Verifying the lockout is now being enforced and that agent token
+        # is now required by the agent.
+        response = self.get_json(
+            '/commands/abc123', expect_errors=True)
+        self.assertTrue(self.app.security_get_token_support)
+        self.assertEqual(401, response.status_code)
+        self.assertEqual(0, self.mock_agent.get_command_result.call_count)
+        # Verify we still called validate_agent_token
+        self.assertEqual(2, self.mock_agent.validate_agent_token.call_count)
 
     def test_execute_agent_command_with_token(self):
         agent_token = str('0123456789' * 10)
