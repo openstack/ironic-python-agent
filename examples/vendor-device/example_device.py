@@ -120,6 +120,7 @@ class ExampleDeviceHardwareManager(hardware.HardwareManager):
         return [{
             'step': 'upgrade_example_device_model1234_firmware',
             'priority': 37,
+            'interface': 'deploy',
             # If you need Ironic to coordinate a reboot after this step
             # runs, but before continuing cleaning, this should be true.
             'reboot_requested': True,
