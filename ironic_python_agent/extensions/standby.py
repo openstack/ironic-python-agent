@@ -72,6 +72,36 @@ def _verify_basic_auth_creds(user, password, image_id):
         )
 
 
+class SuppliedAuth(requests.auth.HTTPBasicAuth):
+
+    def __init__(self, authorization):
+        self.authorization = authorization
+
+    def __call__(self, r):
+        r.headers["Authorization"] = self.authorization
+        return r
+
+    def __eq__(self, other):
+        return all(
+            [
+                self.authorization == getattr(other, "authorization", None)
+            ]
+        )
+
+    def __ne__(self, other):
+        return not self == other
+
+
+def _load_supplied_authorization(image_info):
+
+    req_auth = image_info.get('image_request_authorization')
+    if req_auth:
+        req_auth = base64.standard_b64decode(req_auth).decode()
+        return SuppliedAuth(req_auth)
+    else:
+        return None
+
+
 def _gen_auth_from_image_info_user_pass(image_info, image_id):
     """This function is used to pass the credentials to the chosen
 
@@ -166,7 +196,9 @@ def _download_with_proxy(image_info, url, image_id):
     }
     # NOTE(Adam) `image_info` is prioritized over `oslo.conf` for credential
     # collection and auth strategy selection
-    auth_object = _gen_auth_from_image_info_user_pass(image_info, image_id)
+    auth_object = _load_supplied_authorization(image_info)
+    if auth_object is None:
+        auth_object = _gen_auth_from_image_info_user_pass(image_info, image_id)
     if auth_object is None:
         auth_object = _gen_auth_from_oslo_conf_user_pass(image_id)
     if auth_object is not None:
