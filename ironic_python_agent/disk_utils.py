@@ -444,7 +444,9 @@ def get_and_validate_image_format(filename, ironic_disk_format):
                 raise errors.InvalidImage(
                     details=msg % (img_format, fmts)
                 )
-            elif ironic_disk_format and ironic_disk_format != img_format:
+            elif (ironic_disk_format
+                  and ironic_disk_format != img_format
+                  and ironic_disk_format != 'unknown'):
                 msg = ("Security: Expected format was %s, but image was "
                        "actually %s" % (ironic_disk_format, img_format))
                 LOG.error(msg)
