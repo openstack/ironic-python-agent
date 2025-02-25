@@ -89,7 +89,7 @@ def image_info(path, source_format=None):
     if source_format:
         cmd += ['-f', source_format]
 
-    out, err = utils.execute(cmd, prlimit=_qemu_img_limits())
+    out, err = utils.execute(*cmd, prlimit=_qemu_img_limits())
     return imageutils.QemuImgInfo(out, format='json')
 
 
