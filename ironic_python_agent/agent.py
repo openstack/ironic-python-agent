@@ -269,19 +269,11 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
     def validate_agent_token(self, token):
         # We did not get a token, i.e. None and
-        # we've previously seen a token, which is
-        # a mid-cluster upgrade case with long-running ramdisks.
-        if (not token and self.agent_token
-                and not self.agent_token_required):
-            # TODO(TheJulia): Rip this out during or after the V cycle.
-            LOG.warning('Agent token for requests are not required '
-                        'by the conductor, yet we received a token. '
-                        'Cluster may be mid-upgrade. Support to '
-                        'not fail in this condition will be removed in '
-                        'the Victoria development cycle.')
-            # Tell the API everything is okay.
-            return True
-
+        # or we've not seen a token yet, so we
+        # cannot make a comparison, thus False.
+        if (not token or not self.agent_token):
+            return False
+        # Otherwise, compare the values.
         return self.agent_token == token
 
     def _get_route_source(self, dest):

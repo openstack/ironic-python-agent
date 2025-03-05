@@ -236,7 +236,6 @@ class Application(object):
         if ('name' not in body or 'params' not in body
                 or not isinstance(body['params'], dict)):
             raise http_exc.BadRequest('Missing or invalid name or params')
-
         token = request.args.get('agent_token', None)
         if not self.agent.validate_agent_token(token):
             raise http_exc.Unauthorized(
