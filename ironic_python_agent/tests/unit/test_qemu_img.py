@@ -44,8 +44,8 @@ class ImageInfoTestCase(base.IronicAgentTest):
         qemu_img.image_info('img')
         path_exists_mock.assert_called_once_with('img')
         execute_mock.assert_called_once_with(
-            ['env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info', 'img',
-             '--output=json'], prlimit=mock.ANY)
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info', 'img',
+            '--output=json', prlimit=mock.ANY)
         image_info_mock.assert_called_once_with('out', format='json')
 
     @mock.patch.object(utils, 'execute', return_value=('out', 'err'),
@@ -57,8 +57,8 @@ class ImageInfoTestCase(base.IronicAgentTest):
         qemu_img.image_info('img', source_format='qcow2')
         path_exists_mock.assert_called_once_with('img')
         execute_mock.assert_called_once_with(
-            ['env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info', 'img',
-             '--output=json', '-f', 'qcow2'],
+            'env', 'LC_ALL=C', 'LANG=C', 'qemu-img', 'info', 'img',
+            '--output=json', '-f', 'qcow2',
             prlimit=mock.ANY
         )
         image_info_mock.assert_called_once_with('out', format='json')
