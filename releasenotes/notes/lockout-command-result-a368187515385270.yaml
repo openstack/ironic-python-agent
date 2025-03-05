@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixes a potential security issue where a third party may be able to
+    retrieve potentially sensitive data in command result output from
+    the agent. If a request comes in with an ``agent_token`` to the
+    command results endpoint, the agent will now require all future
+    calls to leverage the token to retrieve results and validate
+    that token's validity. This effectively eliminates the possibility
+    of a malicious entity with access to the agent's API endpoint from
+    capturing the command results from agent operations.

@@ -113,6 +113,7 @@ class Application(object):
             routing.Rule('/commands/', endpoint='run_command',
                          methods=['POST']),
         ])
+        self.security_get_token_support = False
 
     def __call__(self, environ, start_response):
         """WSGI entry point."""
@@ -199,11 +200,27 @@ class Application(object):
             status = self.agent.get_status()
             return jsonify(status)
 
+    def require_agent_token_for_command(func):
+        def wrapper(self, request, *args, **kwargs):
+            token = request.args.get('agent_token', None)
+            if token:
+                # TODO(TheJulia): At some point down the road, remove the
+                # self.security_get_token_support flag and use the same
+                # decorator for the api_run_command endpoint.
+                self.security_get_token_support = True
+            if (self.security_get_token_support
+                and not self.agent.validate_agent_token(token)):
+                raise http_exc.Unauthorized('Token invalid.')
+            return func(self, request, *args, **kwargs)
+        return wrapper
+
+    @require_agent_token_for_command
     def api_list_commands(self, request):
         with metrics_utils.get_metrics_logger(__name__).timer('list_commands'):
             results = self.agent.list_command_results()
             return jsonify({'commands': results})
 
+    @require_agent_token_for_command
     def api_get_command(self, request, cmd):
         with metrics_utils.get_metrics_logger(__name__).timer('get_command'):
             result = self.agent.get_command_result(cmd)
