@@ -268,7 +268,7 @@ the user requested order is what is utilized.
 
 .. code-block:: python
 
-    def get_deploy_steps(self, node, ports):
+    def get_service_steps(self, node, ports):
         return [
             {
                 # A function on the custom hardware manager
