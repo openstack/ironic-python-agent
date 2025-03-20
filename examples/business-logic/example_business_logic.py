@@ -73,6 +73,7 @@ class ExampleBusinessLogicHardwareManager(hardware.HardwareManager):
         return [{
             'step': 'companyx_verify_device_lifecycle',
             'priority': 472,
+            'interface': 'deploy',
             # If you need Ironic to coordinate a reboot after this step
             # runs, but before continuing cleaning, this should be true.
             'reboot_requested': False,
