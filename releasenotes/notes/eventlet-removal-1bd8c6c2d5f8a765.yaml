@@ -1,0 +1,6 @@
+fixes:
+  - |
+    Eventlet support in OpenStack is deprecated, and the oslo libraries used
+    by Ironic Python Agent is deprecating support for eventlet in 2026.2.
+    This change removes the use of eventlet directly and ensures none of our
+    libraries are using eventlet-based code.

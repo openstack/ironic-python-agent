@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import json
+import threading
 
+from cheroot.ssl import builtin
+from cheroot import wsgi
 from oslo_log import log
-from oslo_service import wsgi
 import werkzeug
 from werkzeug import exceptions as http_exc
 from werkzeug import routing
@@ -92,7 +94,7 @@ class Application(object):
         :param conf: configuration object.
         """
         self.agent = agent
-        self.service = None
+        self.server = None
         self._conf = conf
         self.url_map = routing.Map([
             routing.Rule('/', endpoint='root', methods=['GET']),
@@ -128,28 +130,44 @@ class Application(object):
 
     def start(self, tls_cert_file=None, tls_key_file=None):
         """Start the API service in the background."""
-        if tls_cert_file and tls_key_file:
-            self._conf.set_override('cert_file', tls_cert_file, group='ssl')
-            self._conf.set_override('key_file', tls_key_file, group='ssl')
-            use_tls = True
-        else:
-            use_tls = self._conf.listen_tls
 
-        self.service = wsgi.Server(self._conf, 'ironic-python-agent', app=self,
-                                   host=self.agent.listen_address.hostname,
-                                   port=self.agent.listen_address.port,
-                                   use_ssl=use_tls)
-        self.service.start()
+        ssl_group = getattr(self._conf, 'ssl', {})
+
+        self.tls_cert_file = tls_cert_file or getattr(
+            ssl_group, 'cert_file', None)
+        self.tls_key_file = tls_key_file or getattr(
+            ssl_group, 'key_file', None)
+
+        bind_addr = (self.agent.listen_address.hostname,
+                     self.agent.listen_address.port)
+
+        server = wsgi.Server(bind_addr=bind_addr, wsgi_app=self,
+                             server_name='ironic-python-agent')
+
+        if self.tls_cert_file and self.tls_key_file:
+            server.ssl_adapter = builtin.BuiltinSSLAdapter(
+                certificate=self.tls_cert_file,
+                private_key=self.tls_key_file
+            )
+
+        self.server = server
+        self.server.prepare()
+        self.server_thread = threading.Thread(target=self.server.serve)
+        self.server_thread.daemon = True
+        self.server_thread.start()
+
         LOG.info('Started API service on port %s',
                  self.agent.listen_address.port)
 
     def stop(self):
         """Stop the API service."""
         LOG.debug("Stopping the API service.")
-        if self.service is None:
-            return
-        self.service.stop()
-        self.service = None
+
+        if self.server:
+            self.server.stop()
+            self.server_thread.join(timeout=2)
+        self.server = None
+
         LOG.info('Stopped API service on port %s',
                  self.agent.listen_address.port)
 

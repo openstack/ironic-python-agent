@@ -22,7 +22,6 @@ import threading
 import time
 from urllib import parse as urlparse
 
-import eventlet
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -106,7 +105,7 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         self.agent.set_agent_advertise_addr()
 
         while self._run_next():
-            eventlet.sleep(0)
+            time.sleep(0.1)
 
     def _run_next(self):
         # The logic here makes sure we don't wait exactly 5 seconds more or
@@ -438,7 +437,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             self.heartbeater.start()
         try:
             while self.serve_api:
-                eventlet.sleep(0.1)
+                time.sleep(0.1)
         except KeyboardInterrupt:
             LOG.info('Caught keyboard interrupt, exiting')
         self.api.stop()

@@ -239,18 +239,14 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_run(self, mock_get_managers, mock_wsgi,
-                 mock_wait, mock_dispatch):
+    def test_run(self, mock_get_managers, mock_wait, mock_dispatch):
         CONF.set_override('inspection_callback_url', '')
 
-        wsgi_server = mock_wsgi.return_value
-
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
 
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
         self.agent.api_client.lookup_node.return_value = {
@@ -265,11 +261,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
@@ -283,19 +275,17 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_run_with_ssl(self, mock_get_managers, mock_wsgi,
+    def test_run_with_ssl(self, mock_get_managers,
                           mock_wait, mock_dispatch):
         CONF.set_override('inspection_callback_url', '')
         CONF.set_override('listen_tls', True)
         CONF.set_override('md5_enabled', False)
-        wsgi_server = mock_wsgi.return_value
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
 
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
         self.agent.api_client.lookup_node.return_value = {
@@ -310,11 +300,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=True)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
@@ -329,14 +315,11 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_url_from_mdns_by_default(self, mock_get_managers, mock_wsgi,
+    def test_url_from_mdns_by_default(self, mock_get_managers,
                                       mock_wait, mock_dispatch, mock_mdns):
         CONF.set_override('inspection_callback_url', '')
         mock_mdns.return_value = 'https://example.com', {}
-
-        wsgi_server = mock_wsgi.return_value
 
         self.agent = agent.IronicPythonAgent(None,
                                              agent.Host('203.0.113.1', 9990),
@@ -349,10 +332,10 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                              False,
                                              None)
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
 
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
         self.agent.api_client.lookup_node.return_value = {
@@ -366,11 +349,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
@@ -384,9 +363,8 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_url_from_mdns_explicitly(self, mock_get_managers, mock_wsgi,
+    def test_url_from_mdns_explicitly(self, mock_get_managers,
                                       mock_wait, mock_dispatch, mock_mdns):
         CONF.set_override('inspection_callback_url', '')
         CONF.set_override('disk_wait_attempts', 0)
@@ -394,8 +372,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
             # configuration via mdns
             'ipa_disk_wait_attempts': '42',
         }
-
-        wsgi_server = mock_wsgi.return_value
 
         self.agent = agent.IronicPythonAgent('mdns',
                                              agent.Host('203.0.113.1', 9990),
@@ -408,10 +384,10 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                              False,
                                              None)
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
 
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
         self.agent.api_client.lookup_node.return_value = {
@@ -425,11 +401,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
@@ -444,18 +416,15 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_run_agent_token(self, mock_get_managers, mock_wsgi,
+    def test_run_agent_token(self, mock_get_managers,
                              mock_wait, mock_dispatch):
         CONF.set_override('inspection_callback_url', '')
 
-        wsgi_server = mock_wsgi.return_value
-
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
 
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
         self.agent.api_client.lookup_node.return_value = {
@@ -470,11 +439,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
@@ -489,18 +454,15 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_run_listen_host_port(self, mock_get_managers, mock_wsgi,
+    def test_run_listen_host_port(self, mock_get_managers,
                                   mock_wait, mock_dispatch):
         CONF.set_override('inspection_callback_url', '')
 
-        wsgi_server = mock_wsgi.return_value
-
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
 
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
         self.agent.heartbeater = mock.Mock()
         self.agent.listen_address = mock.Mock()
         self.agent.listen_address.hostname = '2001:db8:dead:beef::cafe'
@@ -517,33 +479,25 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host='2001:db8:dead:beef::cafe',
-                                          port=9998,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
                          mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
 
-    @mock.patch('eventlet.sleep', autospec=True)
+    @mock.patch('time.sleep', autospec=True)
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_run_raise_keyboard_interrupt(self, mock_get_managers, mock_wsgi,
+    def test_run_raise_keyboard_interrupt(self, mock_get_managers,
                                           mock_dispatch, mock_wait,
                                           mock_sleep):
         CONF.set_override('inspection_callback_url', '')
-
-        wsgi_server = mock_wsgi.return_value
         mock_sleep.side_effect = KeyboardInterrupt()
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
@@ -556,17 +510,15 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
             }
         }
 
+        self.agent.api.start = mock.Mock()
+
         self.agent.run()
 
         self.assertTrue(mock_wait.called)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
                          mock_dispatch.call_args_list)
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         self.agent.heartbeater.start.assert_called_once_with()
 
     @mock.patch.object(hardware, '_enable_multipath', autospec=True)
@@ -576,7 +528,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                        '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
     @mock.patch(
@@ -585,16 +536,14 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         autospec=True
     )
     def test_run_with_inspection(self, mock_hardware, mock_list_hardware,
-                                 mock_wsgi, mock_dispatch, mock_inspector,
+                                 mock_dispatch, mock_inspector,
                                  mock_wait, mock_mpath):
         CONF.set_override('inspection_callback_url', 'http://foo/bar')
         mock_hardware.return_value = 0
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
-
-        wsgi_server = mock_wsgi.return_value
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
 
         mock_inspector.return_value = 'uuid'
 
@@ -610,11 +559,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         }
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
 
         mock_inspector.assert_called_once_with()
         self.assertEqual(1, self.agent.api_client.lookup_node.call_count)
@@ -637,7 +582,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                        '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
     @mock.patch(
@@ -648,7 +592,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     def test_run_with_inspection_without_apiurl(self,
                                                 mock_hardware,
                                                 mock_list_hardware,
-                                                mock_wsgi,
                                                 mock_dispatch,
                                                 mock_inspector,
                                                 mock_wait,
@@ -675,19 +618,13 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertFalse(hasattr(self.agent, 'api_client'))
         self.assertFalse(hasattr(self.agent, 'heartbeater'))
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
-
-        wsgi_server = mock_wsgi.return_value
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
 
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
 
         mock_inspector.assert_called_once_with()
 
@@ -703,7 +640,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                        '_wait_for_interface', autospec=True)
     @mock.patch.object(inspector, 'inspect', autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
     @mock.patch(
@@ -714,7 +650,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     def test_run_without_inspection_and_apiurl(self,
                                                mock_hardware,
                                                mock_list_hardware,
-                                               mock_wsgi,
                                                mock_dispatch,
                                                mock_inspector,
                                                mock_wait,
@@ -741,19 +676,13 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertFalse(hasattr(self.agent, 'api_client'))
         self.assertFalse(hasattr(self.agent, 'heartbeater'))
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
-
-        wsgi_server = mock_wsgi.return_value
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
 
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
 
         self.assertFalse(mock_inspector.called)
         self.assertTrue(mock_wait.called)
@@ -768,20 +697,17 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_run_then_lockdown(self, mock_get_managers, mock_wsgi,
+    def test_run_then_lockdown(self, mock_get_managers,
                                mock_wait, mock_dispatch, mock_interfaces,
                                mock_exec, mock_sleep):
         CONF.set_override('inspection_callback_url', '')
 
-        wsgi_server = mock_wsgi.return_value
-
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.lockdown = True
             self.agent.serve_api = False
 
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
         self.agent.api_client.lookup_node.return_value = {
@@ -802,11 +728,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
 
         self.assertRaises(StopTesting, self.agent.run)
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
@@ -846,16 +768,13 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(agent.IronicPythonAgent, '_wait_for_interface',
                        autospec=True)
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
-    def test_run_with_sleep(self, mock_wsgi, mock_dispatch,
+    def test_run_with_sleep(self, mock_dispatch,
                             mock_wait, mock_sleep, mock_get_managers):
         CONF.set_override('inspection_callback_url', '')
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
-
-        wsgi_server = mock_wsgi.return_value
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
 
         self.agent.hardware_initialization_delay = 10
         self.agent.heartbeater = mock.Mock()
@@ -870,11 +789,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         }
         self.agent.run()
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
 
         self.agent.heartbeater.start.assert_called_once_with()
         mock_sleep.assert_called_once_with(10)
@@ -999,18 +914,16 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
     def test_run(self, mock_get_managers, mock_list_hardware,
-                 mock_wsgi, mock_dispatch):
-        wsgi_server_request = mock_wsgi.return_value
+                 mock_dispatch):
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
 
-        wsgi_server_request.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
 
         mock_dispatch.return_value = tls_utils.TlsCertificate(
             'I am a cert', '/path/to/cert', '/path/to/key')
@@ -1022,16 +935,11 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
         self.agent.run()
 
         self.assertTrue(mock_get_managers.called)
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=True)
-        wsgi_server_request.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(
+            '/path/to/cert', '/path/to/key')
         mock_dispatch.assert_called_once_with('generate_tls_certificate',
                                               mock.ANY)
 
-        self.assertEqual('/path/to/cert', CONF.ssl.cert_file)
-        self.assertEqual('/path/to/key', CONF.ssl.key_file)
         self.assertEqual('https', self.agent.advertise_protocol)
 
         self.assertFalse(self.agent.heartbeater.called)
@@ -1040,19 +948,16 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
         mock.Mock())
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware.HardwareManager, 'list_hardware_info',
                        autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_run_no_tls(self, mock_get_managers, mock_list_hardware,
-                        mock_wsgi):
+    def test_run_no_tls(self, mock_get_managers, mock_list_hardware):
         CONF.set_override('enable_auto_tls', False)
-        wsgi_server_request = mock_wsgi.return_value
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
 
-        wsgi_server_request.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
 
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client = mock.Mock()
@@ -1061,11 +966,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
         self.agent.run()
 
         self.assertTrue(mock_get_managers.called)
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server_request.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         self.assertEqual('http', self.agent.advertise_protocol)
 
         self.assertFalse(self.agent.heartbeater.called)
@@ -1351,17 +1252,15 @@ class TestBaseAgentVMediaToken(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     @mock.patch.object(agent.IronicPythonAgent,
                        '_wait_for_interface', autospec=True)
-    @mock.patch('oslo_service.wsgi.Server', autospec=True)
     @mock.patch.object(hardware, 'get_managers', autospec=True)
-    def test_run_agent_token_vmedia(self, mock_get_managers, mock_wsgi,
+    def test_run_agent_token_vmedia(self, mock_get_managers,
                                     mock_wait, mock_dispatch):
         CONF.set_override('inspection_callback_url', '')
-        wsgi_server = mock_wsgi.return_value
 
-        def set_serve_api():
+        def set_serve_api(*args, **kwargs):
             self.agent.serve_api = False
 
-        wsgi_server.start.side_effect = set_serve_api
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
         self.agent.heartbeater = mock.Mock()
         self.agent.api_client.lookup_node = mock.Mock()
         self.agent.api_client.lookup_node.return_value = {
@@ -1377,11 +1276,7 @@ class TestBaseAgentVMediaToken(ironic_agent_base.IronicAgentTest):
         self.agent.run()
         self.assertFalse(self.agent.lockdown)
 
-        mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
-                                          app=self.agent.api,
-                                          host=mock.ANY, port=9999,
-                                          use_ssl=False)
-        wsgi_server.start.assert_called_once_with()
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
         mock_wait.assert_called_once_with(mock.ANY)
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
