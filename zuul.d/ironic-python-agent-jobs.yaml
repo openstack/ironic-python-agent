@@ -109,7 +109,7 @@
 # used by ironic-python-agent-builder
 - job:
     name: ironic-standalone-ipa-src
-    parent: ironic-standalone
+    parent: ironic-standalone-redfish
     description: Test ironic standalone with IPA from source
     vars:
       devstack_localrc:
