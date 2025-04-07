@@ -34,6 +34,13 @@ LLDP_ETHERTYPE = 0x88cc
 IFF_PROMISC = 0x100
 SIOCGIFFLAGS = 0x8913
 SIOCSIFFLAGS = 0x8914
+# SIOCETHTOOL from linux/sockios.h
+SIOCETHTOOL = 0x8946
+# ETHTOOL_GPERMADDR from linux/ethtool.h
+ETHTOOL_GPERMADDR = 0x00000020
+# MAX_ADDR_LEN from linux/netdevice.h
+MAX_ADDR_LEN = 32
+
 INFINIBAND_ADDR_LEN = 59
 
 # LLDP definitions needed to extract vlan information
@@ -45,10 +52,25 @@ dot1_VLAN_NAME = "03"
 VLAN_ID_LEN = len(LLDP_802dot1_OUI + dot1_VLAN_NAME)
 
 
+class ethtoolPermAddr(ctypes.Structure):
+    """Class for getting interface permanent MAC address"""
+    _fields_ = [("cmd", ctypes.c_uint32),
+                ("size", ctypes.c_uint32),
+                ("data", ctypes.c_uint8 * MAX_ADDR_LEN)]
+
+
+class ifreq_data(ctypes.Union):
+    _fields_ = [("ifr_flags", ctypes.c_short),
+                (
+                    "ifr_data_ethtool_perm_addr",
+                    ctypes.POINTER(ethtoolPermAddr))]
+
+
 class ifreq(ctypes.Structure):
-    """Class for setting flags on a socket."""
+    """Class for ioctl on socket."""
+    _anonymous_ = ("ifr_data",)
     _fields_ = [("ifr_ifrn", ctypes.c_char * 16),
-                ("ifr_flags", ctypes.c_short)]
+                ("ifr_data", ifreq_data)]
 
 
 class RawPromiscuousSockets(object):
@@ -236,6 +258,23 @@ def get_ipv6_addr(interface_id):
 
 
 def get_mac_addr(interface_id):
+    """Retrieve permanent mac address, if unable to fallback to default one"""
+    try:
+        data = ethtoolPermAddr(cmd=ETHTOOL_GPERMADDR, size=MAX_ADDR_LEN)
+        ifr = ifreq(ifr_ifrn=interface_id.encode())
+        ifr.ifr_data_ethtool_perm_addr = ctypes.pointer(data)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+        fcntl.ioctl(sock.fileno(), SIOCETHTOOL, ifr)
+        # if not full of zeros
+        if any(data.data[:data.size]):
+            # kernel updates size to actual address size during ioctl call
+            permaddr = [f'{b:02x}' for b in data.data[:data.size]]
+            return ':'.join(permaddr)
+    except OSError:
+        pass
+    LOG.warning("Failed to get permanent mac address for interface %s, "
+                "falling back to default mac address",
+                interface_id)
     return get_default_ip_addr(socket.AF_PACKET, interface_id)
 
 
