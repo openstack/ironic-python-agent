@@ -1,0 +1,9 @@
+---
+security:
+  - |
+    The ``agent_token_required`` configuration option has been removed.
+    This was a knob to help ease the upgrade process by enabling operators
+    to express if their environment was requiring an agent token. This was
+    key to help navigate possible upgrade cases, however that was for the
+    migration *to* the Victoria release, and such an upgrade is outside
+    of the version support matrix of Ironic.

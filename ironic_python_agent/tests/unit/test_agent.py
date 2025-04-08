@@ -465,7 +465,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
             'config': {
                 'heartbeat_timeout': 300,
                 'agent_token': '1' * 128,
-                'agent_token_required': True
             }
         }
 
@@ -1357,7 +1356,6 @@ class TestBaseAgentVMediaToken(ironic_agent_base.IronicAgentTest):
     def test_run_agent_token_vmedia(self, mock_get_managers, mock_wsgi,
                                     mock_wait, mock_dispatch):
         CONF.set_override('inspection_callback_url', '')
-
         wsgi_server = mock_wsgi.return_value
 
         def set_serve_api():
@@ -1373,11 +1371,11 @@ class TestBaseAgentVMediaToken(ironic_agent_base.IronicAgentTest):
             'config': {
                 'heartbeat_timeout': 300,
                 'agent_token': '********',
-                'agent_token_required': True
             }
         }
 
         self.agent.run()
+        self.assertFalse(self.agent.lockdown)
 
         mock_wsgi.assert_called_once_with(CONF, 'ironic-python-agent',
                                           app=self.agent.api,

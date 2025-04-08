@@ -253,7 +253,6 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         # Allows this to be turned on by the conductor while running,
         # in the event of long running ramdisks where the conductor
         # got upgraded somewhere along the way.
-        self.agent_token_required = cfg.CONF.agent_token_required
         self.generated_cert = None
 
     def get_status(self):
@@ -473,8 +472,6 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         md5_allowed = config.get('agent_md5_checksum_enable')
         if md5_allowed is not None:
             cfg.CONF.set_override('md5_enabled', md5_allowed)
-        if config.get('agent_token_required'):
-            self.agent_token_required = True
         token = config.get('agent_token')
         if token:
             if len(token) >= 32:
@@ -490,11 +487,15 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                             'intended and the deployment may fail '
                             'depending on settings in the ironic '
                             'deployment.')
-                if not self.agent_token and self.agent_token_required:
-                    LOG.error('Ironic is signaling that agent tokens '
-                              'are required, however we do not have '
-                              'a token on file. '
-                              'This is likely **FATAL**.')
+                if not self.agent_token:
+                    LOG.error('We do not have a token on file '
+                              'from the Ironic deployment, and '
+                              'one should be on file. '
+                              'Possible external agent restart '
+                              'outside of Ironic\'s process. '
+                              'This is **FATAL**.')
+                    self.serve_api = False
+                    self.lockdown = True
             else:
                 LOG.info('An invalid token was received.')
         if self.agent_token and not self.standalone:
@@ -561,7 +562,7 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                           'found, please check your pxe append parameters.')
 
         in_rescued_mode = os.path.exists('/etc/.rescued')
-        if not in_rescued_mode:
+        if not in_rescued_mode and self.serve_api:
             self.serve_ipa_api()
         else:
             # NOTE(cid): In rescued state, we don't call _lockdown_system() as
