@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixes IPA collecting the effective MAC address of NICs instead of the
+    pesistent MAC address. In case it fails to fetch the persistent address
+    falls back to effective MAC address.
+    See https://bugs.launchpad.net/ironic-python-agent/+bug/2103450 for
+    details.
+
