@@ -437,7 +437,7 @@ def _check_vmedia_device(vmedia_device_file):
     try:
         for device in parse_device_tags(output):
             if device['TYPE'] == 'part':
-                _early_log('Excluding device %s from virtual media'
+                _early_log('Excluding device %s from virtual media '
                            'consideration as it is a partition.',
                            device['KNAME'])
                 return False
