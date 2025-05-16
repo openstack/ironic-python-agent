@@ -18,8 +18,6 @@
         - ironic-standalone-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
-        - ironic-python-agent-check-image-tinyipa:
-            voting: false
         - ironic-python-agent-check-image-dib-centos9:
             voting: false
         # Non-voting jobs
@@ -35,5 +33,4 @@
         - ironic-standalone-ipa-src
     post:
       jobs:
-        - ironic-python-agent-build-image-tinyipa
         - ironic-python-agent-build-image-dib-centos9
