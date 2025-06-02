@@ -130,12 +130,3 @@
         # Don't waste time on cleaning, it's checked everywhere else
         IRONIC_AUTOMATED_CLEAN_ENABLED: False
         IRONIC_BUILD_DEPLOY_RAMDISK: True
-
-# used by ironic-python-agent-builder
-- job:
-    name: ipa-tempest-bios-ipmi-direct-tinyipa-src
-    parent: ipa-tempest-bios-ipmi-direct-src
-    vars:
-      devstack_localrc:
-        IRONIC_RAMDISK_TYPE: tinyipa
-        IRONIC_VM_SPECS_RAM: 1024
