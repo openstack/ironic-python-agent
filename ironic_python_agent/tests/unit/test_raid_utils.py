@@ -52,7 +52,7 @@ class TestRaidUtils(base.IronicAgentTest):
                                           '/dev/sdb1',
                                           '/dev/sdc1']
 
-        raid_utils.create_raid_device(0, logical_disk)
+        raid_utils.create_raid_device(0, logical_disk, {})
 
         mock_execute.assert_called_once_with(
             'mdadm', '--create', '/dev/md0', '--force', '--run',
@@ -73,7 +73,7 @@ class TestRaidUtils(base.IronicAgentTest):
                                           '/dev/sdb1',
                                           '/dev/sdc1']
 
-        raid_utils.create_raid_device(0, logical_disk)
+        raid_utils.create_raid_device(0, logical_disk, {})
 
         mock_execute.assert_called_once_with(
             'mdadm', '--create', '/dev/md0', '--force', '--run',
@@ -92,7 +92,7 @@ class TestRaidUtils(base.IronicAgentTest):
         mocked_components.return_value = ['/dev/sda1',
                                           '/dev/sdc1']
 
-        raid_utils.create_raid_device(0, logical_disk)
+        raid_utils.create_raid_device(0, logical_disk, {})
 
         expected_calls = [
             mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
@@ -104,6 +104,29 @@ class TestRaidUtils(base.IronicAgentTest):
         ]
         self.assertEqual(mock_execute.call_count, 2)
         mock_execute.assert_has_calls(expected_calls)
+
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
+                       autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_raid_device_with_indices(self, mock_execute,
+                                             mocked_components):
+        indices = {'/dev/sda': 1, '/dev/sdb': 2}
+        logical_disk = {
+            "block_devices": ['/dev/sda', '/dev/sdb', '/dev/sdc'],
+            "raid_level": "1",
+        }
+        mocked_components.return_value = ['/dev/sda2',
+                                          '/dev/sdb3',
+                                          '/dev/sdc1']
+
+        raid_utils.create_raid_device(0, logical_disk, indices)
+
+        mock_execute.assert_called_once_with(
+            'mdadm', '--create', '/dev/md0', '--force', '--run',
+            '--metadata=1', '--level', '1', '--name', 'md0',
+            '--raid-devices', 3, '/dev/sda2', '/dev/sdb3', '/dev/sdc1')
+        self.assertEqual(
+            {'/dev/sda': 2, '/dev/sdb': 3, '/dev/sdc': 1}, indices)
 
     @mock.patch.object(utils, 'execute', autospec=True)
     def test_create_raid_device_fail_create_device(self, mock_execute):

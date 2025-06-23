@@ -202,24 +202,31 @@ def _get_actual_component_devices(raid_device):
     return component_devices
 
 
-def create_raid_device(index, logical_disk):
+def create_raid_device(index, logical_disk, indices=None):
     """Create a raid device.
 
     :param index: the index of the resulting md device.
     :param logical_disk: the logical disk containing the devices used to
         crete the raid.
+    :param indices: Mapping to track the last used partition index for each
+        physical device across calls to create_raid_device.
     :raise: errors.SoftwareRAIDError if not able to create the raid device
         or fails to re-add a device to a raid.
     """
     md_device = '/dev/md%d' % index
     component_devices = []
+    if indices is None:
+        # Backward compatibility with custom hardware managers
+        indices = {dev: index for dev in logical_disk['block_devices']}
     for device in logical_disk['block_devices']:
         # The partition delimiter for all common harddrives (sd[a-z]+)
         part_delimiter = ''
         if 'nvme' in device:
             part_delimiter = 'p'
+        index_on_device = indices.get(device, 0)
         component_devices.append(
-            device + part_delimiter + str(index + RAID_PARTITION))
+            device + part_delimiter + str(index_on_device + RAID_PARTITION))
+        indices[device] = index_on_device + 1
     raid_level = logical_disk['raid_level']
     # The schema check allows '1+0', but mdadm knows it as '10'.
     if raid_level == '1+0':
