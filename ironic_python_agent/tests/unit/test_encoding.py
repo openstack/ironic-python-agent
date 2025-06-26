@@ -43,6 +43,8 @@ class TestSerializable(base.IronicAgentTest):
         expected = {'jack': 'hello', 'jill': 'world'}
         obj = SerializableTesting('hello', 'world')
         self.assertEqual(expected, obj.serialize())
+        self.assertEqual(
+            "<SerializableTesting jack='hello' jill='world'>", repr(obj))
 
 
 class TestSerializableComparable(base.IronicAgentTest):

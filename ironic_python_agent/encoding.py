@@ -24,6 +24,11 @@ class Serializable(object):
         """Turn this object into a dict."""
         return dict((f, getattr(self, f)) for f in self.serializable_fields)
 
+    def __repr__(self):
+        fields = " ".join(f"{f}=" + repr(getattr(self, f))
+                          for f in self.serializable_fields)
+        return f"<{self.__class__.__name__} {fields}>"
+
 
 class SerializableComparable(Serializable):
     """A Serializable class which supports some comparison operators
