@@ -1350,6 +1350,31 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         """
         raise errors.IncompatibleHardwareMethodError()
 
+    def filter_device(self, device):
+        """Filter a device in various listings.
+
+        This call allows hardware managers to change or remove devices in
+        listings, such as list_interfaces or list_block_devices without
+        overriding these calls. Skipped devices will be invisible to the agent,
+        including security-sensitive processes like cleaning, so use with care.
+
+        The device type should be determined from the class of the ``device``
+        parameter.
+
+        If the hardware manager has no opinion about the provided device, it
+        must raise IncompatibleHardwareMethodError. Otherwise, it must return
+        the (potentially modified) device to keep it in the listing or None
+        to exclude it.
+
+        The hardware manager must not modify the device if it returns None
+        or raises IncompatibleHardwareMethodError!
+
+        :param device: An object with the device information.
+        :raises: IncompatibleHardwareMethodError to delegate filtering to
+            other hardware managers.
+        :return: The modified device or None to exclude it.
+        """
+
 
 class GenericHardwareManager(HardwareManager):
     HARDWARE_MANAGER_NAME = 'generic_hardware_manager'
@@ -1574,7 +1599,7 @@ class GenericHardwareManager(HardwareManager):
                         'get_interface_info', interface_name=vlan_iface_name)
                     network_interfaces_list.append(result)
 
-        return network_interfaces_list
+        return filter_devices(network_interfaces_list)
 
     def any_ipmi_device_exists(self):
         '''Check for an IPMI device to confirm IPMI capability.'''
@@ -1721,7 +1746,7 @@ class GenericHardwareManager(HardwareManager):
                 list_all_block_devices(block_type='part',
                                        ignore_raid=True)
             )
-        return block_devices
+        return filter_devices(block_devices)
 
     def get_skip_list_from_node(self, node,
                                 block_devices=None, just_raids=False):
@@ -1841,7 +1866,7 @@ class GenericHardwareManager(HardwareManager):
                                vendor=dev.get('vendor', ''),
                                handle=dev.get('handle', ''))
             devices.append(usb_info)
-        return devices
+        return filter_devices(devices)
 
     def get_system_vendor_info(self):
         try:
@@ -3510,6 +3535,10 @@ class GenericHardwareManager(HardwareManager):
                 LOG.warning('Cannot flush buffers of device %s: %s',
                             blkdev.name, e)
 
+    def filter_device(self, device):
+        """Filter a device in various listings."""
+        return device  # always include, do not modify
+
 
 def _collect_udev(io_dict):
     """Collect device properties from udev."""
@@ -3693,9 +3722,7 @@ def dispatch_to_managers(method, *args, **kwargs):
                           {'manager': manager, 'e': e})
                 raise
             except errors.IncompatibleHardwareMethodError:
-                LOG.debug('HardwareManager %(manager)s does not '
-                          'support %(method)s',
-                          {'manager': manager, 'method': method})
+                pass
             except Exception as e:
                 LOG.exception('Unexpected error dispatching %(method)s to '
                               'manager %(manager)s: %(e)s',
@@ -3945,3 +3972,11 @@ def _check_for_special_partitions_filesystems(device, ids, fs_types):
                 raise errors.ProtectedDeviceError(
                     device=device,
                     what=value)
+
+
+def filter_devices(device_list):
+    """Filter devices by using the Hardware Manager's filter_device calls."""
+    return [
+        new for orig in device_list
+        if (new := dispatch_to_managers('filter_device', orig)) is not None
+    ]

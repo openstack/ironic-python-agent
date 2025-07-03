@@ -1230,6 +1230,35 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                           mock.call(block_type='part', ignore_raid=True)],
                          list_mock.call_args_list)
 
+    @mock.patch.object(hardware.GenericHardwareManager, 'filter_device',
+                       autospec=True)
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    def test_list_block_devices_with_filter_device(self, list_mock,
+                                                   filter_mock):
+        device = hardware.BlockDevice('/dev/hdaa', 'small', 65535, False)
+        list_mock.return_value = [
+            device,
+            hardware.BlockDevice('/dev/rogue', 'fake', 42, True),
+        ]
+        seen_devices = set()
+
+        def _filter(hwmgr, device_to_filter):
+            self.assertIsInstance(device_to_filter, hardware.BlockDevice)
+            seen_devices.add(device_to_filter.name)
+            if 'rogue' in device_to_filter.name:
+                return None
+            self.assertEqual(device, device_to_filter)
+            return device_to_filter
+
+        filter_mock.side_effect = _filter
+
+        devices = self.hardware.list_block_devices()
+
+        self.assertEqual([device], devices)
+        self.assertEqual({'/dev/hdaa', '/dev/rogue'}, seen_devices)
+
+        list_mock.assert_called_once_with(all_serial_and_wwn=False)
+
     def test_get_skip_list_from_node_block_devices_with_skip_list(self):
         block_devices = [
             hardware.BlockDevice('/dev/sdj', 'big', 1073741824, True),
@@ -5511,6 +5540,27 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         self.assertEqual([device], detected_usb_devices)
 
+    @mock.patch.object(hardware.GenericHardwareManager, 'filter_device',
+                       autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_usb_devices_with_filter_device(self, mocked_execute,
+                                                mocked_filter):
+        seen_devices = set()
+        device = hardware.USBInfo('MyProduct', 'MyVendor', 'USB:1:2')
+
+        def _filter(hwmgr, device_to_filter):
+            self.assertIsInstance(device_to_filter, hardware.USBInfo)
+            self.assertEqual(device, device_to_filter)
+            seen_devices.add(device_to_filter.product)
+            return None
+
+        mocked_filter.side_effect = _filter
+        mocked_execute.return_value = hws.LSHW_JSON_OUTPUT_V1
+        detected_usb_devices = self.hardware.get_usb_devices()
+
+        self.assertEqual([], detected_usb_devices)
+        self.assertEqual({'MyProduct'}, seen_devices)
+
     @mock.patch.object(utils, 'get_agent_params',
                        lambda: {'BOOTIF': 'boot:if'})
     @mock.patch.object(os.path, 'isdir', autospec=True)
@@ -6923,6 +6973,60 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
         self.assertEqual('eth0.101', interfaces[3].name)
         self.assertEqual('eth1.102', interfaces[4].name)
         self.assertEqual('eth1.103', interfaces[5].name)
+
+    @mock.patch.object(hardware.GenericHardwareManager, 'filter_device',
+                       autospec=True)
+    def test_list_network_interfaces_with_filter_device(
+            self, mock_filter_device, mock_has_carrier, mocked_execute,
+            mocked_open, mocked_exists, mocked_listdir, mocked_net_if_addrs,
+            mockedget_managers, mocked_lshw, mocked_get_mac_addr):
+        mocked_lshw.return_value = json.loads(hws.LSHW_JSON_OUTPUT_V2[0])
+        mocked_listdir.return_value = ['lo', 'eth0', 'eth1']
+        mocked_exists.side_effect = [False, False, True, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_net_if_addrs.return_value = {
+            'lo': [
+                FakeAddr(socket.AF_INET, '127.0.0.1'),
+                FakeAddr(socket.AF_INET6, '::1'),
+                FakeAddr(socket.AF_PACKET, '00:00:00:00:00:00')
+            ],
+            'eth0': [
+                FakeAddr(socket.AF_INET, '192.168.1.2'),
+                FakeAddr(socket.AF_INET6, 'fd00::101'),
+                FakeAddr(socket.AF_PACKET, '00:0c:29:8c:11:b1')
+            ],
+            'eth1': [
+                FakeAddr(socket.AF_INET, '192.168.2.2'),
+                FakeAddr(socket.AF_INET6, 'fd00:1000::101'),
+                FakeAddr(socket.AF_PACKET, '00:0c:29:8c:11:b2')
+            ]
+        }
+        mocked_get_mac_addr.side_effect = lambda iface: {
+            'lo': '00:00:00:00:00:00',
+            'eth0': '00:0c:29:8c:11:b1',
+            'eth1': '00:0c:29:8c:11:b2',
+        }.get(iface)
+        mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = True
+
+        seen_devices = set()
+
+        def _filter(hwmgr, device):
+            self.assertIsInstance(device, hardware.NetworkInterface)
+            seen_devices.add(device.name)
+            if device.name == 'eth1':
+                return None
+            return device
+
+        mock_filter_device.side_effect = _filter
+
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual({'eth0', 'eth1'}, seen_devices)
 
 
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)

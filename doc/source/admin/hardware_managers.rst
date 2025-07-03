@@ -181,6 +181,10 @@ For example::
 
     'skip_block_devices': [{'volume_name': 'large'}, {'volume_name': 'temp'}]
 
+Another option is to completely remove the device from the listing by
+implementing the ``filter_device`` call in a site-specific hardware manager.
+This affects not just deployment and cleaning, but also inspection and anything
+that is relying on built-in device listings.
 
 Shared Disk Cluster Filesystems
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
