@@ -1,0 +1,9 @@
+---
+deprecations:
+  - |
+    Some hardware managers include complex initialization logic in their
+    ``evaluate_hardware_support`` calls. This behavior could cause various
+    issues (such as recursion on attempt to invoke other hardware manager
+    calls) and is now deprecated. Please move the initialization login into
+    the new ``initialize`` call, which is guaranteed to run after all
+    hardware managers have been cached and only for enabled hardware managers.
