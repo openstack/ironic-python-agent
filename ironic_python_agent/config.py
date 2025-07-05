@@ -60,16 +60,26 @@ cli_opts = [
                      'Can be supplied as "ipa-listen-port" kernel parameter.'),
 
     # This is intentionally not settable via kernel command line, as it
-    # requires configuration parameters from oslo_service which are not
-    # configurable over the command line and require files-on-disk.
+    # requires configuration parameters which are not configurable over
+    # the command line and require files-on-disk.
     # Operators who want to use this support should configure it statically
     # as part of a ramdisk build.
     cfg.BoolOpt('listen_tls',
                 default=False,
                 help='When true, IPA will host API behind TLS. You will also '
-                     'need to configure [ssl] group options for cert_file, '
-                     'key_file, and, if desired, ca_file to validate client '
-                     'certificates.'),
+                     'need to configure tls_cert_file option and tls_key_file '
+                     'option.'),
+
+    cfg.StrOpt('tls_cert_file',
+               help="Certificate file to use when starting "
+                    "the server securely.",
+               deprecated_group='ssl',
+               deprecated_name='cert_file'),
+    cfg.StrOpt('tls_key_file',
+               help="Private key file to use when starting "
+                    "the server securely.",
+               deprecated_group='ssl',
+               deprecated_name='key_file'),
 
     cfg.BoolOpt('enable_auto_tls',
                 default=True,

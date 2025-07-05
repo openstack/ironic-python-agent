@@ -2,7 +2,6 @@ pbr>=6.0.0 # Apache-2.0
 oslo.config>=9.7.1 # Apache-2.0
 oslo.concurrency>=7.1.0 # Apache-2.0
 oslo.log>=7.1.0 # Apache-2.0
-oslo.service>=4.1.1 # Apache-2.0
 oslo.utils>=8.2.0 # Apache-2.0
 Pint>=0.5 # BSD
 psutil>=3.2.2 # BSD

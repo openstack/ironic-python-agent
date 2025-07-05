@@ -1,0 +1,6 @@
+---
+deprecations:
+  - |
+    The ``[ssl] key_file`` option and the ``[ssl] cert_file`` option are
+    deprecated. Use the ``[DEFAULT] tls_key_file`` option and
+    the ``[DEFAULT] tls_cert_file`` option instead.

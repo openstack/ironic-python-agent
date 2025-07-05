@@ -21,7 +21,6 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 from oslo_log import log
-from oslo_service import sslutils
 from oslotest import base as test_base
 
 from ironic_python_agent import config
@@ -70,7 +69,6 @@ class IronicAgentTest(test_base.BaseTestCase):
         self.cfg_fixture = self.useFixture(config_fixture.Config(CONF))
         # Register options from libraries that are explicitly used in the code
         log.register_options(CONF)
-        sslutils.register_opts(CONF)
 
     def config(self, **kw):
         """Override config options for a test."""
