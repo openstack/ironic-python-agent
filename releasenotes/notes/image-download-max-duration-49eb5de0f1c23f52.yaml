@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Adds a new configuration option `[DEFAULT]image_download_max_duration`,
+    which enforces a maximum total duration (in seconds) allowed for
+    downloading an image. If this threshold is exceeded, the download is
+    aborted with a non-retryable `ImageDownloadTimeoutError` exception.
+
+    A value of 0 (the default) disables this feature.
+
