@@ -15,7 +15,7 @@ from oslo_utils import secretutils
 
 from ironic_python_agent.extensions import base
 
-LOG = log.getLogger()
+LOG = log.getLogger(__name__)
 
 PASSWORD_FILE = '/etc/ipa-rescue-config/ipa-rescue-password'
 

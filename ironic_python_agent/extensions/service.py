@@ -18,7 +18,7 @@ from ironic_python_agent import errors
 from ironic_python_agent.extensions import base
 from ironic_python_agent import hardware
 
-LOG = log.getLogger()
+LOG = log.getLogger(__name__)
 
 
 class ServiceExtension(base.BaseAgentExtension):

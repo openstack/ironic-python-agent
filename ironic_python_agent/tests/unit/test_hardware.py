@@ -1049,7 +1049,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('x86_64', cpus.architecture)
         self.assertEqual([], cpus.flags)
 
-        self.assertEqual(["WARNING:root:No CPU flags found"], cm.output)
+        self.assertEqual(
+            ["WARNING:ironic_python_agent.hardware:No CPU flags found"],
+            cm.output)
 
     @mock.patch("builtins.open", new_callable=mock.mock_open)
     @mock.patch.object(utils, 'execute', autospec=True)
@@ -1072,8 +1074,10 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         # Check if the warning was logged
         self.assertEqual([
-            "WARNING:root:Malformed CPU flags information: I am not a flag",
-            "WARNING:root:No CPU flags found"], cm.output)
+            "WARNING:ironic_python_agent.hardware:"
+            "Malformed CPU flags information: I am not a flag",
+            "WARNING:ironic_python_agent.hardware:No CPU flags found"],
+            cm.output)
 
     @mock.patch('psutil.virtual_memory', autospec=True)
     @mock.patch.object(utils, 'execute', autospec=True)

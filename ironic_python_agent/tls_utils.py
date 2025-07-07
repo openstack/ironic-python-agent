@@ -28,7 +28,7 @@ from ironic_python_agent import config
 from ironic_python_agent import netutils
 
 
-LOG = log.getLogger()
+LOG = log.getLogger(__name__)
 CONF = config.CONF
 
 

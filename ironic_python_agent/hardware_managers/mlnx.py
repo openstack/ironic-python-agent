@@ -21,7 +21,7 @@ from ironic_python_agent import hardware
 from ironic_python_agent.hardware_managers.nvidia import nvidia_fw_update
 from ironic_python_agent import netutils
 
-LOG = log.getLogger()
+LOG = log.getLogger(__name__)
 # Mellanox NIC Vendor ID
 MLNX_VENDOR_ID = '0x15b3'
 # Mellanox Prefix to generate InfiniBand CLient-ID

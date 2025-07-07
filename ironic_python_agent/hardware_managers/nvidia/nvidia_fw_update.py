@@ -40,7 +40,7 @@ ARRAY_PARAM_VALUE_REGEX = r'Array\[(?P<first_index>\d+)' \
                           r'\.\.(?P<last_index>\d+)\]'
 PSID_REGEX = r'PSID:\s*\t*(?P<psid>\w+)'
 NETWORK_DEVICE_REGEX = r'02\d\d'
-LOG = log.getLogger()
+LOG = log.getLogger(__name__)
 
 """
 Example of Nvidia NIC Firmware images list:
