@@ -9,13 +9,8 @@ Unlike most other python software, you must build or download an IPA ramdisk
 image before use. This is because it's not installed in an operating system,
 but instead is run from within a ramdisk.
 
-Two kinds of images are published on every commit from every branch of IPA:
-
 * DIB_ images are suitable for production usage and can be downloaded from
   https://tarballs.openstack.org/ironic-python-agent/dib/files/.
-* TinyIPA_ images are suitable for CI and testing environments and can be
-  downloaded from
-  https://tarballs.openstack.org/ironic-python-agent/tinyipa/files/.
 
 If you need to build your own image, use the tools from the
 ironic-python-agent-builder_ project.
@@ -167,4 +162,3 @@ the documentation available at :doc:`Hardware Managers
 
 .. _ironic-python-agent-builder: https://docs.openstack.org/ironic-python-agent-builder
 .. _DIB: https://docs.openstack.org/ironic-python-agent-builder/latest/admin/dib.html
-.. _TinyIPA: https://docs.openstack.org/ironic-python-agent-builder/latest/admin/tinyipa.html
