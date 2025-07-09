@@ -843,7 +843,8 @@ def _validate_partitioning(device):
     except (processutils.UnknownArgumentError,
             processutils.ProcessExecutionError, OSError) as e:
         msg = ("Unable to find a valid partition table on the disk after "
-               f"writing the image. The image may be corrupted. Error: {e}")
+               "writing the image. The image may be corrupted or it uses a "
+               f"different sector size than the device. Error: {e}")
         raise errors.DeploymentError(msg)
 
     # Check if there is at least one partition in the partition table after
