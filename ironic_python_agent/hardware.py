@@ -3447,6 +3447,7 @@ class GenericHardwareManager(HardwareManager):
         commands = {
             'df': ['df', '-a'],
             'dmesg': ['dmesg'],
+            'efibootmgr': ['efibootmgr', '-v'],
             'iptables': ['iptables', '-L'],
             'ip_addr': ['ip', 'addr'],
             'lsblk': ['lsblk', '--all',
