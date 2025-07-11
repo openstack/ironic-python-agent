@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adds a new way for hardware manager to filter devices in the network
+    interface, block device, and USB device listings.
