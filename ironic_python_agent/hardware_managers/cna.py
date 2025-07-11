@@ -77,13 +77,15 @@ class IntelCnaHardwareManager(hardware.HardwareManager):
     def evaluate_hardware_support(self):
         if _detect_cna_card():
             LOG.debug('Found Intel CNA network card')
-            # On Intel CNA cards, in order to make LLDP info collecting
-            # possible, the embedded LLDP agent, which runs inside that
-            # card, needs to be turned off.
-            if CONF.collect_lldp:
-                LOG.info('Disable CNA network card embedded lldp agent now')
-                _disable_embedded_lldp_agent_in_cna_card()
             return hardware.HardwareSupport.MAINLINE
         else:
             LOG.debug('No Intel CNA network card found')
             return hardware.HardwareSupport.NONE
+
+    def initialize(self):
+        # On Intel CNA cards, in order to make LLDP info collecting
+        # possible, the embedded LLDP agent, which runs inside that
+        # card, needs to be turned off.
+        if CONF.collect_lldp:
+            LOG.info('Disable CNA network card embedded lldp agent now')
+            _disable_embedded_lldp_agent_in_cna_card()

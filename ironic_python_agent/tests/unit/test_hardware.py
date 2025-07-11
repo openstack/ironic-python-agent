@@ -5626,12 +5626,12 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 @mock.patch.object(hardware, '_md_scan_and_assemble', autospec=True)
 @mock.patch.object(hardware, '_check_for_iscsi', autospec=True)
 @mock.patch.object(time, 'sleep', autospec=True)
-class TestEvaluateHardwareSupport(base.IronicAgentTest):
+class TestInitializeSupport(base.IronicAgentTest):
     def setUp(self):
-        super(TestEvaluateHardwareSupport, self).setUp()
+        super().setUp()
         self.hardware = hardware.GenericHardwareManager()
 
-    def test_evaluate_hw_waits_for_disks(
+    def test_initialize_waits_for_disks(
             self, mocked_sleep, mocked_check_for_iscsi,
             mocked_md_assemble, mocked_get_inst_dev,
             mocked_load_ipmi_modules, mocked_enable_mpath):
@@ -5640,33 +5640,31 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
             None
         ]
 
-        result = self.hardware.evaluate_hardware_support()
+        self.hardware.initialize()
 
         self.assertTrue(mocked_load_ipmi_modules.called)
         self.assertTrue(mocked_check_for_iscsi.called)
         self.assertTrue(mocked_md_assemble.called)
-        self.assertEqual(hardware.HardwareSupport.GENERIC, result)
         mocked_get_inst_dev.assert_called_with(mock.ANY)
         self.assertEqual(2, mocked_get_inst_dev.call_count)
         mocked_sleep.assert_called_once_with(CONF.disk_wait_delay)
 
     @mock.patch.object(hardware, 'LOG', autospec=True)
-    def test_evaluate_hw_no_wait_for_disks(
+    def test_initialize_no_wait_for_disks(
             self, mocked_log, mocked_sleep, mocked_check_for_iscsi,
             mocked_md_assemble, mocked_get_inst_dev,
             mocked_load_ipmi_modules, mocked_enable_mpath):
         CONF.set_override('disk_wait_attempts', '0')
 
-        result = self.hardware.evaluate_hardware_support()
+        self.hardware.initialize()
 
         self.assertTrue(mocked_check_for_iscsi.called)
-        self.assertEqual(hardware.HardwareSupport.GENERIC, result)
         self.assertFalse(mocked_get_inst_dev.called)
         self.assertFalse(mocked_sleep.called)
         self.assertFalse(mocked_log.called)
 
     @mock.patch.object(hardware, 'LOG', autospec=True)
-    def test_evaluate_hw_waits_for_disks_nonconfigured(
+    def test_initialize_waits_for_disks_nonconfigured(
             self, mocked_log, mocked_sleep, mocked_check_for_iscsi,
             mocked_md_assemble, mocked_get_inst_dev,
             mocked_load_ipmi_modules, mocked_enable_mpath):
@@ -5685,7 +5683,7 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
             None
         ]
 
-        self.hardware.evaluate_hardware_support()
+        self.hardware.initialize()
 
         mocked_get_inst_dev.assert_called_with(mock.ANY)
         self.assertEqual(10, mocked_get_inst_dev.call_count)
@@ -5696,13 +5694,13 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
             CONF.disk_wait_delay * 9)
 
     @mock.patch.object(hardware, 'LOG', autospec=True)
-    def test_evaluate_hw_waits_for_disks_configured(self, mocked_log,
-                                                    mocked_sleep,
-                                                    mocked_check_for_iscsi,
-                                                    mocked_md_assemble,
-                                                    mocked_get_inst_dev,
-                                                    mocked_load_ipmi_modules,
-                                                    mocked_enable_mpath):
+    def test_initialize_waits_for_disks_configured(self, mocked_log,
+                                                   mocked_sleep,
+                                                   mocked_check_for_iscsi,
+                                                   mocked_md_assemble,
+                                                   mocked_get_inst_dev,
+                                                   mocked_load_ipmi_modules,
+                                                   mocked_enable_mpath):
         CONF.set_override('disk_wait_attempts', '1')
 
         mocked_get_inst_dev.side_effect = [
@@ -5711,7 +5709,7 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
             None
         ]
 
-        self.hardware.evaluate_hardware_support()
+        self.hardware.initialize()
 
         mocked_get_inst_dev.assert_called_with(mock.ANY)
         self.assertEqual(1, mocked_get_inst_dev.call_count)
@@ -5719,36 +5717,35 @@ class TestEvaluateHardwareSupport(base.IronicAgentTest):
         mocked_log.warning.assert_called_once_with(
             'The root device was not detected')
 
-    def test_evaluate_hw_disks_timeout_unconfigured(self, mocked_sleep,
-                                                    mocked_check_for_iscsi,
-                                                    mocked_md_assemble,
-                                                    mocked_get_inst_dev,
-                                                    mocked_load_ipmi_modules,
-                                                    mocked_enable_mpath):
+    def test_initialize_disks_timeout_unconfigured(self, mocked_sleep,
+                                                   mocked_check_for_iscsi,
+                                                   mocked_md_assemble,
+                                                   mocked_get_inst_dev,
+                                                   mocked_load_ipmi_modules,
+                                                   mocked_enable_mpath):
         mocked_get_inst_dev.side_effect = errors.DeviceNotFound('boom')
-        self.hardware.evaluate_hardware_support()
+        self.hardware.initialize()
         mocked_sleep.assert_called_with(3)
 
-    def test_evaluate_hw_disks_timeout_configured(self, mocked_sleep,
-                                                  mocked_check_for_iscsi,
-                                                  mocked_md_assemble,
-                                                  mocked_root_dev,
-                                                  mocked_load_ipmi_modules,
-                                                  mocked_enable_mpath):
+    def test_initialize_disks_timeout_configured(self, mocked_sleep,
+                                                 mocked_check_for_iscsi,
+                                                 mocked_md_assemble,
+                                                 mocked_root_dev,
+                                                 mocked_load_ipmi_modules,
+                                                 mocked_enable_mpath):
         CONF.set_override('disk_wait_delay', '5')
         mocked_root_dev.side_effect = errors.DeviceNotFound('boom')
 
-        self.hardware.evaluate_hardware_support()
+        self.hardware.initialize()
         mocked_sleep.assert_called_with(5)
 
-    def test_evaluate_hw_disks_timeout(
+    def test_initialize_disks_timeout(
             self, mocked_sleep, mocked_check_for_iscsi,
             mocked_md_assemble, mocked_get_inst_dev,
             mocked_load_ipmi_modules,
             mocked_enable_mpath):
         mocked_get_inst_dev.side_effect = errors.DeviceNotFound('boom')
-        result = self.hardware.evaluate_hardware_support()
-        self.assertEqual(hardware.HardwareSupport.GENERIC, result)
+        self.hardware.initialize()
         mocked_get_inst_dev.assert_called_with(mock.ANY)
         self.assertEqual(CONF.disk_wait_attempts,
                          mocked_get_inst_dev.call_count)

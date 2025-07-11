@@ -926,7 +926,25 @@ class BootInfo(encoding.SerializableComparable):
 class HardwareManager(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def evaluate_hardware_support(self):
-        pass
+        """Evaluate the level of support for this hardware manager.
+
+        See the HardwareSupport object for more documentation.
+
+        :returns: One of the constants from the HardwareSupport object.
+        """
+
+    def initialize(self):
+        """Initialize the hardware manager.
+
+        This method is invoked for all hardware managers in the order of their
+        support level after their evaluate_hardware_support returns a value
+        greater than NONE.
+
+        Be careful when making hardware manager calls from initialize: other
+        hardware manager with the same or lower support level may not be
+        initialized yet. It's only safe when you're sure that the current
+        hardware manager provides the call.
+        """
 
     def list_network_interfaces(self):
         raise errors.IncompatibleHardwareMethodError
@@ -1344,7 +1362,9 @@ class GenericHardwareManager(HardwareManager):
         self._lshw_cache = None
 
     def evaluate_hardware_support(self):
-        # Do some initialization before we declare ourself ready
+        return HardwareSupport.GENERIC
+
+    def initialize(self):
         _check_for_iscsi()
         _md_scan_and_assemble()
         _load_ipmi_modules()
@@ -1353,7 +1373,6 @@ class GenericHardwareManager(HardwareManager):
             MULTIPATH_ENABLED = _enable_multipath()
 
         self.wait_for_disks()
-        return HardwareSupport.GENERIC
 
     def list_hardware_info(self):
         """Return full hardware inventory as a serializable dict.
@@ -3587,6 +3606,12 @@ def get_managers_detail():
                       key=functools.cmp_to_key(_compare_managers))
 
         _global_managers = hwms
+
+        # NOTE(dtantsur): do not call initialize until all hardware managers
+        # are probed and properly cached!
+        for hwm in hwms:
+            LOG.debug('Initializing hardware manager %s', hwm['name'])
+            hwm['manager'].initialize()
 
     return _global_managers
 
