@@ -20,7 +20,7 @@ from functools import partial
 import yaml
 
 CONF = cfg.CONF
-LOG = log.getLogger()
+LOG = log.getLogger(__name__)
 
 
 class ContainerHardwareManager(hardware.HardwareManager):

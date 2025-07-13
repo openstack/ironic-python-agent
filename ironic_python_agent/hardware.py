@@ -54,7 +54,7 @@ from ironic_python_agent import tls_utils
 from ironic_python_agent import utils
 
 _global_managers = None
-LOG = log.getLogger()
+LOG = log.getLogger(__name__)
 CONF = cfg.CONF
 
 WARN_BIOSDEVNAME_NOT_FOUND = False

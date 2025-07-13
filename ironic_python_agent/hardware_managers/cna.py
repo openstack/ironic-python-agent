@@ -21,7 +21,7 @@ from oslo_log import log
 from ironic_python_agent import hardware
 from ironic_python_agent import utils
 
-LOG = log.getLogger()
+LOG = log.getLogger(__name__)
 CONF = cfg.CONF
 
 

@@ -26,7 +26,7 @@ from ironic_python_agent import errors
 from ironic_python_agent import utils
 
 
-LOG = log.getLogger()
+LOG = log.getLogger(__name__)
 
 
 class AgentCommandStatus(object):
