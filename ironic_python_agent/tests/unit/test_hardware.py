@@ -6306,7 +6306,7 @@ class TestCollectSystemLogs(base.IronicAgentTest):
     @mock.patch.object(hardware, '_collect_udev', autospec=True)
     def test_collect_system_logs(self, mock_udev, mock_execute):
         commands = set()
-        expected = {'df', 'dmesg', 'iptables', 'ip', 'lsblk',
+        expected = {'df', 'dmesg', 'efibootmgr', 'iptables', 'ip', 'lsblk',
                     'lshw', 'cat', 'mount', 'multipath', 'parted', 'ps'}
 
         def fake_execute(cmd, *args, **kwargs):
