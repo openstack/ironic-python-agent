@@ -3101,9 +3101,11 @@ class GenericHardwareManager(HardwareManager):
 
                 parted_start_dict[device] = end
 
-        # Create the RAID devices.
+        # Create the RAID devices. The indices mapping tracks the last used
+        # partition index for each physical device.
+        indices = {}
         for index, logical_disk in enumerate(logical_disks):
-            raid_utils.create_raid_device(index, logical_disk)
+            raid_utils.create_raid_device(index, logical_disk, indices)
 
         LOG.info("Successfully created Software RAID")
 
@@ -3398,6 +3400,8 @@ class GenericHardwareManager(HardwareManager):
             size2 = logical_disks[1]['size_gb']
 
             # Only one logical disk is allowed to span the whole device.
+            # FIXME(dtantsur): this logic is not correct when logical disks use
+            # different physical devices.
             if size1 == 'MAX' and size2 == 'MAX':
                 msg = ("Software RAID can have only one RAID device with "
                        "size 'MAX'")

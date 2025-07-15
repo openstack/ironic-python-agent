@@ -4341,6 +4341,117 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             mock.call(x) for x in ['/dev/sda', '/dev/sdb']
         ])
 
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
+                       autospec=True)
+    @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
+                       return_value=[])
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_with_different_disks(self, mocked_execute,
+                                                       mock_list_parts,
+                                                       mocked_actual_comp):
+        node = self.node
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "10",
+                    "raid_level": "1",
+                    "controller": "software",
+                    "physical_disks": [{'name': '/dev/sda'},
+                                       {'name': '/dev/sdb'}],
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                    "physical_disks": [{'name': '/dev/sdc'},
+                                       {'name': '/dev/sdd'}],
+                },
+            ]
+        }
+        node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/sda', 'sda', 107374182400, True)
+        device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
+        device3 = hardware.BlockDevice('/dev/sdc', 'sdc', 107374182400, True)
+        device4 = hardware.BlockDevice('/dev/sdd', 'sdd', 107374182400, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.return_value = [
+            device1,
+            device2,
+            device3,
+            device4,
+        ]
+
+        mocked_execute.side_effect = [
+            None,  # mklabel sda
+            ('42', None),  # sgdisk -F sda
+            None,  # mklabel sda
+            ('42', None),  # sgdisk -F sdb
+            None,  # mklabel sdc
+            ('42', None),  # sgdisk -F sdc
+            None,  # mklabel sdd
+            ('42', None),  # sgdisk -F sdd
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sdc
+            None, None, None,  # parted + partx + udevadm_settle sdd
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sdc
+            None, None, None,  # parted + partx + udevadm_settle sdd
+            None, None  # mdadms
+        ]
+
+        mocked_actual_comp.side_effect = [
+            ('/dev/sda1', '/dev/sdb1'),
+            ('/dev/sdc1', '/dev/sdd1'),
+        ]
+
+        result = self.hardware.create_configuration(node, [])
+
+        mocked_execute.assert_has_calls([
+            mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel', 'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sdc'),
+            mock.call('parted', '/dev/sdd', '-s', '--', 'mklabel', 'msdos'),
+            mock.call('sgdisk', '-F', '/dev/sdd'),
+            mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '10GiB'),
+            mock.call('partx', '-av', '/dev/sda', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
+            mock.call('parted', '/dev/sdb', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '10GiB'),
+            mock.call('partx', '-av', '/dev/sdb', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
+            mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '-1'),
+            mock.call('partx', '-av', '/dev/sdc', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
+            mock.call('parted', '/dev/sdd', '-s', '-a', 'optimal', '--',
+                      'mkpart', 'primary', '42s', '-1'),
+            mock.call('partx', '-av', '/dev/sdd', attempts=3,
+                      delay_on_retry=True),
+            mock.call('udevadm', 'settle'),
+            mock.call('mdadm', '--create', '/dev/md0', '--force', '--run',
+                      '--metadata=1', '--level', '1', '--name', 'md0',
+                      '--raid-devices', 2, '/dev/sda1', '/dev/sdb1'),
+            mock.call('mdadm', '--create', '/dev/md1', '--force', '--run',
+                      '--metadata=1', '--level', '0', '--name', 'md1',
+                      '--raid-devices', 2, '/dev/sdc1', '/dev/sdd1')])
+        self.assertEqual(raid_config, result)
+
+        self.assertEqual(4, mock_list_parts.call_count)
+        mock_list_parts.assert_has_calls([
+            mock.call(x) for x in ['/dev/sda', '/dev/sdb',
+                                   '/dev/sdc', '/dev/sdd']
+        ])
+
     @mock.patch.object(utils, 'execute', autospec=True)
     @mock.patch.object(os.path, 'isdir', autospec=True, return_value=False)
     def test_create_configuration_invalid_raid_config(self,

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Software RAID creation now correctly handles configurations where
+    logical disks use different sets of physical devices. Previously,
+    partition indices were incorrectly shared across all devices, causing
+    failures when creating multiple RAID arrays on different disks.
