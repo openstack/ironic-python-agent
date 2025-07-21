@@ -1374,6 +1374,7 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
             other hardware managers.
         :return: The modified device or None to exclude it.
         """
+        raise errors.IncompatibleHardwareMethodError()
 
 
 class GenericHardwareManager(HardwareManager):
