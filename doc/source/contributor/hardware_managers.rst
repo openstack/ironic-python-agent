@@ -28,6 +28,17 @@ passed on to whatever dispatched the method. If the method is unable to run
 successfully on any hardware managers, ``HardwareManagerMethodNotFound`` is
 raised.
 
+Some methods, such as ``filter_device``, are expected to return ``None`` to
+indicate a negative result (i.e., to exclude a device) which happens when
+one or more hardware managers override the method and at least one
+explicitly returns ``None``. If dispatch ever reaches the generic manager,
+the device is returned without filtering.
+
+This design allows granular control over filtering. To avoid unintentionally
+excluding devices, hardware managers must either return the device (or a
+modified copy), raise ``IncompatibleHardwareMethodError``, or refrain from
+overriding the method at all.
+
 Why build a custom HardwareManager?
 -----------------------------------
 Custom hardware managers allow you to include hardware-specific tools, files
