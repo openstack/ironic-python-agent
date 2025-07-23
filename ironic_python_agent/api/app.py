@@ -131,12 +131,8 @@ class Application(object):
     def start(self, tls_cert_file=None, tls_key_file=None):
         """Start the API service in the background."""
 
-        ssl_group = getattr(self._conf, 'ssl', {})
-
-        self.tls_cert_file = tls_cert_file or getattr(
-            ssl_group, 'cert_file', None)
-        self.tls_key_file = tls_key_file or getattr(
-            ssl_group, 'key_file', None)
+        self.tls_cert_file = tls_cert_file or self._conf.tls_cert_file
+        self.tls_key_file = tls_key_file or self._conf.tls_key_file
 
         bind_addr = (self.agent.listen_address.hostname,
                      self.agent.listen_address.port)
