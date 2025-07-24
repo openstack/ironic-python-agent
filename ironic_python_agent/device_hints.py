@@ -26,7 +26,7 @@ LOG = logging.getLogger(__name__)
 VALID_ROOT_DEVICE_HINTS = {
     'size': int, 'model': str, 'wwn': str, 'serial': str, 'vendor': str,
     'wwn_with_extension': str, 'wwn_vendor_extension': str, 'name': str,
-    'rotational': bool, 'hctl': str, 'by_path': str,
+    'rotational': bool, 'hctl': str, 'by_path': str, 'tran': str,
 }
 
 ROOT_DEVICE_HINTS_GRAMMAR = specs_matcher.make_grammar()
