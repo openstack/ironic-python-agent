@@ -285,8 +285,15 @@ def get_boot_records():
     # Also ignore errors on decoding, as we can basically get
     # garbage out of the nvram record, this way we don't fail
     # hard on unrelated records.
-    cmd_output = efi_output[0].decode('utf-16', errors='ignore')
-    for line in cmd_output.split('\n'):
+    cmd_output = efi_output[0].decode('utf-16', errors='ignore').split('\n')
+    # Check that the output is encoded as UTF-16 otherwise try UTF-8.
+    _DETECT_ENCODING_STRING = "BootCurrent: "
+    for line in cmd_output:
+        if line.startswith(_DETECT_ENCODING_STRING):
+            break
+    else:
+        cmd_output = efi_output[0].decode('utf-8', errors='ignore').split('\n')
+    for line in cmd_output:
         match = _ENTRY_LABEL.match(line)
         if match is not None:
             yield (match[1], match[2], match[4], match[3])
