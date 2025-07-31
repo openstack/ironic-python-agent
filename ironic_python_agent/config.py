@@ -316,6 +316,13 @@ cli_opts = [
                    'ipa-image-download-connection-retry-interval', 10),
                help='Interval (in seconds) between two attempts to establish '
                     'connection when downloading an image.'),
+    cfg.IntOpt('image_download_max_duration', min=0,
+               default=int(APARAMS.get(
+                   'ipa-image-download-max-duration', 0)),
+               help='Maximum total duration (in seconds) allowed for '
+                    'downloading an image. If the download exceeds this '
+                    'duration, it will be aborted regardless of retry or '
+                    'connection success.'),
     cfg.StrOpt('ironic_api_version',
                default=APARAMS.get('ipa-ironic-api-version', None),
                help='Ironic API version in format "x.x". If not set, the API '

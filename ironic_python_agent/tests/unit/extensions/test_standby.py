@@ -2214,6 +2214,31 @@ class TestImageDownload(base.IronicAgentTest):
         sleep_mock.assert_called_with(10)
         self.assertEqual(2, sleep_mock.call_count)
 
+    @mock.patch('time.time', autospec=True)
+    def test_download_image_exceeds_max_duration(self, time_mock,
+                                                 requests_mock, hash_mock):
+        CONF.set_override('image_download_max_duration', 5)
+
+        image_info = _build_fake_image_info()
+        hash_mock.return_value.hexdigest.return_value = image_info[
+            'os_hash_value']
+
+        content = ['a'] * 10
+
+        # simulating time passing with each chunk downloaded
+        time_mock.side_effect = list(range(11))
+
+        response = requests_mock.return_value
+        response.status_code = 200
+        response.iter_content.return_value = content
+
+        image_download = standby.ImageDownload(image_info)
+
+        with self.assertRaisesRegex(errors.ImageDownloadTimeoutError,
+                                    'Download exceeded max allowed time'):
+            # Iterating triggers the timeout logic inside __iter__()
+            list(image_download)
+
     @mock.patch('time.sleep', autospec=True)
     def test_download_image_no_space_error_fatal(self, sleep_mock,
                                                  requests_mock, hash_mock):

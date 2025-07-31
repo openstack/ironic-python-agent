@@ -156,6 +156,19 @@ class ImageDownloadError(RESTError):
         super(ImageDownloadError, self).__init__(details)
 
 
+class ImageDownloadTimeoutError(RESTError):
+    """Raised when an image download operation exceeds its allowed time limit.
+
+    """
+    status_code = 408
+    message = 'Image download timeout'
+
+    def __init__(self, image_id, msg):
+        details = 'Download of image {} failed: {}'.format(image_id, msg)
+        self.secondary_message = msg
+        super(ImageDownloadTimeoutError, self).__init__(details)
+
+
 class ImageDownloadOutofSpaceError(ImageDownloadError):
     """Raised when an image download fails due to insufficient storage."""
     pass

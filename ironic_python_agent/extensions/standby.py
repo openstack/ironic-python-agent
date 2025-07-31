@@ -641,7 +641,21 @@ class ImageDownload(object):
                   which is a constant in this module.
         """
         self._last_chunk_time = None
+        start_time = self._time
+
         for chunk in self._request.iter_content(IMAGE_CHUNK_SIZE):
+
+            max_download_duration = CONF.image_download_max_duration
+            if max_download_duration:
+                elapsed = time.time() - start_time
+                if elapsed > max_download_duration:
+                    LOG.error('Total download timeout (%s seconds) exceeded',
+                              max_download_duration)
+                    raise errors.ImageDownloadTimeoutError(
+                        self._image_info['id'],
+                        'Download exceeded max allowed time (%s seconds)' %
+                        max_download_duration)
+
             # Per requests forum posts/discussions, iter_content should
             # periodically yield to the caller for the client to do things
             # like stopwatch and potentially interrupt the download.
