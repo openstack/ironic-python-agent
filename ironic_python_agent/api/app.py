@@ -22,6 +22,7 @@ import werkzeug
 from werkzeug import exceptions as http_exc
 from werkzeug import routing
 
+from ironic_python_agent.api import request_log
 from ironic_python_agent import encoding
 from ironic_python_agent.metrics_lib import metrics_utils
 
@@ -137,7 +138,10 @@ class Application(object):
         bind_addr = (self.agent.listen_address.hostname,
                      self.agent.listen_address.port)
 
-        server = wsgi.Server(bind_addr=bind_addr, wsgi_app=self,
+        # Wrap the application with request logging middleware
+        wsgi_app = request_log.RequestLogMiddleware(self)
+
+        server = wsgi.Server(bind_addr=bind_addr, wsgi_app=wsgi_app,
                              server_name='ironic-python-agent')
 
         if self.tls_cert_file and self.tls_key_file:
