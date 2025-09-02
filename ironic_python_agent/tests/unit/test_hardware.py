@@ -4395,10 +4395,6 @@ class TestGenericHardwareManager(base.IronicAgentTest):
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sdc
             None, None, None,  # parted + partx + udevadm_settle sdd
-            None, None, None,  # parted + partx + udevadm_settle sda
-            None, None, None,  # parted + partx + udevadm_settle sdb
-            None, None, None,  # parted + partx + udevadm_settle sdc
-            None, None, None,  # parted + partx + udevadm_settle sdd
             None, None  # mdadms
         ]
 
