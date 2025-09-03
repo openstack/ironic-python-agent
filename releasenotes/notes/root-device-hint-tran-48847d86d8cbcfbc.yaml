@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Adds device transport type ``tran`` that can be used as root device
+    hint that typically suited for locate devices with different bus types
+    like SSD and NVME.

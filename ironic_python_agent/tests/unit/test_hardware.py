@@ -53,12 +53,14 @@ BLK_DEVICE_TEMPLATE_SMALL_DEVICES = [
                          size=3116853504, rotational=False,
                          vendor="FooTastic", uuid="F531-BDC3",
                          serial="123", wwn="wwn0",
-                         logical_sectors=512, physical_sectors=512),
+                         logical_sectors=512, physical_sectors=512,
+                         tran='sas'),
     hardware.BlockDevice(name='/dev/sdb', model='AlmostBigEnough Drive',
                          size=4294967295, rotational=False,
                          vendor="FooTastic", uuid="",
                          serial="456", wwn="wwn1",
-                         logical_sectors=512, physical_sectors=512),
+                         logical_sectors=512, physical_sectors=512,
+                         tran='sas'),
 ]
 
 RAID_BLK_DEVICE_TEMPLATE_DEVICES = [
@@ -66,22 +68,26 @@ RAID_BLK_DEVICE_TEMPLATE_DEVICES = [
                          size=1765517033472, rotational=True,
                          vendor="FooTastic", uuid="",
                          serial="sda123", wwn="wwn1234",
-                         logical_sectors=512, physical_sectors=512),
+                         logical_sectors=512, physical_sectors=512,
+                         tran='sas'),
     hardware.BlockDevice(name='/dev/sdb', model='DRIVE 1',
                          size=1765517033472, rotational=True,
                          vendor="FooTastic", uuid="",
                          serial="sdb123", wwn="wwn333",
-                         logical_sectors=512, physical_sectors=512),
+                         logical_sectors=512, physical_sectors=512,
+                         tran='sas'),
     hardware.BlockDevice(name='/dev/md0', model='RAID',
                          size=1765517033470, rotational=False,
                          vendor="FooTastic", uuid="",
                          serial=None, wwn="12",
-                         logical_sectors=512, physical_sectors=512),
+                         logical_sectors=512, physical_sectors=512,
+                         tran=None),
     hardware.BlockDevice(name='/dev/md1', model='RAID',
                          size=0, rotational=False,
                          vendor="FooTastic", uuid="",
                          serial=None, wwn=None,
-                         logical_sectors=512, physical_sectors=512),
+                         logical_sectors=512, physical_sectors=512,
+                         tran=None),
 ]
 
 BLK_DEVICE_TEMPLATE_PARTUUID_DEVICE = [
@@ -89,7 +95,8 @@ BLK_DEVICE_TEMPLATE_PARTUUID_DEVICE = [
                          size=107373133824, rotational=True,
                          vendor="FooTastic", uuid="987654-3210",
                          partuuid="1234-5678", serial="sda1123", wwn="k4k1",
-                         logical_sectors=512, physical_sectors=512),
+                         logical_sectors=512, physical_sectors=512,
+                         tran=None),
 ]
 
 
@@ -475,7 +482,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         expected = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-ll', '/dev/sda'),
@@ -556,7 +563,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         expected = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-ll', '/dev/sda'),
@@ -612,7 +619,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         expected = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
         ]
 
@@ -639,7 +646,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         expected = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
         ]
 
@@ -647,7 +654,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         mocked_execute.assert_called_once_with(
             'lsblk', '-bia', '--json',
             '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-            'LOG-SEC,PHY-SEC',
+            'LOG-SEC,PHY-SEC,TRAN',
             check_exit_code=[0])
         self.assertIn(str(4 * units.Gi), ex.details)
         mock_cached_node.assert_called_once_with()
@@ -670,7 +677,8 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  wwn=['strangewwn', 'wwn0'],
                                  wwn_with_extension='wwn0ven0',
                                  wwn_vendor_extension='ven0',
-                                 serial=['wongserial', 'wrng0', 'serial0']),
+                                 serial=['wongserial', 'wrng0', 'serial0'],
+                                 tran='sas'),
             hardware.BlockDevice(name='/dev/sdb',
                                  model=model,
                                  size=10737418240,
@@ -680,7 +688,19 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                  wwn_with_extension='fake-wwnven0',
                                  wwn_vendor_extension='ven0',
                                  serial=['fake-serial', 'serial1'],
-                                 by_path='/dev/disk/by-path/1:0:0:0'),
+                                 by_path='/dev/disk/by-path/1:0:0:0',
+                                 tran='sas'),
+            hardware.BlockDevice(name='/dev/nvme0n1',
+                                 model=model,
+                                 size=10737418240,
+                                 rotational=False,
+                                 vendor='fake-vendor',
+                                 wwn=['fake-wwn'],
+                                 wwn_with_extension='fake-wwnven0',
+                                 wwn_vendor_extension='ven0',
+                                 serial=['fake-serial', 'serial1'],
+                                 by_path='',
+                                 tran='nvme'),
         ]
 
         self.assertEqual(expected_device,
@@ -729,6 +749,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
     def test_get_os_install_device_root_device_hints_by_path(self):
         self._get_os_install_device_root_device_hints(
             {'by_path': '/dev/disk/by-path/1:0:0:0'}, '/dev/sdb')
+
+    def test_get_os_install_device_root_device_hints_by_tran_sas(self):
+        self._get_os_install_device_root_device_hints(
+            {'tran': 'sas'}, '/dev/sda')
+
+    def test_get_os_install_device_root_device_hints_by_tran_nvme(self):
+        self._get_os_install_device_root_device_hints(
+            {'tran': 'nvme'}, '/dev/nvme0n1')
 
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     @mock.patch.object(hardware, 'get_cached_node', autospec=True)
@@ -1520,7 +1548,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sdb'),
@@ -1653,7 +1681,7 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sdb'),
@@ -5941,7 +5969,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sdb')
@@ -5989,7 +6017,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sda1'),
@@ -6029,7 +6057,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
             mock.call('multipath', '-c', '/dev/sda'),
             mock.call('multipath', '-c', '/dev/sda1'),
@@ -6053,7 +6081,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         mocked_execute.assert_called_once_with(
             'lsblk', '-bia', '--json',
             '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-            'LOG-SEC,PHY-SEC',
+            'LOG-SEC,PHY-SEC,TRAN',
             check_exit_code=[0])
         self.assertEqual([], result)
         mocked_udev.assert_called_once_with()
@@ -6068,7 +6096,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         expected_calls = [
             mock.call('lsblk', '-bia', '--json',
                       '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                      'LOG-SEC,PHY-SEC',
+                      'LOG-SEC,PHY-SEC,TRAN',
                       check_exit_code=[0]),
         ]
         mocked_execute.return_value = (
@@ -6076,7 +6104,7 @@ class TestModuleFunctions(base.IronicAgentTest):
         self.assertRaisesRegex(
             errors.BlockDeviceError,
             r'Block device caused unknown error: kname, log-sec, partuuid, '
-            r'phy-sec, rota, serial, size, uuid, wwn '
+            r'phy-sec, rota, serial, size, tran, uuid, wwn '
             r'must be returned by lsblk.',
             hardware.list_all_block_devices)
         mocked_udev.assert_called_once_with()

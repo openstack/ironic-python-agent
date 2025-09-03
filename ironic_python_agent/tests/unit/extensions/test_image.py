@@ -834,7 +834,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                     mock.call('lsblk', '-bia', '--json',
                               '-oKNAME,MODEL,SIZE,ROTA,'
                               + 'TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                              + 'LOG-SEC,PHY-SEC',
+                              + 'LOG-SEC,PHY-SEC,TRAN',
                               check_exit_code=[0]),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
@@ -958,7 +958,7 @@ Boot0004* ironic1      HD(1,GPT,55db8d03-c8f6-4a5b-9155-790dddc348fa,0x800,0x640
                     mock.call('lsblk', '-bia', '--json',
                               '-oKNAME,MODEL,SIZE,ROTA,'
                               + 'TYPE,UUID,PARTUUID,SERIAL,WWN,'
-                              + 'LOG-SEC,PHY-SEC',
+                              + 'LOG-SEC,PHY-SEC,TRAN',
                               check_exit_code=[0]),
                     mock.call('umount', self.fake_dir + '/boot/efi',
                               attempts=3, delay_on_retry=True),
