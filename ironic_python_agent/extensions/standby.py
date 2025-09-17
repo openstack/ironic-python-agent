@@ -41,6 +41,42 @@ LOG = log.getLogger(__name__)
 IMAGE_CHUNK_SIZE = 1024 * 1024  # 1MB
 
 
+def _execute_configdrive_hook(configdrive, device, image_info, stage):
+    """Execute configdrive deployment hook.
+
+    :param configdrive: Configdrive data
+    :param device: Target device path
+    :param image_info: Image information dictionary
+    :param stage: Deployment stage ('pre' or 'post')
+    :raises: DeploymentError if hook execution fails
+    """
+    if not configdrive:
+        return
+
+    confdrive_file = None
+    try:
+        node_uuid = image_info.get('node_uuid', 'local')
+        _, confdrive_file = partition_utils.get_configdrive(
+            configdrive, node_uuid)
+        partition_utils.execute_configdrive_deploy_hook(
+            confdrive_file, device, stage)
+    except errors.DeploymentError:
+        raise
+    except processutils.ProcessExecutionError as e:
+        LOG.error('%s-deployment hook execution failed: %s',
+                  stage.capitalize(), e)
+        raise errors.DeploymentError(
+            f'{stage.capitalize()}-deployment hook execution failed') from e
+    except Exception as e:
+        LOG.error('Failed to process configdrive for %s-deployment '
+                  'hook execution: %s', stage, e)
+        raise errors.DeploymentError(
+            f'Failed to process configdrive for {stage}-deployment hook') from e
+    finally:
+        if confdrive_file:
+            utils.unlink_without_raise(confdrive_file)
+
+
 def _image_location(image_info):
     """Get the location of the image in the local file system.
 
@@ -1007,6 +1043,9 @@ class StandbyExtension(base.BaseAgentExtension):
         device = hardware.dispatch_to_managers('get_os_install_device',
                                                permit_refresh=True)
 
+        # Execute pre-deployment hook before any disk operations
+        _execute_configdrive_hook(configdrive, device, image_info, 'pre')
+
         requested_disk_format = image_info.get('disk_format')
 
         stream_raw_images = image_info.get('stream_raw_images', False)
@@ -1055,6 +1094,10 @@ class StandbyExtension(base.BaseAgentExtension):
                                                               configdrive)
 
         self._fix_up_partition_uuids(image_info, device)
+
+        # Execute post-deployment hook after all disk operations
+        _execute_configdrive_hook(configdrive, device, image_info, 'post')
+
         msg = 'image ({}) written to device {} '
         result_msg = _message_format(msg, image_info, device,
                                      self.partition_uuids)

@@ -20,6 +20,7 @@ https://opendev.org/openstack/ironic-lib/commit/9fb5be348202f4854a455cd08f400ae1
 import base64
 import gzip
 import io
+import json
 import math
 import os
 import shutil
@@ -580,6 +581,128 @@ def _try_build_fat32_config_drive(partition, confdrive_file):
         utils.execute('umount', conf_drive_temp)
         utils.execute('umount', new_drive_temp)
         utils.unlink_without_raise(new_drive_temp)
+        utils.unlink_without_raise(conf_drive_temp)
+
+
+def execute_configdrive_deploy_hook(confdrive_file, device, stage):
+    """Execute deployment hook script based on configdrive metadata.
+
+    Parses the configdrive metadata to find script name,
+    then executes the script from /usr/local/bin/.
+
+    Expected metadata structure in configdrive:
+    {
+      "ds": {
+        "meta_data": {
+          "deploy_hook": "script_name.sh",
+          ...other metadata...
+        }
+      }
+    }
+
+    The script receives:
+    - Environment variable: IPA_TARGET_DEVICE (target device path)
+    - Environment variable: IPA_DEPLOYMENT_STAGE ('pre' or 'post')
+    - Stdin: JSON dump of the entire meta_data section
+
+    :param confdrive_file: Path to the configdrive ISO file
+    :param device: The target device path (e.g., '/dev/sda')
+    :param stage: Stage of deployment ('pre' or 'post') passed as environment variable
+    :raises: ProcessExecutionError if script execution fails
+    :raises: DeploymentError if script is missing from /usr/local/bin/
+    """
+    conf_drive_temp = tempfile.mkdtemp()
+    try:
+        utils.execute('mount', '-o', 'loop,ro', '-t', 'auto',
+                      confdrive_file, conf_drive_temp)
+    except (processutils.ProcessExecutionError, OSError) as e:
+        LOG.warning('Unable to mount configuration drive for script '
+                    'execution: %s', e)
+        utils.unlink_without_raise(conf_drive_temp)
+        return
+
+    try:
+        metadata_path = os.path.join(conf_drive_temp, 'openstack', 'latest',
+                                     'meta_data.json')
+        if not os.path.exists(metadata_path):
+            LOG.debug('No metadata file found at %s, skipping script execution',
+                      metadata_path)
+            return
+
+        try:
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            LOG.warning('Failed to read or parse metadata file: %s', e)
+            return
+
+        meta_data = metadata.get('ds', {}).get('meta_data', {})
+        if not meta_data:
+            LOG.debug('No ds.meta_data section found in metadata')
+            return
+
+        script_name = meta_data.get('deploy_hook')
+
+        if not script_name:
+            LOG.debug('No deploy_hook configured in metadata')
+            return
+
+        if not isinstance(script_name, str):
+            LOG.warning('Invalid deploy_hook value in metadata, expected string')
+            return
+
+        script_path = os.path.join('/usr/local/bin', script_name)
+
+        if not os.path.exists(script_path):
+            LOG.error('Missing required script: %s', script_path)
+            raise errors.DeploymentError(
+                f'Missing required deployment script: {script_name}')
+
+        env_vars = {
+            'IPA_TARGET_DEVICE': device,
+            'IPA_DEPLOYMENT_STAGE': stage,
+        }
+
+        try:
+            json_input = json.dumps(meta_data, indent=2)
+        except (TypeError, ValueError) as e:
+            LOG.warning('Failed to serialize meta_data to JSON: %s', e)
+            json_input = '{}'
+
+        LOG.info('Executing deployment script %s with stage: %s',
+                 script_name, stage)
+
+        try:
+            result = utils.execute(script_path,
+                                   process_input=json_input,
+                                   timeout=900,
+                                   check_exit_code=True,
+                                   env_variables=env_vars)
+
+            LOG.info('Script %s completed successfully for stage %s',
+                     script_name, stage)
+            if result[0]:
+                LOG.debug('Script output: %s', result[0])
+
+        except processutils.ProcessExecutionError as e:
+            error_msg = ('Script execution failed. '
+                         'Script: %(script)s, Stage: %(stage)s, '
+                         'Exit code: %(code)s, '
+                         'Stdout: %(stdout)s, Stderr: %(stderr)s' % {
+                             'script': script_name,
+                             'stage': stage,
+                             'code': e.exit_code,
+                             'stdout': e.stdout,
+                             'stderr': e.stderr
+                         })
+            LOG.error(error_msg)
+            raise
+
+    finally:
+        try:
+            utils.execute('umount', conf_drive_temp)
+        except processutils.ProcessExecutionError:
+            LOG.warning('Failed to unmount configdrive temp directory')
         utils.unlink_without_raise(conf_drive_temp)
 
 

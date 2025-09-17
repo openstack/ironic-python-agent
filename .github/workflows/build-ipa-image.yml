@@ -1,0 +1,102 @@
+name: Build IPA Image
+
+on:
+  push:
+    branches:
+      - deploy_hook
+  workflow_dispatch:
+
+jobs:
+  build-ipa-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            debootstrap \
+            dosfstools \
+            gdisk \
+            kpartx \
+            libffi-dev \
+            libssl-dev \
+            parted \
+            python3-dev \
+            python3-pip \
+            python3-yaml \
+            qemu-utils \
+            util-linux
+
+      - name: Install diskimage-builder and ironic-python-agent-builder
+        run: |
+          pip install --user diskimage-builder ironic-python-agent-builder
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install current IPA source
+        run: |
+          pip install --user -e .
+
+      - name: Copy custom DIB elements
+        run: |
+          mkdir -p $HOME/.local/share/ironic-python-agent-builder/dib
+          cp -vr .github/dib-elements/* $HOME/.local/share/ironic-python-agent-builder/dib/
+
+      - name: Lint shell scripts in deployment-hook element
+        run: |
+          sudo apt-get install -y shellcheck
+          find .github/dib-elements/deployment-hook/extra-data.d -name "*.sh" -type f -exec shellcheck {} \;
+
+      - name: Build IPA ramdisk image
+        env:
+          DIB_RELEASE: "9-stream"
+          DIB_CHECKSUM: "sha256"
+          DIB_DHCP_TIMEOUT: "180"
+          DIB_PYTHON_EXEC: "/usr/bin/python3"
+          DIB_IPA_ENABLE_RESCUE: false
+          DIB_DEV_USER_USERNAME: "rescue"
+          DIB_DEV_USER_PASSWORD: "rescue"
+          DIB_DEV_USER_PWDLESS_SUDO: "yes"
+          DIB_REPOLOCATION_ironic_python_agent: "${{ github.workspace }}"
+          DIB_REPOREF_ironic_python_agent: "HEAD"
+        run: |
+          ironic-python-agent-builder \
+            -o ipa \
+            -e extra-hardware \
+            -e devuser \
+            -e dhclient-systemd \
+            -e deployment-hook \
+            --release 9-stream centos
+
+      - name: Verify image artifacts
+        run: |
+          ls -lh ipa.kernel ipa.initramfs
+
+      - name: Upload IPA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: |
+            ipa.kernel
+            ipa.initramfs
+          retention-days: 1
+
+      - name: Show build summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Rescue User**: rescue (with sudo)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Generated Files:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ls -lh ipa.kernel ipa.initramfs >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

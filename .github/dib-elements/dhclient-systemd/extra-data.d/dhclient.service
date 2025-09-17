@@ -1,0 +1,15 @@
+[Unit]
+Description=DHCP Client for all interfaces
+Before=ironic-python-agent.service
+Wants=network.target
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/dhclient -4
+ExecStop=/usr/sbin/dhclient -r
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+RequiredBy=ironic-python-agent.service

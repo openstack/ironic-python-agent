@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# https://docs.openstack.org/diskimage-builder/latest/developer/developing_elements.html
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+
+set -eu
+set -o pipefail
+
+# Install the echo script from the hooks path (copied by extra-data.d)
+install -D -m 755 /tmp/in_target.d/echo.sh /usr/local/bin/echo.sh

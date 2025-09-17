@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# https://docs.openstack.org/diskimage-builder/latest/developer/developing_elements.html
+
+if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
+    set -x
+fi
+
+set -eu
+set -o pipefail
+
+# Install the dhclient service file from the hooks path (copied by extra-data.d)
+install -D -m 644 /tmp/in_target.d/dhclient.service /etc/systemd/system/dhclient.service
+
+# Create the necessary directories
+mkdir -p /etc/systemd/system/multi-user.target.wants
+mkdir -p /etc/systemd/system/ironic-python-agent.service.requires
+
+# Create symbolic links to enable the service
+ln -sf ../dhclient.service /etc/systemd/system/multi-user.target.wants/dhclient.service
+ln -sf ../dhclient.service /etc/systemd/system/ironic-python-agent.service.requires/dhclient.service
