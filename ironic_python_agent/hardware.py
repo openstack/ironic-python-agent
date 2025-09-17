@@ -2040,10 +2040,11 @@ class GenericHardwareManager(HardwareManager):
         """
         erase_errors = {}
         info = node.get('driver_internal_info', {})
-        if not self._list_erasable_devices:
+        erasable_devices = self._list_erasable_devices(node)
+        if not erasable_devices:
             LOG.debug("No erasable devices have been found.")
             return
-        for dev in self._list_erasable_devices(node):
+        for dev in erasable_devices:
             safety_check_block_device(node, dev.name)
             secure_erase_error = None
             try:
