@@ -14,14 +14,10 @@
         # wholedisk + partition on tempest
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
-        - metalsmith-integration-ipa-src-uefi
         - ironic-standalone-ipa-src
         # NOTE(dtantsur): non-voting because IPA source code is very unlikely
         # to break them. They rather serve as a canary for broken POST jobs.
         - ironic-python-agent-check-image-dib-centos9:
-            voting: false
-        # Non-voting jobs
-        - ipa-tempest-ironic-inspector-src:
             voting: false
     gate:
       jobs:
@@ -29,7 +25,6 @@
         - ipa-tox-bandit
         - ipa-tempest-bios-ipmi-direct-src
         - ipa-tempest-uefi-redfish-vmedia-src
-        - metalsmith-integration-ipa-src-uefi
         - ironic-standalone-ipa-src
     post:
       jobs:
