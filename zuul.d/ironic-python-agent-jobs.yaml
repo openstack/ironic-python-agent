@@ -118,15 +118,3 @@
         # excluding it from the enabled list to save gate time.
         IRONIC_ENABLED_DEPLOY_INTERFACES: "direct"
 
-- job:
-    name: metalsmith-integration-ipa-src-uefi
-    parent: metalsmith-integration-glance-centos9-uefi
-    required-projects:
-      - openstack/ironic-python-agent
-      - openstack/ironic-python-agent-builder
-      - openstack/ironic-lib
-    vars:
-      devstack_localrc:
-        # Don't waste time on cleaning, it's checked everywhere else
-        IRONIC_AUTOMATED_CLEAN_ENABLED: False
-        IRONIC_BUILD_DEPLOY_RAMDISK: True
