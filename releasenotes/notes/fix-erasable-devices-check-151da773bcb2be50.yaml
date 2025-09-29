@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix a conditional which is supposed to check whether there are
+    any erasable devices. In the previous state, the conditional
+    was wrong as the call was missing the node as a parameter.
