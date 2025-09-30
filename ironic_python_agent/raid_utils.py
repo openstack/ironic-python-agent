@@ -278,17 +278,22 @@ def get_next_free_raid_device():
     raise errors.SoftwareRAIDError("No free md (RAID) devices are left")
 
 
-def get_volume_name_of_raid_device(raid_device):
+def get_volume_name_of_raid_device(raid_device, examine=False):
     """Get the volume name of a RAID device
 
     :param raid_device: A Software RAID block device name.
+    :param examine: Use --examine instead of --detail
     :returns: volume name of the device, or None
     """
     if not raid_device:
         return None
     try:
-        out, _ = utils.execute('mdadm', '--detail', raid_device,
-                               use_standard_locale=True)
+        if examine:
+            out, _ = utils.execute('mdadm', '--examine', raid_device,
+                                   use_standard_locale=True)
+        else:
+            out, _ = utils.execute('mdadm', '--detail', raid_device,
+                                   use_standard_locale=True)
     except processutils.ProcessExecutionError as e:
         LOG.warning('Could not retrieve the volume name of %(dev)s: %(err)s',
                     {'dev': raid_device, 'err': e})

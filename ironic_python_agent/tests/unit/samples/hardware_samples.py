@@ -1402,7 +1402,7 @@ MDADM_EXAMINE_OUTPUT_MEMBER = ("""/dev/sda1:
         Version : 1.2
     Feature Map : 0x0
      Array UUID : 83143055:2781ddf5:2c8f44c7:9b45d92e
-           Name : horse.cern.ch:1  (local to host abc.xyz.com)
+           Name : horse.cern.ch:this_name  (local to host abc.xyz.com)
   Creation Time : Tue Jun 11 12:43:37 2019
      Raid Level : raid1
    Raid Devices : 2

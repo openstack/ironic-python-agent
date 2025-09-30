@@ -175,6 +175,13 @@ class TestRaidUtils(base.IronicAgentTest):
         volume_name = raid_utils.get_volume_name_of_raid_device('/dev/md0')
         self.assertIsNone(volume_name)
 
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_volume_name_of_raid_device_examine(self, mock_execute):
+        mock_execute.side_effect = [(hws.MDADM_EXAMINE_OUTPUT_MEMBER, '')]
+        volume_name = raid_utils.get_volume_name_of_raid_device(
+            '/dev/sda1', examine=True)
+        self.assertEqual("this_name", volume_name)
+
     @mock.patch.object(raid_utils, 'find_esp_raid', autospec=True)
     @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
     @mock.patch.object(raid_utils, 'get_next_free_raid_device', autospec=True,
