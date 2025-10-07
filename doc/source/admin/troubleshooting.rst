@@ -56,7 +56,7 @@ Generate a password hash with following command:
 
 .. code-block:: console
 
-    $ openssl passwd -1 -stdin | sed 's/\$/\$\$/g'
+    $ openssl passwd -6 -stdin | sed 's/\$/\$\$/g'
 
 Add ``rootpwd="<openssl output>"`` value or add ``sshkey="<ssh public key>"``
 on the ``kernel_append_params``
