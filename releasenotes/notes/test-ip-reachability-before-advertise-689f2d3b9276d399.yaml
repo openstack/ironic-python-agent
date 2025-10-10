@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    The agent now tests Ironic API URL reachability via HTTP during startup
+    before determining the advertised IP address. Unreachable API URLs are
+    filtered out, preventing the agent from advertising an IP address that
+    cannot actually reach the Ironic API. This improves reliability when
+    multiple API URLs are configured or in complex network topologies.
+    The IP reachability test uses the configured ``http_request_timeout``
+    (default 30 seconds) timeout for the HTTP request.

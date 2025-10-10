@@ -21,6 +21,7 @@ from unittest.mock import sentinel
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+import requests
 from stevedore import extension
 
 from ironic_python_agent import agent
@@ -886,6 +887,123 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertIsNone(source)
         mock_log.warning.assert_called_once()
 
+    @mock.patch('requests.get', autospec=True)
+    def test_test_ip_reachability_success(self, mock_get):
+        """Test _test_ip_reachability with successful HTTP response."""
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
+        result = self.agent._test_ip_reachability('http://192.168.1.1:6385/v1')
+        self.assertTrue(result)
+        mock_get.assert_called_once_with('http://192.168.1.1:6385/v1',
+                                         timeout=30, verify=False)
+
+    @mock.patch('requests.get', autospec=True)
+    def test_test_ip_reachability_https_success(self, mock_get):
+        """Test _test_ip_reachability with HTTPS URL."""
+        mock_response = mock.Mock()
+        mock_response.status_code = 404  # Any status code is acceptable
+        mock_get.return_value = mock_response
+
+        result = self.agent._test_ip_reachability(
+            'https://192.168.1.1:6385/v1')
+        self.assertTrue(result)
+        mock_get.assert_called_once_with('https://192.168.1.1:6385/v1',
+                                         timeout=30, verify=False)
+
+    @mock.patch('requests.get', autospec=True)
+    def test_test_ip_reachability_failure(self, mock_get):
+        """Test _test_ip_reachability with connection failure."""
+        mock_get.side_effect = requests.exceptions.ConnectionError(
+            'Connection failed')
+
+        result = self.agent._test_ip_reachability('http://192.168.1.1:6385/v1')
+        self.assertFalse(result)
+        mock_get.assert_called_once_with('http://192.168.1.1:6385/v1',
+                                         timeout=30, verify=False)
+
+    @mock.patch('requests.get', autospec=True)
+    @mock.patch.object(socket, 'getaddrinfo', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_find_routable_addr_filters_api_urls(self, mock_exec,
+                                                 mock_getaddrinfo,
+                                                 mock_requests_get):
+        """Test that _find_routable_addr filters unreachable API URLs."""
+        # Set up multiple API URLs - some reachable, some not
+        self.agent.api_urls = [
+            'http://reachable1.example.com:8081/v1',
+            'http://unreachable.example.com:8081/v1',
+            'http://reachable2.example.com:8081/v1'
+        ]
+
+        # Mock reachability tests - only reachable1 and reachable2 are
+        # reachable
+        def mock_reachability_side_effect(url, **kwargs):
+            mock_response = mock.Mock()
+            mock_response.status_code = 200
+            if 'reachable1' in url or 'reachable2' in url:
+                return mock_response
+            else:
+                raise requests.exceptions.ConnectionError('Connection failed')
+
+        mock_requests_get.side_effect = mock_reachability_side_effect
+
+        # Mock DNS resolution for reachable hosts
+        mock_getaddrinfo.return_value = [
+            (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
+             ('192.168.1.1', sentinel.e)),
+        ]
+
+        # Mock successful route lookup
+        mock_exec.return_value = (
+            """192.168.1.1 via 192.168.122.1 dev eth0  src 192.168.122.56
+                cache """,
+            ""
+        )
+
+        result = self.agent._find_routable_addr()
+
+        # Should return the found IP
+        self.assertEqual('192.168.122.56', result)
+
+        # Should have filtered API URLs to only include reachable ones
+        self.assertEqual(2, len(self.agent.api_urls))
+        self.assertIn('http://reachable1.example.com:8081/v1',
+                      self.agent.api_urls)
+        self.assertIn('http://reachable2.example.com:8081/v1',
+                      self.agent.api_urls)
+        self.assertNotIn('http://unreachable.example.com:8081/v1',
+                         self.agent.api_urls)
+
+    @mock.patch('requests.get', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_find_routable_addr_no_reachable_urls(self, mock_exec,
+                                                  mock_requests_get):
+        """Test _find_routable_addr when no API URLs are reachable."""
+        # Set up API URLs that are all unreachable
+        self.agent.api_urls = [
+            'http://unreachable1.example.com:8081/v1',
+            'http://unreachable2.example.com:8081/v1'
+        ]
+
+        # Mock all reachability tests to fail
+        mock_requests_get.side_effect = requests.exceptions.ConnectionError(
+            'Connection failed')
+
+        # Mock execute to raise an exception (no route found)
+        mock_exec.side_effect = processutils.ProcessExecutionError('No route')
+
+        # Should keep original URLs with warning
+        original_urls = self.agent.api_urls.copy()
+        result = self.agent._find_routable_addr()
+
+        # Should return None (no routable address found)
+        self.assertIsNone(result)
+
+        # Should keep original URLs when none are reachable
+        self.assertEqual(original_urls, self.agent.api_urls)
+
 
 @mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
@@ -978,6 +1096,7 @@ class TestAgentStandalone(ironic_agent_base.IronicAgentTest):
 @mock.patch.object(hardware, '_load_ipmi_modules', lambda: None)
 @mock.patch.object(hardware.GenericHardwareManager, 'wait_for_disks',
                    lambda self: None)
+@mock.patch('requests.get', autospec=True)
 @mock.patch.object(socket, 'getaddrinfo', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
 class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
@@ -996,7 +1115,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
             agent_token=None,
             standalone=False)
 
-    def test_advertise_address_provided(self, mock_exec, mock_getaddrinfo):
+    def test_advertise_address_provided(self, mock_exec, mock_getaddrinfo,
+                                        mock_requests_get):
         self.agent.advertise_address = agent.Host('1.2.3.4', 9990)
 
         self.agent.set_agent_advertise_addr()
@@ -1017,7 +1137,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
     )
     def test_with_network_interface(self, mock_hardware, mock_cna,
                                     mock_get_ipv4, mock_mpath,
-                                    mock_exec, mock_getaddrinfo):
+                                    mock_exec, mock_getaddrinfo,
+                                    mock_requests_get):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = '1.2.3.4'
         mock_cna.return_value = False
@@ -1044,7 +1165,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
     def test_with_network_interface_failed(self, mock_hardware,
                                            mock_cna, mock_get_ipv4,
                                            mock_mpath, mock_exec,
-                                           mock_getaddrinfo):
+                                           mock_getaddrinfo,
+                                           mock_requests_get):
         self.agent.network_interface = 'em1'
         mock_get_ipv4.return_value = None
         mock_cna.return_value = False
@@ -1057,7 +1179,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         self.assertFalse(mock_exec.called)
         self.assertFalse(mock_getaddrinfo.called)
 
-    def test_route_with_ip(self, mock_exec, mock_getaddrinfo):
+    def test_route_with_ip(self, mock_exec, mock_getaddrinfo,
+                           mock_requests_get):
         self.agent.api_urls = ['http://1.2.1.2:8081/v1']
         mock_getaddrinfo.side_effect = socket.gaierror()
         mock_exec.return_value = (
@@ -1065,6 +1188,10 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
                 cache """,
             ""
         )
+        # Mock successful HTTP reachability test
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        mock_requests_get.return_value = mock_response
 
         self.agent.set_agent_advertise_addr()
 
@@ -1073,7 +1200,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         mock_exec.assert_called_once_with('ip', 'route', 'get', '1.2.1.2')
         mock_getaddrinfo.assert_called_once_with('1.2.1.2', 0)
 
-    def test_route_with_ipv6(self, mock_exec, mock_getaddrinfo):
+    def test_route_with_ipv6(self, mock_exec, mock_getaddrinfo,
+                             mock_requests_get):
         self.agent.api_urls = ['http://[fc00:1111::1]:8081/v1']
         mock_getaddrinfo.side_effect = socket.gaierror()
         mock_exec.return_value = (
@@ -1081,6 +1209,10 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
                 cache """,
             ""
         )
+        # Mock successful HTTP reachability test
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        mock_requests_get.return_value = mock_response
 
         self.agent.set_agent_advertise_addr()
 
@@ -1089,7 +1221,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         mock_exec.assert_called_once_with('ip', 'route', 'get', 'fc00:1111::1')
         mock_getaddrinfo.assert_called_once_with('fc00:1111::1', 0)
 
-    def test_route_with_host(self, mock_exec, mock_getaddrinfo):
+    def test_route_with_host(self, mock_exec, mock_getaddrinfo,
+                             mock_requests_get):
         mock_getaddrinfo.return_value = [
             (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
              ('1.2.1.2', sentinel.e)),
@@ -1099,6 +1232,10 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
                 cache """,
             ""
         )
+        # Mock successful HTTP reachability test
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        mock_requests_get.return_value = mock_response
 
         self.agent.set_agent_advertise_addr()
 
@@ -1107,7 +1244,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         mock_exec.assert_called_once_with('ip', 'route', 'get', '1.2.1.2')
         mock_getaddrinfo.assert_called_once_with('fake_api.example.org', 0)
 
-    def test_route_with_host_v6(self, mock_exec, mock_getaddrinfo):
+    def test_route_with_host_v6(self, mock_exec, mock_getaddrinfo,
+                                mock_requests_get):
         mock_getaddrinfo.return_value = [
             (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
              ('fc00:1111::1', sentinel.e)),
@@ -1117,6 +1255,10 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
                 cache """,
             ""
         )
+        # Mock successful HTTP reachability test
+        mock_response = mock.Mock()
+        mock_response.status_code = 200
+        mock_requests_get.return_value = mock_response
 
         self.agent.set_agent_advertise_addr()
 
@@ -1126,7 +1268,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         mock_getaddrinfo.assert_called_once_with('fake_api.example.org', 0)
 
     @mock.patch.object(time, 'sleep', autospec=True)
-    def test_route_retry(self, mock_sleep, mock_exec, mock_getaddrinfo):
+    def test_route_retry(self, mock_sleep, mock_exec, mock_getaddrinfo,
+                         mock_requests_get):
         mock_getaddrinfo.return_value = [
             (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
              ('1.2.1.2', sentinel.e)),
@@ -1156,7 +1299,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
 
     @mock.patch.object(time, 'sleep', autospec=True)
     def test_route_several_urls_and_retries(self, mock_sleep, mock_exec,
-                                            mock_getaddrinfo):
+                                            mock_getaddrinfo,
+                                            mock_requests_get):
         mock_getaddrinfo.side_effect = lambda addr, port: [
             (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
              (addr, sentinel.e)),
@@ -1201,7 +1345,8 @@ class TestAdvertiseAddress(ironic_agent_base.IronicAgentTest):
         self.assertEqual(2, mock_getaddrinfo.call_count)
 
     @mock.patch.object(time, 'sleep', autospec=True)
-    def test_route_failed(self, mock_sleep, mock_exec, mock_getaddrinfo):
+    def test_route_failed(self, mock_sleep, mock_exec, mock_getaddrinfo,
+                          mock_requests_get):
         mock_getaddrinfo.return_value = [
             (sentinel.a, sentinel.b, sentinel.c, sentinel.d,
              ('1.2.1.2', sentinel.e)),
