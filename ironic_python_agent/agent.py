@@ -22,6 +22,8 @@ import threading
 import time
 from urllib import parse as urlparse
 
+import requests
+
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log
@@ -38,6 +40,7 @@ from ironic_python_agent import mdns
 from ironic_python_agent import netutils
 from ironic_python_agent import utils
 
+CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 # Time(in seconds) to wait for any of the interfaces to be up
@@ -302,19 +305,59 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         return source
 
-    def _find_routable_addr(self):
-        ips = set()
-        for api_url in self.api_urls:
-            ironic_host = urlparse.urlparse(api_url).hostname
-            # Try resolving it in case it's not an IP address
-            try:
-                addrs = socket.getaddrinfo(ironic_host, 0)
-            except socket.gaierror:
-                LOG.debug('Could not resolve %s, maybe no DNS', ironic_host)
-                ips.add(ironic_host)
-                continue
-            ips.update(addr for _, _, _, _, (addr, *_) in addrs)
+    def _test_ip_reachability(self, api_url):
+        """Test if an API URL is reachable via HTTP GET request.
 
+        :param api_url: The full API URL to test (including protocol and port)
+        :returns: True if the URL is reachable, False otherwise
+        """
+        try:
+            # Disable SSL verification for reachability testing only
+            response = requests.get(
+                api_url, timeout=CONF.http_request_timeout, verify=False
+            )  # nosec
+            # Any HTTP response (even 404, 500, etc.) indicates reachability
+            LOG.debug('API URL %s is reachable (status: %s)',
+                      api_url, response.status_code)
+            return True
+        except requests.exceptions.RequestException as e:
+            LOG.debug('API URL %s not reachable: %s', api_url, e)
+            return False
+
+    def _find_routable_addr(self):
+        # Process API URLs: check reachability and collect IPs in one pass
+        reachable_api_urls = []
+        ips = set()
+
+        for api_url in self.api_urls:
+            parsed = urlparse.urlparse(api_url)
+            ironic_host = parsed.hostname
+
+            # Test reachability using the full URL (including port)
+            if self._test_ip_reachability(api_url):
+                reachable_api_urls.append(api_url)
+                LOG.debug('API URL %s is reachable', api_url)
+
+                # Collect IPs for reachable hosts
+                try:
+                    addrs = socket.getaddrinfo(ironic_host, 0)
+                    ips.update(addr for _, _, _, _, (addr, *_) in addrs)
+                except socket.gaierror:
+                    LOG.debug('Could not resolve %s, maybe no DNS',
+                              ironic_host)
+                    ips.add(ironic_host)
+            else:
+                LOG.debug('API URL %s is not reachable, skipping', api_url)
+
+        # Update api_urls configuration to only include reachable endpoints
+        if reachable_api_urls:
+            LOG.info('Filtered API URLs from %d to %d reachable endpoints',
+                     len(self.api_urls), len(reachable_api_urls))
+            self.api_urls = reachable_api_urls
+        else:
+            LOG.warning('No reachable Ironic API URLs found, keeping all URLs')
+
+        # Find routable address using collected IPs
         for attempt in range(self.ip_lookup_attempts):
             for ironic_host in ips:
                 found_ip = self._get_route_source(ironic_host)
