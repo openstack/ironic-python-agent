@@ -332,6 +332,9 @@ def work_on_disk(dev, root_mb, swap_mb, ephemeral_mb, ephemeral_format,
     }
 
     if cpu_arch.startswith('ppc'):
+        LOG.warning("PReP partition support is deprecated and will be "
+                    "removed in a future release. PowerPC (ppc64*) "
+                    "hardware support is being phased out.")
         uuids_to_return[
             'PReP Boot partition uuid'
         ] = part_dict.get('PReP Boot partition')

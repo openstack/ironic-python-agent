@@ -1,0 +1,19 @@
+---
+deprecations:
+  - |
+    PReP (PowerPC Reference Platform) partition support is now deprecated and
+    will be removed in a future release. This affects ppc64* (PowerPC 64-bit)
+    hardware support. While POWER hardware remains an active platform, it
+    represents a small, specialized share of typical ironic-python-agent
+    deployment patterns.
+
+    The feature was originally added to support booting partition images
+    locally on PowerPC hardware, but usage in the ironic-python-agent
+    ecosystem may be limited.
+
+    Note that RAID support for PReP partitions was never implemented and
+    will not be added before removal.
+
+    Users with ppc64* hardware deployments should plan to migrate to
+    alternative solutions or contact the Ironic community if they have
+    specific requirements.

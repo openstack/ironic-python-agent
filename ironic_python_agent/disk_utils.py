@@ -296,6 +296,9 @@ def make_partitions(dev, root_mb, swap_mb, ephemeral_mb,
     # here.
     if (cpu_arch.startswith("ppc64") and boot_mode == "bios"
             and boot_option == "local"):
+        LOG.warning("PReP partition support is deprecated and will be "
+                    "removed in a future release. PowerPC (ppc64*) hardware "
+                    "support is being phased out.")
         LOG.debug("Add PReP boot partition (8 MB) to device: "
                   "%(dev)s for node %(node)s",
                   {'dev': dev, 'node': node_uuid})
