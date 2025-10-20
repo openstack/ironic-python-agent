@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Adds support for the ``is_root_volume`` property in software RAID
+    configurations. The property can be set to True on a RAID volume to
+    indicate that it should be used as the root device for OS installation.
+    When set to False, the volume and the underlying physical devices
+    and partitions are excluded from consideration as potential root devices.
+    It defaults to None, which has no effect on root device selection.
