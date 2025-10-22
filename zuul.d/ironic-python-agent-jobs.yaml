@@ -69,26 +69,6 @@
         SWIFT_ENABLE_TEMPURLS: True
         SWIFT_TEMPURL_KEY: secretkey
 
-# used by ironic-python-agent-builder
-- job:
-    name: ipa-tempest-ironic-inspector-src
-    parent: ironic-ipa-base
-    required-projects:
-      # These are in addition to what is in ironic-ipa-base
-      - openstack/ironic-inspector
-      - openstack/python-ironic-inspector-client
-    vars:
-      devstack_localrc:
-        DEVSTACK_GATE_TEMPEST_REGEX: InspectorBasicTest
-        DEVSTACK_GATE_IRONIC_INSPECTOR: 1
-        IRONIC_VM_EPHEMERAL_DISK: 0
-        IRONIC_TEMPEST_WHOLE_DISK_IMAGE: True
-        IRONIC_INSPECTOR_BUILD_RAMDISK: True
-        SWIFT_ENABLE_TEMPURLS: True
-        SWIFT_TEMPURL_KEY: secretkey
-      devstack_plugins:
-        ironic-inspector: https://opendev.org/openstack/ironic-inspector
-
 - job:
     # Security testing for known issues
     name: ipa-tox-bandit

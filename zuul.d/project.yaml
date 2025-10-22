@@ -19,9 +19,6 @@
         # to break them. They rather serve as a canary for broken POST jobs.
         - ironic-python-agent-check-image-dib-centos9:
             voting: false
-        # Non-voting jobs
-        - ipa-tempest-ironic-inspector-src:
-            voting: false
     gate:
       jobs:
         - openstack-tox-functional
