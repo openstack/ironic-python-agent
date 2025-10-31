@@ -245,11 +245,13 @@ class MatchRootDeviceTestCase(base.IronicAgentTest):
         super(MatchRootDeviceTestCase, self).setUp()
         self.devices = [
             {'name': '/dev/sda', 'size': 64424509440, 'model': 'ok model',
-             'serial': 'fakeserial'},
+             'serial': 'fakeserial', 'wwn': 'wwn_1'},
             {'name': '/dev/sdb', 'size': 128849018880, 'model': 'big model',
-             'serial': 'veryfakeserial', 'rotational': 'yes'},
+             'serial': ['veryfakeserial', 'alsoveryfakeserial'],
+             'rotational': 'yes', 'wwn': ['wwn_2', 'wwn_2_ext']},
             {'name': '/dev/sdc', 'size': 10737418240, 'model': 'small model',
-             'serial': 'veryveryfakeserial', 'rotational': False},
+             'serial': 'veryveryfakeserial', 'rotational': False,
+             'wwn': 'wwn_3'},
         ]
 
     def test_match_root_device_hints_one_hint(self):
@@ -292,6 +294,12 @@ class MatchRootDeviceTestCase(base.IronicAgentTest):
             self.devices, root_device_hints)
         self.assertEqual('/dev/sdc', dev['name'])
 
+    def test_match_root_device_hints_list_of_wwns(self):
+        root_device_hints = {'wwn': 'wwn_2_ext'}
+        dev = device_hints.match_root_device_hints(
+            self.devices, root_device_hints)
+        self.assertEqual('/dev/sdb', dev['name'])
+
     def test_match_root_device_hints_no_operators(self):
         root_device_hints = {'size': '120', 'model': 'big model',
                              'serial': 'veryfakeserial'}
@@ -328,3 +336,27 @@ class MatchRootDeviceTestCase(base.IronicAgentTest):
         devs = list(device_hints.find_devices_by_hints(self.devices,
                                                        root_device_hints))
         self.assertEqual([self.devices[0]], devs)
+
+    def test_find_devices_single_serial(self):
+        root_device_hints = {'serial': 's== fakeserial'}
+        devs = list(device_hints.find_devices_by_hints(self.devices,
+                                                       root_device_hints))
+        self.assertEqual([self.devices[0]], devs)
+
+    def test_find_devices_multiple_serials(self):
+        root_device_hints = {'serial': 's== alsoveryfakeserial'}
+        devs = list(device_hints.find_devices_by_hints(self.devices,
+                                                       root_device_hints))
+        self.assertEqual([self.devices[1]], devs)
+
+    def test_find_devices_single_wwn(self):
+        root_device_hints = {'wwn': 's== wwn_1'}
+        devs = list(device_hints.find_devices_by_hints(self.devices,
+                                                       root_device_hints))
+        self.assertEqual([self.devices[0]], devs)
+
+    def test_find_devices_multiple_wwns(self):
+        root_device_hints = {'wwn': 's== wwn_2'}
+        devs = list(device_hints.find_devices_by_hints(self.devices,
+                                                       root_device_hints))
+        self.assertEqual([self.devices[1]], devs)

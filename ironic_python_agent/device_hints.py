@@ -191,11 +191,12 @@ def find_devices_by_hints(devices, root_device_hints):
         :size: (Integer) Size of the device in *bytes*
         :model: (String) Device model
         :vendor: (String) Device vendor name
-        :serial: (String) Device serial number
-        :wwn: (String) Unique storage identifier
-        :wwn_with_extension: (String): Unique storage identifier with
-                             the vendor extension appended
-        :wwn_vendor_extension: (String): United vendor storage identifier
+        :serial: (String or List[String]) Device serial number(s)
+        :wwn: (String or List[String]) Unique storage identifier(s)
+        :wwn_with_extension: (String or List[String]): Unique storage
+                             identifier(s) with the vendor extension appended
+        :wwn_vendor_extension: (String or List[String]): United vendor
+                               storage identifier(s)
         :rotational: (Boolean) Whether it's a rotational device or
                      not. Useful to distinguish HDDs (rotational) and SSDs
                      (not rotational).
@@ -220,6 +221,47 @@ def find_devices_by_hints(devices, root_device_hints):
             hint_type = VALID_ROOT_DEVICE_HINTS[hint]
             device_value = dev.get(hint)
             hint_value = parsed_hints[hint]
+
+            # Handle device attributes that are a list of strings
+            # (serial, wwn, wwn_with_extension, and wwn_vendor_extension).
+            if hint_type is str and isinstance(device_value, list):
+                # NOTE(mostepha): Device value is a list. Consider it matched
+                # if any value in the list matches the hint.
+                device_values = [v for v in device_value if v is not None]
+                if not device_values:
+                    LOG.warning(
+                        'The attribute "%(attr)s" of the device "%(dev)s" '
+                        'has an empty value. Skipping device.',
+                        {'attr': hint, 'dev': device_name})
+                    break
+
+                matched = False
+                for val in device_values:
+                    try:
+                        normalized_val = _normalize_hint_expression(val, hint)
+                        if specs_matcher.match(normalized_val, hint_value):
+                            LOG.info('The attribute "%(attr)s" of device '
+                                     '"%(dev)s" matched hint %(hint)s with '
+                                     'value "%(value)s"',
+                                     {'attr': hint, 'dev': device_name,
+                                      'hint': hint_value, 'value': val})
+                            matched = True
+                            break
+                    except ValueError:
+                        # Skip invalid/empty values in the list
+                        continue
+
+                # Continue to next hint if any value matched. Otherwise, break
+                # and try the next device.
+                if matched:
+                    continue
+                else:
+                    LOG.info('None of the values %(values)s for attribute '
+                             '"%(attr)s" of device "%(dev)s" match the hint '
+                             '%(hint)s',
+                             {'values': device_values, 'attr': hint,
+                              'dev': device_name, 'hint': hint_value})
+                    break
 
             if hint_type is str:
                 try:
@@ -286,11 +328,12 @@ def match_root_device_hints(devices, root_device_hints):
         :size: (Integer) Size of the device in *bytes*
         :model: (String) Device model
         :vendor: (String) Device vendor name
-        :serial: (String) Device serial number
-        :wwn: (String) Unique storage identifier
-        :wwn_with_extension: (String): Unique storage identifier with
-                             the vendor extension appended
-        :wwn_vendor_extension: (String): United vendor storage identifier
+        :serial: (String or List[String]) Device serial number(s)
+        :wwn: (String or List[String]) Unique storage identifier(s)
+        :wwn_with_extension: (String or List[String]): Unique storage
+                             identifier(s) with the vendor extension appended
+        :wwn_vendor_extension: (String or List[String]): United vendor
+                               storage identifier(s)
         :rotational: (Boolean) Whether it's a rotational device or
                      not. Useful to distinguish HDDs (rotational) and SSDs
                      (not rotational).
