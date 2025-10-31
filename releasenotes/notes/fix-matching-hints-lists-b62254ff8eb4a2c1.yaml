@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes matching hints with lists of WWN/Serial which was only handled
+    in some cases - due to the issue, it was possible to choose a device
+    listed in the skip_block_devices property as a root device.

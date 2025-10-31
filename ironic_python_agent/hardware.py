@@ -1859,22 +1859,6 @@ class GenericHardwareManager(HardwareManager):
             dev_name = utils.guess_root_disk(block_devices).name
         else:
             serialized_devs = [dev.serialize() for dev in block_devices]
-            orig_size = len(serialized_devs)
-            for dev_idx in range(orig_size):
-                ser_dev = serialized_devs.pop(0)
-                serials = ser_dev.get('serial')
-                wwns = ser_dev.get('wwn')
-                # (rozzi) static serial and static wwn are used to avoid
-                # reundancy in the number of wwns and serials, if the code
-                # would just loop over both serials and wwns it could be that
-                # there would be an uncesarry duplication of the first wwn
-                # number
-                for serial in serials:
-                    for wwn in wwns:
-                        tmp_ser_dev = ser_dev.copy()
-                        tmp_ser_dev['wwn'] = wwn
-                        tmp_ser_dev['serial'] = serial
-                        serialized_devs.append(tmp_ser_dev)
             try:
                 device = device_hints.match_root_device_hints(
                     serialized_devs, root_device_hints)
