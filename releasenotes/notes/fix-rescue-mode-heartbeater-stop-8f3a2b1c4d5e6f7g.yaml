@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes RuntimeError when entering rescue mode by checking if the
+    heartbeater thread is alive before attempting to stop it.
+
