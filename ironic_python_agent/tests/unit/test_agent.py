@@ -184,6 +184,25 @@ class TestHeartbeater(ironic_agent_base.IronicAgentTest):
         mock_time.return_value = 110
         self.assertTrue(self.heartbeater._heartbeat_expected())
 
+    def test_stop_not_started(self):
+        """Test stop() when thread was never started."""
+        # Thread is not alive, should not call join()
+        self.assertFalse(self.heartbeater.is_alive())
+        result = self.heartbeater.stop()
+        self.assertIsNone(result)
+        self.assertTrue(self.heartbeater.stop_event.set.called)
+
+    @mock.patch.object(agent.IronicPythonAgentHeartbeater, 'join',
+                       autospec=True)
+    def test_stop_when_alive(self, mock_join):
+        """Test stop() when thread is alive."""
+        # Mock the thread as alive
+        with mock.patch.object(self.heartbeater, 'is_alive',
+                               autospec=True, return_value=True):
+            self.heartbeater.stop()
+            mock_join.assert_called_once_with(self.heartbeater)
+            self.assertTrue(self.heartbeater.stop_event.set.called)
+
 
 @mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)
@@ -799,6 +818,49 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.assertEqual([mock.call('list_hardware_info'),
                           mock.call('wait_for_disks')],
                          mock_dispatch.call_args_list)
+
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch('os.path.exists', autospec=True)
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    @mock.patch.object(time, 'sleep', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent, '_wait_for_interface',
+                       autospec=True)
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    def test_run_rescue_mode_heartbeater_not_started(
+            self, mock_dispatch, mock_wait, mock_sleep, mock_get_managers,
+            mock_exists):
+        """Test rescue mode doesn't fail when heartbeater not started."""
+        CONF.set_override('inspection_callback_url', '')
+
+        # Mock rescue mode marker file exists
+        mock_exists.return_value = True
+
+        self.agent.heartbeater = mock.Mock()
+        self.agent.heartbeater.is_alive.return_value = False
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'config': {
+                'heartbeat_timeout': 300
+            }
+        }
+
+        # Setup to exit the infinite loop after first iteration
+        mock_sleep.side_effect = [None, KeyboardInterrupt()]
+
+        try:
+            self.agent.run()
+        except KeyboardInterrupt:
+            pass
+
+        # Heartbeater should not be started or stopped in rescue mode
+        self.agent.heartbeater.start.assert_not_called()
+        self.agent.heartbeater.stop.assert_not_called()
+        self.assertFalse(self.agent.serve_api)
 
     def test_async_command_success(self):
         result = base.AsyncCommandResult('foo_command', {'fail': False},
