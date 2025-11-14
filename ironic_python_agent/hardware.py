@@ -1151,18 +1151,52 @@ class HardwareManager(object, metaclass=abc.ABCMeta):
         hardware_info['cpu'] = self.get_cpus()
         hardware_info['disks'] = self.list_block_devices()
         hardware_info['memory'] = self.get_memory()
-        hardware_info['bmc_address'] = self.get_bmc_address()
-        hardware_info['bmc_v6address'] = self.get_bmc_v6address()
+
+        # Check if Ironic has indicated BMC detection should be skipped
+        # This is set after lookup when using out-of-band
+        # management like Redfish
+        cached_node = get_cached_node()
+        skip_bmc = (cached_node and cached_node.get('skip_bmc_detect',
+                                                    False))
+
+        if skip_bmc:
+            LOG.info('Skipping BMC detection as requested by Ironic')
+            hardware_info['bmc_address'] = None
+            hardware_info['bmc_v6address'] = None
+        else:
+            # Cache BMC information to avoid repeated expensive ipmitool calls
+            if not hasattr(self, '_bmc_cache'):
+                LOG.debug('Detecting BMC information (first time)')
+                self._bmc_cache = {
+                    'bmc_address': self.get_bmc_address(),
+                    'bmc_v6address': self.get_bmc_v6address(),
+                    'bmc_mac': None  # Populated below
+                }
+            else:
+                LOG.debug('Using cached BMC information')
+
+            hardware_info['bmc_address'] = self._bmc_cache['bmc_address']
+            hardware_info['bmc_v6address'] = self._bmc_cache['bmc_v6address']
+
         hardware_info['system_vendor'] = self.get_system_vendor_info()
         hardware_info['boot'] = self.get_boot_info()
         hardware_info['hostname'] = netutils.get_hostname()
 
-        try:
-            hardware_info['bmc_mac'] = self.get_bmc_mac()
-        except errors.IncompatibleHardwareMethodError:
-            # if the hardware manager does not support obtaining the BMC MAC,
-            # we simply don't expose it.
-            pass
+        if not skip_bmc:
+            # Try to get BMC MAC, which may not be cached yet
+            if self._bmc_cache['bmc_mac'] is None:
+                try:
+                    self._bmc_cache['bmc_mac'] = self.get_bmc_mac()
+                    LOG.debug('Cached BMC MAC address')
+                except errors.IncompatibleHardwareMethodError:
+                    # if the hardware manager does not support obtaining
+                    # the BMC MAC, we simply don't expose it.
+                    # Mark as unavailable to avoid retrying
+                    self._bmc_cache['bmc_mac'] = 'unavailable'
+
+            # Only add to hardware_info if we successfully got it
+            if self._bmc_cache['bmc_mac'] not in (None, 'unavailable'):
+                hardware_info['bmc_mac'] = self._bmc_cache['bmc_mac']
 
         LOG.info('Inventory collected in %.2f second(s)', time.time() - start)
         return hardware_info
