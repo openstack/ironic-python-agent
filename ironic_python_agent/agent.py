@@ -177,7 +177,10 @@ class IronicPythonAgentHeartbeater(threading.Thread):
         """Stop the heartbeat thread."""
         LOG.info('stopping heartbeater')
         self.stop_event.set()
-        return self.join()
+        # Only join if the thread was actually started
+        if self.is_alive():
+            return self.join()
+        return None
 
 
 class IronicPythonAgent(base.ExecuteCommandMixin):
@@ -621,13 +624,15 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             # rescue operations.
             LOG.info('Found rescue state marker file, locking down IPA '
                      'in disabled mode')
-            self.heartbeater.stop()
+            if hasattr(self, 'heartbeater') and self.heartbeater.is_alive():
+                self.heartbeater.stop()
             self.serve_api = False
             while True:
                 time.sleep(100)
 
         if not self.standalone and self.api_urls:
-            self.heartbeater.stop()
+            if hasattr(self, 'heartbeater') and self.heartbeater.is_alive():
+                self.heartbeater.stop()
 
         if self.lockdown:
             self._lockdown_system()
