@@ -1405,6 +1405,7 @@ class GenericHardwareManager(HardwareManager):
     def __init__(self):
         self.lldp_data = {}
         self._lshw_cache = None
+        self._raid_root_device_mapping = {}
 
     def evaluate_hardware_support(self):
         return HardwareSupport.GENERIC
@@ -1855,6 +1856,33 @@ class GenericHardwareManager(HardwareManager):
                 cached_node, all_serial_and_wwn=True)
         else:
             block_devices = self.list_block_devices(all_serial_and_wwn=True)
+        # Note(mostepha): Use the root volume from raid config if it's present
+        for raid_volume_name, is_root_volume in \
+                self._raid_root_device_mapping.items():
+            if is_root_volume:
+                LOG.debug('Using root volume, %s, from target raid config.',
+                          raid_volume_name)
+                if root_device_hints:
+                    LOG.warning('Both root device hints (%s) and a root '
+                                'volume from the target RAID configuration '
+                                'are defined. The RAID root volume will be '
+                                'used.',
+                                root_device_hints)
+                return raid_volume_name
+            elif is_root_volume is False:
+                # NOTE(mostepha): Remove raid volumes, and related
+                # holder disks/partitions, where is_root_volume=false.
+                # This allows users to exclude RAID volumes from being
+                # used as the root volume.
+                holder_disks = get_holder_disks(raid_volume_name)
+                raid_partitions = get_component_devices(raid_volume_name)
+                LOG.debug('Excluding %s and related holder disks/partitions, '
+                          '(%s and %s), from possible root devices.',
+                          raid_volume_name, holder_disks, raid_partitions)
+                block_devices = [blk_dev for blk_dev in block_devices
+                                 if blk_dev.name != raid_volume_name
+                                 and blk_dev.name not in holder_disks
+                                 and blk_dev.name not in raid_partitions]
         if not root_device_hints:
             dev_name = utils.guess_root_disk(block_devices).name
         else:
@@ -3323,7 +3351,11 @@ class GenericHardwareManager(HardwareManager):
             # partition index for each physical device.
             indices = {}
             for index, logical_disk in enumerate(logical_disks):
-                raid_utils.create_raid_device(index, logical_disk, indices)
+                raid_volume = raid_utils.create_raid_device(
+                    index, logical_disk, indices)
+                if logical_disk.get('is_root_volume') is not None:
+                    self._raid_root_device_mapping[raid_volume] = \
+                        logical_disk.get('is_root_volume')
 
         LOG.info("Successfully created Software RAID")
 
@@ -3607,6 +3639,7 @@ class GenericHardwareManager(HardwareManager):
 
         raid_skip_list = self.get_skip_list_from_node_for_raids(node)
         volume_names = []
+        root_volume_selected = False
         # All disks need to be flagged for Software RAID
         for logical_disk in logical_disks:
             if logical_disk.get('controller') != 'software':
@@ -3628,6 +3661,15 @@ class GenericHardwareManager(HardwareManager):
                     raid_errors.append(msg)
                 else:
                     volume_names.append(volume_name)
+
+            is_root_volume = logical_disk.get('is_root_volume')
+            if is_root_volume:
+                if root_volume_selected:
+                    msg = ("Software RAID configuration allows only one "
+                           "logical disk to be marked as is_root_volume")
+                    raid_errors.append(msg)
+                else:
+                    root_volume_selected = True
 
             physical_disks = logical_disk.get('physical_disks')
             if physical_disks is not None:

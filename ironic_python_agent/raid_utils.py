@@ -212,6 +212,7 @@ def create_raid_device(index, logical_disk, indices=None):
         physical device across calls to create_raid_device.
     :raise: errors.SoftwareRAIDError if not able to create the raid device
         or fails to re-add a device to a raid.
+    :return: The name of the created md device.
     """
     md_device = '/dev/md%d' % index
     component_devices = []
@@ -263,6 +264,7 @@ def create_raid_device(index, logical_disk, indices=None):
             msg = "Failed re-add {} to {}: {}".format(
                 dev, md_device, e)
             raise errors.SoftwareRAIDError(msg)
+    return md_device
 
 
 def get_next_free_raid_device():

@@ -90,6 +90,57 @@ RAID_BLK_DEVICE_TEMPLATE_DEVICES = [
                          tran=None),
 ]
 
+RAID_BLK_DEVICE_TEMPLATE_DEVICES_WITH_PARTITIONS = [
+    hardware.BlockDevice(name='/dev/sda', model='DRIVE 0',
+                         size=1765517033472, rotational=False,
+                         vendor="FooTastic", uuid="",
+                         serial="sda123", wwn="wwn_1",
+                         logical_sectors=512, physical_sectors=512,
+                         tran='sas'),
+    hardware.BlockDevice(name='/dev/sdb', model='DRIVE 1',
+                         size=1765517033472, rotational=False,
+                         vendor="FooTastic", uuid="",
+                         serial="sdb123", wwn="wwn_2",
+                         logical_sectors=512, physical_sectors=512,
+                         tran='sas'),
+    hardware.BlockDevice(name='/dev/sda1', model='DRIVE 0 - PART 0',
+                         size=107479040000, rotational=False,
+                         vendor="FooTastic", uuid="",
+                         serial=None, wwn="wwn_1",
+                         logical_sectors=512, physical_sectors=512,
+                         tran=None),
+    hardware.BlockDevice(name='/dev/sdb1', model='DRIVE 1 - PART 0',
+                         size=107479040000, rotational=False,
+                         vendor="FooTastic", uuid="",
+                         serial=None, wwn="wwn_2",
+                         logical_sectors=512, physical_sectors=512,
+                         tran=None),
+    hardware.BlockDevice(name='/dev/sda2', model='DRIVE 0 - PART 1',
+                         size=1658247708670, rotational=False,
+                         vendor="FooTastic", uuid="",
+                         serial=None, wwn="wwn_1",
+                         logical_sectors=512, physical_sectors=512,
+                         tran=None),
+    hardware.BlockDevice(name='/dev/sdb2', model='DRIVE 1 - PART 1',
+                         size=1658247708670, rotational=False,
+                         vendor="FooTastic", uuid="",
+                         serial=None, wwn="wwn_2",
+                         logical_sectors=512, physical_sectors=512,
+                         tran=None),
+    hardware.BlockDevice(name='/dev/md0', model='RAID',
+                         size=107374182400, rotational=False,
+                         vendor="FooTastic", uuid="",
+                         serial=None, wwn=None,
+                         logical_sectors=512, physical_sectors=512,
+                         tran=None),
+    hardware.BlockDevice(name='/dev/md1', model='RAID',
+                         size=1658142851070, rotational=False,
+                         vendor="FooTastic", uuid="",
+                         serial=None, wwn=None,
+                         logical_sectors=512, physical_sectors=512,
+                         tran=None),
+]
+
 BLK_DEVICE_TEMPLATE_PARTUUID_DEVICE = [
     hardware.BlockDevice(name='/dev/sda1', model='DRIVE 0',
                          size=107373133824, rotational=True,
@@ -624,6 +675,225 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ]
 
         mocked_execute.assert_has_calls(expected)
+        mock_cached_node.assert_called_once_with()
+
+    @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
+    @mock.patch.object(os, 'readlink', autospec=True)
+    @mock.patch.object(os, 'listdir', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_get_os_install_device_root_in_raid_config(self, mocked_execute,
+                                                       mock_cached_node,
+                                                       mocked_listdir,
+                                                       mocked_readlink,
+                                                       mocked_mpath):
+        # NOTE(TheJulia): The readlink and listdir mocks are just to satisfy
+        # what is functionally an available path check and that information
+        # is stored in the returned result for use by root device hints.
+        mocked_readlink.side_effect = '../../sda'
+        mocked_listdir.return_value = ['1:0:0:0']
+        mock_cached_node.return_value = None
+        mocked_mpath.return_value = False
+        mocked_execute.side_effect = [
+            (hws.RAID_BLK_DEVICE_TEMPLATE, ''),
+        ]
+        # Simulate that a raid config has "is_root_volume" set to True
+        self.hardware._raid_root_device_mapping = {'/dev/md1': True}
+
+        # This should select the raid volume with is_root_volume set to true
+        self.assertEqual('/dev/md1', self.hardware.get_os_install_device())
+        expected = [
+            mock.call('lsblk', '-bia', '--json',
+                      '-oKNAME,MODEL,SIZE,ROTA,TYPE,UUID,PARTUUID,SERIAL,WWN,'
+                      'LOG-SEC,PHY-SEC,TRAN',
+                      check_exit_code=[0]),
+        ]
+
+        mocked_execute.assert_has_calls(expected)
+        mock_cached_node.assert_called_once_with()
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
+    @mock.patch.object(hardware, 'get_component_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_get_os_install_device_exclude_root_in_raid_config(
+            self,
+            mock_cached_node,
+            mock_get_holder_disks,
+            mock_get_component_devices,
+            mock_dev):
+        """Exclude RAID volume from being used as mountpoint for rootfs."""
+        mock_cached_node.return_value = None
+        mock_dev.return_value = \
+            RAID_BLK_DEVICE_TEMPLATE_DEVICES_WITH_PARTITIONS
+
+        # Simulate that a raid config has "is_root_volume" set to False
+        self.hardware._raid_root_device_mapping = {'/dev/md0': False}
+
+        mock_get_holder_disks.side_effect = [
+            ["/dev/sda", "/dev/sdb"]
+        ]
+        mock_get_component_devices.side_effect = [
+            ['/dev/sda1', '/dev/sdb1']
+        ]
+
+        # This should select the next smallest device (excluding md0)
+        self.assertEqual('/dev/md1', self.hardware.get_os_install_device())
+
+        mock_cached_node.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
+    @mock.patch.object(hardware, 'get_component_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_get_os_install_device_exclude_everything_in_raid_config_spare(
+            self,
+            mock_cached_node,
+            mock_get_holder_disks,
+            mock_get_component_devices,
+            mock_dev):
+        """All RAID related volumes are excluded - select only remaining disk.
+
+        All RAID volumes and related disks/partitions are excluded. So the
+        only unaffected disk should be selected.
+        """
+        mock_cached_node.return_value = None
+        mock_dev.return_value = \
+            RAID_BLK_DEVICE_TEMPLATE_DEVICES_WITH_PARTITIONS + \
+            [hardware.BlockDevice(name='/dev/sdc', model='Spare Disk',
+             size=1765517033472, rotational=False,
+             vendor="FooTastic", uuid="",
+             serial="sdc123", wwn="wwn_3",
+             logical_sectors=512, physical_sectors=512,
+             tran='sas')]
+
+        # Simulate that all raid volumes has "is_root_volume" set to False.
+        self.hardware._raid_root_device_mapping = {'/dev/md0': False,
+                                                   '/dev/md1': False}
+
+        mock_get_holder_disks.side_effect = [
+            ["/dev/sda", "/dev/sdb"],
+            ["/dev/sda", "/dev/sdb"]
+        ]
+        mock_get_component_devices.side_effect = [
+            ['/dev/sda1', '/dev/sdb1'],
+            ['/dev/sda2', '/dev/sdb2']
+        ]
+
+        expected_calls = [
+            mock.call('/dev/md0'),
+            mock.call('/dev/md1')
+        ]
+
+        # This should select the only unaffected disk /dev/sdc
+        self.assertEqual('/dev/sdc', self.hardware.get_os_install_device())
+
+        mock_cached_node.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
+
+        mock_cached_node.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
+        mock_get_holder_disks.assert_has_calls(expected_calls)
+        mock_get_component_devices.assert_has_calls(expected_calls)
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
+    @mock.patch.object(hardware, 'get_component_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_get_os_install_device_exclude_everything_in_raid_config_invalid(
+            self,
+            mock_cached_node,
+            mock_get_holder_disks,
+            mock_get_component_devices,
+            mock_dev):
+        """Fail to find a device when all raid volumes are excluded.
+
+           This should fail as the RAID volumes and related holder disks
+           and partitions (= all devices) are excluded.
+        """
+        mock_cached_node.return_value = None
+        mock_dev.return_value = \
+            RAID_BLK_DEVICE_TEMPLATE_DEVICES_WITH_PARTITIONS
+
+        # Simulate that all raid volumes has "is_root_volume" set to False.
+        self.hardware._raid_root_device_mapping = {'/dev/md0': False,
+                                                   '/dev/md1': False}
+
+        mock_get_holder_disks.side_effect = [
+            ["/dev/sda", "/dev/sdb"],
+            ["/dev/sda", "/dev/sdb"]
+        ]
+        mock_get_component_devices.side_effect = [
+            ['/dev/sda1', '/dev/sdb1'],
+            ['/dev/sda2', '/dev/sdb2']
+        ]
+
+        expected_calls = [
+            mock.call('/dev/md0'),
+            mock.call('/dev/md1')
+        ]
+
+        # This should fail as all devices are excluded.
+        self.assertRaises(errors.DeviceNotFound,
+                          self.hardware.get_os_install_device)
+
+        mock_cached_node.assert_called_once_with()
+        mock_dev.assert_called_once_with(all_serial_and_wwn=True)
+        mock_get_holder_disks.assert_has_calls(expected_calls)
+        mock_get_component_devices.assert_has_calls(expected_calls)
+
+    @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_holder_disks', autospec=True)
+    @mock.patch.object(hardware, 'get_component_devices', autospec=True)
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    def test_get_os_install_device_excluded_raids_with_multiple_wwns_invalid(
+            self,
+            mock_cached_node,
+            mock_get_holder_disks,
+            mock_get_component_devices,
+            mock_dev):
+        """All RAID related volumes are excluded - free disk is on skip list.
+
+        All RAID volumes and related disks/partitions are excluded. There is
+        a remaining disk, but it is on the skip list, so it cannot be used.
+        This also tests that WWN hints can handle a list of WWNs for a device.
+        """
+        mock_cached_node.return_value = {
+            'instance_info': {},
+            'properties': {
+                'skip_block_devices': [
+                    {'wwn': 'wwn_3'}
+                ]
+            },
+            'uuid': 'node1'
+        }
+        mock_dev.return_value = \
+            RAID_BLK_DEVICE_TEMPLATE_DEVICES_WITH_PARTITIONS + \
+            [hardware.BlockDevice(name='/dev/sdc', model='Spare Disk',
+             size=1765517033472, rotational=False,
+             vendor="FooTastic", uuid="",
+             serial="sdc123", wwn=["wwn_3", "wwn_3_ext"],
+             logical_sectors=512, physical_sectors=512,
+             tran='sas')]
+
+        # Simulate that all raid volumes had is_root_volume set to False.
+        self.hardware._raid_root_device_mapping = {'/dev/md0': False,
+                                                   '/dev/md1': False}
+
+        mock_get_holder_disks.side_effect = [
+            ['/dev/sda', '/dev/sdb'],
+            ['/dev/sda', '/dev/sdb']
+        ]
+        mock_get_component_devices.side_effect = [
+            ['/dev/sda1', '/dev/sdb1'],
+            ['/dev/sda2', '/dev/sdb2']
+        ]
+
+        # This should fail as all devices are excluded or in skip list.
+        self.assertRaises(errors.DeviceNotFound,
+                          self.hardware.get_os_install_device)
+
         mock_cached_node.assert_called_once_with()
 
     @mock.patch.object(hardware, 'get_multipath_status', autospec=True)
@@ -3895,6 +4165,69 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
     @mock.patch.object(raid_utils, '_get_actual_component_devices',
                        autospec=True)
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_create_configuration_with_root_volume(self,
+                                                   mocked_execute,
+                                                   mock_list_parts,
+                                                   mocked_actual_comp):
+        # Note(mostepha): Ensure that the is_root_volume properties
+        # from the raid config are added to
+        # GenericHardwareManager._raid_root_device_mapping
+        node = self.node
+
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "40",
+                    "raid_level": "1",
+                    "controller": "software",
+                    "volume_name": "root",
+                    "is_root_volume": True
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                    "volume_name": "data",
+                    "is_root_volume": False
+                },
+            ]
+        }
+        node['target_raid_config'] = raid_config
+        device1 = hardware.BlockDevice('/dev/sda', 'sda', 107374182400, True)
+        device2 = hardware.BlockDevice('/dev/sdb', 'sdb', 107374182400, True)
+        self.hardware.list_block_devices = mock.Mock()
+        self.hardware.list_block_devices.return_value = [device1, device2]
+        mock_list_parts.side_effect = [
+            [],
+            processutils.ProcessExecutionError
+        ]
+
+        mocked_execute.side_effect = [
+            None,  # mklabel sda
+            ('42', None),  # sgdisk -F sda
+            None,  # mklabel sda
+            ('42', None),  # sgdisk -F sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None, None,  # parted + partx + udevadm_settle sda
+            None, None, None,  # parted + partx + udevadm_settle sdb
+            None, None  # mdadms
+        ]
+
+        mocked_actual_comp.side_effect = [
+            ('/dev/sda1', '/dev/sdb1'),
+            ('/dev/sda2', '/dev/sdb2'),
+        ]
+
+        self.hardware.create_configuration(node, [])
+
+        self.assertEqual({'/dev/md0': True, '/dev/md1': False},
+                         self.hardware._raid_root_device_mapping)
+
+    @mock.patch.object(raid_utils, '_get_actual_component_devices',
+                       autospec=True)
     @mock.patch.object(utils, 'get_node_boot_mode', lambda node: 'bios')
     @mock.patch.object(disk_utils, 'list_partitions', autospec=True,
                        return_value=[])
@@ -6482,6 +6815,30 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                                                                self.node))
 
     @mock.patch.object(utils, 'execute', autospec=True)
+    def test_validate_configuration_valid_root_volume(
+            self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "is_root_volume": True,
+                    "controller": "software",
+                    "volume_name": "root"
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "controller": "software",
+                    "volume_name": "data"
+                },
+            ]
+        }
+        mocked_execute.return_value = (hws.RAID_BLK_DEVICE_TEMPLATE, '')
+        self.assertIsNone(self.hardware.validate_configuration(raid_config,
+                                                               self.node))
+
+    @mock.patch.object(utils, 'execute', autospec=True)
     def test_validate_configuration_invalid_MAX_MAX(self, mocked_execute):
         raid_config = {
             "logical_disks": [
@@ -6564,6 +6921,32 @@ class TestGenericHardwareManager(base.IronicAgentTest):
                     "raid_level": "0",
                     "controller": "software",
                     "volume_name": "thedisk"
+                },
+            ]
+        }
+        mocked_execute.return_value = (hws.RAID_BLK_DEVICE_TEMPLATE, '')
+        self.assertRaises(errors.SoftwareRAIDError,
+                          self.hardware.validate_configuration,
+                          raid_config, self.node)
+
+    @mock.patch.object(utils, 'execute', autospec=True)
+    def test_validate_configuration_invalid_multiple_root_volumes(
+            self, mocked_execute):
+        raid_config = {
+            "logical_disks": [
+                {
+                    "size_gb": "100",
+                    "raid_level": "1",
+                    "is_root_volume": True,
+                    "controller": "software",
+                    "volume_name": "root"
+                },
+                {
+                    "size_gb": "MAX",
+                    "raid_level": "0",
+                    "is_root_volume": True,
+                    "controller": "software",
+                    "volume_name": "data"
                 },
             ]
         }
