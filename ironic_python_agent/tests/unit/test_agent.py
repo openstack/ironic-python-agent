@@ -956,24 +956,23 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        result = self.agent._test_ip_reachability('192.168.1.1')
+        result = self.agent._test_ip_reachability('http://192.168.1.1:6385/v1')
         self.assertTrue(result)
-        mock_get.assert_called_once_with('http://192.168.1.1', timeout=30,
-                                         verify=False)
+        mock_get.assert_called_once_with('http://192.168.1.1:6385/v1',
+                                         timeout=30, verify=False)
 
     @mock.patch('requests.get', autospec=True)
     def test_test_ip_reachability_https_success(self, mock_get):
-        """Test _test_ip_reachability with HTTPS fallback."""
-        # First call (HTTP) fails, second call (HTTPS) succeeds
-        mock_get.side_effect = [
-            requests.exceptions.ConnectionError('Connection failed'),
-            mock.Mock(status_code=404)  # Any status code indicates
-                                        # reachability
-        ]
+        """Test _test_ip_reachability with HTTPS URL."""
+        mock_response = mock.Mock()
+        mock_response.status_code = 404  # Any status code is acceptable
+        mock_get.return_value = mock_response
 
-        result = self.agent._test_ip_reachability('192.168.1.1')
+        result = self.agent._test_ip_reachability(
+            'https://192.168.1.1:6385/v1')
         self.assertTrue(result)
-        self.assertEqual(mock_get.call_count, 2)
+        mock_get.assert_called_once_with('https://192.168.1.1:6385/v1',
+                                         timeout=30, verify=False)
 
     @mock.patch('requests.get', autospec=True)
     def test_test_ip_reachability_failure(self, mock_get):
@@ -981,9 +980,10 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         mock_get.side_effect = requests.exceptions.ConnectionError(
             'Connection failed')
 
-        result = self.agent._test_ip_reachability('192.168.1.1')
+        result = self.agent._test_ip_reachability('http://192.168.1.1:6385/v1')
         self.assertFalse(result)
-        self.assertEqual(mock_get.call_count, 2)  # Tries both HTTP and HTTPS
+        mock_get.assert_called_once_with('http://192.168.1.1:6385/v1',
+                                         timeout=30, verify=False)
 
     @mock.patch('requests.get', autospec=True)
     @mock.patch.object(socket, 'getaddrinfo', autospec=True)
