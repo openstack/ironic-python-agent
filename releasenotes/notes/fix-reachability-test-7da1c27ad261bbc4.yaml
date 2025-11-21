@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixes an issue where the agent could not find a valid IP address when
+    the Ironic API was running on a non-standard port. The reachability test
+    now uses the full API URL including the port number, instead of only
+    using the hostname. This prevents ``LookupAgentIPError`` when connecting
+    to Ironic APIs on custom ports.
