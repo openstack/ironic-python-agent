@@ -1509,6 +1509,133 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         self.assertEqual('mock_hostname', hardware_info['hostname'])
         mocked_lshw.assert_called_once_with(self.hardware)
 
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_get_system_lshw_dict', autospec=True,
+                       return_value={'id': 'host'})
+    @mock.patch.object(netutils, 'get_hostname', autospec=True)
+    def test_list_hardware_info_with_bmc_caching(
+            self, mocked_get_hostname, mocked_lshw, mocked_get_node):
+        """Test that BMC information is cached after first detection."""
+        mocked_get_node.return_value = None  # No skip_bmc_detect flag
+
+        # Mock all the hardware info methods
+        self.hardware.list_network_interfaces = mock.Mock(return_value=[])
+        self.hardware.get_cpus = mock.Mock()
+        self.hardware.get_memory = mock.Mock()
+        self.hardware.list_block_devices = mock.Mock(return_value=[])
+        self.hardware.get_boot_info = mock.Mock()
+        self.hardware.get_system_vendor_info = mock.Mock()
+        mocked_get_hostname.return_value = 'mock_hostname'
+
+        # Mock BMC methods
+        self.hardware.get_bmc_address = mock.Mock(return_value='192.168.1.1')
+        self.hardware.get_bmc_v6address = mock.Mock(return_value='fe80::1')
+        self.hardware.get_bmc_mac = mock.Mock(return_value='aa:bb:cc:dd:ee:ff')
+
+        # First call - should call BMC detection methods
+        hardware_info1 = self.hardware.list_hardware_info()
+        self.assertEqual('192.168.1.1', hardware_info1['bmc_address'])
+        self.assertEqual('fe80::1', hardware_info1['bmc_v6address'])
+        self.assertEqual('aa:bb:cc:dd:ee:ff', hardware_info1['bmc_mac'])
+
+        # Verify BMC methods were called
+        self.hardware.get_bmc_address.assert_called_once()
+        self.hardware.get_bmc_v6address.assert_called_once()
+        self.hardware.get_bmc_mac.assert_called_once()
+
+        # Second call - should use cached values
+        hardware_info2 = self.hardware.list_hardware_info()
+        self.assertEqual('192.168.1.1', hardware_info2['bmc_address'])
+        self.assertEqual('fe80::1', hardware_info2['bmc_v6address'])
+        self.assertEqual('aa:bb:cc:dd:ee:ff', hardware_info2['bmc_mac'])
+
+        # BMC methods should NOT be called again (still only once)
+        self.hardware.get_bmc_address.assert_called_once()
+        self.hardware.get_bmc_v6address.assert_called_once()
+        self.hardware.get_bmc_mac.assert_called_once()
+
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_get_system_lshw_dict', autospec=True,
+                       return_value={'id': 'host'})
+    @mock.patch.object(netutils, 'get_hostname', autospec=True)
+    def test_list_hardware_info_skip_bmc_detect(
+            self, mocked_get_hostname, mocked_lshw, mocked_get_node):
+        """Test that BMC detection is skipped when flag is set."""
+        mocked_get_node.return_value = {'skip_bmc_detect': True}
+
+        # Mock all the hardware info methods
+        self.hardware.list_network_interfaces = mock.Mock(return_value=[])
+        self.hardware.get_cpus = mock.Mock()
+        self.hardware.get_memory = mock.Mock()
+        self.hardware.list_block_devices = mock.Mock(return_value=[])
+        self.hardware.get_boot_info = mock.Mock()
+        self.hardware.get_system_vendor_info = mock.Mock()
+        mocked_get_hostname.return_value = 'mock_hostname'
+
+        # Mock BMC methods - these should NOT be called
+        self.hardware.get_bmc_address = mock.Mock()
+        self.hardware.get_bmc_v6address = mock.Mock()
+        self.hardware.get_bmc_mac = mock.Mock()
+
+        # Call list_hardware_info
+        hardware_info = self.hardware.list_hardware_info()
+
+        # BMC info should be None
+        self.assertIsNone(hardware_info['bmc_address'])
+        self.assertIsNone(hardware_info['bmc_v6address'])
+        self.assertNotIn('bmc_mac', hardware_info)
+
+        # BMC detection methods should NOT have been called
+        self.hardware.get_bmc_address.assert_not_called()
+        self.hardware.get_bmc_v6address.assert_not_called()
+        self.hardware.get_bmc_mac.assert_not_called()
+
+    @mock.patch.object(hardware, 'get_cached_node', autospec=True)
+    @mock.patch.object(hardware.GenericHardwareManager,
+                       '_get_system_lshw_dict', autospec=True,
+                       return_value={'id': 'host'})
+    @mock.patch.object(netutils, 'get_hostname', autospec=True)
+    def test_list_hardware_info_bmc_mac_unavailable(
+            self, mocked_get_hostname, mocked_lshw, mocked_get_node):
+        """Test BMC MAC marked unavailable when not supported."""
+        mocked_get_node.return_value = None
+
+        # Mock all the hardware info methods
+        self.hardware.list_network_interfaces = mock.Mock(return_value=[])
+        self.hardware.get_cpus = mock.Mock()
+        self.hardware.get_memory = mock.Mock()
+        self.hardware.list_block_devices = mock.Mock(return_value=[])
+        self.hardware.get_boot_info = mock.Mock()
+        self.hardware.get_system_vendor_info = mock.Mock()
+        mocked_get_hostname.return_value = 'mock_hostname'
+
+        # Mock BMC methods
+        self.hardware.get_bmc_address = mock.Mock(return_value='192.168.1.1')
+        self.hardware.get_bmc_v6address = mock.Mock(return_value='fe80::1')
+        # BMC MAC raises IncompatibleHardwareMethodError
+        self.hardware.get_bmc_mac = mock.Mock(
+            side_effect=errors.IncompatibleHardwareMethodError)
+
+        # First call
+        hardware_info1 = self.hardware.list_hardware_info()
+        self.assertEqual('192.168.1.1', hardware_info1['bmc_address'])
+        self.assertEqual('fe80::1', hardware_info1['bmc_v6address'])
+        self.assertNotIn('bmc_mac', hardware_info1)  # Not in output
+
+        # Verify get_bmc_mac was called once
+        self.hardware.get_bmc_mac.assert_called_once()
+
+        # Second call - get_bmc_mac should NOT be called again
+        hardware_info2 = self.hardware.list_hardware_info()
+        self.assertEqual('192.168.1.1', hardware_info2['bmc_address'])
+        self.assertEqual('fe80::1', hardware_info2['bmc_v6address'])
+        self.assertNotIn('bmc_mac', hardware_info2)
+
+        # Still only one call (cached as 'unavailable')
+        self.hardware.get_bmc_mac.assert_called_once()
+
     @mock.patch.object(hardware, 'list_all_block_devices', autospec=True)
     def test_list_block_devices(self, list_mock):
         device = hardware.BlockDevice('/dev/hdaa', 'small', 65535, False)

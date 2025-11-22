@@ -494,6 +494,15 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         self.node = content['node']
         LOG.info('Lookup succeeded, node UUID is %s',
                  self.node['uuid'])
+
+        # Store skip_bmc_detect flag in the node before caching
+        # This allows hardware managers to check if BMC detection is needed
+        skip_bmc = content.get('config', {}).get('agent_skip_bmc_detect',
+                                                 False)
+        if skip_bmc:
+            LOG.info('Ironic has indicated BMC detection should be skipped')
+            self.node['skip_bmc_detect'] = True
+
         hardware.cache_node(self.node)
         self.heartbeat_timeout = content['config']['heartbeat_timeout']
 

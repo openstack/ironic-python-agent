@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    Adds support for automatically skipping BMC detection via ipmitool
+    when Ironic indicates the node uses out-of-band management interfaces
+    (e.g., Redfish, iDRAC Redfish, iLO, iRMC). This reduces deployment
+    time and avoids unnecessary ipmitool calls when the BMC information
+    is already known to Ironic.
+  - |
+    BMC information (address, v6address, and MAC) is now cached after the
+    first detection to avoid repeated expensive ipmitool calls during
+    subsequent inventory collections. This improves performance during
+    heartbeats and long-running operations like cleaning or rescue mode.
