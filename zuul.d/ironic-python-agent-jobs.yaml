@@ -25,6 +25,7 @@
         IRONIC_RAMDISK_TYPE: dib
       devstack_services:
         dstat: false
+        ir-novnc: False
 
 # used by diskimage-builder and IPA-builder
 - job:
@@ -53,6 +54,7 @@
         s-container: True
         s-object: True
         s-proxy: True
+        ir-novnc: False
       devstack_localrc:
         IRONIC_BOOT_MODE: uefi
         IRONIC_DEPLOY_DRIVER: redfish
@@ -97,4 +99,6 @@
         # NOTE(dtantsur): the ansible deploy doesn't depend on IPA code,
         # excluding it from the enabled list to save gate time.
         IRONIC_ENABLED_DEPLOY_INTERFACES: "direct"
+      devstack_services:
+        ir-novnc: False
 
