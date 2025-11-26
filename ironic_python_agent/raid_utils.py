@@ -320,7 +320,8 @@ def get_volume_name_of_raid_device(raid_device, examine=False):
     return None
 
 
-# TODO(rg): handle PreP boot parts relocation as well
+# NOTE(cid): PReP partition support is deprecated and will be removed in a
+# future release. RAID support for PReP partitions will not be implemented.
 def prepare_boot_partitions_for_softraid(device, holders, efi_part,
                                          target_boot_mode):
     """Prepare boot partitions when relevant.

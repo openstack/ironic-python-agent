@@ -203,6 +203,9 @@ def _install_grub2(device, root_uuid, efi_system_part_uuid=None,
 
         # For power we want to install grub directly onto the PreP partition
         if prep_boot_part_uuid:
+            LOG.warning("PReP partition support is deprecated and will be "
+                        "removed in a future release. PowerPC (ppc64*) "
+                        "hardware support is being phased out.")
             device = partition_utils.get_partition(
                 device, uuid=prep_boot_part_uuid)
 
@@ -699,6 +702,11 @@ class ImageExtension(base.BaseAgentExtension):
             ignore_failure = CONF.ignore_bootloader_failure
         else:
             ignore_failure = ignore_bootloader_failure
+
+        if prep_boot_part_uuid:
+            LOG.warning("PReP partition support is deprecated and will be "
+                        "removed in a future release. PowerPC (ppc64*) "
+                        "hardware support is being phased out.")
 
         try:
             if _efi_boot_setup(device, efi_system_part_uuid, target_boot_mode):
