@@ -360,6 +360,11 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         else:
             LOG.warning('No reachable Ironic API URLs found, keeping all URLs')
 
+        # If no IPs were collected, we can't find a routable address
+        if not ips:
+            LOG.warning('No IPs collected from reachable API URLs')
+            return None
+
         # Find routable address using collected IPs
         for attempt in range(self.ip_lookup_attempts):
             for ironic_host in ips:
