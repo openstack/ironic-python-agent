@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Extend ``ipa-enable-vlan-interfaces`` kernel params field to support
+    identifying an interface by its MAC address as an alternative to its name.

@@ -335,7 +335,9 @@ cli_opts = [
     cfg.StrOpt('enable_vlan_interfaces',
                default=APARAMS.get('ipa-enable-vlan-interfaces', ''),
                help='Comma-separated list of VLAN interfaces to enable, '
-                    'in the format "interface.vlan".  If only an '
+                    'in the format "interface.vlan".  The "interface" can be '
+                    'an interface name or a MAC address (EUI-48 format, '
+                    'case-insensitive).  If only an '
                     'interface is provided, then IPA should attempt to '
                     'bring up all VLANs on that interface detected '
                     'via lldp.  If "all" is set then IPA should attempt '

@@ -8372,6 +8372,58 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
         self.assertEqual('00:0c:29:8c:11:b1', interfaces[1].mac_address)
         self.assertIsNone(interfaces[1].lldp)
 
+    def test_list_network_vlan_interfaces_mac(self,
+                                              mock_has_carrier,
+                                              mocked_execute,
+                                              mocked_open,
+                                              mocked_exists,
+                                              mocked_listdir,
+                                              mocked_net_if_addrs,
+                                              mockedget_managers,
+                                              mocked_lshw,
+                                              mocked_get_mac_addr):
+        CONF.set_override('enable_vlan_interfaces', '00:0c:29:8c:11:b1.100')
+        mocked_listdir.return_value = ['lo', 'eth0']
+        mocked_exists.side_effect = [False, False, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_net_if_addrs.return_value = {
+            'lo': [
+                FakeAddr(socket.AF_INET, '127.0.0.1'),
+                FakeAddr(socket.AF_INET6, '::1'),
+                FakeAddr(socket.AF_PACKET, '00:00:00:00:00:00')
+            ],
+            'eth0': [
+                FakeAddr(socket.AF_INET, '192.168.1.2'),
+                FakeAddr(socket.AF_INET6, 'fd00::101'),
+                FakeAddr(socket.AF_PACKET, '00:0c:29:8c:11:b1')
+            ],
+            'eth0.100': [
+                FakeAddr(socket.AF_INET, '192.168.2.2'),
+                FakeAddr(socket.AF_INET6, 'fd00::1000::101'),
+                FakeAddr(socket.AF_PACKET, '00:0c:29:8c:11:b1')
+            ]
+        }
+        mocked_get_mac_addr.side_effect = lambda iface: {
+            'lo': '00:00:00:00:00:00',
+            'eth0': '00:0c:29:8c:11:b1',
+            'eth0.100': '00:0c:29:8c:11:b1',
+        }.get(iface)
+        mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = True
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(2, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[0].mac_address)
+        self.assertEqual('192.168.1.2', interfaces[0].ipv4_address)
+        self.assertEqual('fd00::101', interfaces[0].ipv6_address)
+        self.assertIsNone(interfaces[0].lldp)
+        self.assertEqual('eth0.100', interfaces[1].name)
+        self.assertEqual('00:0c:29:8c:11:b1', interfaces[1].mac_address)
+        self.assertIsNone(interfaces[1].lldp)
+
     @mock.patch.object(netutils, 'get_lldp_info', autospec=True)
     def test_list_network_vlan_interfaces_using_lldp(self,
                                                      mocked_lldp_info,

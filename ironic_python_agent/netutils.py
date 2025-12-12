@@ -420,11 +420,14 @@ def bring_up_vlan_interfaces(interfaces_list):
         if '.' in vlan_int:
             # interface and vlan are provided
             interface, vlan = vlan_int.split('.', 1)
-            if any(x.name == interface for x in interfaces_list):
-                name = _add_vlan_interface(interface, vlan,
-                                           interfaces_list)
-                if name:
-                    interfaces.append(name)
+            for x in interfaces_list:
+                if (x.name == interface
+                        or x.mac_address.lower() == interface.lower()):
+                    name = _add_vlan_interface(x.name, vlan,
+                                               interfaces_list)
+                    if name:
+                        interfaces.append(name)
+                    break
             else:
                 LOG.warning('Provided VLAN interface %s does not exist',
                             interface)
