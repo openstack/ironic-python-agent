@@ -297,6 +297,99 @@ Boot0009* Internal CD/DVD ROM Drive (UEFI)      PciRoot(0x0)/Pci(0x11,0x0)/Sata(
              'CDROM(1,0x265,0x2000)'),
             result[13])
 
+    def test_get_boot_records_utf_8(self, mock_utils_efi_part,
+                                    mock_get_part_path,
+                                    mock_get_part_uuid, mock_execute,
+                                    mock_rescan):
+        efibootmgr_resp = """
+BootCurrent: 0001
+Timeout: 0 seconds
+BootOrder: 0001,0000,001B,001C,001D,001E,001F,0020,0021,0022,0012,0011,0023,0024,0002
+Boot0000* Red Hat Enterprise Linux	HD(1,GPT,34178504-2340-4fe0-8001-264372cf9b2d,0x800,0x64000)/File(\\EFI\\redhat\\shimx64.efi)
+Boot0001* Fedora	HD(1,GPT,da6b4491-61f2-42b0-8ab1-7c4a87317c4e,0x800,0x64000)/File(\\EFI\\fedora\\shimx64.efi)
+Boot0002* Linux-Firmware-Updater	HD(1,GPT,da6b4491-61f2-42b0-8ab1-7c4a87317c4e,0x800,0x64000)/File(\\EFI\\fedora\\fwupdx64.efi)
+Boot0003  ThinkShield secure wipe	FvFile(3593a0d5-bd52-43a0-808e-cbff5ece2477)
+Boot0004  LENOVO CLOUD	VenMsg(bc7838d2-0f82-4d60-8316-c068ee79d25b,ad38ccbbf7edf04d959cf42aa74d3650)/Uri(https://download.lenovo.com/pccbbs/cdeploy/efi/boot.efi)
+Boot0005  IDER BOOT CDROM	PciRoot(0x0)/Pci(0x14,0x0)/USB(11,1)
+Boot0006 ATA HDD	VenMsg(bc7838d2-0f82-4d60-8316-c068ee79d25b,91af625956449f41a7b91f4f892ab0f6)
+Boot0007* Hard drive C: VenHw(d6c0639f-c705-4eb9-aa4f-5802d8823de6)......................................................................................A.....................P.E.R.C. .H.7.3.0.P. .M.i.n.i.(.b.u.s. .1.8. .d.e.v. .0.0.)...
+BootAAA8* IBA GE Slot 0100 v1588        BBS(128,IBA GE Slot 0100 v1588,0x0)........................B.............................................................A.....................I.B.A. .G.E. .S.l.o.t. .0.1.0.0. .v.1.5.8.8...
+Boot0FF9* Virtual CD/DVD        PciRoot(0x0)/Pci(0x14,0x0)/USB(13,0)/USB(3,0)/USB(1,0)
+Boot123A* Integrated NIC 1 Port 1 Partition 1   VenHw(33391845-5f86-4e78-8fce-c4cff59f9bbb)
+Boot000B* UEFI: PXE IPv4 Realtek PCIe 2.5GBE Family Controller	PciRoot(0x0)/Pci(0x1c,0x0)/Pci(0x0,0x0)/MAC([REDACTED],0)/IPv4(0.0.0.00.0.0.0,0,0)..BO
+Boot0008* Generic USB Boot UsbClass(ffff,ffff,255,255)
+Boot0009* Internal CD/DVD ROM Drive (UEFI)      PciRoot(0x0)/Pci(0x11,0x0)/Sata(1,65535,0)/CDROM(1,0x265,0x2000)
+""".encode('utf-8') # noqa This is a giant literal string for testing.
+        mock_execute.return_value = (efibootmgr_resp, '')
+        result = list(efi_utils.get_boot_records())
+
+        self.assertEqual(
+            ('0000', 'Red Hat Enterprise Linux', 'HD',
+             'HD(1,GPT,34178504-2340-4fe0-8001-264372cf9b2d,0x800,0x64000)/'
+             'File(\\EFI\\redhat\\shimx64.efi)'),
+            result[0])
+        self.assertEqual(
+            ('0001', 'Fedora', 'HD',
+             'HD(1,GPT,da6b4491-61f2-42b0-8ab1-7c4a87317c4e,0x800,0x64000)/'
+             'File(\\EFI\\fedora\\shimx64.efi)'),
+            result[1])
+        self.assertEqual(
+            ('0002', 'Linux-Firmware-Updater', 'HD',
+             'HD(1,GPT,da6b4491-61f2-42b0-8ab1-7c4a87317c4e,0x800,0x64000)/'
+             'File(\\EFI\\fedora\\fwupdx64.efi)'),
+            result[2])
+        self.assertEqual(
+            ('0003', 'ThinkShield secure wipe', 'FvFile',
+             'FvFile(3593a0d5-bd52-43a0-808e-cbff5ece2477)'),
+            result[3])
+        self.assertEqual(
+            ('0004', 'LENOVO CLOUD', 'VenMsg',
+             'VenMsg(bc7838d2-0f82-4d60-8316-c068ee79d25b,'
+             'ad38ccbbf7edf04d959cf42aa74d3650)/'
+             'Uri(https://download.lenovo.com/pccbbs/cdeploy/efi/boot.efi)'),
+            result[4])
+        self.assertEqual(
+            ('0005', 'IDER BOOT CDROM', 'PciRoot',
+             'PciRoot(0x0)/Pci(0x14,0x0)/USB(11,1)'),
+            result[5])
+        self.assertEqual(
+            ('0006', 'ATA HDD', 'VenMsg',
+             'VenMsg(bc7838d2-0f82-4d60-8316-c068ee79d25b,'
+             '91af625956449f41a7b91f4f892ab0f6)'),
+            result[6])
+        self.assertEqual(
+            ('0007', 'Hard drive C:', 'VenHw',
+             mock.ANY),
+            result[7])
+        self.assertEqual(
+            ('AAA8', 'IBA GE Slot 0100 v1588', 'BBS',
+             mock.ANY),
+            result[8])
+        self.assertEqual(
+            ('0FF9', 'Virtual CD/DVD', 'PciRoot',
+             'PciRoot(0x0)/Pci(0x14,0x0)/USB(13,0)/USB(3,0)/USB(1,0)'),
+            result[9])
+        self.assertEqual(
+            ('123A', 'Integrated NIC 1 Port 1 Partition 1', 'VenHw',
+             'VenHw(33391845-5f86-4e78-8fce-c4cff59f9bbb)'),
+            result[10])
+        self.assertEqual(
+            ('000B',
+             'UEFI: PXE IPv4 Realtek PCIe 2.5GBE Family Controller',
+             'PciRoot',
+             'PciRoot(0x0)/Pci(0x1c,0x0)/Pci(0x0,0x0)/MAC([REDACTED],0)/'
+             'IPv4(0.0.0.00.0.0.0,0,0)..BO'),
+            result[11])
+        self.assertEqual(
+            ('0008', 'Generic USB Boot', 'UsbClass',
+             'UsbClass(ffff,ffff,255,255)'),
+            result[12])
+        self.assertEqual(
+            ('0009', 'Internal CD/DVD ROM Drive (UEFI)', 'PciRoot',
+             'PciRoot(0x0)/Pci(0x11,0x0)/Sata(1,65535,0)/'
+             'CDROM(1,0x265,0x2000)'),
+            result[13])
+
     def test_clean_boot_records(self, mock_utils_efi_part,
                                 mock_get_part_path,
                                 mock_get_part_uuid, mock_execute,
