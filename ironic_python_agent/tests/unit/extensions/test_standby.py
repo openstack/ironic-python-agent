@@ -1839,7 +1839,7 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch.object(standby.StandbyExtension,
                        '_write_no_pivot_root',
                        autospec=True)
-    def test__download_container_and_bootc_install(
+    def test__download_container_and_bootc_install_enforcing_selinux(
             self,
             no_pivot_mock,
             write_container_auth_mock,
@@ -1849,6 +1849,54 @@ class TestStandbyExtension(base.IronicAgentTest):
         get_size_mock.return_value = 2000000000
         execute_mock.side_effect = iter([
             (('Enforcing\n'), ()),
+            ((), ())])
+        write_authorized_keys_mock.return_value = '/tmp/fake/file'
+        self.agent_extension._download_container_and_bootc_install(
+            'oci://foo/container', '/dev/fake', 'secret', False, 'keys!')
+        no_pivot_mock.assert_called_once()
+        write_container_auth_mock.assert_called_once_with(mock.ANY,
+                                                          'secret',
+                                                          'foo')
+        get_size_mock.assert_called_once_with('/dev/fake')
+        execute_mock.assert_has_calls([
+            mock.call('getenforce', use_standard_locale=True),
+            mock.call(
+                'podman', '--log-level=debug', 'run', '--rm',
+                '--privileged',
+                '--pid=host',
+                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/dev:/dev', '--retry-delay=5s',
+                '--authfile=/root/.config/containers/auth.json',
+                '-v', '/tmp:/tmp', '--security-opt',
+                'label=type:unconfined_t', 'foo/container',
+                'bootc', 'install', 'to-disk', '--wipe',
+                '--skip-fetch-check', '--root-size=1139M',
+                '--root-ssh-authorized-keys=/tmp/fake/file',
+                '/dev/fake', use_standard_locale=True)
+        ])
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch.object(disk_utils, 'get_dev_byte_size',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_authorized_keys',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_no_pivot_root',
+                       autospec=True)
+    def test__download_container_and_bootc_install_permissive_selinux(
+            self,
+            no_pivot_mock,
+            write_container_auth_mock,
+            write_authorized_keys_mock,
+            get_size_mock,
+            execute_mock):
+        get_size_mock.return_value = 2000000000
+        execute_mock.side_effect = iter([
+            (('Permissive\n'), ()),
             ((), ())])
         write_authorized_keys_mock.return_value = '/tmp/fake/file'
         self.agent_extension._download_container_and_bootc_install(
@@ -1946,7 +1994,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         get_size_mock.return_value = 15000000000
         execute_mock.side_effect = iter([
             OSError(),
-            ((), ())])
+            (('Disabled'), ())])
         write_authorized_keys_mock.return_value = '/tmp/fake/file'
 
         self.agent_extension._download_container_and_bootc_install(

@@ -1259,7 +1259,8 @@ class StandbyExtension(base.BaseAgentExtension):
         selinux = False
         try:
             stdout, _ = utils.execute("getenforce", use_standard_locale=True)
-            if stdout.startswith('Enforcing'):
+            if (stdout.startswith('Enforcing')
+                or stdout.startswith('Permissive')):
                 selinux = True
         except (processutils.ProcessExecutionError,
                 errors.CommandExecutionError,
