@@ -146,8 +146,6 @@ def _find_and_mount_path(path, partition, root_dev):
             with utils.mounted(partition) as part_path:
                 yield os.path.join(part_path, path)
         else:
-            # TODO(dtantsur): switch to ironic-lib instead:
-            # https://review.opendev.org/c/openstack/ironic-lib/+/774502
             part_template = '%s%s'
             if 'nvme' in root_dev:
                 part_template = '%sp%s'
@@ -189,8 +187,6 @@ def find_partition_with_path(path, device=None):
             LOG.debug('Skipping LVM partition %s', part)
             continue
 
-        # TODO(dtantsur): switch to ironic-lib instead:
-        # https://review.opendev.org/c/openstack/ironic-lib/+/774502
         part_template = '%s%s'
         if 'nvme' in device:
             part_template = '%sp%s'
