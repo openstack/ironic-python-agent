@@ -215,6 +215,7 @@ def manage_uefi(device, efi_system_part_uuid=None):
 # EFI booting and never really became popular.
 BOOTLOADERS_EFI = [
     'bootx64.csv',  # Used by GRUB2 shim loader (Ubuntu, Red Hat)
+    'bootaa64.csv',
     'boot.csv',  # Used by rEFInd, Centos7 Grub2
     'bootia32.efi',
     'bootx64.efi',  # x86_64 Default
