@@ -130,13 +130,14 @@ def execute(*cmd, use_standard_locale=False, log_stdout=True, **kwargs):
         return result
 
 
-def mkfs(fs, path, label=None):
+def mkfs(fs, path, label=None, uuid=None):
     """Format a file or block device
 
     :param fs: Filesystem type (examples include 'swap', 'ext3', 'ext4'
                'btrfs', etc.)
     :param path: Path to file or block device to format
     :param label: Volume label to use
+    :param uuid: UUID to assign to the new filesystem
     """
     if fs == 'swap':
         args = ['mkswap']
@@ -151,6 +152,11 @@ def mkfs(fs, path, label=None):
         else:
             label_opt = '-L'
         args.extend([label_opt, label])
+    if uuid:
+        if fs in ('msdos', 'vfat'):
+            args.extend(['-i', uuid])
+        else:
+            args.extend(['-U', uuid])
     args.append(path)
     try:
         execute(*args, use_standard_locale=True)
