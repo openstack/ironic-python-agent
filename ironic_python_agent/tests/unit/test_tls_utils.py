@@ -19,10 +19,14 @@ import tempfile
 from unittest import mock
 
 from cryptography.hazmat import backends
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography import x509
+from oslo_config import cfg
 
 from ironic_python_agent.tests.unit import base as ironic_agent_base
 from ironic_python_agent import tls_utils
+
+CONF = cfg.CONF
 
 
 class GenerateTestCase(ironic_agent_base.IronicAgentTest):
@@ -76,3 +80,45 @@ class GenerateTestCase(ironic_agent_base.IronicAgentTest):
                                               result.private_key_path,
                                               mock_hostname.return_value,
                                               '127.0.0.1')
+
+    def test__create_private_key_p256(self):
+        CONF.set_override('tls_certificate_curve', 'p256')
+        key = tls_utils._create_private_key(self.key_file)
+        self.assertIsInstance(key.curve, ec.SECP256R1)
+        self.assertTrue(os.path.exists(self.key_file))
+
+    def test__create_private_key_p384_default(self):
+        CONF.set_override('tls_certificate_curve', 'p384')
+        key = tls_utils._create_private_key(self.key_file)
+        self.assertIsInstance(key.curve, ec.SECP384R1)
+        self.assertTrue(os.path.exists(self.key_file))
+
+    def test__create_private_key_p521(self):
+        CONF.set_override('tls_certificate_curve', 'p521')
+        key = tls_utils._create_private_key(self.key_file)
+        self.assertIsInstance(key.curve, ec.SECP521R1)
+        self.assertTrue(os.path.exists(self.key_file))
+
+    def test__generate_with_p384_curve(self):
+        CONF.set_override('tls_certificate_curve', 'p384')
+        result = tls_utils._generate_tls_certificate(self.crt_file,
+                                                     self.key_file,
+                                                     'localhost', '127.0.0.1')
+        self.assertTrue(result.startswith("-----BEGIN CERTIFICATE-----\n"))
+        cert = x509.load_pem_x509_certificate(result.encode(),
+                                              backends.default_backend())
+        # Verify the certificate's public key uses P-384 curve
+        public_key = cert.public_key()
+        self.assertIsInstance(public_key.curve, ec.SECP384R1)
+
+    def test__generate_with_p521_curve(self):
+        CONF.set_override('tls_certificate_curve', 'p521')
+        result = tls_utils._generate_tls_certificate(self.crt_file,
+                                                     self.key_file,
+                                                     'localhost', '127.0.0.1')
+        self.assertTrue(result.startswith("-----BEGIN CERTIFICATE-----\n"))
+        cert = x509.load_pem_x509_certificate(result.encode(),
+                                              backends.default_backend())
+        # Verify the certificate's public key uses P-521 curve
+        public_key = cert.public_key()
+        self.assertIsInstance(public_key.curve, ec.SECP521R1)

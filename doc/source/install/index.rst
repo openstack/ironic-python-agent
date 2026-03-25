@@ -147,6 +147,35 @@ tls_cipher_suites
 
     ipa-tls-cipher-suites=ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305
 
+tls_certificate_curve
+  Elliptic curve to use for auto-generated TLS certificates. Supported
+  values are ``p256``, ``p384``, and ``p521``. Default is ``p384`` for
+  enhanced quantum resistance.
+  When not specified explicitly, defaults to the value of
+  ``ipa-tls-certificate-curve`` kernel command line argument.
+
+  **Security comparison**:
+
+  * **p256** (SECP256R1): ~128-bit security, equivalent to 3072-bit RSA.
+    Standard security, smallest certificates (~1 KB).
+  * **p384** (SECP384R1): ~192-bit security, equivalent to 7680-bit RSA.
+    Enhanced security with better quantum resistance, medium certificates
+    (~1.2 KB). **Recommended** for most deployments.
+  * **p521** (SECP521R1): ~256-bit security, equivalent to 15360-bit RSA.
+    Maximum security with best quantum resistance, larger certificates
+    (~1.5 KB).
+
+  Example to use P-521 for maximum security:
+
+  .. code-block:: ini
+
+    [DEFAULT]
+    tls_certificate_curve = p521
+
+  Or via kernel parameter::
+
+    ipa-tls-certificate-curve=p521
+
 .. note::
    TLS 1.2 is enforced as the minimum version by default. Operators using
    legacy infrastructure that only supports TLS 1.0 or 1.1 must upgrade

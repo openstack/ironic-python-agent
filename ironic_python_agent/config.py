@@ -112,6 +112,18 @@ cli_opts = [
                     'Can be supplied as "ipa-tls-cipher-suites" kernel '
                     'parameter.'),
 
+    cfg.StrOpt('tls_certificate_curve',
+               default=APARAMS.get('ipa-tls-certificate-curve', 'p384'),
+               choices=['p256', 'p384', 'p521'],
+               help='Elliptic curve to use for auto-generated TLS '
+                    'certificates. P-256 provides standard security '
+                    '(~128-bit, equivalent to 3072-bit RSA). P-384 provides '
+                    'enhanced security (~192-bit, equivalent to 7680-bit RSA) '
+                    'and better resistance to quantum computing attacks. '
+                    'P-521 provides maximum security (~256-bit) but with '
+                    'larger certificates. Can be supplied as '
+                    '"ipa-tls-certificate-curve" kernel parameter.'),
+
     cfg.StrOpt('advertise_host',
                default=APARAMS.get('ipa-advertise-host', None),
                help='The host to tell Ironic to reply and send '

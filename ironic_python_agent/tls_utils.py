@@ -36,14 +36,25 @@ def _create_private_key(output):
     """Create a new private key and write it to a file.
 
     Using elliptic curve keys since they are 2x smaller than RSA ones of
-    the same security (the NIST P-256 curve we use roughly corresponds
-    to RSA with 3072 bits).
+    the same security. The curve used is determined by the
+    tls_certificate_curve configuration option.
 
     :param output: Output file name.
     :return: a private key object.
     """
-    private_key = ec.generate_private_key(ec.SECP256R1(),
-                                          backends.default_backend())
+    # Map configuration value to EC curve
+    curve_map = {
+        'p256': ec.SECP256R1(),  # ~128-bit security, ~3072-bit RSA
+        'p384': ec.SECP384R1(),  # ~192-bit security, ~7680-bit RSA
+        'p521': ec.SECP521R1(),  # ~256-bit security, ~15360-bit RSA
+    }
+
+    curve_name = CONF.tls_certificate_curve.lower()
+    curve = curve_map[curve_name]
+    LOG.info('Generating TLS certificate with %s curve', curve_name.upper())
+    # Configurable curve selection with P-384 default (>256 bits)
+    private_key = ec.generate_private_key(
+        curve, backends.default_backend())  # nosec B505
     pkey_bytes = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,

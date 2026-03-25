@@ -1,0 +1,24 @@
+---
+features:
+  - |
+    Auto-generated TLS certificates now support configurable elliptic curves
+    via the new ``tls_certificate_curve`` configuration option. Operators can
+    choose between P-256, P-384, and P-521 curves to balance security,
+    performance, and certificate size based on their requirements. This option
+    can also be set via the ``ipa-tls-certificate-curve`` kernel parameter.
+security:
+  - |
+    The default elliptic curve for auto-generated TLS certificates has been
+    upgraded from P-256 to P-384. This provides enhanced quantum resistance,
+    requiring approximately 3-4x more qubits to break compared to P-256
+    (~6,080 qubits vs ~2,330 qubits). P-384 offers ~192-bit security strength,
+    equivalent to 7680-bit RSA, while maintaining broad compatibility with all
+    modern TLS implementations.
+upgrade:
+  - |
+    Auto-generated TLS certificates now use the P-384 elliptic curve by
+    default instead of P-256. This change is transparent and backward
+    compatible - all actively maintained TLS implementations support P-384.
+    Certificate sizes increase slightly from ~1 KB to ~1.2 KB, with negligible
+    performance impact. Operators requiring P-256 for specific compatibility
+    reasons can set ``tls_certificate_curve = p256`` in the configuration.
