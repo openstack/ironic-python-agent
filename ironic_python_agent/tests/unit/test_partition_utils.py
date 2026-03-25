@@ -33,117 +33,118 @@ CONF = cfg.CONF
 
 
 @mock.patch.object(shutil, 'copyfileobj', autospec=True)
-@mock.patch.object(requests, 'get', autospec=True)
+@mock.patch.object(utils, 'get_requests_session', autospec=True)
 class GetConfigdriveTestCase(base.IronicAgentTest):
 
     @mock.patch.object(gzip, 'GzipFile', autospec=True)
-    def test_get_configdrive(self, mock_gzip, mock_requests, mock_copy):
-        mock_requests.return_value = mock.MagicMock(content='Zm9vYmFy',
-                                                    status_code=200)
+    def test_get_configdrive(self, mock_gzip, mock_session, mock_copy):
+        mock_get = mock.MagicMock(content='Zm9vYmFy',
+                                  status_code=200)
+        mock_session.return_value.get.return_value = mock_get
         tempdir = tempfile.mkdtemp()
         (size, path) = partition_utils.get_configdrive('http://1.2.3.4/cd',
                                                        'fake-node-uuid',
                                                        tempdir=tempdir)
         self.assertTrue(path.startswith(tempdir))
-        mock_requests.assert_called_once_with('http://1.2.3.4/cd',
-                                              verify=True, cert=None,
-                                              timeout=60)
+        mock_session.return_value.get.assert_called_once_with(
+            'http://1.2.3.4/cd', timeout=60)
         mock_gzip.assert_called_once_with('configdrive', 'rb',
                                           fileobj=mock.ANY)
         mock_copy.assert_called_once_with(mock.ANY, mock.ANY)
 
     @mock.patch.object(gzip, 'GzipFile', autospec=True)
-    def test_get_configdrive_insecure(self, mock_gzip, mock_requests,
+    def test_get_configdrive_insecure(self, mock_gzip, mock_session,
                                       mock_copy):
         self.config(insecure=True)
-        mock_requests.return_value = mock.MagicMock(content='Zm9vYmFy',
-                                                    status_code=200)
+        mock_get = mock.MagicMock(content='Zm9vYmFy',
+                                  status_code=200)
+        mock_session.return_value.get.return_value = mock_get
         tempdir = tempfile.mkdtemp()
         (size, path) = partition_utils.get_configdrive('http://1.2.3.4/cd',
                                                        'fake-node-uuid',
                                                        tempdir=tempdir)
         self.assertTrue(path.startswith(tempdir))
-        mock_requests.assert_called_once_with('http://1.2.3.4/cd',
-                                              verify=False, cert=None,
-                                              timeout=60)
+        mock_session.return_value.get.assert_called_once_with(
+            'http://1.2.3.4/cd', timeout=60)
         mock_gzip.assert_called_once_with('configdrive', 'rb',
                                           fileobj=mock.ANY)
         mock_copy.assert_called_once_with(mock.ANY, mock.ANY)
 
     @mock.patch.object(gzip, 'GzipFile', autospec=True)
-    def test_get_configdrive_ssl(self, mock_gzip, mock_requests, mock_copy):
+    def test_get_configdrive_ssl(self, mock_gzip, mock_session, mock_copy):
         self.config(cafile='cafile', keyfile='keyfile', certfile='certfile')
-        mock_requests.return_value = mock.MagicMock(content='Zm9vYmFy',
-                                                    status_code=200)
+        mock_get = mock.MagicMock(content='Zm9vYmFy',
+                                  status_code=200)
+        mock_session.return_value.get.return_value = mock_get
         tempdir = tempfile.mkdtemp()
         (size, path) = partition_utils.get_configdrive('http://1.2.3.4/cd',
                                                        'fake-node-uuid',
                                                        tempdir=tempdir)
         self.assertTrue(path.startswith(tempdir))
-        mock_requests.assert_called_once_with('http://1.2.3.4/cd',
-                                              verify='cafile',
-                                              cert=('certfile', 'keyfile'),
-                                              timeout=60)
+        mock_session.return_value.get.assert_called_once_with(
+            'http://1.2.3.4/cd', timeout=60)
         mock_gzip.assert_called_once_with('configdrive', 'rb',
                                           fileobj=mock.ANY)
         mock_copy.assert_called_once_with(mock.ANY, mock.ANY)
 
-    def test_get_configdrive_binary(self, mock_requests, mock_copy):
-        mock_requests.return_value = mock.MagicMock(content=b'content',
-                                                    status_code=200)
+    def test_get_configdrive_binary(self, mock_session, mock_copy):
+        mock_get = mock.MagicMock(content=b'content',
+                                  status_code=200)
+        mock_session.return_value.get.return_value = mock_get
         tempdir = tempfile.mkdtemp()
         (size, path) = partition_utils.get_configdrive('http://1.2.3.4/cd',
                                                        'fake-node-uuid',
                                                        tempdir=tempdir)
         self.assertTrue(path.startswith(tempdir))
         self.assertEqual(b'content', open(path, 'rb').read())
-        mock_requests.assert_called_once_with('http://1.2.3.4/cd',
-                                              verify=True, cert=None,
-                                              timeout=60)
+        mock_session.return_value.get.assert_called_once_with(
+            'http://1.2.3.4/cd', timeout=60)
         self.assertFalse(mock_copy.called)
 
     @mock.patch.object(gzip, 'GzipFile', autospec=True)
-    def test_get_configdrive_base64_string(self, mock_gzip, mock_requests,
+    def test_get_configdrive_base64_string(self, mock_gzip, mock_session,
                                            mock_copy):
         partition_utils.get_configdrive('Zm9vYmFy', 'fake-node-uuid')
-        self.assertFalse(mock_requests.called)
+        self.assertFalse(mock_session.called)
         mock_gzip.assert_called_once_with('configdrive', 'rb',
                                           fileobj=mock.ANY)
         mock_copy.assert_called_once_with(mock.ANY, mock.ANY)
 
-    def test_get_configdrive_bad_url(self, mock_requests, mock_copy):
-        mock_requests.side_effect = requests.exceptions.RequestException
+    def test_get_configdrive_bad_url(self, mock_session, mock_copy):
+        mock_session.return_value.get.side_effect = (
+            requests.exceptions.RequestException)
         self.assertRaises(errors.DeploymentError,
                           partition_utils.get_configdrive,
                           'http://1.2.3.4/cd', 'fake-node-uuid')
         self.assertFalse(mock_copy.called)
 
-    def test_get_configdrive_bad_status_code(self, mock_requests, mock_copy):
-        mock_requests.return_value = mock.MagicMock(text='Not found',
-                                                    status_code=404)
+    def test_get_configdrive_bad_status_code(self, mock_session, mock_copy):
+        mock_get = mock.MagicMock(text='Not found',
+                                  status_code=404)
+        mock_session.return_value.get.return_value = mock_get
         self.assertRaises(errors.DeploymentError,
                           partition_utils.get_configdrive,
                           'http://1.2.3.4/cd', 'fake-node-uuid')
         self.assertFalse(mock_copy.called)
 
-    def test_get_configdrive_base64_error(self, mock_requests, mock_copy):
+    def test_get_configdrive_base64_error(self, mock_session, mock_copy):
         self.assertRaises(errors.DeploymentError,
                           partition_utils.get_configdrive,
                           'malformed', 'fake-node-uuid')
         self.assertFalse(mock_copy.called)
 
     @mock.patch.object(gzip, 'GzipFile', autospec=True)
-    def test_get_configdrive_gzip_error(self, mock_gzip, mock_requests,
+    def test_get_configdrive_gzip_error(self, mock_gzip, mock_session,
                                         mock_copy):
-        mock_requests.return_value = mock.MagicMock(content='Zm9vYmFy',
-                                                    status_code=200)
+        mock_get = mock.MagicMock(content='Zm9vYmFy',
+                                  status_code=200)
+        mock_session.return_value.get.return_value = mock_get
         mock_copy.side_effect = IOError
         self.assertRaises(errors.DeploymentError,
                           partition_utils.get_configdrive,
                           'http://1.2.3.4/cd', 'fake-node-uuid')
-        mock_requests.assert_called_once_with('http://1.2.3.4/cd',
-                                              verify=True, cert=None,
-                                              timeout=60)
+        mock_session.return_value.get.assert_called_once_with(
+            'http://1.2.3.4/cd', timeout=60)
         mock_gzip.assert_called_once_with('configdrive', 'rb',
                                           fileobj=mock.ANY)
         mock_copy.assert_called_once_with(mock.ANY, mock.ANY)

@@ -92,6 +92,67 @@ keyfile
 Currently a single set of cafile/certfile/keyfile options is used for all
 HTTP requests to the other services.
 
+TLS Protocol Version Enforcement
+---------------------------------
+
+IPA enforces minimum TLS protocol versions for all connections (both client
+and server) to protect against downgrade attacks and known vulnerabilities
+in older TLS versions. By default, TLS 1.2 is the minimum supported version,
+which removes support for the deprecated and insecure TLS 1.0 and TLS 1.1
+protocols (as per RFC 8996).
+
+Available options in the ``[DEFAULT]`` config file section are:
+
+tls_min_version
+  Minimum TLS protocol version for both the agent API server (inbound
+  connections from Ironic) and all client connections (to Ironic API,
+  Inspector, and image servers). Supported values are ``1.2`` and ``1.3``.
+  Default is ``1.2`` for broad compatibility.
+  When not specified explicitly, defaults to the value of
+  ``ipa-tls-min-version`` kernel command line argument.
+
+  Setting this to ``1.3`` provides enhanced security and performance but
+  requires all services (Ironic conductor, Inspector, image servers) to
+  support TLS 1.3.
+
+  Example to enforce TLS 1.3 only:
+
+  .. code-block:: ini
+
+    [DEFAULT]
+    tls_min_version = 1.3
+
+  Or via kernel parameter::
+
+    ipa-tls-min-version=1.3
+
+tls_cipher_suites
+  Colon-separated list of TLS cipher suites to allow for TLS 1.2
+  connections. If not specified, uses secure defaults that provide forward
+  secrecy:
+  ``ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256``.
+  TLS 1.3 cipher suites are automatically selected by the TLS library and
+  cannot be configured.
+  When not specified explicitly, defaults to the value of
+  ``ipa-tls-cipher-suites`` kernel command line argument.
+
+  Example to restrict to specific cipher suites:
+
+  .. code-block:: ini
+
+    [DEFAULT]
+    tls_cipher_suites = ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305
+
+  Or via kernel parameter::
+
+    ipa-tls-cipher-suites=ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305
+
+.. note::
+   TLS 1.2 is enforced as the minimum version by default. Operators using
+   legacy infrastructure that only supports TLS 1.0 or 1.1 must upgrade
+   their services before deploying this version of ironic-python-agent.
+   All actively maintained versions of OpenStack Ironic support TLS 1.2.
+
 Server Configuration
 --------------------
 
@@ -104,6 +165,12 @@ Automatic TLS
    generated in runtime and sent to ironic on heartbeat.
 
    No special configuration is required on the ironic side.
+
+   .. note::
+      TLS protocol version enforcement (see `TLS Protocol Version Enforcement`_)
+      applies to automatic TLS. By default, only TLS 1.2 and above are
+      accepted for connections from Ironic conductors.
+
 Manual TLS
    If you need to provide your own TLS certificate, you can configure it when
    building an image. Set the following options in the ironic-python-agent

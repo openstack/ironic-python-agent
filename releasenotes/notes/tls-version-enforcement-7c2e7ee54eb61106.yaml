@@ -1,0 +1,43 @@
+---
+features:
+  - |
+    Added configuration options for TLS protocol version enforcement across
+    all agent connections (both server and client). The new ``tls_min_version``
+    option allows operators to specify the minimum TLS version (1.2 or 1.3)
+    for the agent API server and all outbound HTTPS connections (to Ironic,
+    Inspector, and image servers). The ``tls_cipher_suites`` option allows
+    customization of allowed cipher suites for TLS 1.2 connections. Both
+    options can be set via kernel parameters (``ipa-tls-min-version`` and
+    ``ipa-tls-cipher-suites``).
+security:
+  - |
+    TLS 1.2 is now enforced as the minimum protocol version for all HTTPS
+    connections by default. This applies to the agent API server (inbound
+    connections from Ironic) and all client connections (to Ironic API,
+    Inspector, and image download servers). TLS 1.0 and 1.1 are no longer
+    accepted as they have known security vulnerabilities and are deprecated
+    by RFC 8996. Operators can configure TLS 1.3 as the minimum version
+    using the ``tls_min_version`` configuration option for enhanced security.
+  - |
+    Default cipher suites for TLS 1.2 connections have been limited to
+    forward-secret AEAD ciphers: ECDHE-ECDSA-AES256-GCM-SHA384,
+    ECDHE-ECDSA-AES128-GCM-SHA256, ECDHE-RSA-AES256-GCM-SHA384, and
+    ECDHE-RSA-AES128-GCM-SHA256. This removes support for weak ciphers
+    including CBC-mode, RC4, and non-ephemeral key exchange. TLS 1.3
+    cipher suites are automatically selected by the TLS library and
+    provide superior security.
+upgrade:
+  - |
+    The minimum supported TLS version has been raised from system default
+    (potentially TLS 1.0) to TLS 1.2. Operators using legacy infrastructure
+    that only supports TLS 1.0 or 1.1 will need to upgrade their Ironic
+    conductors, Inspector services, and image servers to support at least
+    TLS 1.2 before deploying this version of ironic-python-agent. All
+    actively maintained versions of OpenStack Ironic support TLS 1.2.
+  - |
+    If your environment uses custom or legacy TLS configurations, verify
+    compatibility with TLS 1.2 before upgrading. Test deployments in a
+    staging environment if you have strict TLS requirements. Operators
+    requiring TLS 1.0/1.1 for legacy systems should not upgrade until
+    those systems are modernized, as there is no configuration option to
+    downgrade below TLS 1.2.

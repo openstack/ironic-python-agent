@@ -92,6 +92,26 @@ cli_opts = [
                help='Clock skew (in seconds) allowed in the generated TLS '
                     'certificate.'),
 
+    cfg.StrOpt('tls_min_version',
+               default=APARAMS.get('ipa-tls-min-version', '1.2'),
+               choices=['1.2', '1.3'],
+               help='Minimum TLS protocol version for both server (agent API) '
+                    'and client (outbound) connections. TLS 1.2 provides '
+                    'broad compatibility with older services, while TLS 1.3 '
+                    'offers enhanced security and performance. Can be '
+                    'supplied as "ipa-tls-min-version" kernel parameter.'),
+
+    cfg.StrOpt('tls_cipher_suites',
+               default=APARAMS.get('ipa-tls-cipher-suites', None),
+               help='Colon-separated list of TLS cipher suites to allow for '
+                    'TLS 1.2 connections. If not specified, uses secure '
+                    'defaults (ECDHE-ECDSA-AES256-GCM-SHA384:'
+                    'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-'
+                    'SHA384:ECDHE-RSA-AES128-GCM-SHA256). TLS 1.3 cipher '
+                    'suites are automatically selected by the TLS library. '
+                    'Can be supplied as "ipa-tls-cipher-suites" kernel '
+                    'parameter.'),
+
     cfg.StrOpt('advertise_host',
                default=APARAMS.get('ipa-advertise-host', None),
                help='The host to tell Ironic to reply and send '

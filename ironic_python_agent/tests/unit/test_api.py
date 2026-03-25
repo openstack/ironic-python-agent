@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ssl
+import tempfile
 import time
 from unittest import mock
 
@@ -422,3 +424,147 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
 
         self.assertEqual(0, self.mock_agent.execute_command.call_count)
         self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+
+
+class TestApplicationStart(ironic_agent_base.IronicAgentTest):
+    """Tests for Application.start() method."""
+
+    def setUp(self):
+        super(TestApplicationStart, self).setUp()
+        self.mock_agent = mock.MagicMock()
+        self.mock_agent.listen_address.hostname = '0.0.0.0'
+        self.mock_agent.listen_address.port = 9999
+        self.app = app.Application(self.mock_agent, cfg.CONF)
+
+    @mock.patch('ironic_python_agent.api.app.wsgi.Server', autospec=True)
+    @mock.patch('ironic_python_agent.api.app.TLSEnforcingSSLAdapter',
+                autospec=True)
+    @mock.patch('ironic_python_agent.utils.create_ssl_context',
+                autospec=True)
+    def test_start_with_tls(self, mock_create_ssl_context,
+                            mock_ssl_adapter, mock_server_cls):
+        """Test that start() properly configures TLS with SSL adapter."""
+        # Create temporary cert and key files
+        with tempfile.NamedTemporaryFile(mode='w', delete=False,
+                                         suffix='.crt') as cert_file:
+            cert_file.write('FAKE CERT')
+            cert_path = cert_file.name
+
+        with tempfile.NamedTemporaryFile(mode='w', delete=False,
+                                         suffix='.key') as key_file:
+            key_file.write('FAKE KEY')
+            key_path = key_file.name
+
+        try:
+            # Mock SSL context
+            mock_ssl_ctx = mock.Mock()
+            mock_create_ssl_context.return_value = mock_ssl_ctx
+
+            # Mock the server instance
+            mock_server = mock.Mock()
+            mock_server_cls.return_value = mock_server
+
+            # Start the app with TLS
+            self.app.start(tls_cert_file=cert_path,
+                           tls_key_file=key_path)
+
+            # Verify SSL context was created with 'server' mode
+            mock_create_ssl_context.assert_called_once_with('server')
+
+            # Verify SSL context was configured
+            mock_ssl_ctx.load_cert_chain.assert_called_once_with(
+                certfile=cert_path,
+                keyfile=key_path
+            )
+            self.assertFalse(mock_ssl_ctx.check_hostname)
+            self.assertEqual(ssl.CERT_NONE, mock_ssl_ctx.verify_mode)
+
+            # Verify TLSEnforcingSSLAdapter was created with correct params
+            mock_ssl_adapter.assert_called_once_with(
+                certificate=cert_path,
+                private_key=key_path,
+                ssl_context=mock_ssl_ctx
+            )
+
+            # Verify ssl_adapter was assigned to server
+            self.assertEqual(mock_ssl_adapter.return_value,
+                             mock_server.ssl_adapter)
+
+            # Verify server was prepared and started
+            mock_server.prepare.assert_called_once()
+            self.assertIsNotNone(self.app.server)
+
+            # Stop the server
+            self.app.stop()
+        finally:
+            # Clean up temp files
+            import os
+            try:
+                os.unlink(cert_path)
+                os.unlink(key_path)
+            except Exception:
+                pass
+
+    @mock.patch('ironic_python_agent.api.app.wsgi.Server', autospec=True)
+    def test_start_without_tls(self, mock_server_cls):
+        """Test that start() works without TLS."""
+        # Mock the server instance
+        mock_server = mock.Mock()
+        mock_server_cls.return_value = mock_server
+
+        self.app.start()
+
+        # Verify server was started without SSL adapter
+        self.assertIsNotNone(self.app.server)
+        # The mock server won't have ssl_adapter attribute set
+        # since we don't assign it in the non-TLS path
+        mock_server.prepare.assert_called_once()
+
+        # Stop the server
+        self.app.stop()
+
+    @mock.patch('cheroot.ssl.builtin.BuiltinSSLAdapter.__init__',
+                autospec=True, return_value=None)
+    def test_tls_adapter_wrap_returns_tuple(self, mock_parent_init):
+        """Test that TLSEnforcingSSLAdapter.wrap() returns tuple."""
+        # Create a mock SSL context
+        mock_ssl_ctx = mock.Mock()
+        mock_wrapped_socket = mock.Mock()
+        mock_ssl_ctx.wrap_socket.return_value = mock_wrapped_socket
+
+        # Create the adapter with SSL context
+        # The parent __init__ is mocked so no cert validation occurs
+        adapter = app.TLSEnforcingSSLAdapter(
+            certificate='/fake/cert.pem',
+            private_key='/fake/key.pem',
+            ssl_context=mock_ssl_ctx
+        )
+
+        # Manually set _custom_context since we bypassed __init__
+        adapter._custom_context = mock_ssl_ctx
+
+        # Create a mock socket to wrap
+        mock_sock = mock.Mock()
+
+        # Mock get_environ to return a dict
+        with mock.patch.object(adapter, 'get_environ', autospec=True,
+                               return_value={'SSL_PROTOCOL': 'TLSv1.2'}):
+            # Call wrap and verify it returns a tuple
+            result = adapter.wrap(mock_sock)
+
+        # Verify result is a tuple
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(2, len(result))
+
+        # Verify first element is the wrapped socket
+        self.assertEqual(mock_wrapped_socket, result[0])
+
+        # Verify second element is a dict (SSL environ)
+        self.assertIsInstance(result[1], dict)
+
+        # Verify wrap_socket was called correctly
+        mock_ssl_ctx.wrap_socket.assert_called_once_with(
+            mock_sock,
+            server_side=True,
+            do_handshake_on_connect=True
+        )

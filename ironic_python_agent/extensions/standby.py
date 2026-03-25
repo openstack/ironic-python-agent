@@ -185,13 +185,10 @@ def _download_with_proxy(image_info, url, image_id):
     if no_proxy:
         os.environ['no_proxy'] = no_proxy
     proxies = image_info.get('proxies', {})
-    verify, cert = utils.get_ssl_client_options(CONF)
     resp = None
     image_download_attributes = {
         "stream": True,
         "proxies": proxies,
-        "verify": verify,
-        "cert": cert,
         "timeout": CONF.image_download_connection_timeout
     }
     # NOTE(Adam) `image_info` is prioritized over `oslo.conf` for credential
@@ -203,6 +200,10 @@ def _download_with_proxy(image_info, url, image_id):
         auth_object = _gen_auth_from_oslo_conf_user_pass(image_id)
     if auth_object is not None:
         image_download_attributes['auth'] = auth_object
+
+    # Create TLS-enforcing session for image downloads
+    session = utils.get_requests_session()
+
     for attempt in range(CONF.image_download_connection_retries + 1):
         try:
             # NOTE(TheJulia) The get request below does the following:
@@ -219,7 +220,7 @@ def _download_with_proxy(image_info, url, image_id):
             # failure is more so once we've started the download and we are
             # processing the incoming data.
             # B113 issue is covered is the image_download_attributs list
-            resp = requests.get(url, **image_download_attributes)  # nosec
+            resp = session.get(url, **image_download_attributes)  # nosec
             if resp.status_code != 200:
                 msg = ('Received status code {} from {}, expected 200. '
                        'Response body: {} Response headers: {}').format(

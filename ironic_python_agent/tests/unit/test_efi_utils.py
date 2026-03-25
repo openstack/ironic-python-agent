@@ -451,7 +451,7 @@ Boot0009* Internal CD/DVD ROM Drive (UEFI)      PciRoot(0x0)/Pci(0x11,0x0)/Sata(
         # string in advance. This string also includes a UTF16 character
         # *on* purpose, to force proper decoding to be tested and garbage
         # characters which can be found in OVMF test VM NVRAM records.
-        dupe_entry = """
+        dupe_entry = r"""
 BootCurrent: 0001
 Timeout: 0 seconds
 BootOrder: 0000,00001

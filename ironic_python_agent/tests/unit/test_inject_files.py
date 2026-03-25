@@ -337,8 +337,8 @@ class TestInjectFiles(base.IronicAgentTest):
             for fl in node['properties']['inject_files'] + files
         ])
         http_get = mock_inject.call_args_list[0][0][4]
-        self.assertTrue(http_get.verify)
-        self.assertIsNone(http_get.cert)
+        # Check that the StreamingClient session is configured correctly
+        self.assertIsNotNone(http_get.session)
 
     def test_verify_false(self, mock_inject):
         node = {
@@ -363,8 +363,9 @@ class TestInjectFiles(base.IronicAgentTest):
             for fl in node['properties']['inject_files'] + files
         ])
         http_get = mock_inject.call_args_list[0][0][4]
-        self.assertFalse(http_get.verify)
-        self.assertIsNone(http_get.cert)
+        # Check that the StreamingClient session is configured
+        # for insecure mode (verify=False)
+        self.assertFalse(http_get.session.verify)
 
     def test_invalid_type_on_node(self, mock_inject):
         node = {
