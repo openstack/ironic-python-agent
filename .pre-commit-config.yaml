@@ -39,7 +39,7 @@ repos:
           ^ironic_python_agent/tests/unit/test_efi_utils.py$|
           )
   - repo: https://opendev.org/openstack/hacking
-    rev: 6.1.0
+    rev: 7.0.0
     hooks:
       - id: hacking
         additional_dependencies: []
