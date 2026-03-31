@@ -680,6 +680,11 @@ class TestWaitForDhcp(base.IronicAgentTest):
         self.assertFalse(inspector.wait_for_dhcp())
         mocked_dispatch.assert_called_with('list_network_interfaces')
         mocked_sleep.assert_called_once_with(inspector._DHCP_RETRY_INTERVAL)
+        # time.time() was called 3 times explicitly in wait_for_dhcp(),
+        # Python 3.13+ uses time.time_ns for logging which varies by logging
+        # level and coverage configuration, so we cannot assert exact counts
+        total_time_calls = mocked_time.call_count + mocked_time_ns.call_count
+        self.assertGreaterEqual(total_time_calls, 3)
 
     def test_disabled(self, mocked_dispatch):
         CONF.set_override('inspection_dhcp_wait_timeout', 0)

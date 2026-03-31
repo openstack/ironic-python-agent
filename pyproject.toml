@@ -2,6 +2,80 @@
 requires = ["pbr>=6.0.0", "setuptools>=64.0.0"]
 build-backend = "pbr.build"
 
+[project]
+name = "ironic-python-agent"
+description = "Ironic Python Agent Ramdisk"
+authors = [
+    {name = "OpenStack", email = "openstack-discuss@lists.openstack.org"},
+]
+license = {text = "Apache-2.0"}
+readme = {file = "README.rst", content-type = "text/x-rst"}
+requires-python = ">=3.10"
+classifiers = [
+    "Environment :: OpenStack",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dynamic = ["version", "dependencies"]
+
+[project.urls]
+Homepage = "https://docs.openstack.org/ironic-python-agent/"
+
+[project.optional-dependencies]
+burnin-network-kazoo = [
+    "kazoo>=2.8.0",
+]
+
+[project.entry-points."oslo.config.opts"]
+ironic-python-agent = "ironic_python_agent.config:list_opts"
+ironic-python-agent-mdns = "ironic_python_agent.mdns:list_opts"
+
+[project.entry-points."ironic_python_agent.extensions"]
+standby = "ironic_python_agent.extensions.standby:StandbyExtension"
+clean = "ironic_python_agent.extensions.clean:CleanExtension"
+deploy = "ironic_python_agent.extensions.deploy:DeployExtension"
+flow = "ironic_python_agent.extensions.flow:FlowExtension"
+image = "ironic_python_agent.extensions.image:ImageExtension"
+log = "ironic_python_agent.extensions.log:LogExtension"
+rescue = "ironic_python_agent.extensions.rescue:RescueExtension"
+poll = "ironic_python_agent.extensions.poll:PollExtension"
+service = "ironic_python_agent.extensions.service:ServiceExtension"
+system = "ironic_python_agent.extensions.system:SystemExtension"
+
+[project.entry-points."ironic_python_agent.hardware_managers"]
+generic = "ironic_python_agent.hardware:GenericHardwareManager"
+mlnx = "ironic_python_agent.hardware_managers.mlnx:MellanoxDeviceHardwareManager"
+cna = "ironic_python_agent.hardware_managers.cna:IntelCnaHardwareManager"
+container = "ironic_python_agent.hardware_managers.container:ContainerHardwareManager"
+
+[project.entry-points."ironic_python_agent.inspector.collectors"]
+default = "ironic_python_agent.inspector:collect_default"
+logs = "ironic_python_agent.inspector:collect_logs"
+extra-hardware = "ironic_python_agent.inspector:collect_extra_hardware"
+pci-devices = "ironic_python_agent.inspector:collect_pci_devices_info"
+numa-topology = "ironic_python_agent.numa_inspector:collect_numa_topology_info"
+dmi-decode = "ironic_python_agent.dmi_inspector:collect_dmidecode_info"
+lldp = "ironic_python_agent.inspector:collect_lldp"
+usb-devices = "ironic_python_agent.inspector:collect_usb_devices"
+
+[project.scripts]
+ironic-python-agent = "ironic_python_agent.cmd.agent:run"
+ironic-collect-introspection-data = "ironic_python_agent.cmd.inspect:run"
+
+[tool.pbr]
+autodoc_index_modules = true
+
+[tool.setuptools]
+packages = ["ironic_python_agent"]
+
 [tool.ruff]
 line-length = 79
 
@@ -12,3 +86,8 @@ select = [
     "G",        # flake8-logging-format
     "LOG",      # flake8-logging
 ]
+
+[tool.codespell]
+quiet-level = 4
+ignore-words-list = "cna,assertin,burnin"
+skip = "./releasenotes/build,./venv,./doc/build"
