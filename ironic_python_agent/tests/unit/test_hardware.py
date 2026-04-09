@@ -8332,7 +8332,22 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                           mocked_get_mac_addr):
         CONF.set_override('enable_vlan_interfaces', 'eth0.100')
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
+
+        def mock_path_exists(path):
+            # lo is not a physical device or bond
+            if '/sys/class/net/lo/device' in path:
+                return False
+            if '/sys/class/net/lo/bonding' in path:
+                return False
+            # eth0 IS a physical device
+            if '/sys/class/net/eth0/device' in path:
+                return True
+            if '/sys/class/net/eth0/bonding' in path:
+                return False
+            # Fail on unexpected paths so we know if the code changes
+            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+
+        mocked_exists.side_effect = mock_path_exists
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8384,7 +8399,22 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                               mocked_get_mac_addr):
         CONF.set_override('enable_vlan_interfaces', '00:0c:29:8c:11:b1.100')
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
+
+        def mock_path_exists(path):
+            # lo is not a physical device or bond
+            if '/sys/class/net/lo/device' in path:
+                return False
+            if '/sys/class/net/lo/bonding' in path:
+                return False
+            # eth0 IS a physical device
+            if '/sys/class/net/eth0/device' in path:
+                return True
+            if '/sys/class/net/eth0/bonding' in path:
+                return False
+            # Fail on unexpected paths so we know if the code changes
+            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+
+        mocked_exists.side_effect = mock_path_exists
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8440,7 +8470,22 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
         CONF.set_override('enable_vlan_interfaces', 'eth0')
         mocked_listdir.return_value = ['lo', 'eth0']
         mocked_execute.return_value = ('em0\n', '')
-        mocked_exists.side_effect = [False, False, True]
+
+        def mock_path_exists(path):
+            # lo is not a physical device or bond
+            if '/sys/class/net/lo/device' in path:
+                return False
+            if '/sys/class/net/lo/bonding' in path:
+                return False
+            # eth0 IS a physical device
+            if '/sys/class/net/eth0/device' in path:
+                return True
+            if '/sys/class/net/eth0/bonding' in path:
+                return False
+            # Fail on unexpected paths so we know if the code changes
+            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+
+        mocked_exists.side_effect = mock_path_exists
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8511,7 +8556,22 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
         CONF.set_override('collect_lldp', True)
         CONF.set_override('enable_vlan_interfaces', 'enp0s1')
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
+
+        def mock_path_exists(path):
+            # lo is not a physical device or bond
+            if '/sys/class/net/lo/device' in path:
+                return False
+            if '/sys/class/net/lo/bonding' in path:
+                return False
+            # eth0 IS a physical device
+            if '/sys/class/net/eth0/device' in path:
+                return True
+            if '/sys/class/net/eth0/bonding' in path:
+                return False
+            # Fail on unexpected paths so we know if the code changes
+            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+
+        mocked_exists.side_effect = mock_path_exists
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8551,7 +8611,27 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
         CONF.set_override('enable_vlan_interfaces', 'all')
         mocked_listdir.return_value = ['lo', 'eth0', 'eth1']
         mocked_execute.return_value = ('em0\n', '')
-        mocked_exists.side_effect = [False, False, True, True]
+
+        def mock_path_exists(path):
+            # lo is not a physical device or bond
+            if '/sys/class/net/lo/device' in path:
+                return False
+            if '/sys/class/net/lo/bonding' in path:
+                return False
+            # eth0 IS a physical device
+            if '/sys/class/net/eth0/device' in path:
+                return True
+            if '/sys/class/net/eth0/bonding' in path:
+                return False
+            # eth1 IS a physical device
+            if '/sys/class/net/eth1/device' in path:
+                return True
+            if '/sys/class/net/eth1/bonding' in path:
+                return False
+            # Fail on unexpected paths so we know if the code changes
+            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+
+        mocked_exists.side_effect = mock_path_exists
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read

@@ -15,6 +15,7 @@
 
 import collections
 import copy
+import itertools
 import os
 import time
 from unittest import mock
@@ -665,7 +666,6 @@ class TestWaitForDhcp(base.IronicAgentTest):
         CONF.set_override('inspection_dhcp_wait_timeout', 1)
 
         # Use itertools.cycle to provide infinite values for any logging calls
-        import itertools
         mocked_time.side_effect = itertools.cycle([1.0, 1.1, 3.1, 3.2])
         mocked_time_ns.side_effect = itertools.cycle([1000000000,
                                                       1100000000])

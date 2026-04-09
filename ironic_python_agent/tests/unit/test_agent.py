@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import importlib.metadata
+import itertools
 import json
 import socket
 import time
@@ -776,7 +777,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     def test__wait_for_interface_expired(self, mock_dispatch, mock_sleep,
                                          mock_time):
         # Provide enough time values for the test logic plus any logging calls
-        import itertools
         mock_time.side_effect = itertools.cycle([10, 11, 20, 25, 30])
         mock_dispatch.side_effect = [[], [], [self.sample_nw_iface], {}]
         expected_sleep_calls = [mock.call(agent.NETWORK_WAIT_RETRY)] * 2
