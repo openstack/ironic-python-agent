@@ -775,7 +775,9 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
     def test__wait_for_interface_expired(self, mock_dispatch, mock_sleep,
                                          mock_time):
-        mock_time.side_effect = [10, 11, 20, 25, 30]
+        # Provide enough time values for the test logic plus any logging calls
+        import itertools
+        mock_time.side_effect = itertools.cycle([10, 11, 20, 25, 30])
         mock_dispatch.side_effect = [[], [], [self.sample_nw_iface], {}]
         expected_sleep_calls = [mock.call(agent.NETWORK_WAIT_RETRY)] * 2
         expected_dispatch_calls = [mock.call("list_network_interfaces")] * 3
