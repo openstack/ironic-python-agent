@@ -1817,6 +1817,7 @@ class TestStandbyExtension(base.IronicAgentTest):
             instance_info=fake_instance_info,
             pull_secret=None,
             configdrive=None)
+        res.join()
         dispatch_mock.assert_called_once_with('get_os_install_device',
                                               permit_refresh=True)
         config_drive_mock.assert_not_called()
