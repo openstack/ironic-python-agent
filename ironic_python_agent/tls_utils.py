@@ -89,7 +89,7 @@ def _generate_tls_certificate(output, private_key_output,
             .not_valid_before(not_valid_before)
             .not_valid_after(not_valid_after)
             .add_extension(alt_name, critical=True)
-            .sign(private_key, hashes.SHA256(), backends.default_backend()))
+            .sign(private_key, hashes.SHA512(), backends.default_backend()))
     pub_bytes = cert.public_bytes(serialization.Encoding.PEM)
     with open(output, "wb") as f:
         f.write(pub_bytes)

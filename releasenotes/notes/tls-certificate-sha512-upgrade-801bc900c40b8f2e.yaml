@@ -1,0 +1,7 @@
+---
+security:
+  - |
+    Auto-generated TLS certificates now use SHA-512 for signing instead of
+    SHA-256. This upgrade provides enhanced quantum resistance with 512-bit
+    security strength against future quantum computing attacks, aligning with
+    NIST recommendations for long-term cryptographic security.
