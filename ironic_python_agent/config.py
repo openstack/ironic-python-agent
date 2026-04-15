@@ -346,6 +346,13 @@ cli_opts = [
                      'image validation logic will fail the deployment '
                      'process. This check is skipped if deep image '
                      'inspection is disabled.'),
+    cfg.BoolOpt('enable_bios_bootloader_install',
+                default=False,
+                help='Enables support for partition images which require a '
+                     'legacy bootloader -- and a call to ``grub-install``. '
+                     'Generally, this should remain disabled for maximum '
+                     'security, however, this option allows it to be '
+                     're-enabled for compatibility.'),
 ]
 
 disk_utils_opts = [
