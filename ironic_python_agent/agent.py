@@ -500,6 +500,9 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         # Update config with values from Ironic
         config = content.get('config', {})
+        if config.get('enable_bios_bootloader_install'):
+            cfg.CONF.set_override('enable_bios_bootloader_install',
+                                  config['enable_bios_bootloader_install'])
         if config.get('metrics'):
             for opt, val in config.items():
                 setattr(cfg.CONF.metrics, opt, val)

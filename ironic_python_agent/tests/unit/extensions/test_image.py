@@ -52,6 +52,7 @@ class TestImageExtension(base.IronicAgentTest):
         self.fake_efi_system_part_uuid = '45AB-2312'
         self.fake_prep_boot_part_uuid = '76937797-3253-8843-999999999999'
         self.fake_dir = '/tmp/fake-dir'
+        self.config(enable_bios_bootloader_install=True)
 
     @mock.patch.object(image, '_install_grub2', autospec=True)
     def test__install_bootloader_bios(self, mock_grub2,
@@ -68,7 +69,38 @@ class TestImageExtension(base.IronicAgentTest):
             self.fake_dev, root_uuid=self.fake_root_uuid,
             efi_system_part_uuid=None, prep_boot_part_uuid=None,
             target_boot_mode='bios'
+
         )
+
+    @mock.patch.object(image, '_install_grub2', autospec=True)
+    def test__install_bootloader_bios_disabled(self, mock_grub2,
+                                               mock_execute, mock_dispatch):
+        self.config(enable_bios_bootloader_install=False)
+        mock_dispatch.side_effect = [
+            self.fake_dev, hardware.BootInfo(current_boot_mode='bios')
+        ]
+        self.agent_extension.install_bootloader(
+            root_uuid=self.fake_root_uuid).join()
+        mock_dispatch.assert_any_call('get_os_install_device')
+        mock_dispatch.assert_any_call('get_boot_info')
+        self.assertEqual(2, mock_dispatch.call_count)
+        mock_grub2.assert_not_called()
+
+    @mock.patch.object(image, '_install_grub2', autospec=True)
+    def test__install_bootloader_bios_disabled_dont_ignore_failures(
+            self, mock_grub2, mock_execute, mock_dispatch):
+        self.config(enable_bios_bootloader_install=False)
+        self.config(ignore_bootloader_failure=False)
+        mock_dispatch.side_effect = [
+            self.fake_dev, hardware.BootInfo(current_boot_mode='bios')
+        ]
+        result = self.agent_extension.install_bootloader(
+            root_uuid=self.fake_root_uuid).join()
+        mock_dispatch.assert_any_call('get_os_install_device')
+        mock_dispatch.assert_any_call('get_boot_info')
+        self.assertEqual(2, mock_dispatch.call_count)
+        self.assertIsNotNone(result.command_error)
+        mock_grub2.assert_not_called()
 
     @mock.patch.object(efi_utils, 'manage_uefi', autospec=True)
     @mock.patch.object(image, '_install_grub2', autospec=True)
