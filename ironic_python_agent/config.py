@@ -438,6 +438,13 @@ cli_opts = [
                 help='This disables bootc deployment methods in the ramdisk '
                      'because the bootc command inside of the ramdisk '
                      'comes from the supplied image to be deployed.'),
+    cfg.BoolOpt('enable_bios_bootloader_install',
+                default=False,
+                help='Enables support for partition images which require a '
+                     'legacy bootloader -- and a call to ``grub-install``. '
+                     'Generally, this should remain disabled for maximum '
+                     'security, however, this option allows it to be '
+                     're-enabled for compatibility.'),
 ]
 
 disk_utils_opts = [

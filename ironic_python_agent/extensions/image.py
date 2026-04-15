@@ -723,15 +723,24 @@ class ImageExtension(base.BaseAgentExtension):
                      ' Assuming a whole disk image')
             return
 
-        # In case we can't use efibootmgr for uefi we will continue using grub2
-        LOG.debug('Using grub2-install to set up boot files')
-        try:
-            _install_grub2(device,
-                           root_uuid=root_uuid,
-                           efi_system_part_uuid=efi_system_part_uuid,
-                           prep_boot_part_uuid=prep_boot_part_uuid,
-                           target_boot_mode=target_boot_mode)
-        except Exception as e:
-            LOG.error('Error setting up bootloader. Error %s', e)
+        if CONF.enable_bios_bootloader_install:
+            # In case we can't use efibootmgr for uefi we will continue
+            # using grub2
+            LOG.debug('Using grub2-install to set up boot files')
+            try:
+                _install_grub2(device,
+                               root_uuid=root_uuid,
+                               efi_system_part_uuid=efi_system_part_uuid,
+                               prep_boot_part_uuid=prep_boot_part_uuid,
+                               target_boot_mode=target_boot_mode)
+            except Exception as e:
+                LOG.error('Error setting up bootloader. Error %s', e)
+                if not ignore_failure:
+                    raise
+        else:
+            msg = ("Install of legacy BIOS bootloaders disabled by "
+                   "CONF.enable_bios_bootloader_install as part of "
+                   "CVE-2026-43003 mitigation.")
+            LOG.error(msg)
             if not ignore_failure:
-                raise
+                raise errors.InvalidImage(details=msg)
