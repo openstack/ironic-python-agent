@@ -499,6 +499,9 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
 
         # Update config with values from Ironic
         config = content.get('config', {})
+        if config.get('enable_bios_bootloader_install'):
+            cfg.CONF.set_override('enable_bios_bootloader_install',
+                                  config['enable_bios_bootloader_install'])
         if config.get('agent_containers'):
             for opt, val in config['agent_containers'].items():
                 cfg.CONF.set_override(opt, val, group='container')
