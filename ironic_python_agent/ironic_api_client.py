@@ -61,12 +61,9 @@ class APIClient(object):
 
         # Only keep alive a maximum of 2 connections to the API. More will be
         # opened if they are needed, but they will be closed immediately after
-        # use.
-        adapter = requests.adapters.HTTPAdapter(pool_connections=2,
-                                                pool_maxsize=2)
-        self.session = requests.Session()
-        self.session.mount('https://', adapter)
-        self.session.mount('http://', adapter)
+        # use. Use TLS-enforcing session.
+        self.session = utils.get_requests_session(pool_connections=2,
+                                                  pool_maxsize=2)
 
         self.encoder = encoding.RESTJSONEncoder()
 
@@ -83,7 +80,6 @@ class APIClient(object):
         if CONF.global_request_id:
             headers["X-OpenStack-Request-ID"] = CONF.global_request_id
 
-        verify, cert = utils.get_ssl_client_options(CONF)
         for idx, api_url in enumerate(self.api_urls):
             request_url = f'{api_url}{path}'
             try:
@@ -91,8 +87,6 @@ class APIClient(object):
                                             request_url,
                                             headers=headers,
                                             data=data,
-                                            verify=verify,
-                                            cert=cert,
                                             timeout=CONF.http_request_timeout,
                                             **kwargs)
                 # Make sure the working URL is on the top, so that the next

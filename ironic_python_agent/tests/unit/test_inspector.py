@@ -176,91 +176,96 @@ class TestInspect(base.IronicAgentTest):
         mock_call.assert_called_with_failure()
 
 
-@mock.patch.object(requests, 'post', autospec=True)
+@mock.patch.object(utils, 'get_requests_session', autospec=True)
 class TestCallInspector(base.IronicAgentTest):
     def setUp(self):
         super(TestCallInspector, self).setUp()
         CONF.set_override('inspection_callback_url', 'url')
 
-    def test_ok(self, mock_post):
+    def test_ok(self, mock_session):
         failures = utils.AccumulatedFailures()
         data = collections.OrderedDict(data=42)
-        mock_post.return_value.status_code = 200
+        mock_session.return_value.post.return_value.status_code = 200
 
         res = inspector.call_inspector(data, failures)
 
-        mock_post.assert_called_once_with(
+        mock_session.return_value.post.assert_called_once_with(
             'url', data='{"data": 42, "error": null}',
-            cert=None, verify=True,
             headers={'Content-Type': 'application/json',
                      'Accept': 'application/json'},
             timeout=30)
-        self.assertEqual(mock_post.return_value.json.return_value, res)
+        self.assertEqual(
+            mock_session.return_value.post.return_value.json.return_value,
+            res)
 
-    def test_use_api_url(self, mock_post):
+    def test_use_api_url(self, mock_session):
         CONF.set_override('inspection_callback_url', '')
         CONF.set_override('api_url', 'http://url1/,http://url2/baremetal')
 
         failures = utils.AccumulatedFailures()
         data = collections.OrderedDict(data=42)
-        mock_post.return_value.status_code = 200
+        mock_session.return_value.post.return_value.status_code = 200
 
         res = inspector.call_inspector(data, failures)
 
-        mock_post.assert_called_once_with(
+        mock_session.return_value.post.assert_called_once_with(
             'http://url1/v1/continue_inspection',
             data='{"data": 42, "error": null}',
-            cert=None, verify=True,
             headers={'Content-Type': 'application/json',
                      'Accept': 'application/json'},
             timeout=30)
-        self.assertEqual(mock_post.return_value.json.return_value, res)
+        self.assertEqual(
+            mock_session.return_value.post.return_value.json.return_value,
+            res)
 
-    def test_send_failure(self, mock_post):
+    def test_send_failure(self, mock_session):
         failures = mock.Mock(spec=utils.AccumulatedFailures)
         failures.get_error.return_value = "boom"
         data = collections.OrderedDict(data=42)
-        mock_post.return_value.status_code = 200
+        mock_session.return_value.post.return_value.status_code = 200
 
         res = inspector.call_inspector(data, failures)
 
-        mock_post.assert_called_once_with('url',
-                                          cert=None, verify=True,
-                                          data='{"data": 42, "error": "boom"}',
-                                          headers=mock.ANY,
-                                          timeout=30)
-        self.assertEqual(mock_post.return_value.json.return_value, res)
+        mock_session.return_value.post.assert_called_once_with(
+            'url',
+            data='{"data": 42, "error": "boom"}',
+            headers=mock.ANY,
+            timeout=30)
+        self.assertEqual(
+            mock_session.return_value.post.return_value.json.return_value,
+            res)
 
-    def test_inspector_error(self, mock_post):
+    def test_inspector_error(self, mock_session):
         failures = utils.AccumulatedFailures()
         data = collections.OrderedDict(data=42)
-        mock_post.return_value.status_code = 400
+        mock_session.return_value.post.return_value.status_code = 400
 
         res = inspector.call_inspector(data, failures)
 
-        mock_post.assert_called_once_with('url',
-                                          cert=None, verify=True,
-                                          data='{"data": 42, "error": null}',
-                                          headers=mock.ANY,
-                                          timeout=30)
+        mock_session.return_value.post.assert_called_once_with(
+            'url',
+            data='{"data": 42, "error": null}',
+            headers=mock.ANY,
+            timeout=30)
         self.assertIsNone(res)
 
     @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
     @mock.patch.object(inspector, '_RETRY_WAIT_MAX', 1)
-    def test_inspector_retries(self, mock_post):
-        mock_post.side_effect = requests.exceptions.ConnectionError
+    def test_inspector_retries(self, mock_session):
+        mock_session.return_value.post.side_effect = (
+            requests.exceptions.ConnectionError)
         failures = utils.AccumulatedFailures()
         data = collections.OrderedDict(data=42)
         self.assertRaises(requests.exceptions.ConnectionError,
                           inspector.call_inspector,
                           data, failures)
-        self.assertEqual(5, mock_post.call_count)
+        self.assertEqual(5, mock_session.return_value.post.call_count)
 
     @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
     @mock.patch.object(inspector, '_RETRY_WAIT_MAX', 1)
-    def test_inspector_several_urls(self, mock_post):
+    def test_inspector_several_urls(self, mock_session):
         CONF.set_override('inspection_callback_url', 'url1,url2')
-        mock_post.side_effect = [
+        mock_session.return_value.post.side_effect = [
             requests.exceptions.ConnectionError,
             requests.exceptions.ConnectionError,
             mock.Mock(status_code=200),
@@ -268,37 +273,37 @@ class TestCallInspector(base.IronicAgentTest):
         failures = utils.AccumulatedFailures()
         data = collections.OrderedDict(data=42)
         inspector.call_inspector(data, failures)
-        self.assertEqual(3, mock_post.call_count)
-        mock_post.assert_has_calls([
-            mock.call('url1', cert=None, verify=True, headers=mock.ANY,
+        self.assertEqual(3, mock_session.return_value.post.call_count)
+        mock_session.return_value.post.assert_has_calls([
+            mock.call('url1', headers=mock.ANY,
                       data='{"data": 42, "error": null}', timeout=30),
-            mock.call('url2', cert=None, verify=True, headers=mock.ANY,
+            mock.call('url2', headers=mock.ANY,
                       data='{"data": 42, "error": null}', timeout=30),
-            mock.call('url1', cert=None, verify=True, headers=mock.ANY,
+            mock.call('url1', headers=mock.ANY,
                       data='{"data": 42, "error": null}', timeout=30),
         ])
 
-    def test_use_several_api_urls(self, mock_post):
+    def test_use_several_api_urls(self, mock_session):
         CONF.set_override('inspection_callback_url', '')
         CONF.set_override('api_url', 'http://url1/,http://url2/baremetal')
 
         good_resp = mock.Mock(status_code=200)
-        mock_post.side_effect = [
+        mock_session.return_value.post.side_effect = [
             requests.exceptions.ConnectionError, good_resp
         ]
 
         failures = utils.AccumulatedFailures()
         data = collections.OrderedDict(data=42)
-        mock_post.return_value.status_code = 200
+        mock_session.return_value.post.return_value.status_code = 200
 
         res = inspector.call_inspector(data, failures)
 
-        mock_post.assert_has_calls([
+        mock_session.return_value.post.assert_has_calls([
             mock.call('http://url1/v1/continue_inspection',
-                      cert=None, verify=True, headers=mock.ANY,
+                      headers=mock.ANY,
                       data='{"data": 42, "error": null}', timeout=30),
             mock.call('http://url2/baremetal/v1/continue_inspection',
-                      cert=None, verify=True, headers=mock.ANY,
+                      headers=mock.ANY,
                       data='{"data": 42, "error": null}', timeout=30),
         ])
         self.assertEqual(good_resp.json.return_value, res)
@@ -306,34 +311,36 @@ class TestCallInspector(base.IronicAgentTest):
     @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
     @mock.patch.object(inspector, '_RETRY_WAIT_MAX', 1)
     @mock.patch.object(inspector, '_RETRY_ATTEMPTS', 3)
-    def test_inspector_retries_on_50X_error(self, mock_post):
-        mock_post.side_effect = [mock.Mock(status_code=500),
-                                 mock.Mock(status_code=409),
-                                 mock.Mock(status_code=502)]
+    def test_inspector_retries_on_50X_error(self, mock_session):
+        mock_session.return_value.post.side_effect = [
+            mock.Mock(status_code=500),
+            mock.Mock(status_code=409),
+            mock.Mock(status_code=502)]
         failures = utils.AccumulatedFailures()
         data = collections.OrderedDict(data=42)
         self.assertRaises(requests.exceptions.HTTPError,
                           inspector.call_inspector,
                           data, failures)
-        self.assertEqual(3, mock_post.call_count)
+        self.assertEqual(3, mock_session.return_value.post.call_count)
 
     @mock.patch.object(inspector, '_RETRY_WAIT', 0.01)
     @mock.patch.object(inspector, '_RETRY_WAIT_MAX', 1)
     @mock.patch.object(inspector, '_RETRY_ATTEMPTS', 3)
-    def test_inspector_retry_on_50X_and_succeed(self, mock_post):
-        mock_post.side_effect = [mock.Mock(status_code=503),
-                                 mock.Mock(status_code=409),
-                                 mock.Mock(status_code=200)]
+    def test_inspector_retry_on_50X_and_succeed(self, mock_session):
+        mock_session.return_value.post.side_effect = [
+            mock.Mock(status_code=503),
+            mock.Mock(status_code=409),
+            mock.Mock(status_code=200)]
 
         failures = utils.AccumulatedFailures()
         data = collections.OrderedDict(data=42)
         inspector.call_inspector(data, failures)
-        self.assertEqual(3, mock_post.call_count)
-        mock_post.assert_called_with('url',
-                                     cert=None, verify=True,
-                                     data='{"data": 42, "error": null}',
-                                     headers=mock.ANY,
-                                     timeout=30)
+        self.assertEqual(3, mock_session.return_value.post.call_count)
+        mock_session.return_value.post.assert_called_with(
+            'url',
+            data='{"data": 42, "error": null}',
+            headers=mock.ANY,
+            timeout=30)
 
 
 class BaseDiscoverTest(base.IronicAgentTest):

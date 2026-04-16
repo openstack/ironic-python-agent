@@ -141,7 +141,6 @@ def call_inspector(data, failures):
 
     encoder = encoding.RESTJSONEncoder()
     data = encoder.encode(data)
-    verify, cert = utils.get_ssl_client_options(CONF)
 
     headers = {
         'Content-Type': 'application/json',
@@ -151,6 +150,9 @@ def call_inspector(data, failures):
         headers["X-OpenStack-Request-ID"] = CONF.global_request_id
 
     urls = _get_urls()
+
+    # Create TLS-enforcing session
+    session = utils.get_requests_session()
 
     @tenacity.retry(
         retry=tenacity.retry_if_exception_type(
@@ -164,9 +166,8 @@ def call_inspector(data, failures):
         for url in urls:
             LOG.info('Posting collected data to %s', url)
             try:
-                inspector_resp = requests.post(
+                inspector_resp = session.post(
                     url, data=data, headers=headers,
-                    verify=verify, cert=cert,
                     timeout=CONF.http_request_timeout)
             except requests.exceptions.ConnectionError as exc:
                 if url == urls[-1]:

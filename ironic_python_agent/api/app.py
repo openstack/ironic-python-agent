@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import ssl
 import threading
 
 from cheroot.ssl import builtin
@@ -25,9 +26,47 @@ from werkzeug import routing
 from ironic_python_agent.api import request_log
 from ironic_python_agent import encoding
 from ironic_python_agent.metrics_lib import metrics_utils
+from ironic_python_agent import utils
 
 
 LOG = log.getLogger(__name__)
+
+
+class TLSEnforcingSSLAdapter(builtin.BuiltinSSLAdapter):
+    """SSL adapter that enforces TLS version requirements.
+
+    This adapter extends cheroot's BuiltinSSLAdapter to support
+    pre-configured SSL contexts with custom TLS version enforcement.
+    """
+
+    def __init__(self, certificate, private_key, ssl_context=None,
+                 certificate_chain=None):
+        """Initialize the adapter with optional SSL context.
+
+        :param certificate: Path to certificate file
+        :param private_key: Path to private key file
+        :param ssl_context: Optional pre-configured SSL context
+        :param certificate_chain: Optional certificate chain file
+        """
+        super().__init__(certificate, private_key,
+                         certificate_chain=certificate_chain)
+        self._custom_context = ssl_context
+
+    def wrap(self, sock):
+        """Wrap socket with SSL using custom context if provided.
+
+        :param sock: The socket to wrap
+        :returns: Tuple of (SSL-wrapped socket, SSL environ dict)
+        """
+        if self._custom_context:
+            s = self._custom_context.wrap_socket(
+                sock, server_side=True,
+                do_handshake_on_connect=True
+            )
+            return s, self.get_environ(s)
+        return super().wrap(sock)
+
+
 _CUSTOM_MEDIA_TYPE = 'application/vnd.openstack.ironic-python-agent.v1+json'
 _DOCS_URL = 'https://docs.openstack.org/ironic-python-agent'
 
@@ -145,19 +184,37 @@ class Application(object):
                              server_name='ironic-python-agent')
 
         if self.tls_cert_file and self.tls_key_file:
-            server.ssl_adapter = builtin.BuiltinSSLAdapter(
-                certificate=self.tls_cert_file,
-                private_key=self.tls_key_file
+            # Create SSL context with TLS version enforcement
+            ssl_context = utils.create_ssl_context('server')
+
+            # Load certificate and key
+            ssl_context.load_cert_chain(
+                certfile=self.tls_cert_file,
+                keyfile=self.tls_key_file
             )
+
+            # Disable client certificate verification
+            # (agent is server, Ironic is client)
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+
+            server.ssl_adapter = TLSEnforcingSSLAdapter(
+                certificate=self.tls_cert_file,
+                private_key=self.tls_key_file,
+                ssl_context=ssl_context
+            )
+            LOG.info('Started API service with TLS %s on port %s',
+                     self._conf.tls_min_version,
+                     self.agent.listen_address.port)
+        else:
+            LOG.info('Started API service without TLS on port %s',
+                     self.agent.listen_address.port)
 
         self.server = server
         self.server.prepare()
         self.server_thread = threading.Thread(target=self.server.serve)
         self.server_thread.daemon = True
         self.server_thread.start()
-
-        LOG.info('Started API service on port %s',
-                 self.agent.listen_address.port)
 
     def stop(self):
         """Stop the API service."""

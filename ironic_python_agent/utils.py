@@ -25,6 +25,7 @@ import os
 import re
 import shlex
 import shutil
+import ssl
 import stat
 import subprocess
 import sys
@@ -791,6 +792,126 @@ def get_ssl_client_options(conf):
     return verify, cert
 
 
+def create_ssl_context(context_type='client'):
+    """Create an SSL context with configured TLS version constraints.
+
+    :param context_type: 'client' or 'server'
+    :returns: ssl.SSLContext object configured with TLS version enforcement
+    """
+    # Create appropriate context
+    if context_type == 'server':
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    else:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+
+    # Set TLS version constraints based on configuration
+    min_version = CONF.tls_min_version
+
+    if min_version == '1.3':
+        context.minimum_version = ssl.TLSVersion.TLSv1_3
+        context.maximum_version = ssl.TLSVersion.TLSv1_3
+        LOG.info('SSL context configured for TLS 1.3 only (%s)',
+                 context_type)
+    else:  # '1.2'
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+        context.maximum_version = ssl.TLSVersion.TLSv1_3
+        LOG.info('SSL context configured for TLS 1.2+ (%s)', context_type)
+
+    # Configure cipher suites for TLS 1.2
+    # (TLS 1.3 cipher suites are automatically selected)
+    if min_version == '1.2':
+        if CONF.tls_cipher_suites:
+            context.set_ciphers(CONF.tls_cipher_suites)
+            LOG.info('Custom cipher suites configured: %s',
+                     CONF.tls_cipher_suites)
+        else:
+            # Secure defaults for TLS 1.2
+            context.set_ciphers(
+                'ECDHE-ECDSA-AES256-GCM-SHA384:'
+                'ECDHE-ECDSA-AES128-GCM-SHA256:'
+                'ECDHE-RSA-AES256-GCM-SHA384:'
+                'ECDHE-RSA-AES128-GCM-SHA256'
+            )
+            LOG.debug('Using default secure cipher suites for TLS 1.2')
+
+    # Configure certificate verification for client contexts
+    if context_type == 'client':
+        if CONF.insecure:
+            # Disable certificate verification in insecure mode
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            LOG.warning('Certificate verification disabled (insecure mode)')
+        else:
+            # Enable certificate verification
+            context.check_hostname = True
+            context.verify_mode = ssl.CERT_REQUIRED
+            # Load CA certificates
+            if CONF.cafile:
+                context.load_verify_locations(cafile=CONF.cafile)
+                LOG.debug('Loaded CA certificates from %s', CONF.cafile)
+            else:
+                context.load_default_certs()
+                LOG.debug('Using system default CA certificates')
+
+        # Load client certificate if provided
+        if CONF.certfile and CONF.keyfile:
+            context.load_cert_chain(CONF.certfile, CONF.keyfile)
+            LOG.debug('Loaded client certificate from %s', CONF.certfile)
+
+    return context
+
+
+class TLSAdapter(requests.adapters.HTTPAdapter):
+    """HTTPAdapter with configured TLS version enforcement."""
+
+    def __init__(self, ssl_context=None, *args, **kwargs):
+        self.ssl_context = ssl_context
+        super(TLSAdapter, self).__init__(*args, **kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        if self.ssl_context:
+            kwargs['ssl_context'] = self.ssl_context
+        return super(TLSAdapter, self).init_poolmanager(*args, **kwargs)
+
+    def proxy_manager_for(self, proxy, **proxy_kwargs):
+        """Return proxy manager with SSL context."""
+        if self.ssl_context:
+            proxy_kwargs['ssl_context'] = self.ssl_context
+        return super(TLSAdapter, self).proxy_manager_for(
+            proxy, **proxy_kwargs)
+
+
+def get_requests_session(pool_connections=2, pool_maxsize=2):
+    """Create a requests Session with TLS version enforcement.
+
+    :param pool_connections: Number of urllib3 connection pools to cache
+    :param pool_maxsize: Maximum number of connections per pool
+    :returns: requests.Session configured with SSL context
+    """
+    session = requests.Session()
+    ssl_context = create_ssl_context('client')
+    adapter = TLSAdapter(ssl_context=ssl_context,
+                         pool_connections=pool_connections,
+                         pool_maxsize=pool_maxsize)
+    session.mount('https://', adapter)
+    session.mount('http://', adapter)
+
+    # Set session verify attribute to ensure requests library respects
+    # the SSL context settings. When insecure mode is enabled, we must
+    # explicitly set verify=False as requests checks this attribute and
+    # may override the SSL context's verify_mode setting.
+    if CONF.insecure:
+        session.verify = False
+    else:
+        # In secure mode, configure verification with CA file if provided
+        verify, cert = get_ssl_client_options(CONF)
+        session.verify = verify
+        if cert:
+            session.cert = cert
+
+    return session
+
+
 def extract_device(part):
     """Extract the device from a partition name or path.
 
@@ -1071,10 +1192,12 @@ class StreamingClient:
     _CHUNK_SIZE = 1 * units.Mi
 
     def __init__(self, verify_ca=True):
-        if verify_ca:
-            self.verify, self.cert = get_ssl_client_options(CONF)
-        else:
-            self.verify, self.cert = False, None
+        # Create session with TLS enforcement
+        self.session = get_requests_session()
+        if not verify_ca:
+            # Override session to disable verification
+            # Note: This is for specific use cases only
+            self.session.verify = False
 
     @contextlib.contextmanager
     def __call__(self, url):
@@ -1091,9 +1214,8 @@ class StreamingClient:
                 CONF.image_download_connection_retry_interval),
             reraise=True)
         def _get_with_retries():
-            return requests.get(url, verify=self.verify, cert=self.cert,
-                                stream=True,
-                                timeout=CONF.image_download_connection_timeout)
+            timeout = CONF.image_download_connection_timeout
+            return self.session.get(url, stream=True, timeout=timeout)
 
         try:
             with _get_with_retries() as resp:

@@ -1097,34 +1097,159 @@ class TestCopyConfigFromVmedia(testtools.TestCase):
         self.assertTrue(mock_unmount_config.called)
 
 
-@mock.patch.object(requests, 'get', autospec=True)
+@mock.patch.object(utils, 'get_requests_session', autospec=True)
 class TestStreamingClient(base.IronicAgentTest):
 
-    def test_ok(self, mock_get):
+    def test_ok(self, mock_session):
         client = utils.StreamingClient()
-        self.assertTrue(client.verify)
-        self.assertIsNone(client.cert)
+        self.assertIsInstance(client.session, mock.Mock)
 
         with client("http://url") as result:
-            response = mock_get.return_value.__enter__.return_value
+            response = (mock_session.return_value.get.return_value
+                        .__enter__.return_value)
             self.assertIs(result, response.iter_content.return_value)
 
-        mock_get.assert_called_once_with("http://url", verify=True, cert=None,
-                                         stream=True, timeout=60)
+        mock_session.return_value.get.assert_called_once_with(
+            "http://url", stream=True, timeout=60)
         response.iter_content.assert_called_once_with(1024 * 1024)
 
-    def test_retries(self, mock_get):
+    def test_retries(self, mock_session):
         self.config(image_download_connection_retries=1,
                     image_download_connection_retry_interval=1)
-        mock_get.side_effect = requests.ConnectionError
+        mock_session.return_value.get.side_effect = requests.ConnectionError
 
         client = utils.StreamingClient()
         self.assertRaises(errors.CommandExecutionError,
                           client("http://url").__enter__)
 
-        mock_get.assert_called_with("http://url", verify=True, cert=None,
-                                    stream=True, timeout=60)
-        self.assertEqual(2, mock_get.call_count)
+        mock_session.return_value.get.assert_called_with(
+            "http://url", stream=True, timeout=60)
+        self.assertEqual(2, mock_session.return_value.get.call_count)
+
+
+class TestCreateSSLContext(base.IronicAgentTest):
+
+    def test_client_context_insecure(self):
+        """Test SSL context for client with insecure mode enabled."""
+        self.config(insecure=True, tls_min_version='1.2',
+                    tls_cipher_suites=None)
+
+        import ssl
+        context = utils.create_ssl_context('client')
+
+        # Verify insecure mode settings
+        self.assertEqual(ssl.CERT_NONE, context.verify_mode)
+        self.assertFalse(context.check_hostname)
+
+    def test_client_context_secure(self):
+        """Test SSL context for client with secure mode enabled."""
+        self.config(insecure=False, tls_min_version='1.2',
+                    tls_cipher_suites=None, cafile=None,
+                    certfile=None, keyfile=None)
+
+        import ssl
+        context = utils.create_ssl_context('client')
+
+        # Verify secure mode settings
+        self.assertEqual(ssl.CERT_REQUIRED, context.verify_mode)
+        self.assertTrue(context.check_hostname)
+
+    def test_tls_version_1_2(self):
+        """Test TLS 1.2 minimum version configuration."""
+        self.config(insecure=False, tls_min_version='1.2',
+                    tls_cipher_suites=None)
+
+        import ssl
+        context = utils.create_ssl_context('client')
+
+        # Verify TLS version constraints
+        self.assertEqual(ssl.TLSVersion.TLSv1_2, context.minimum_version)
+        self.assertEqual(ssl.TLSVersion.TLSv1_3, context.maximum_version)
+
+    def test_tls_version_1_3(self):
+        """Test TLS 1.3 only configuration."""
+        self.config(insecure=False, tls_min_version='1.3',
+                    tls_cipher_suites=None)
+
+        import ssl
+        context = utils.create_ssl_context('client')
+
+        # Verify TLS 1.3 only
+        self.assertEqual(ssl.TLSVersion.TLSv1_3, context.minimum_version)
+        self.assertEqual(ssl.TLSVersion.TLSv1_3, context.maximum_version)
+
+
+class TestGetRequestsSession(base.IronicAgentTest):
+
+    @mock.patch.object(utils, 'get_ssl_client_options', autospec=True)
+    @mock.patch.object(utils, 'create_ssl_context', autospec=True)
+    def test_insecure_mode(self, mock_create_ssl, mock_get_ssl):
+        """Test session.verify is False when insecure mode is enabled."""
+        self.config(insecure=True)
+        mock_ssl_context = mock.Mock()
+        mock_create_ssl.return_value = mock_ssl_context
+
+        session = utils.get_requests_session()
+
+        # Verify session.verify is explicitly set to False
+        self.assertFalse(session.verify)
+        mock_create_ssl.assert_called_once_with('client')
+        # get_ssl_client_options should not be called in insecure mode
+        mock_get_ssl.assert_not_called()
+
+    @mock.patch.object(utils, 'get_ssl_client_options', autospec=True)
+    @mock.patch.object(utils, 'create_ssl_context', autospec=True)
+    def test_secure_mode_default(self, mock_create_ssl, mock_get_ssl):
+        """Test session.verify is True when secure mode is enabled."""
+        self.config(insecure=False)
+        mock_ssl_context = mock.Mock()
+        mock_create_ssl.return_value = mock_ssl_context
+        mock_get_ssl.return_value = (True, None)
+
+        session = utils.get_requests_session()
+
+        # Verify session.verify is set to True
+        self.assertTrue(session.verify)
+        # Verify cert is not set when no client cert provided (cert=None)
+        # Note: session.cert will have a default value from requests.Session
+        mock_create_ssl.assert_called_once_with('client')
+        mock_get_ssl.assert_called_once()
+
+    @mock.patch.object(utils, 'get_ssl_client_options', autospec=True)
+    @mock.patch.object(utils, 'create_ssl_context', autospec=True)
+    def test_secure_mode_with_cafile(self, mock_create_ssl, mock_get_ssl):
+        """Test session.verify is set to CA file path."""
+        self.config(insecure=False)
+        mock_ssl_context = mock.Mock()
+        mock_create_ssl.return_value = mock_ssl_context
+        mock_get_ssl.return_value = ('/path/to/ca.crt', None)
+
+        session = utils.get_requests_session()
+
+        # Verify session.verify is set to the CA file path
+        self.assertEqual('/path/to/ca.crt', session.verify)
+        mock_create_ssl.assert_called_once_with('client')
+        mock_get_ssl.assert_called_once()
+
+    @mock.patch.object(utils, 'get_ssl_client_options', autospec=True)
+    @mock.patch.object(utils, 'create_ssl_context', autospec=True)
+    def test_secure_mode_with_client_cert(self, mock_create_ssl,
+                                          mock_get_ssl):
+        """Test session.cert is set when client certificate provided."""
+        self.config(insecure=False)
+        mock_ssl_context = mock.Mock()
+        mock_create_ssl.return_value = mock_ssl_context
+        mock_get_ssl.return_value = (True, ('/path/to/cert.pem',
+                                            '/path/to/key.pem'))
+
+        session = utils.get_requests_session()
+
+        # Verify session.verify is True and cert is set
+        self.assertTrue(session.verify)
+        self.assertEqual(('/path/to/cert.pem', '/path/to/key.pem'),
+                         session.cert)
+        mock_create_ssl.assert_called_once_with('client')
+        mock_get_ssl.assert_called_once()
 
 
 class TestCheckVirtualMedia(base.IronicAgentTest):

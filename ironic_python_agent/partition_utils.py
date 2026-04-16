@@ -70,12 +70,12 @@ def get_configdrive(configdrive, node_uuid, tempdir=None):
     # Check if the configdrive option is a HTTP URL or the content directly
     is_url = _is_http_url(configdrive)
     if is_url:
-        verify, cert = utils.get_ssl_client_options(CONF)
         timeout = CONF.image_download_connection_timeout
         # TODO(dtantsur): support proxy parameters from instance_info
+        # Create TLS-enforcing session
+        session = utils.get_requests_session()
         try:
-            resp = requests.get(configdrive, verify=verify, cert=cert,
-                                timeout=timeout)
+            resp = session.get(configdrive, timeout=timeout)
         except requests.exceptions.RequestException as e:
             raise errors.DeploymentError(
                 "Can't download the configdrive content for node %(node)s "

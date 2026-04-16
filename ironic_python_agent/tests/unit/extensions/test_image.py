@@ -328,7 +328,7 @@ class TestImageExtension(base.IronicAgentTest):
         mock_get_part_path.return_value = self.fake_efi_system_part
         mock_utils_efi_part.return_value = {'number': '1'}
         mock_efi_bl.return_value = ['EFI/BOOT/BOOTX64.EFI']
-        stdout_msg = """
+        stdout_msg = r"""
 BootCurrent: 0001
 Timeout: 0 seconds
 BootOrder: 0000,00001
@@ -390,7 +390,7 @@ Boot0002 VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)
         # NOTE(TheJulia): This test string was derived from a lenovo SR650
         # which does do some weird things with additional entries.
         # most notably
-        stdout_msg = """
+        stdout_msg = r"""
 BootCurrent: 0000
 Timeout: 1 seconds
 BootOrder: 0000,0003,0002,0001
