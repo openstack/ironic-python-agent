@@ -27,6 +27,28 @@ from ironic_python_agent import config  # noqa
 from ironic_python_agent import netutils
 
 
+def _start_agent(api_url, advertise_address, listen_address,
+                 ip_lookup_attempts, ip_lookup_sleep, network_interface,
+                 lookup_timeout, lookup_interval, standalone, agent_token):
+    """Create and run an agent instance in a subprocess.
+
+    This function is used by multiprocessing to avoid pickling the agent
+    object, which contains unpicklable threading locks.
+    """
+    ipa = agent.IronicPythonAgent(
+        api_url=api_url,
+        advertise_address=advertise_address,
+        listen_address=listen_address,
+        ip_lookup_attempts=ip_lookup_attempts,
+        ip_lookup_sleep=ip_lookup_sleep,
+        network_interface=network_interface,
+        lookup_timeout=lookup_timeout,
+        lookup_interval=lookup_interval,
+        standalone=standalone,
+        agent_token=agent_token)
+    ipa.run()
+
+
 class FunctionalBase(test_base.BaseTestCase):
 
     def setUp(self):
@@ -38,20 +60,19 @@ class FunctionalBase(test_base.BaseTestCase):
         # Build a basic standalone agent using the config option defaults.
         # 127.0.0.1:6835 is the fake Ironic client.
 
-        self.agent = agent.IronicPythonAgent(
-            api_url='http://127.0.0.1:6835',
-            advertise_address=agent.Host('localhost', 9999),
-            listen_address=agent.Host(netutils.get_wildcard_address(),
-                                      int(self.test_port)),
-            ip_lookup_attempts=3,
-            ip_lookup_sleep=10,
-            network_interface=None,
-            lookup_timeout=300,
-            lookup_interval=1,
-            standalone=True,
-            agent_token='678123')
         self.process = multiprocessing.Process(
-            target=self.agent.run)
+            target=_start_agent,
+            args=('http://127.0.0.1:6835',
+                  agent.Host('localhost', 9999),
+                  agent.Host(netutils.get_wildcard_address(),
+                             int(self.test_port)),
+                  3,
+                  10,
+                  None,
+                  300,
+                  1,
+                  True,
+                  '678123'))
         self.process.start()
         self.addCleanup(self.process.terminate)
 
