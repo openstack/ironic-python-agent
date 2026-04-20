@@ -392,10 +392,10 @@ try_except_continue:
 try_except_pass:
   check_typed_exception: false
 weak_cryptographic_key:
-  weak_key_size_dsa_high: 1024
-  weak_key_size_dsa_medium: 2048
-  weak_key_size_ec_high: 160
-  weak_key_size_ec_medium: 224
-  weak_key_size_rsa_high: 1024
-  weak_key_size_rsa_medium: 2048
+  weak_key_size_dsa_high: 2048
+  weak_key_size_dsa_medium: 3072
+  weak_key_size_ec_high: 224
+  weak_key_size_ec_medium: 256
+  weak_key_size_rsa_high: 2048
+  weak_key_size_rsa_medium: 3072
 
