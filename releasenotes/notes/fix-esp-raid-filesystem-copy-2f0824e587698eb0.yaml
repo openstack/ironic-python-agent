@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed an issue where ESP relocation to a software RAID device could fail
+    with ``No space left on device``. The previous block copy approach could
+    fail when the mdadm superblock consumed usable space on the device.
+    ESP contents are now copied at the filesystem level instead, preserving
+    the source ESP UUID so existing ``/etc/fstab`` entries remain valid.

@@ -412,9 +412,27 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
             disk_utils.trigger_device_rescan(md_device)
 
         if efi_part:
-            # Blockdev copy the source ESP and erase it
-            LOG.debug("Relocating EFI %s to %s", efi_part, md_device)
-            utils.execute('cp', efi_part, md_device)
+            # Copy ESP contents to the RAID ESP device
+            LOG.debug("Relocating EFI %s to %s via filesystem copy",
+                      efi_part, md_device)
+            out, _ = utils.execute('blockdev', '--getsize64', md_device)
+            md_size = int(out.strip())
+            # Preserve the source ESP UUID so fstab entries remain valid
+            out, _ = utils.execute('blkid', '-s', 'UUID', '-o', 'value',
+                                   efi_part)
+            esp_uuid = out.strip().replace('-', '')
+            with utils.mounted(efi_part) as src_mnt:
+                out, _ = utils.execute('du', '-sb', src_mnt)
+                esp_used = int(out.split()[0])
+                if esp_used > md_size:
+                    raise errors.SoftwareRAIDError(
+                        "ESP content (%d bytes) exceeds md device "
+                        "size (%d bytes)" % (esp_used, md_size))
+                utils.mkfs(fs='vfat', path=md_device, label='esp',
+                           uuid=esp_uuid)
+                with utils.mounted(md_device) as dst_mnt:
+                    utils.execute('cp', '-a',
+                                  src_mnt + '/.', dst_mnt + '/')
             LOG.debug("Erasing EFI partition %s", efi_part)
             utils.execute('wipefs', '-a', efi_part)
         else:
