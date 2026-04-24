@@ -174,6 +174,11 @@ class ImageDownloadOutofSpaceError(ImageDownloadError):
     pass
 
 
+class ImageDownloadFatalError(ImageDownloadError):
+    """Raised when an image download fails with a non-retryable error."""
+    pass
+
+
 class ImageChecksumError(RESTError):
     """Error raised when an image fails to verify against its checksum."""
 

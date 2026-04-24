@@ -2233,10 +2233,9 @@ class TestImageDownload(base.IronicAgentTest):
         time_mock.return_value = 0.0
         image_info = _build_fake_image_info()
         msg = ('Error downloading image: Download of image fake_id failed: '
-               'URL: http://example.org; time: .* seconds. Error: '
                'Received status code 401 from http://example.org, expected '
                '200. Response body: Unauthorized')
-        self.assertRaisesRegex(errors.ImageDownloadError, msg,
+        self.assertRaisesRegex(errors.ImageDownloadFatalError, msg,
                                standby.ImageDownload, image_info)
         session_mock.return_value.get.assert_called_once_with(
             image_info['urls'][0],
@@ -2347,6 +2346,24 @@ class TestImageDownload(base.IronicAgentTest):
             image_info['urls'][0],
             stream=True, proxies={}, timeout=60)
         sleep_mock.assert_not_called()
+
+    @mock.patch('time.sleep', autospec=True)
+    def test_download_image_401_not_retried(self, sleep_mock,
+                                            session_mock, hash_mock):
+        self.config(image_download_connection_retries=2)
+        response = mock.MagicMock()
+        response.status_code = 401
+        response.text = 'Unauthorized'
+        session_mock.return_value.get.return_value = response
+        image_info = _build_fake_image_info()
+        self.assertRaises(
+            errors.ImageDownloadError,
+            standby._download_image,
+            image_info
+        )
+        # A 401 is a fatal auth failure, must not sleep between retries.
+        sleep_mock.assert_not_called()
+        session_mock.return_value.get.assert_called_once()
 
     @mock.patch.object(standby.LOG, 'warning', autospec=True)
     def test_download_image_and_checksum(self, warn_mock, session_mock,

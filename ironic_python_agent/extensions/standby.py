@@ -225,6 +225,8 @@ def _download_with_proxy(image_info, url, image_id):
                 msg = ('Received status code {} from {}, expected 200. '
                        'Response body: {} Response headers: {}').format(
                     resp.status_code, url, resp.text, resp.headers)
+                if resp.status_code < 500:
+                    raise errors.ImageDownloadFatalError(image_id, msg)
                 raise errors.ImageDownloadError(image_id, msg)
         except (errors.ImageDownloadError, requests.RequestException) as e:
             if (attempt == CONF.image_download_connection_retries
@@ -621,6 +623,8 @@ class ImageDownload(object):
                                                      image_info['id'])
                 self._expected_size = self._request.headers.get(
                     'Content-Length')
+            except errors.ImageDownloadFatalError:
+                raise
             except errors.ImageDownloadError as e:
                 failtime = time.time() - self._time
                 log_msg = ('URL: {}; time: {} '
@@ -758,7 +762,8 @@ def _download_image(image_info):
                         image_location, str(e))
                     raise errors.ImageDownloadError(image_info['id'], msg)
             image_download.verify_image(image_location)
-        except errors.ImageDownloadOutofSpaceError:
+        except (errors.ImageDownloadOutofSpaceError,
+                errors.ImageDownloadFatalError):
             raise
         except (errors.ImageDownloadError,
                 errors.ImageChecksumError) as e:
@@ -930,6 +935,8 @@ class StandbyExtension(base.BaseAgentExtension):
                 # still in the retry loop, so we can retry should a checksum
                 # failure be detected.
                 image_download.verify_image(device)
+            except errors.ImageDownloadFatalError:
+                raise
             except (errors.ImageDownloadError,
                     errors.ImageChecksumError) as e:
                 if attempt == CONF.image_download_connection_retries:
