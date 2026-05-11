@@ -329,6 +329,48 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
         self.assertTrue(CONF.md5_enabled)
 
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_run_with_tls_config_from_lookup(self, mock_get_managers,
+                                             mock_wait, mock_dispatch):
+        CONF.set_override('inspection_callback_url', '')
+        CONF.set_override('tls_min_version', '1.2')
+        CONF.set_override('tls_cipher_suites', None)
+
+        def set_serve_api(*args, **kwargs):
+            self.agent.serve_api = False
+
+        self.agent.api.start = mock.Mock(side_effect=set_serve_api)
+        self.agent.heartbeater = mock.Mock()
+        self.agent.api_client.lookup_node = mock.Mock()
+        self.agent.api_client.lookup_node.return_value = {
+            'node': {
+                'uuid': 'deadbeef-dabb-ad00-b105-f00d00bab10c'
+            },
+            'config': {
+                'heartbeat_timeout': 300,
+                'tls_min_version': '1.3',
+                'tls_cipher_suites': 'ECDHE-RSA-AES256-GCM-SHA384'
+            }
+        }
+
+        self.agent.run()
+
+        self.agent.api.start.assert_called_once_with(mock.ANY, mock.ANY)
+        mock_wait.assert_called_once_with(mock.ANY)
+        self.assertEqual([mock.call('list_hardware_info'),
+                          mock.call('wait_for_disks')],
+                         mock_dispatch.call_args_list)
+        self.agent.heartbeater.start.assert_called_once_with()
+        self.assertEqual('1.3', CONF.tls_min_version)
+        self.assertEqual('ECDHE-RSA-AES256-GCM-SHA384',
+                         CONF.tls_cipher_suites)
+
     @mock.patch('ironic_python_agent.mdns.get_endpoint', autospec=True)
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',
