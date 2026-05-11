@@ -198,6 +198,7 @@ class TestRaidUtils(base.IronicAgentTest):
         md_size = 576651264  # 550 MiB - 64KiB
         esp_used = 31457280  # ~30 MiB of EFI content
         esp_uuid = '0B8C-37B6'
+        esp_label = 'MKFS_ESP'
         mock_execute.side_effect = [
             ('451', None),           # sgdisk -F
             (None, None),            # sgdisk create part
@@ -212,6 +213,7 @@ class TestRaidUtils(base.IronicAgentTest):
             (None, None),            # mdadm
             ('%d\n' % md_size, None),  # blockdev --getsize64
             ('%s\n' % esp_uuid, None),  # blkid UUID
+            ('%s\n' % esp_label, None),  # blkid LABEL
             (None, None),            # mount efi_part
             ('%d\t/tmp/fake_src\n' % esp_used, None),  # du -sb src_mnt
             (None, None),            # mount md_device
@@ -231,24 +233,28 @@ class TestRaidUtils(base.IronicAgentTest):
         mock_efi_part.assert_called_once_with('/dev/md0')
         expected = [
             mock.call('sgdisk', '-F', '/dev/sda'),
-            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
-                      '0:uefi-holder-0', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00',
+                      '-c', '0:uefi-holder-0', '/dev/sda'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
-            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
-                      '0:uefi-holder-1', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00',
+                      '-c', '0:uefi-holder-1', '/dev/sdb'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
                       '/dev/sdb'),
-            mock.call('mdadm', '--create', '/dev/md42', '--force', '--run',
-                      '--metadata=1.0', '--level', '1', '--name', 'esp',
-                      '--raid-devices', 2, '/dev/sda12', '/dev/sdb14'),
+            mock.call('mdadm', '--create', '/dev/md42', '--force',
+                      '--run', '--metadata=1.0', '--level', '1',
+                      '--name', 'esp', '--raid-devices', 2,
+                      '/dev/sda12', '/dev/sdb14'),
             mock.call('blockdev', '--getsize64', '/dev/md42'),
-            mock.call('blkid', '-s', 'UUID', '-o', 'value', '/dev/md0p12'),
+            mock.call('blkid', '-s', 'UUID', '-o', 'value',
+                      '/dev/md0p12'),
+            mock.call('blkid', '-s', 'LABEL', '-o', 'value',
+                      '/dev/md0p12'),
             mock.call('mount', '/dev/md0p12', '/tmp/fake_src',
                       attempts=1, delay_on_retry=True),
             mock.call('du', '-sb', '/tmp/fake_src'),
@@ -262,8 +268,9 @@ class TestRaidUtils(base.IronicAgentTest):
             mock.call('wipefs', '-a', '/dev/md0p12'),
         ]
         mock_execute.assert_has_calls(expected, any_order=False)
-        mock_mkfs.assert_called_once_with(fs='vfat', path='/dev/md42',
-                                          label='esp', uuid='0B8C37B6')
+        mock_mkfs.assert_called_once_with(
+            fs='vfat', path='/dev/md42',
+            label='MKFS_ESP', uuid='0B8C37B6')
         self.assertEqual(efi_part, '/dev/md42')
         mock_rescan.assert_called_once_with('/dev/md42')
 
@@ -349,6 +356,7 @@ class TestRaidUtils(base.IronicAgentTest):
             (None, None),            # mdadm create
             ('%d\n' % md_size, None),  # blockdev --getsize64
             ('%s\n' % esp_uuid, None),  # blkid UUID
+            ('\n', None),            # blkid LABEL (empty)
             (None, None),            # mount efi_part
             ('%d\t/tmp/fake_src\n' % esp_used, None),  # du -sb src_mnt
             (None, None),            # mount md_device
@@ -367,24 +375,28 @@ class TestRaidUtils(base.IronicAgentTest):
 
         expected = [
             mock.call('sgdisk', '-F', '/dev/sda'),
-            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
-                      '0:uefi-holder-0', '/dev/sda'),
+            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00',
+                      '-c', '0:uefi-holder-0', '/dev/sda'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
             mock.call('sgdisk', '-F', '/dev/sdb'),
-            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
-                      '0:uefi-holder-1', '/dev/sdb'),
+            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00',
+                      '-c', '0:uefi-holder-1', '/dev/sdb'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
                       '/dev/sdb'),
-            mock.call('mdadm', '--create', '/dev/md42', '--force', '--run',
-                      '--metadata=1.0', '--level', '1', '--name', 'esp',
-                      '--raid-devices', 2, '/dev/sda12', '/dev/sdb14'),
+            mock.call('mdadm', '--create', '/dev/md42', '--force',
+                      '--run', '--metadata=1.0', '--level', '1',
+                      '--name', 'esp', '--raid-devices', 2,
+                      '/dev/sda12', '/dev/sdb14'),
             mock.call('blockdev', '--getsize64', '/dev/md42'),
-            mock.call('blkid', '-s', 'UUID', '-o', 'value', '/dev/md0p15'),
+            mock.call('blkid', '-s', 'UUID', '-o', 'value',
+                      '/dev/md0p15'),
+            mock.call('blkid', '-s', 'LABEL', '-o', 'value',
+                      '/dev/md0p15'),
             mock.call('mount', '/dev/md0p15', '/tmp/fake_src',
                       attempts=1, delay_on_retry=True),
             mock.call('du', '-sb', '/tmp/fake_src'),
@@ -398,8 +410,9 @@ class TestRaidUtils(base.IronicAgentTest):
             mock.call('wipefs', '-a', '/dev/md0p15'),
         ]
         mock_execute.assert_has_calls(expected, any_order=False)
-        mock_mkfs.assert_called_once_with(fs='vfat', path='/dev/md42',
-                                          label='esp', uuid='0B8C37B6')
+        mock_mkfs.assert_called_once_with(
+            fs='vfat', path='/dev/md42',
+            label='esp', uuid='0B8C37B6')
         self.assertEqual(efi_part, '/dev/md42')
 
     @mock.patch.object(raid_utils, 'find_esp_raid', autospec=True)
@@ -431,6 +444,7 @@ class TestRaidUtils(base.IronicAgentTest):
             (None, None),            # mdadm
             ('%d\n' % md_size, None),  # blockdev --getsize64
             ('%s\n' % esp_uuid, None),  # blkid UUID
+            ('esp\n', None),         # blkid LABEL
             (None, None),            # mount efi_part
             ('%d\t/tmp/fake_src\n' % esp_used, None),  # du -sb src_mnt
             (None, None),            # umount src (cleanup on error)

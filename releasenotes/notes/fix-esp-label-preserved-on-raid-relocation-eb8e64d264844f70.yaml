@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed an issue where the ESP filesystem label was replaced with a
+    hardcoded ``esp`` when relocating the EFI System Partition to a
+    software RAID device. If the deployed image's ``/etc/fstab``
+    referenced the ESP by label (e.g. ``LABEL=MKFS_ESP``), the mismatch
+    would cause the system to drop to an emergency shell on boot. The
+    source ESP label is now preserved, matching the existing behavior
+    for the ESP UUID.
