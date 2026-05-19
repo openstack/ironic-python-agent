@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug 2153130<https://bugs.launchpad.net/ironic/+bug/2153130>_` fixed;
+    now the logic handling the RAID skip list does not rely the RAID
+    devices being listed in a particular order.

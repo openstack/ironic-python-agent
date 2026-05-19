@@ -3055,10 +3055,11 @@ class GenericHardwareManager(HardwareManager):
         esp_part = None
         for raid_device in raid_devices:
             delete_raid_devices[raid_device.name] = 'delete'
-            esp_part = self._analyze_raid_device(raid_device, skip_list,
-                                                 raid_devices_on_holder_disks,
-                                                 volume_name_on_skip_list,
-                                                 volume_name_of_raid_devices)
+            esp_part_candidate = self._analyze_raid_device(
+                raid_device, skip_list, raid_devices_on_holder_disks,
+                volume_name_on_skip_list, volume_name_of_raid_devices)
+            if esp_part_candidate is not None:
+                esp_part = esp_part_candidate
         for raid_device in raid_devices:
             if volume_name_on_skip_list.get(raid_device.name):
                 self._handle_raids_with_volume_name_on_skip_list(
