@@ -306,8 +306,12 @@ def get_volume_name_of_raid_device(raid_device, examine=False):
             split_array = line.split(':')
             # expecting format:
             # Name : <host>:name (optional comment)
+            # or
+            # Name : name (optional comment)
             if len(split_array) == 3:
                 candidate = split_array[2]
+            elif len(split_array) == 2:
+                candidate = split_array[1].strip()
             else:
                 return None
             # if name is followed by some other text
