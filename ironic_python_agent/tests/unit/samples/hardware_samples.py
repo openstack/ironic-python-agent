@@ -1453,6 +1453,34 @@ MDADM_EXAMINE_OUTPUT_NON_MEMBER = ("""/dev/sdz1:
    Array State : A. ('A' == active, '.' == missing, 'R' == replacing)
 """)
 
+MDADM_EXAMINE_OUTPUT_NO_HOSTNAME = ("""/dev/sda1:
+          Magic : a92b4efc
+        Version : 1.2
+    Feature Map : 0x0
+     Array UUID : 83143055:2781ddf5:2c8f44c7:9b45d92e
+           Name : this_name  (local to host abc.xyz.com)
+  Creation Time : Tue Jun 11 12:43:37 2019
+     Raid Level : raid1
+   Raid Devices : 2
+
+ Avail Dev Size : 2093056 sectors (1022.00 MiB 1071.64 MB)
+     Array Size : 1046528 KiB (1022.00 MiB 1071.64 MB)
+    Data Offset : 2048 sectors
+   Super Offset : 8 sectors
+   Unused Space : before=1968 sectors, after=0 sectors
+          State : clean
+    Device UUID : 88bf2723:d082f14f:f95e87cf:b7c59b83
+
+    Update Time : Sun Sep 27 01:00:08 2020
+  Bad Block Log : 512 entries available at offset 16 sectors
+       Checksum : 340a1610 - correct
+         Events : 178
+
+
+   Device Role : Active device 0
+   Array State : A. ('A' == active, '.' == missing, 'R' == replacing)
+""")
+
 PROC_MOUNTS_OUTPUT = ("""
 debugfs /sys/kernel/debug debugfs rw,relatime 0 0
 /dev/sda2 / ext4 rw,relatime,errors=remount-ro 0 0

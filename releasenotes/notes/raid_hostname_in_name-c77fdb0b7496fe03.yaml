@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes an IPA bug where mdadm detail/examine input may not be handled properly
+    if a hostname is not present as set when the volume was created. For more
+    information please see `bug 2154279 <https://bugs.launchpad.net/ironic/+bug/2154279>`_.
