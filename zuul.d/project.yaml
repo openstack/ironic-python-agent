@@ -19,6 +19,8 @@
         # to break them. They rather serve as a canary for broken POST jobs.
         - ironic-python-agent-check-image-dib-centos9:
             voting: false
+        - ironic-python-agent-check-image-dib-centos10:
+            voting: false
         - ironic-python-agent-check-image-dib-debian:
             voting: false
     gate:
@@ -31,4 +33,5 @@
     post:
       jobs:
         - ironic-python-agent-build-image-dib-centos9
+        - ironic-python-agent-build-image-dib-centos10
         - ironic-python-agent-build-image-dib-debian
