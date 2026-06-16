@@ -660,7 +660,7 @@ class TestWaitForDhcp(base.IronicAgentTest):
     @mock.patch.object(time, 'time_ns', autospec=True,
                        side_effect=[1000000000, 1100000000])
     @mock.patch.object(time, 'time', autospec=True,
-                       side_effect=[1.0, 1.1, 3.1, 3.2])
+                       side_effect=[1.0, 1.1, 3.1, 3.2, 3.3])
     def test_timeout(self, mocked_time, mocked_time_ns, mocked_sleep,
                      mocked_dispatch):
         CONF.set_override('inspection_dhcp_all_interfaces', True)
@@ -679,7 +679,9 @@ class TestWaitForDhcp(base.IronicAgentTest):
         # time.time() was called 3 times explicitly in wait_for_dhcp(),
         # and 1 in LOG.warning() Python 3.13 uses time.time_ns for logging
         total_time_calls = mocked_time.call_count + mocked_time_ns.call_count
-        self.assertEqual(4, total_time_calls)
+        # NOTE(clif): There's some discrepancy between how tox:cover and
+        # tox:py3 handle time calls. So the number of calls vary.
+        self.assertTrue(4 <= total_time_calls <= 5)
 
     def test_disabled(self, mocked_dispatch):
         CONF.set_override('inspection_dhcp_wait_timeout', 0)
