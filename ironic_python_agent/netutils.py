@@ -259,6 +259,7 @@ def get_ipv6_addr(interface_id):
 
 def get_mac_addr(interface_id):
     """Retrieve permanent mac address, if unable to fallback to default one"""
+    mac_addr = None
     try:
         data = ethtoolPermAddr(cmd=ETHTOOL_GPERMADDR, size=MAX_ADDR_LEN)
         ifr = ifreq(ifr_ifrn=interface_id.encode())
@@ -269,13 +270,31 @@ def get_mac_addr(interface_id):
         if any(data.data[:data.size]):
             # kernel updates size to actual address size during ioctl call
             permaddr = [f'{b:02x}' for b in data.data[:data.size]]
-            return ':'.join(permaddr)
+            mac_addr = ':'.join(permaddr)
     except OSError:
         pass
-    LOG.warning("Failed to get permanent mac address for interface %s, "
-                "falling back to default mac address",
-                interface_id)
-    return get_default_ip_addr(socket.AF_PACKET, interface_id)
+
+    if mac_addr is None:
+        LOG.warning("Failed to get permanent mac address for "
+                    "interface %s, falling back to default "
+                    "mac address", interface_id)
+        mac_addr = get_default_ip_addr(
+            socket.AF_PACKET, interface_id)
+
+    if mac_addr and mac_addr.lower().startswith('fa:'):
+        LOG.warning(
+            'Interface mac address %(mac)s for interface '
+            '%(iface)s is being ignored because it appears '
+            'to be a locally assigned address and is '
+            'unexpected. The mac address will be effectively '
+            'ignored by Ironic and operators should '
+            'investigate as this may indicate a '
+            'misconfiguration with potential security impact '
+            'if the address is an in-band BMC connection.',
+            {'mac': mac_addr, 'iface': interface_id})
+        return None
+
+    return mac_addr
 
 
 # Other options...

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import binascii
+from collections import namedtuple
 import socket
 from unittest import mock
 
@@ -31,6 +32,8 @@ FAKE_LLDP_PACKET = binascii.unhexlify(
 )
 
 cfg.CONF.import_opt('lldp_timeout', 'ironic_python_agent.config')
+
+FakeAddr = namedtuple('FakeAddr', ('family', 'address'))
 
 
 def socket_socket_sig(family=None, type=None, proto=None):
@@ -394,6 +397,60 @@ class TestNetutils(base.IronicAgentTest):
     def test_wrap_ipv6_with_ipv4(self):
         res = netutils.wrap_ipv6('1.2.3.4')
         self.assertEqual('1.2.3.4', res)
+
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
+    def test_get_mac_addr_normal(self, mock_socket, mock_ioctl):
+        """Normal MAC address is returned."""
+        def fake_ioctl(fd, request, ifr):
+            perm = ifr.ifr_data_ethtool_perm_addr.contents
+            perm.size = 6
+            perm.data[0] = 0x00
+            perm.data[1] = 0x0c
+            perm.data[2] = 0x29
+            perm.data[3] = 0x8c
+            perm.data[4] = 0x11
+            perm.data[5] = 0xb1
+
+        mock_ioctl.side_effect = fake_ioctl
+        result = netutils.get_mac_addr('eth0')
+        self.assertEqual('00:0c:29:8c:11:b1', result)
+
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
+    def test_get_mac_addr_ignores_fa_perm(
+            self, mock_socket, mock_ioctl):
+        """Permanent MAC with 0xFA first octet is ignored."""
+        def fake_ioctl(fd, request, ifr):
+            perm = ifr.ifr_data_ethtool_perm_addr.contents
+            perm.size = 6
+            perm.data[0] = 0xFA
+            perm.data[1] = 0x4b
+            perm.data[2] = 0x7f
+            perm.data[3] = 0xfc
+            perm.data[4] = 0xbc
+            perm.data[5] = 0x02
+
+        mock_ioctl.side_effect = fake_ioctl
+        result = netutils.get_mac_addr('eth0')
+        self.assertIsNone(result)
+
+    @mock.patch('psutil.net_if_addrs', autospec=True)
+    @mock.patch('fcntl.ioctl', autospec=True)
+    @mock.patch('socket.socket', autospec=socket_socket_sig)
+    def test_get_mac_addr_ignores_fa_fallback(
+            self, mock_socket, mock_ioctl,
+            mock_net_if_addrs):
+        """Fallback MAC with 0xFA first octet is ignored."""
+        mock_ioctl.side_effect = OSError
+        mock_net_if_addrs.return_value = {
+            'eth0': [
+                FakeAddr(socket.AF_PACKET,
+                         'fa:4b:7f:fc:bc:02')
+            ]
+        }
+        result = netutils.get_mac_addr('eth0')
+        self.assertIsNone(result)
 
     @mock.patch('os.readlink', autospec=True)
     def test_get_interface_pci_address(self, mock_read):

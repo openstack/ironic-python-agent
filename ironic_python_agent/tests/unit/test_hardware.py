@@ -8810,6 +8810,58 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
         self.assertEqual('eth0', interfaces[0].name)
         self.assertEqual({'eth0', 'eth1'}, seen_devices)
 
+    def test_list_network_interfaces_ignores_locally_administered(
+            self, mock_has_carrier, mocked_execute,
+            mocked_open, mocked_exists, mocked_listdir,
+            mocked_net_if_addrs, mockedget_managers,
+            mocked_lshw, mocked_get_mac_addr):
+        mocked_lshw.return_value = json.loads(
+            hws.LSHW_JSON_OUTPUT_V2[0])
+        mocked_listdir.return_value = ['lo', 'eth0', 'eth1']
+        mocked_exists.side_effect = [
+            False, False, True, True]
+        mocked_open.return_value.__enter__ = lambda s: s
+        mocked_open.return_value.__exit__ = mock.Mock()
+        read_mock = mocked_open.return_value.read
+        read_mock.side_effect = ['1']
+        mocked_net_if_addrs.return_value = {
+            'lo': [
+                FakeAddr(socket.AF_INET, '127.0.0.1'),
+                FakeAddr(socket.AF_INET6, '::1'),
+                FakeAddr(
+                    socket.AF_PACKET,
+                    '00:00:00:00:00:00')
+            ],
+            'eth0': [
+                FakeAddr(socket.AF_INET, '192.168.1.2'),
+                FakeAddr(socket.AF_INET6, 'fd00::101'),
+                FakeAddr(
+                    socket.AF_PACKET,
+                    '00:0c:29:8c:11:b1')
+            ],
+            'eth1': [
+                FakeAddr(socket.AF_INET, '192.168.2.2'),
+                FakeAddr(socket.AF_INET6,
+                         'fd00:1000::101'),
+                FakeAddr(
+                    socket.AF_PACKET,
+                    'fa:4b:7f:fc:bc:02')
+            ]
+        }
+        mocked_get_mac_addr.side_effect = lambda iface: {
+            'lo': '00:00:00:00:00:00',
+            'eth0': '00:0c:29:8c:11:b1',
+            'eth1': None,
+        }.get(iface)
+        mocked_execute.return_value = ('em0\n', '')
+        mock_has_carrier.return_value = True
+        interfaces = self.hardware.list_network_interfaces()
+        self.assertEqual(1, len(interfaces))
+        self.assertEqual('eth0', interfaces[0].name)
+        self.assertEqual(
+            '00:0c:29:8c:11:b1',
+            interfaces[0].mac_address)
+
 
 @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)

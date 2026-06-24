@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Interfaces with MAC addresses whose first octet is ``0xFA``
+    are now automatically excluded from discovery and lookup.
+    This prevents duplicate node errors when enrolling servers
+    such as HPE Gen12 that stamp the same locally-administered
+    OUI (e.g. ``fa:4b:7f``) on internal interfaces across
+    multiple machines. A warning is logged for each ignored
+    interface advising operators to investigate, as the
+    presence of such an address may indicate an in-band BMC
+    connection with potential security implications.
