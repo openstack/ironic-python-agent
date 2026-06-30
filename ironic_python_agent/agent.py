@@ -534,6 +534,16 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
         md5_allowed = config.get('agent_md5_checksum_enable')
         if md5_allowed is not None:
             cfg.CONF.set_override('md5_enabled', md5_allowed)
+        # Apply TLS configuration from Ironic
+        tls_min_version = config.get('tls_min_version')
+        if tls_min_version:
+            cfg.CONF.set_override('tls_min_version', tls_min_version)
+            LOG.info('TLS minimum version set to %s from Ironic',
+                     tls_min_version)
+        tls_cipher_suites = config.get('tls_cipher_suites')
+        if tls_cipher_suites:
+            cfg.CONF.set_override('tls_cipher_suites', tls_cipher_suites)
+            LOG.info('TLS cipher suites configured from Ironic')
         token = config.get('agent_token')
         if token:
             if len(token) >= 32:

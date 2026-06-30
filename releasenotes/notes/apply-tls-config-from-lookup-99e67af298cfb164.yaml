@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    The agent now applies TLS configuration received from Ironic's
+    ``/v1/lookup`` endpoint response. When Ironic sends ``tls_min_version``
+    and ``tls_cipher_suites`` in the lookup response, IPA will override its
+    local configuration with these values. This ensures consistent TLS
+    security policy across all agent-to-Ironic communication channels,
+    matching the security requirements configured in Ironic.
