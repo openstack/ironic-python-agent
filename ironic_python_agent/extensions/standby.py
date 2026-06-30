@@ -400,6 +400,17 @@ def _write_whole_disk_image(image, image_info, device, source_format=None,
     disk_utils.trigger_device_rescan(device)
 
 
+def _is_partition_image(image_info: dict) -> bool:
+    """Check if an image is a partition image based on it's image_info.
+
+    :param image_info: Image information dictionary.
+
+    :returns: True if image_info indicates the image is a partition image.
+              False otherwise.
+    """
+    return image_info.get('image_type') == 'partition'
+
+
 def _write_image(image_info, device, configdrive=None):
     """Writes an image to the specified device.
 
@@ -424,7 +435,7 @@ def _write_image(image_info, device, configdrive=None):
     size_mb = int((size + units.Mi - 1) / units.Mi)
 
     uuids = {}
-    if image_info.get('image_type') == 'partition':
+    if _is_partition_image(image_info):
         uuids = _write_partition_image(image, image_info, device,
                                        configdrive,
                                        source_format=source_format,
@@ -974,7 +985,7 @@ class StandbyExtension(base.BaseAgentExtension):
         if self.partition_uuids is None:
             self.partition_uuids = {}
 
-        if image_info.get('image_type') == 'partition':
+        if _is_partition_image(image_info):
             return
 
         try:
@@ -1009,6 +1020,7 @@ class StandbyExtension(base.BaseAgentExtension):
              large to store on the given device.
         """
         LOG.debug('Preparing image %s', image_info['id'])
+
         # NOTE(dtantsur): backward compatibility
         if configdrive is None:
             configdrive = image_info.pop('configdrive', None)
@@ -1026,7 +1038,7 @@ class StandbyExtension(base.BaseAgentExtension):
                           self.cached_image_id)
 
             if stream_raw_images and requested_disk_format == 'raw':
-                if image_info.get('image_type') == 'partition':
+                if _is_partition_image(image_info):
                     # NOTE(JayF): This only creates partitions due to image
                     #             being None
                     self.partition_uuids = _write_partition_image(None,
