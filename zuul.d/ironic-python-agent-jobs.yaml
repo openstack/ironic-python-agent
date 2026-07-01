@@ -99,6 +99,7 @@
         # NOTE(dtantsur): the ansible deploy doesn't depend on IPA code,
         # excluding it from the enabled list to save gate time.
         IRONIC_ENABLED_DEPLOY_INTERFACES: "direct"
+        IRONIC_DIB_RAMDISK_OS: "centos9"
       devstack_services:
         ir-novnc: False
 
