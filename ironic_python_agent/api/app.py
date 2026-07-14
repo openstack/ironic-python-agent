@@ -115,7 +115,6 @@ class Application(object):
             routing.Rule('/commands/', endpoint='run_command',
                          methods=['POST']),
         ])
-        self.security_get_token_support = False
 
     def __call__(self, environ, start_response):
         """WSGI entry point."""
@@ -217,13 +216,7 @@ class Application(object):
     def require_agent_token_for_command(func):
         def wrapper(self, request, *args, **kwargs):
             token = request.args.get('agent_token', None)
-            if token:
-                # TODO(TheJulia): At some point down the road, remove the
-                # self.security_get_token_support flag and use the same
-                # decorator for the api_run_command endpoint.
-                self.security_get_token_support = True
-            if (self.security_get_token_support
-                and not self.agent.validate_agent_token(token)):
+            if not self.agent.validate_agent_token(token):
                 raise http_exc.Unauthorized('Token invalid.')
             return func(self, request, *args, **kwargs)
         return wrapper
@@ -245,15 +238,12 @@ class Application(object):
 
             return jsonify(result)
 
+    @require_agent_token_for_command
     def api_run_command(self, request):
         body = request.get_json(force=True)
         if ('name' not in body or 'params' not in body
                 or not isinstance(body['params'], dict)):
             raise http_exc.BadRequest('Missing or invalid name or params')
-        token = request.args.get('agent_token', None)
-        if not self.agent.validate_agent_token(token):
-            raise http_exc.Unauthorized(
-                'Token invalid.')
         with metrics_utils.get_metrics_logger(__name__).timer('run_command'):
             result = self.agent.execute_command(body['name'], **body['params'])
             wait = request.args.get('wait')
