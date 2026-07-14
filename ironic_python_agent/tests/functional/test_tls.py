@@ -86,6 +86,7 @@ class TestTLSEnforcement(test_base.BaseTestCase):
             '127.0.0.1'
         )
 
+        self.agent_token = '678123'
         # Start agent with TLS enabled
         self.process = multiprocessing.Process(
             target=_start_agent_with_tls,
@@ -99,7 +100,7 @@ class TestTLSEnforcement(test_base.BaseTestCase):
                   300,
                   1,
                   True,
-                  '678123',
+                  self.agent_token,
                   self.cert_file,
                   self.key_file))
         self.process.start()
@@ -162,6 +163,9 @@ class TestTLSEnforcement(test_base.BaseTestCase):
         adapter = SSLContextAdapter(ctx)
         session = requests.Session()
         session.mount('https://', adapter)
+
+        separator = '&' if '?' in path else '?'
+        path = f'{path}{separator}agent_token={self.agent_token}'
 
         # Disable cert verification at the requests level as well
         res = session.request(
