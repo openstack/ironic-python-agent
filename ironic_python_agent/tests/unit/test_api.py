@@ -329,46 +329,37 @@ class TestIronicAPI(ironic_agent_base.IronicAgentTest):
         self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
         self.assertEqual(0, self.mock_agent.get_command_result.call_count)
 
-    def test_get_command_locks_out_with_token(self):
-        """Tests agent backwards compatibility and verifies upgrade lockout."""
+    def test_get_command_requires_token_without_one(self):
+        """Tests LP#2160196: GET must not skip validation without a token.
+
+        GET endpoints must always call validate_agent_token, even when
+        the request carries no agent_token at all, instead of only
+        enforcing validation once some earlier GET happened to supply
+        one.
+        """
         cmd_result = base.SyncCommandResult('do_things',
                                             {'key': 'value'},
                                             True,
                                             {'test': 'result'})
-        cmd_result.serialize()
         self.mock_agent.get_command_result.return_value = cmd_result
-        agent_token = str('0123456789' * 10)
         self.mock_agent.validate_agent_token.return_value = False
 
-        # Backwards compatible operation check.
         response = self.get_json(
-            '/commands/abc123')
-        self.assertEqual(200, response.status_code)
-        self.assertFalse(self.app.security_get_token_support)
-        self.assertEqual(1, self.mock_agent.get_command_result.call_count)
-        self.mock_agent.reset_mock()
+            '/commands/abc123', expect_errors=True)
 
-        # Check with a newer ironic sending an agent_token upon the command.
-        # For context, in this case the token is wrong intentionally.
-        # It doesn't have to be right, but what we're testing is the
-        # submission of any value triggers the lockout
-        response = self.get_json(
-            '/commands/abc123?agent_token=%s' % agent_token,
-            expect_errors=True)
-        self.assertTrue(self.app.security_get_token_support)
         self.assertEqual(401, response.status_code)
         self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
         self.assertEqual(0, self.mock_agent.get_command_result.call_count)
 
-        # Verifying the lockout is now being enforced and that agent token
-        # is now required by the agent.
-        response = self.get_json(
-            '/commands/abc123', expect_errors=True)
-        self.assertTrue(self.app.security_get_token_support)
+    def test_list_commands_requires_token_without_one(self):
+        """Tests LP#2160196: GET must not skip validation without a token."""
+        self.mock_agent.validate_agent_token.return_value = False
+
+        response = self.get_json('/commands', expect_errors=True)
+
         self.assertEqual(401, response.status_code)
-        self.assertEqual(0, self.mock_agent.get_command_result.call_count)
-        # Verify we still called validate_agent_token
-        self.assertEqual(2, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(1, self.mock_agent.validate_agent_token.call_count)
+        self.assertEqual(0, self.mock_agent.list_command_results.call_count)
 
     def test_execute_agent_command_with_token(self):
         agent_token = str('0123456789' * 10)

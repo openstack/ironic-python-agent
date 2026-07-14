@@ -1,0 +1,12 @@
+---
+security:
+  - |
+    The ``GET /v1/commands`` and ``GET /v1/commands/<uuid>`` API endpoints
+    now always validate the ``agent_token``, matching the ``POST``
+    endpoint. Previously, these ``GET`` endpoints only started enforcing
+    the token once a ``GET`` request happened to supply one, so if that
+    never occurred, e.g. in typical ``POST``/heartbeat-driven
+    deployments, the endpoints could remain unauthenticated indefinitely.
+    See `bug 2160196
+    <https://bugs.launchpad.net/ironic-python-agent/+bug/2160196>`_
+    for details.
