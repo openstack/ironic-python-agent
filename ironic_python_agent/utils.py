@@ -19,9 +19,11 @@ import copy
 import errno
 import glob
 import io
+import ipaddress
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -760,6 +762,7 @@ def get_partition_table_type_from_specs(node):
 
 
 _LARGE_KEYS = frozenset(['configdrive', 'system_logs'])
+_VALID_NTP_SERVER_RE = re.compile(r'^[a-zA-Z0-9.:_-]+$')
 
 
 def remove_large_keys(var):
@@ -794,6 +797,27 @@ def determine_time_method():
     return None
 
 
+def _validate_ntp_server(ntp_server):
+    """Validate an NTP server address for safety.
+
+    :param ntp_server: The NTP server address string.
+    :raises: CommandExecutionError if the value is not valid.
+    """
+    try:
+        ipaddress.ip_address(ntp_server)
+        return
+    except ValueError:
+        pass
+
+    if (ntp_server
+            and len(ntp_server) <= 253
+            and _VALID_NTP_SERVER_RE.match(ntp_server)):
+        return
+
+    raise errors.CommandExecutionError(
+        'Invalid NTP server address: %s' % ntp_server)
+
+
 def sync_clock(ignore_errors=False):
     """Syncs the software clock of the system.
 
@@ -817,6 +841,8 @@ def sync_clock(ignore_errors=False):
     if not CONF.ntp_server:
         return
 
+    _validate_ntp_server(CONF.ntp_server)
+
     method = determine_time_method()
 
     if method == 'ntpdate':
@@ -834,8 +860,9 @@ def sync_clock(ignore_errors=False):
             # stop chronyd, ignore if it ran before or not
             execute('chronyc', 'shutdown', check_exit_code=[0, 1])
             # force a time sync now
-            query = "server " + CONF.ntp_server + " iburst"
-            execute("chronyd -q \'%s\'" % query, shell=True)
+            query = ("server %s iburst"
+                     % shlex.quote(CONF.ntp_server))
+            execute('chronyd', '-q', query)
             LOG.debug('Set software clock using chrony')
         except (processutils.ProcessExecutionError,
                 errors.CommandExecutionError) as e:

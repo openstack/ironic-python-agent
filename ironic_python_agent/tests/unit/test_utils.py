@@ -846,7 +846,7 @@ class TestClockSyncUtils(ironic_agent_base.IronicAgentTest):
         utils.sync_clock()
         mock_execute.assert_has_calls([
             mock.call('chronyc', 'shutdown', check_exit_code=[0, 1]),
-            mock.call("chronyd -q 'server 192.168.1.1 iburst'", shell=True),
+            mock.call('chronyd', '-q', 'server 192.168.1.1 iburst'),
         ])
 
     @mock.patch.object(utils, 'determine_time_method', autospec=True)
@@ -876,6 +876,126 @@ class TestClockSyncUtils(ironic_agent_base.IronicAgentTest):
         mock_time_method.return_value = None
         utils.sync_clock()
         self.assertEqual(0, mock_execute.call_count)
+
+    def test_sync_clock_invalid_ntp_server_shell_escape(
+            self, mock_execute):
+        self.config(ntp_server="'; rm -rf /; echo '")
+        self.assertRaisesRegex(
+            errors.CommandExecutionError,
+            'Invalid NTP server address',
+            utils.sync_clock)
+        mock_execute.assert_not_called()
+
+    def test_sync_clock_invalid_ntp_server_command_sub(
+            self, mock_execute):
+        self.config(ntp_server='$(reboot)')
+        self.assertRaisesRegex(
+            errors.CommandExecutionError,
+            'Invalid NTP server address',
+            utils.sync_clock)
+        mock_execute.assert_not_called()
+
+    def test_sync_clock_invalid_ntp_server_backtick(
+            self, mock_execute):
+        self.config(ntp_server='`reboot`')
+        self.assertRaisesRegex(
+            errors.CommandExecutionError,
+            'Invalid NTP server address',
+            utils.sync_clock)
+        mock_execute.assert_not_called()
+
+    def test_sync_clock_invalid_ntp_server_pipe(
+            self, mock_execute):
+        self.config(ntp_server='foo | bar')
+        self.assertRaisesRegex(
+            errors.CommandExecutionError,
+            'Invalid NTP server address',
+            utils.sync_clock)
+        mock_execute.assert_not_called()
+
+    def test_sync_clock_invalid_ntp_server_chain(
+            self, mock_execute):
+        self.config(ntp_server='foo && bar')
+        self.assertRaisesRegex(
+            errors.CommandExecutionError,
+            'Invalid NTP server address',
+            utils.sync_clock)
+        mock_execute.assert_not_called()
+
+    def test_sync_clock_invalid_ntp_server_space(
+            self, mock_execute):
+        self.config(ntp_server='foo bar')
+        self.assertRaisesRegex(
+            errors.CommandExecutionError,
+            'Invalid NTP server address',
+            utils.sync_clock)
+        mock_execute.assert_not_called()
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_valid_ipv6(self, mock_time_method,
+                                   mock_execute):
+        self.config(ntp_server='2001:db8::1')
+        mock_time_method.return_value = 'ntpdate'
+        utils.sync_clock()
+        mock_execute.assert_has_calls(
+            [mock.call('ntpdate', '2001:db8::1')])
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_valid_hostname(self, mock_time_method,
+                                       mock_execute):
+        self.config(ntp_server='ntp.example.com')
+        mock_time_method.return_value = 'ntpdate'
+        utils.sync_clock()
+        mock_execute.assert_has_calls(
+            [mock.call('ntpdate', 'ntp.example.com')])
+
+    @mock.patch.object(utils, 'determine_time_method', autospec=True)
+    def test_sync_clock_valid_hostname_with_hyphens(
+            self, mock_time_method, mock_execute):
+        self.config(ntp_server='my-ntp_server.example.com')
+        mock_time_method.return_value = 'ntpdate'
+        utils.sync_clock()
+        mock_execute.assert_has_calls(
+            [mock.call('ntpdate',
+                       'my-ntp_server.example.com')])
+
+    def test_validate_ntp_server_valid_ipv4(self, mock_execute):
+        utils._validate_ntp_server('192.168.1.1')
+
+    def test_validate_ntp_server_valid_ipv6(self, mock_execute):
+        utils._validate_ntp_server('2001:db8::1')
+
+    def test_validate_ntp_server_valid_hostname(self,
+                                                mock_execute):
+        utils._validate_ntp_server('ntp.example.com')
+
+    def test_validate_ntp_server_rejects_semicolon(
+            self, mock_execute):
+        self.assertRaises(
+            errors.CommandExecutionError,
+            utils._validate_ntp_server,
+            "'; rm -rf /; echo '")
+
+    def test_validate_ntp_server_rejects_dollar(self,
+                                                mock_execute):
+        self.assertRaises(
+            errors.CommandExecutionError,
+            utils._validate_ntp_server,
+            '$(reboot)')
+
+    def test_validate_ntp_server_rejects_backtick(
+            self, mock_execute):
+        self.assertRaises(
+            errors.CommandExecutionError,
+            utils._validate_ntp_server,
+            '`reboot`')
+
+    def test_validate_ntp_server_rejects_space(self,
+                                               mock_execute):
+        self.assertRaises(
+            errors.CommandExecutionError,
+            utils._validate_ntp_server,
+            'foo bar')
 
 
 @mock.patch.object(utils, '_unmount_any_config_drives', autospec=True)

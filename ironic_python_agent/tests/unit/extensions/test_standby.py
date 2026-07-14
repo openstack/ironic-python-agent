@@ -1471,8 +1471,8 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.agent_extension._sync_clock()
 
         calls = [mock.call('chronyc', 'shutdown', check_exit_code=[0, 1]),
-                 mock.call("chronyd -q 'server 192.168.1.1 iburst'",
-                           shell=True),
+                 mock.call('chronyd', '-q',
+                           'server 192.168.1.1 iburst'),
                  mock.call('hwclock', '-v', '--systohc')]
         execute_mock.assert_has_calls(calls)
 
