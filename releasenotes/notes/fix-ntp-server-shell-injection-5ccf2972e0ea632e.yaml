@@ -1,0 +1,12 @@
+---
+security:
+  - |
+    Fixes a shell command injection vulnerability in the NTP clock
+    synchronization when using chrony. The ``ntp_server`` configuration
+    value was interpolated into a shell command string, allowing
+    a crafted value to execute arbitrary system commands. The chrony
+    execution path no longer uses a shell, and the ``ntp_server``
+    value is now validated and sanitized before use.
+    See `bug 2160050
+    <https://bugs.launchpad.net/ironic-python-agent/+bug/2160050>`_
+    for details.
