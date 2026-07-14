@@ -60,6 +60,7 @@ class FunctionalBase(test_base.BaseTestCase):
         # Build a basic standalone agent using the config option defaults.
         # 127.0.0.1:6835 is the fake Ironic client.
 
+        self.agent_token = '678123'
         self.process = multiprocessing.Process(
             target=_start_agent,
             args=('http://127.0.0.1:6835',
@@ -72,7 +73,7 @@ class FunctionalBase(test_base.BaseTestCase):
                   300,
                   1,
                   True,
-                  '678123'))
+                  self.agent_token))
         self.process.start()
         self.addCleanup(self.process.terminate)
 
@@ -91,7 +92,7 @@ class FunctionalBase(test_base.BaseTestCase):
                       % (max_tries * sleep_time))
 
     def request(self, method, path, expect_error=None, expect_json=True,
-                **kwargs):
+                with_token=True, **kwargs):
         """Send a request to the agent and verifies response.
 
         :param method: type of request to send as a string
@@ -106,6 +107,9 @@ class FunctionalBase(test_base.BaseTestCase):
                  expect_error
         :returns: the response object
         """
+        if with_token:
+            separator = '&' if '?' in path else '?'
+            path = f'{path}{separator}agent_token={self.agent_token}'
         res = requests.request(method, 'http://localhost:%s/v1/%s' %
                                (self.test_port, path), **kwargs)
         if expect_error is not None:

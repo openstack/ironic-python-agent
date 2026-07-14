@@ -26,6 +26,11 @@ class TestCommands(base.FunctionalBase):
 
     node = {'uuid': '1', 'properties': {}, 'instance_info': {}}
 
+    def step_0_agent_token_required(self):
+        """Validate that the agent token is required at startup."""
+        self.request(method='get', path='commands',
+                     expect_error=401, with_token=False)
+
     def step_1_get_empty_commands(self):
         response = self.request('get', 'commands')
         self.assertEqual({'commands': []}, response)
@@ -37,7 +42,7 @@ class TestCommands(base.FunctionalBase):
         # success is required for steps 3 and 4 to succeed.
         command = {'name': 'clean.get_clean_steps',
                    'params': {'node': self.node, 'ports': {}}}
-        response = self.request('post', 'commands/?agent_token=678123',
+        response = self.request('post', 'commands/',
                                 json=command,
                                 headers={'Content-Type': 'application/json'})
         self.assertIsNone(response['command_error'])
@@ -64,7 +69,7 @@ class TestCommands(base.FunctionalBase):
 
     def step_5_run_non_existent_command(self):
         fake_command = {'name': 'bad_extension.fake_command', 'params': {}}
-        self.request('post', 'commands/?agent_token=678123',
+        self.request('post', 'commands/',
                      expect_error=404, json=fake_command)
 
     def positive_get_post_command_steps(self):
