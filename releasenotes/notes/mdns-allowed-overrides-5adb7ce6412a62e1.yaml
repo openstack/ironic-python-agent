@@ -1,0 +1,12 @@
+---
+features:
+  - |
+    Added a new ``[mdns]/allowed_overrides`` option, a list of
+    configuration option names that are allowed to be overridden via
+    mDNS. It is unset by default, which preserves today's behavior of
+    allowing any recognized configuration option to be overridden via
+    mDNS. Deployers who use mDNS discovery can set this to an explicit
+    list to restrict which options a rogue mDNS responder could affect,
+    especially security-sensitive ones (e.g. TLS verification,
+    credentials, image integrity checks). A future change may populate a
+    reasonable default list and enable this restriction by default.

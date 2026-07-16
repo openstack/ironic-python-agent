@@ -45,6 +45,22 @@ opts = [
                      '"ipa-inspection-callback-url" to "mdns" enables mDNS '
                      'discovery regardless of this option, since doing so '
                      'requires the same level of access.'),
+    cfg.ListOpt('allowed_overrides',
+                default=None,
+                help='List of configuration option names (without the '
+                     '"ipa_" prefix used in mDNS TXT records) that are '
+                     'allowed to be overridden via mDNS. If not set (the '
+                     'default), any recognized configuration option can '
+                     'be overridden via mDNS, as before this option was '
+                     'added. mDNS responses are not authenticated, so any '
+                     'host able to answer an mDNS query on the local '
+                     'network can supply these overrides; setting this to '
+                     'an explicit list is recommended to limit the '
+                     'options a rogue responder could affect, especially '
+                     'security-sensitive ones (e.g. TLS verification, '
+                     'credentials, image integrity checks). Living in the '
+                     '"mdns" group, this option cannot itself be changed '
+                     'via mDNS.'),
     cfg.IntOpt('lookup_attempts',
                min=1, default=3,
                help='Number of attempts to lookup a service.'),
