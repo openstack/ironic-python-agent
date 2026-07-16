@@ -212,20 +212,34 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
             LOG.warning("Only one of 'keyfile' and 'certfile' options is "
                         "defined in config file. Its value will be ignored.")
         self.ext_mgr = base.init_ext_manager(self)
-        if (not api_url or api_url == 'mdns') and not standalone:
-            try:
-                api_url, params = mdns.get_endpoint('baremetal')
-            except errors.ServiceLookupFailure:
-                if api_url:
-                    # mDNS explicitly requested, report failure.
-                    raise
-                else:
-                    # implicit fallback to mDNS, do not fail (maybe we're only
-                    # running inspection).
-                    LOG.warning('Could not get baremetal endpoint from mDNS, '
-                                'will not heartbeat')
+        mdns_requested = api_url == 'mdns'
+        if mdns_requested and not standalone:
+            # Explicitly requesting the special "mdns" value requires the
+            # same level of access as [mdns] use_mdns (kernel cmdline/
+            # config), so honor it as an opt-in.
+            CONF.set_override('use_mdns', True, group='mdns')
+            api_url = None
+        if not api_url and not standalone:
+            if not CONF.mdns.use_mdns:
+                # implicit fallback to mDNS is disabled by default, do not
+                # fail (maybe we're only running inspection).
+                LOG.warning('Not using mDNS to find the baremetal '
+                            'endpoint: [mdns] use_mdns is False. Will '
+                            'not heartbeat.')
             else:
-                config.override(params)
+                try:
+                    api_url, params = mdns.get_endpoint('baremetal')
+                except errors.ServiceLookupFailure:
+                    if mdns_requested:
+                        # mDNS explicitly requested, report failure.
+                        raise
+                    else:
+                        # implicit fallback to mDNS, do not fail (maybe
+                        # we're only running inspection).
+                        LOG.warning('Could not get baremetal endpoint '
+                                    'from mDNS, will not heartbeat')
+                else:
+                    config.override(params)
         if api_url:
             self.api_urls = list(filter(None, api_url.split(',')))
         else:

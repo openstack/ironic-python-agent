@@ -74,6 +74,11 @@ def inspect():
         return
 
     if CONF.inspection_callback_url == 'mdns':
+        # This callback URL is only ever set to the literal "mdns" as an
+        # explicit, operator-controlled opt-in (there is no implicit
+        # fallback here), requiring the same level of access as [mdns]
+        # use_mdns. Honor it as such.
+        CONF.set_override('use_mdns', True, group='mdns')
         LOG.debug('Fetching the inspection URL from mDNS')
         url, params = mdns.get_endpoint('baremetal-introspection')
         # We expect a proper catalog URL, which doesn't include any path.

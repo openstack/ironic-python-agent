@@ -29,6 +29,22 @@ from ironic_python_agent import utils
 
 
 opts = [
+    cfg.BoolOpt('use_mdns',
+                default=utils.get_agent_params().get('ipa-use-mdns', False),
+                help='Whether to allow discovering the Ironic API URL via '
+                     'multicast DNS (mDNS) when neither "ipa-api-url" nor '
+                     '"ipa-inspection-callback-url" is set at all. mDNS '
+                     'responses are not authenticated, so enabling this '
+                     'option means any host able to answer this multicast '
+                     'query on the local network can control where the '
+                     'agent sends API requests and inspection data, and '
+                     'can override other configuration options. Only '
+                     'enable this if the deployment network is trusted. '
+                     'Can be supplied as the "ipa-use-mdns" kernel '
+                     'parameter. Explicitly setting "ipa-api-url" or '
+                     '"ipa-inspection-callback-url" to "mdns" enables mDNS '
+                     'discovery regardless of this option, since doing so '
+                     'requires the same level of access.'),
     cfg.IntOpt('lookup_attempts',
                min=1, default=3,
                help='Number of attempts to lookup a service.'),
