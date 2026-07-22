@@ -42,34 +42,80 @@ class ContainerHardwareManager(hardware.HardwareManager):
             LOG.debug("Error loading steps from YAML file: %s", e)
             return []
 
+    def _check_permitted(self, container_url, pull_options, run_options,
+                         trusted):
+        """Apply container policy and return the options to execute with.
+
+        Steps baked into the ramdisk are trusted: an operator authored them at
+        build time and they cannot be altered at run time. Steps carrying an
+        image in their arguments, such as from a runbook or deploy template,
+        are not, and are held to [container]allowed_containers.
+
+        :param trusted: whether the step came from the ramdisk itself.
+        :returns: the pull and run options to execute with.
+        :raises ContainerNotPermittedError: if the image is not permitted.
+        """
+        if trusted or CONF.container.allow_arbitrary_containers:
+            return (pull_options or CONF.container.pull_options,
+                    run_options or CONF.container.run_options)
+
+        if container_url not in CONF.container.allowed_containers:
+            # Matching is exact and operators are expected to pin by digest,
+            # so a refusal is usually two long strings differing in one
+            # place. Logging both saves a trip back into the ramdisk to find
+            # out what the allowlist actually said.
+            LOG.error("Refusing to run container %s: it is not listed in "
+                      "[container]allowed_containers, which permits %s",
+                      container_url, CONF.container.allowed_containers)
+            raise errors.ContainerNotPermittedError(container_url)
+
+        # NOTE(cid): options alone defeat an image allowlist (--privileged,
+        # -v /:/host, --entrypoint), so a caller who may not choose the image
+        # may not choose the flags either.
+        return (CONF.container.pull_options, CONF.container.run_options)
+
     def _run_container(self, container_url, pull_options=None,
-                       run_options=None):
+                       run_options=None, trusted=False):
         """Pull and run a container image.
 
         The only place container images are executed. Every entry point routes
         through here so the policy check cannot be reached around.
         """
-        pull_options = pull_options or CONF.container.pull_options
-        run_options = run_options or CONF.container.run_options
+        pull_options, run_options = self._check_permitted(
+            container_url, pull_options, run_options, trusted)
         utils.execute(CONF.container.runner, "pull",
                       *pull_options, container_url)
         utils.execute(CONF.container.runner, "run",
                       *run_options, container_url)
 
-    def container_clean_step(self, node, ports, container_url,
-                             pull_options=None, run_options=None):
+    def _container_step(self, node, ports, container_url, pull_options=None,
+                        run_options=None, trusted=False):
         try:
             self._run_container(container_url, pull_options=pull_options,
-                                run_options=run_options)
+                                run_options=run_options, trusted=trusted)
             LOG.info("Container step completed for image: %s", container_url)
         except Exception as e:
             LOG.exception("Error during container operation: %s", e)
             raise
 
+    def container_clean_step(self, node, ports, container_url,
+                             pull_options=None, run_options=None):
+        """Run a container image supplied through step arguments.
+
+        trusted is hardcoded and deliberately absent from this signature.
+        Step arguments are passed straight through, so making it a
+        parameter would let a runbook assert its own trust.
+        """
+        return self._container_step(node, ports, container_url,
+                                    pull_options=pull_options,
+                                    run_options=run_options, trusted=False)
+
     def _create_cleanup_method(self, container_url, pull_options=None,
                                run_options=None):
-        return partial(self.container_clean_step, container_url=container_url,
-                       pull_options=pull_options, run_options=run_options)
+        """Build the callable invoked for a ramdisk-baked step."""
+        return partial(self._container_step, container_url=container_url,
+                       pull_options=pull_options, run_options=run_options,
+                       trusted=True)
 
     def _create_container_step(self):
         return {
@@ -135,28 +181,21 @@ class ContainerHardwareManager(hardware.HardwareManager):
         return self.get_clean_steps(node, ports)
 
     def __getattr__(self, name):
-        ALLOW_ARBITRARY_CONTAINERS = CONF.container
-        ['allow_arbitrary_containers']
-        ALLOWED_CONTAINERS = CONF.container['allowed_containers']
+        """Resolve a steps file entry to the callable that runs it.
+
+        Container policy is not applied here. Resolving a name is not running
+        it, and enforcing at resolution time has let the guard be skipped
+        silently before; policy lives in _check_permitted().
+        """
         if self.STEPS is None:
             self.STEPS = self._load_steps_from_yaml(
                 CONF.container['container_steps_file'])
 
         for step in self.STEPS:
             if step.get('name') == name:
-                if not ALLOW_ARBITRARY_CONTAINERS:
-                    if step.get('image') not in ALLOWED_CONTAINERS:
-                        LOG.debug(
-                            "%s is not registered as ALLOWED_CONTAINERS "
-                            "in ironic-python-agent.conf", step.get('image')
-                        )
-                        continue
-
                 return self._create_cleanup_method(
                     container_url=step.get('image'),
-                    pull_options=step.get(
-                        'pull_options'),
-                    run_options=step
-                    .get('run_options'))
+                    pull_options=step.get('pull_options'),
+                    run_options=step.get('run_options'))
         raise AttributeError(
             "%s object has no attribute %s", self.__class__.__name__, name)
