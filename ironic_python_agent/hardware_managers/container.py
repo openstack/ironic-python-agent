@@ -42,15 +42,25 @@ class ContainerHardwareManager(hardware.HardwareManager):
             LOG.debug("Error loading steps from YAML file: %s", e)
             return []
 
+    def _run_container(self, container_url, pull_options=None,
+                       run_options=None):
+        """Pull and run a container image.
+
+        The only place container images are executed. Every entry point routes
+        through here so the policy check cannot be reached around.
+        """
+        pull_options = pull_options or CONF.container.pull_options
+        run_options = run_options or CONF.container.run_options
+        utils.execute(CONF.container.runner, "pull",
+                      *pull_options, container_url)
+        utils.execute(CONF.container.runner, "run",
+                      *run_options, container_url)
+
     def container_clean_step(self, node, ports, container_url,
                              pull_options=None, run_options=None):
         try:
-            pull_options = pull_options or CONF.container.pull_options
-            run_options = run_options or CONF.container.run_options
-            utils.execute(CONF.container.runner, "pull",
-                          *pull_options, container_url)
-            utils.execute(CONF.container.runner, "run",
-                          *run_options, container_url)
+            self._run_container(container_url, pull_options=pull_options,
+                                run_options=run_options)
             LOG.info("Container step completed for image: %s", container_url)
         except Exception as e:
             LOG.exception("Error during container operation: %s", e)
