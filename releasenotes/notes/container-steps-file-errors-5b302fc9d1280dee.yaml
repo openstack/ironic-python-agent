@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    Errors reading ``[container]container_steps_file`` are no longer
+    swallowed. A malformed or unreadable steps file was previously logged at
+    debug level and treated as though it contained no steps, so an operator
+    saw their container steps silently disappear. A missing file is still
+    treated as "no container steps", which is the normal case for a ramdisk
+    that defines none.
+  - |
+    Container steps are validated when they are loaded. A step missing its
+    ``name`` or ``image`` key is now reported instead of passing ``None`` to
+    the container runtime.
+  - |
+    The ``container_url`` argument of the built-in container step is now
+    marked as required, so a runbook or deploy template which omits it is
+    rejected rather than failing part way through the step.

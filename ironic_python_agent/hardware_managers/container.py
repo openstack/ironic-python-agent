@@ -54,14 +54,61 @@ class ContainerHardwareManager(hardware.HardwareManager):
         self.STEPS = None
 
     def _load_steps_from_yaml(self, file_path):
-        """Load steps from YAML file."""
+        """Load container steps from the configured YAML file.
+
+        A missing file means the ramdisk defines no container steps, which is
+        normal. A file that exists but cannot be read or parsed is an operator
+        error and is reported rather than treated as "no steps".
+
+        :raises HardwareManagerConfigurationError: if the file exists but
+            cannot be read, parsed, or does not match the expected schema.
+        """
         try:
             with open(file_path, 'r') as file:
                 data = yaml.safe_load(file)
-                return data.get('steps', [])
-        except Exception as e:
-            LOG.debug("Error loading steps from YAML file: %s", e)
+        except FileNotFoundError:
+            LOG.debug("No container steps file at %s", file_path)
             return []
+        except (OSError, yaml.YAMLError) as e:
+            raise errors.HardwareManagerConfigurationError(
+                f"Could not read container steps from {file_path}: {e}"
+            )
+
+        if data is None:
+            return []
+        if not isinstance(data, dict):
+            raise errors.HardwareManagerConfigurationError(
+                f"Container steps file {file_path} must contain a mapping "
+                f"with a 'steps' key, got {type(data).__name__}."
+            )
+
+        steps = data.get('steps') or []
+        if not isinstance(steps, list):
+            raise errors.HardwareManagerConfigurationError(
+                f"'steps' in {file_path} must be a list, got "
+                f"{type(steps).__name__}."
+            )
+        for step in steps:
+            self._validate_step(step, file_path)
+        return steps
+
+    @staticmethod
+    def _validate_step(step, file_path):
+        """Check a single YAML step has what execution will need.
+
+        :raises HardwareManagerConfigurationError: if the step is unusable.
+        """
+        if not isinstance(step, dict):
+            raise errors.HardwareManagerConfigurationError(
+                f"Each container step in {file_path} must be a mapping, got "
+                f"{type(step).__name__}."
+            )
+        for key in ('name', 'image'):
+            if not step.get(key):
+                raise errors.HardwareManagerConfigurationError(
+                    f"Container step '{step.get('name', '<unnamed>')}' in "
+                    f"{file_path} is missing the required '{key}' key."
+                )
 
     def _check_permitted(self, container_url, pull_options, run_options,
                          trusted):
@@ -148,7 +195,8 @@ class ContainerHardwareManager(hardware.HardwareManager):
             "reboot_requested": False,
             "abortable": True,
             "argsinfo": {
-                "container_url": {"description": "Container image URL"},
+                "container_url": {"description": "Container image URL",
+                                  "required": True},
                 "pull_options": {"description": "Pull options",
                                  "required": False},
                 "run_options": {"description": "Run options",
@@ -232,8 +280,8 @@ class ContainerHardwareManager(hardware.HardwareManager):
                 LOG.exception("Missing key '%s' in cleaning step: %s",
                               missing_key, step_name)
                 raise errors.HardwareManagerConfigurationError(
-                    f"Missing required key '{missing_key}' in cleaning step:\
-                    {step_name}"
+                    f"Missing required key {missing_key} in cleaning step: "
+                    f"{step_name}"
                 )
         return steps
 
@@ -308,8 +356,16 @@ class ContainerHardwareManager(hardware.HardwareManager):
         # Not self.STEPS: that recurses here when __init__ has not run.
         steps = self.__dict__.get('STEPS')
         if steps is None:
-            steps = self.STEPS = self._load_steps_from_yaml(
-                CONF.container['container_steps_file'])
+            try:
+                steps = self._load_steps_from_yaml(
+                    CONF.container['container_steps_file'])
+            except errors.HardwareManagerConfigurationError as e:
+                # NOTE(cid): raising here would break dispatch for unrelated
+                # methods, since this manager is consulted first for all of
+                # them. get_clean_steps() reports the same problem loudly.
+                LOG.error("Cannot resolve container step %s: %s", name, e)
+                steps = []
+            self.STEPS = steps
 
         for step in steps:
             if step.get('name') == name:

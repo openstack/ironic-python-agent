@@ -67,6 +67,14 @@ class ContainerTestCase(base.IronicAgentTest):
         self.config(container_steps_file=path, group='container')
         return path
 
+    def _write_raw(self, contents):
+        fd, path = tempfile.mkstemp(suffix='.yaml')
+        with os.fdopen(fd, 'w') as f:
+            f.write(contents)
+        self.addCleanup(os.unlink, path)
+        self.config(container_steps_file=path, group='container')
+        return path
+
     @staticmethod
     def _run_argv(mock_execute):
         """Return the argv of the ``run`` call, ignoring version/pull."""
@@ -226,9 +234,10 @@ class TestStepEntryPoints(ContainerTestCase):
         self.assertEqual('deploy', step['interface'])
         self.assertFalse(step['reboot_requested'])
         self.assertTrue(step['abortable'])
-        self.assertIn('container_url', step['argsinfo'])
-        self.assertIn('pull_options', step['argsinfo'])
-        self.assertIn('run_options', step['argsinfo'])
+        # Only arguments marked required have their presence enforced.
+        self.assertTrue(step['argsinfo']['container_url']['required'])
+        self.assertFalse(step['argsinfo']['pull_options']['required'])
+        self.assertFalse(step['argsinfo']['run_options']['required'])
 
     def test_yaml_step_is_created_trusted(self):
         method = self.hardware._create_cleanup_method(
@@ -325,6 +334,46 @@ class TestStepNameResolution(ContainerTestCase):
         obj = container.ContainerHardwareManager.__new__(
             container.ContainerHardwareManager)
         self.assertRaises(AttributeError, getattr, obj, 'anything')
+
+
+class TestLoadStepsFromYaml(ContainerTestCase):
+    def test_missing_file_is_not_an_error(self):
+        self.assertEqual([], self.hardware._load_steps_from_yaml(
+            '/nonexistent/steps.yaml'))
+
+    def test_nothing_to_load(self):
+        for contents in ('', 'other: value\n', 'steps:\n'):
+            path = self._write_raw(contents)
+            self.assertEqual([], self.hardware._load_steps_from_yaml(path))
+
+    def test_malformed_yaml_is_reported(self):
+        path = self._write_raw('steps: [unclosed\n')
+        self.assertRaises(errors.HardwareManagerConfigurationError,
+                          self.hardware._load_steps_from_yaml, path)
+
+    def test_top_level_not_a_mapping_is_reported(self):
+        path = self._write_raw('- one\n- two\n')
+        self.assertRaises(errors.HardwareManagerConfigurationError,
+                          self.hardware._load_steps_from_yaml, path)
+
+    def test_steps_not_a_list_is_reported(self):
+        path = self._write_raw('steps: not-a-list\n')
+        self.assertRaises(errors.HardwareManagerConfigurationError,
+                          self.hardware._load_steps_from_yaml, path)
+
+    def test_step_missing_required_key_is_reported(self):
+        for contents in ('steps:\n  - name: no_image\n',
+                         'steps:\n  - image: docker://x\n'):
+            path = self._write_raw(contents)
+            self.assertRaises(errors.HardwareManagerConfigurationError,
+                              self.hardware._load_steps_from_yaml, path)
+
+    def test_broken_file_does_not_break_unrelated_dispatch(self):
+        # get_clean_steps reports this loudly; attribute lookup must not take
+        # every other hardware manager method down with it.
+        self._write_raw('steps: [unclosed\n')
+        self.assertRaises(AttributeError,
+                          getattr, self.hardware, 'anything')
 
 
 class TestGetSteps(ContainerTestCase):
