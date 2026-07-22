@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The ``[container]container_conf_file`` option has been removed. It was
+    registered but never read by any code path. A conductor that still sends
+    it is now ignored with a warning rather than failing the lookup, along
+    with any other unrecognized or invalid ``[container]`` option.

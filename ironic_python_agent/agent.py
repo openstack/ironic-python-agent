@@ -532,7 +532,17 @@ class IronicPythonAgent(base.ExecuteCommandMixin):
                                   config['enable_bios_bootloader_install'])
         if config.get('agent_containers'):
             for opt, val in config['agent_containers'].items():
-                cfg.CONF.set_override(opt, val, group='container')
+                # NOTE(cid): a newer conductor may know options this agent
+                # does not. Neither that nor a bad value is worth failing the
+                # lookup and stranding the node over.
+                try:
+                    cfg.CONF.set_override(opt, val, group='container')
+                except cfg.NoSuchOptError:
+                    LOG.warning('Ignoring unknown [container] option %s sent '
+                                'by the conductor', opt)
+                except ValueError as exc:
+                    LOG.warning('Ignoring invalid value for [container]%s '
+                                'sent by the conductor: %s', opt, exc)
         if config.get('metrics'):
             for opt, val in config.items():
                 setattr(cfg.CONF.metrics, opt, val)

@@ -1140,6 +1140,35 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         # Should keep original URLs when none are reachable
         self.assertEqual(original_urls, self.agent.api_urls)
 
+    @staticmethod
+    def _lookup_content(containers):
+        return {'node': {'uuid': 'fake-node'},
+                'config': {'heartbeat_timeout': 300,
+                           'agent_containers': containers}}
+
+    @mock.patch.object(hardware, 'cache_node', autospec=True)
+    def test_process_lookup_data_applies_container_config(self, mock_cache):
+        self.agent.process_lookup_data(
+            self._lookup_content({'runner': 'docker'}))
+        self.assertEqual('docker', CONF.container.runner)
+
+    @mock.patch.object(hardware, 'cache_node', autospec=True)
+    def test_process_lookup_data_skips_unknown_container_option(self,
+                                                                mock_cache):
+        # A ramdisk is built rarely and lives a long time, so it will meet a
+        # conductor which knows options it does not. That must not strand the
+        # node.
+        self.agent.process_lookup_data(
+            self._lookup_content({'no_such_option': 'x', 'runner': 'docker'}))
+        self.assertEqual('docker', CONF.container.runner)
+
+    @mock.patch.object(hardware, 'cache_node', autospec=True)
+    def test_process_lookup_data_skips_invalid_container_value(self,
+                                                               mock_cache):
+        self.agent.process_lookup_data(
+            self._lookup_content({'runner': 'nerdctl'}))
+        self.assertEqual('podman', CONF.container.runner)
+
 
 @mock.patch.object(hardware, '_md_scan_and_assemble', lambda: None)
 @mock.patch.object(hardware, '_check_for_iscsi', lambda: None)

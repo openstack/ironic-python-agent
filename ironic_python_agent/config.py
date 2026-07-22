@@ -516,9 +516,6 @@ container_opts = [
     cfg.ListOpt('run_options',
                 default=['--rm', '--network=host', '--tls-verify=false'],
                 help='Options to use when running containers.'),
-    cfg.StrOpt('container_conf_file',
-               default='/etc/containers/containers.conf',
-               help='Path to the container configuration file in the IPA RAM')
 ]
 
 
