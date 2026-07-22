@@ -23,6 +23,22 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 
+def _as_options(value):
+    """Normalize configured container options into argv elements.
+
+    pull_options and run_options are ListOpts, and lists split on commas
+    rather than whitespace. The conductor sends them as plain strings and the
+    build element writes them space separated, so without this a whole option
+    string reaches the runtime as a single argument. An option value
+    containing a literal space cannot be expressed this way.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = [value]
+    return [word for item in value for word in str(item).split()]
+
+
 class ContainerHardwareManager(hardware.HardwareManager):
     """Hardware manager for container-based cleanup."""
 
@@ -58,8 +74,8 @@ class ContainerHardwareManager(hardware.HardwareManager):
         :raises ContainerNotPermittedError: if the image is not permitted.
         """
         if trusted or CONF.container.allow_arbitrary_containers:
-            return (pull_options or CONF.container.pull_options,
-                    run_options or CONF.container.run_options)
+            return (_as_options(pull_options or CONF.container.pull_options),
+                    _as_options(run_options or CONF.container.run_options))
 
         if container_url not in CONF.container.allowed_containers:
             # Matching is exact and operators are expected to pin by digest,
@@ -74,7 +90,8 @@ class ContainerHardwareManager(hardware.HardwareManager):
         # NOTE(cid): options alone defeat an image allowlist (--privileged,
         # -v /:/host, --entrypoint), so a caller who may not choose the image
         # may not choose the flags either.
-        return (CONF.container.pull_options, CONF.container.run_options)
+        return (_as_options(CONF.container.pull_options),
+                _as_options(CONF.container.run_options))
 
     def _run_container(self, container_url, pull_options=None,
                        run_options=None, trusted=False):

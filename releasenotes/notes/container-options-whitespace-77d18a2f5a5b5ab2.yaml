@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``[container]pull_options`` and ``[container]run_options`` are now
+    accepted whether they are written as a list or as a single whitespace
+    separated string. These options are list valued, and lists split on
+    commas rather than whitespace, so the space separated values sent by the
+    conductor and written by the ``ironic-python-agent-podman`` build element
+    previously reached the container runtime as one long argument and every
+    container step failed. Both spellings now produce the same command line.

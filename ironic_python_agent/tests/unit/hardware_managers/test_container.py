@@ -69,6 +69,27 @@ class ContainerTestCase(base.IronicAgentTest):
         return None
 
 
+class TestOptionNormalization(ContainerTestCase):
+    def test_nothing_to_normalize(self):
+        self.assertEqual([], container._as_options(None))
+        self.assertEqual([], container._as_options([]))
+
+    def test_already_split(self):
+        self.assertEqual(['--rm', '--network=host'],
+                         container._as_options(['--rm', '--network=host']))
+
+    def test_space_separated_single_element(self):
+        # What a conductor sending a StrOpt through a ListOpt produces.
+        self.assertEqual(
+            ['--rm', '--network=host', '--tls-verify=false'],
+            container._as_options(['--rm --network=host --tls-verify=false']))
+
+    def test_bare_string(self):
+        # A runbook can pass one directly as a step argument.
+        self.assertEqual(['--rm', '--network=host'],
+                         container._as_options('--rm --network=host'))
+
+
 class TestContainerHardwareManager(ContainerTestCase):
     def test_evaluate_hardware_support_docker_available(self):
         with mock.patch('ironic_python_agent.utils.execute',
@@ -339,3 +360,26 @@ class TestGetSteps(ContainerTestCase):
                        self.hardware.get_service_steps):
             self.assertRaises(errors.HardwareManagerConfigurationError,
                               getter, self.node, self.ports)
+
+
+class TestConductorConfigRoundTrip(ContainerTestCase):
+    """Regression test for the conductor sending StrOpt into a ListOpt."""
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_space_separated_conductor_options_produce_valid_argv(
+            self, mock_execute):
+        # Exactly the shape the lookup response carries.
+        for opt, val in {
+            'allow_arbitrary_containers': True,
+            'runner': 'podman',
+            'pull_options': '--tls-verify=false',
+            'run_options': '--rm --network=host --tls-verify=false',
+        }.items():
+            CONF.set_override(opt, val, group='container')
+
+        mock_execute.return_value = ('', '')
+        self.hardware.container_clean_step(self.node, self.ports, OTHER_IMAGE)
+        self.assertEqual(
+            ['podman', 'run', '--rm', '--network=host', '--tls-verify=false',
+             OTHER_IMAGE],
+            self._run_argv(mock_execute))
