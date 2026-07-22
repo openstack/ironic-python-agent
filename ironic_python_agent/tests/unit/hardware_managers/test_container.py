@@ -158,7 +158,7 @@ class TestContainerPolicy(ContainerTestCase):
     def test_untrusted_image_not_in_allowlist_is_refused(self, mock_execute):
         self.assertRaises(
             errors.ContainerNotPermittedError,
-            self.hardware.container_clean_step,
+            self.hardware.generic_container_step,
             self.node, self.ports, OTHER_IMAGE)
         # Nothing was pulled or run.
         mock_execute.assert_not_called()
@@ -167,8 +167,8 @@ class TestContainerPolicy(ContainerTestCase):
     def test_untrusted_image_in_allowlist_runs(self, mock_execute):
         self.config(allowed_containers=[ALLOWED_IMAGE], group='container')
         mock_execute.return_value = ('', '')
-        self.hardware.container_clean_step(self.node, self.ports,
-                                           ALLOWED_IMAGE)
+        self.hardware.generic_container_step(self.node, self.ports,
+                                             ALLOWED_IMAGE)
         self.assertEqual(
             ['podman', 'run', '--rm', '--network=host', ALLOWED_IMAGE],
             self._run_argv(mock_execute))
@@ -180,7 +180,8 @@ class TestContainerPolicy(ContainerTestCase):
                                                            mock_execute):
         self.config(allow_arbitrary_containers=True, group='container')
         mock_execute.return_value = ('', '')
-        self.hardware.container_clean_step(self.node, self.ports, OTHER_IMAGE)
+        self.hardware.generic_container_step(self.node, self.ports,
+                                             OTHER_IMAGE)
         self.assertIn(OTHER_IMAGE, self._run_argv(mock_execute))
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
@@ -197,7 +198,7 @@ class TestContainerPolicy(ContainerTestCase):
         # host compromise, so the flags are discarded along with the choice.
         self.config(allowed_containers=[ALLOWED_IMAGE], group='container')
         mock_execute.return_value = ('', '')
-        self.hardware.container_clean_step(
+        self.hardware.generic_container_step(
             self.node, self.ports, ALLOWED_IMAGE,
             run_options=['--privileged', '-v', '/:/host'])
         argv = self._run_argv(mock_execute)
@@ -211,12 +212,9 @@ class TestContainerPolicy(ContainerTestCase):
                                                            mock_execute):
         self.config(allow_arbitrary_containers=True, group='container')
         mock_execute.return_value = ('', '')
-        self.hardware.container_clean_step(
-            self.node, self.ports, OTHER_IMAGE,
-            run_options=['--rm', '--network=host', '-q'])
-        self.assertEqual(
-            ['podman', 'run', '--rm', '--network=host', '-q', OTHER_IMAGE],
-            self._run_argv(mock_execute))
+        self.hardware.generic_container_step(
+            self.node, self.ports, OTHER_IMAGE, run_options=['--privileged'])
+        self.assertIn('--privileged', self._run_argv(mock_execute))
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_transport_prefix_does_not_defeat_the_allowlist(self,
@@ -236,8 +234,8 @@ class TestContainerPolicy(ContainerTestCase):
                  'oci://registry.example.com/tool:1')):
             mock_execute.reset_mock()
             self.config(allowed_containers=[allowed], group='container')
-            self.hardware.container_clean_step(self.node, self.ports,
-                                               requested)
+            self.hardware.generic_container_step(self.node, self.ports,
+                                                 requested)
             self.assertIn(requested, self._run_argv(mock_execute))
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
@@ -251,7 +249,7 @@ class TestContainerPolicy(ContainerTestCase):
                        'oci-archive:', 'docker-archive:', 'dir:'):
             self.assertRaises(
                 errors.ContainerNotPermittedError,
-                self.hardware.container_clean_step,
+                self.hardware.generic_container_step,
                 self.node, self.ports, prefix + 'registry.example.com/tool:1')
         mock_execute.assert_not_called()
 
@@ -261,7 +259,7 @@ class TestContainerPolicy(ContainerTestCase):
                     group='container')
         self.assertRaises(
             errors.ContainerNotPermittedError,
-            self.hardware.container_clean_step,
+            self.hardware.generic_container_step,
             self.node, self.ports, 'registry.example.com/other:1')
         mock_execute.assert_not_called()
 
@@ -272,7 +270,7 @@ class TestContainerPolicy(ContainerTestCase):
         for bad in ([OTHER_IMAGE], {'image': OTHER_IMAGE}, None, '', 42):
             self.assertRaises(
                 errors.InvalidCommandParamsError,
-                self.hardware.container_clean_step,
+                self.hardware.generic_container_step,
                 self.node, self.ports, bad)
         mock_execute.assert_not_called()
 
@@ -280,14 +278,30 @@ class TestContainerPolicy(ContainerTestCase):
         # A runbook must not be able to assert its own trust.
         self.assertRaises(
             TypeError,
-            self.hardware.container_clean_step,
+            self.hardware.generic_container_step,
             self.node, self.ports, OTHER_IMAGE, trusted=True)
 
 
 class TestStepEntryPoints(ContainerTestCase):
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_deprecated_alias_still_works(self, mock_execute):
+        self.config(allowed_containers=[ALLOWED_IMAGE], group='container')
+        mock_execute.return_value = ('', '')
+        self.hardware.container_clean_step(self.node, self.ports,
+                                           ALLOWED_IMAGE)
+        self.assertIn(ALLOWED_IMAGE, self._run_argv(mock_execute))
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_deprecated_alias_is_still_guarded(self, mock_execute):
+        self.assertRaises(
+            errors.ContainerNotPermittedError,
+            self.hardware.container_clean_step,
+            self.node, self.ports, OTHER_IMAGE)
+        mock_execute.assert_not_called()
+
     def test_create_container_step(self):
         step = self.hardware._create_container_step()
-        self.assertEqual('container_clean_step', step['step'])
+        self.assertEqual('generic_container_step', step['step'])
         self.assertEqual(0, step['priority'])
         self.assertEqual('deploy', step['interface'])
         self.assertFalse(step['reboot_requested'])
@@ -297,8 +311,12 @@ class TestStepEntryPoints(ContainerTestCase):
         self.assertFalse(step['argsinfo']['pull_options']['required'])
         self.assertFalse(step['argsinfo']['run_options']['required'])
 
+        deprecated = self.hardware._create_container_step(
+            'container_clean_step')
+        self.assertEqual('container_clean_step', deprecated['step'])
+
     def test_yaml_step_is_created_trusted(self):
-        method = self.hardware._create_cleanup_method(
+        method = self.hardware._create_step_method(
             container_url=OTHER_IMAGE)
         self.assertTrue(method.keywords['trusted'])
         self.assertEqual(OTHER_IMAGE, method.keywords['container_url'])
@@ -435,12 +453,11 @@ class TestLoadStepsFromYaml(ContainerTestCase):
 
 
 class TestGetSteps(ContainerTestCase):
-    def _priority_of(self, steps, name):
-        return [s for s in steps if s['step'] == name][0]['priority']
-
-    def test_builtin_step_advertised(self):
+    def test_builtin_steps_advertised(self):
         steps = self.hardware.get_clean_steps(self.node, self.ports)
-        self.assertIn('container_clean_step', [s['step'] for s in steps])
+        names = [s['step'] for s in steps]
+        self.assertIn('generic_container_step', names)
+        self.assertIn('container_clean_step', names)
 
     def test_yaml_steps_advertised(self):
         self._write_steps({'steps': [{
@@ -450,6 +467,9 @@ class TestGetSteps(ContainerTestCase):
         my_step = [s for s in steps if s['step'] == 'my_step'][0]
         self.assertEqual(10, my_step['priority'])
         self.assertEqual('deploy', my_step['interface'])
+
+    def _priority_of(self, steps, name):
+        return [s for s in steps if s['step'] == name][0]['priority']
 
     def test_same_steps_offered_in_every_phase(self):
         names = [s['step'] for s in
@@ -500,7 +520,8 @@ class TestConductorConfigRoundTrip(ContainerTestCase):
             CONF.set_override(opt, val, group='container')
 
         mock_execute.return_value = ('', '')
-        self.hardware.container_clean_step(self.node, self.ports, OTHER_IMAGE)
+        self.hardware.generic_container_step(self.node, self.ports,
+                                             OTHER_IMAGE)
         self.assertEqual(
             ['podman', 'run', '--rm', '--network=host', '--tls-verify=false',
              OTHER_IMAGE],

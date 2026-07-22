@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    The built-in container step is now called ``generic_container_step``. It
+    lives on the ``deploy`` interface and is used for cleaning, deployment
+    and servicing alike, so the previous name was misleading.
+    ``ContainerHardwareManager`` version has been raised to ``2``.
+deprecations:
+  - |
+    The ``container_clean_step`` step name is deprecated in favour of
+    ``generic_container_step``. It is still advertised and still functional,
+    so existing runbooks and deploy templates continue to work, but it logs a
+    warning when used and will be removed in a future release.

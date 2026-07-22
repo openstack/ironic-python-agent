@@ -64,10 +64,13 @@ class ContainerHardwareManager(hardware.HardwareManager):
     """Hardware manager for container-based cleanup."""
 
     HARDWARE_MANAGER_NAME = "ContainerHardwareManager"
-    HARDWARE_MANAGER_VERSION = "1"
+    # 2: container_clean_step renamed, allowlist enforced on untrusted steps.
+    HARDWARE_MANAGER_VERSION = "2"
 
     # Runtimes support detection scans for; [container]runner picks one.
     CONTAINER_RUNNERS = ("podman", "docker")
+
+    DEPRECATED_STEP_NAME = "container_clean_step"
 
     _RESERVED_NAMES = None
 
@@ -131,8 +134,8 @@ class ContainerHardwareManager(hardware.HardwareManager):
                     f"{file_path} is missing the required '{key}' key."
                 )
 
-    def _check_permitted(self, container_url, pull_options, run_options,
-                         trusted):
+    def _apply_container_policy(self, container_url, pull_options,
+                                run_options, trusted):
         """Apply container policy and return the options to execute with.
 
         Steps baked into the ramdisk are trusted: an operator authored them at
@@ -183,7 +186,7 @@ class ContainerHardwareManager(hardware.HardwareManager):
         The only place container images are executed. Every entry point routes
         through here so the policy check cannot be reached around.
         """
-        pull_options, run_options = self._check_permitted(
+        pull_options, run_options = self._apply_container_policy(
             container_url, pull_options, run_options, trusted)
         self._check_runner_available()
         utils.execute(CONF.container.runner, "pull",
@@ -201,8 +204,8 @@ class ContainerHardwareManager(hardware.HardwareManager):
             LOG.exception("Error during container operation: %s", e)
             raise
 
-    def container_clean_step(self, node, ports, container_url,
-                             pull_options=None, run_options=None):
+    def generic_container_step(self, node, ports, container_url,
+                               pull_options=None, run_options=None):
         """Run a container image supplied through step arguments.
 
         trusted is hardcoded and deliberately absent from this signature.
@@ -213,16 +216,29 @@ class ContainerHardwareManager(hardware.HardwareManager):
                                     pull_options=pull_options,
                                     run_options=run_options, trusted=False)
 
-    def _create_cleanup_method(self, container_url, pull_options=None,
-                               run_options=None):
+    def container_clean_step(self, node, ports, container_url,
+                             pull_options=None, run_options=None):
+        """Deprecated alias for generic_container_step.
+
+        Kept working because runbooks are rows in operators' databases, not
+        something they can re-spell on upgrade.
+        """
+        LOG.warning("The 'container_clean_step' step is deprecated, use "
+                    "'generic_container_step' instead.")
+        return self.generic_container_step(node, ports, container_url,
+                                           pull_options=pull_options,
+                                           run_options=run_options)
+
+    def _create_step_method(self, container_url, pull_options=None,
+                            run_options=None):
         """Build the callable invoked for a ramdisk-baked step."""
         return partial(self._container_step, container_url=container_url,
                        pull_options=pull_options, run_options=run_options,
                        trusted=True)
 
-    def _create_container_step(self):
+    def _create_container_step(self, step_name=None):
         return {
-            "step": "container_clean_step",
+            "step": step_name or "generic_container_step",
             "priority": 0,  # run only manual cleaning
             "interface": "deploy",
             "reboot_requested": False,
@@ -283,7 +299,8 @@ class ContainerHardwareManager(hardware.HardwareManager):
         """
         self.STEPS = self._load_steps_from_yaml(
             CONF.container['container_steps_file'])
-        steps = [self._create_container_step()]
+        steps = [self._create_container_step(),
+                 self._create_container_step(self.DEPRECATED_STEP_NAME)]
         for step in self.STEPS:
             # A step advertised here but refused by __getattr__ would be
             # scheduled and then fail with a confusing "method not found".
@@ -377,9 +394,9 @@ class ContainerHardwareManager(hardware.HardwareManager):
 
         Container policy is not applied here. Resolving a name is not running
         it, and enforcing at resolution time has let the guard be skipped
-        silently before; policy lives in _check_permitted(). Private names are
-        never synthesized, because doing so sends copy, pickle and hasattr
-        probing into a YAML read.
+        silently before; policy lives in _apply_container_policy(). Private
+        names are never synthesized, because doing so sends copy, pickle and
+        hasattr probing into a YAML read.
         """
         if name.startswith('_') or name in self._reserved_names():
             raise AttributeError(
@@ -402,7 +419,7 @@ class ContainerHardwareManager(hardware.HardwareManager):
 
         for step in steps:
             if step.get('name') == name:
-                return self._create_cleanup_method(
+                return self._create_step_method(
                     container_url=step.get('image'),
                     pull_options=step.get('pull_options'),
                     run_options=step.get('run_options'))
