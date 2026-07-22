@@ -289,3 +289,53 @@ class TestStepNameResolution(ContainerTestCase):
         obj = container.ContainerHardwareManager.__new__(
             container.ContainerHardwareManager)
         self.assertRaises(AttributeError, getattr, obj, 'anything')
+
+
+class TestGetSteps(ContainerTestCase):
+    def _priority_of(self, steps, name):
+        return [s for s in steps if s['step'] == name][0]['priority']
+
+    def test_builtin_step_advertised(self):
+        steps = self.hardware.get_clean_steps(self.node, self.ports)
+        self.assertIn('container_clean_step', [s['step'] for s in steps])
+
+    def test_yaml_steps_advertised(self):
+        self._write_steps({'steps': [{
+            'name': 'my_step', 'image': OTHER_IMAGE, 'interface': 'deploy',
+            'reboot_requested': False, 'abortable': True, 'priority': 10}]})
+        steps = self.hardware.get_clean_steps(self.node, self.ports)
+        my_step = [s for s in steps if s['step'] == 'my_step'][0]
+        self.assertEqual(10, my_step['priority'])
+        self.assertEqual('deploy', my_step['interface'])
+
+    def test_same_steps_offered_in_every_phase(self):
+        names = [s['step'] for s in
+                 self.hardware.get_clean_steps(self.node, self.ports)]
+        for getter in (self.hardware.get_deploy_steps,
+                       self.hardware.get_service_steps):
+            self.assertEqual(names,
+                             [s['step'] for s in getter(self.node,
+                                                        self.ports)])
+
+    def test_yaml_priority_applies_to_cleaning_only(self):
+        # A deploy step with priority > 0 runs automatically, so a cleaning
+        # container must not be advertised with its priority intact.
+        self._write_steps({'steps': [{
+            'name': 'my_step', 'image': OTHER_IMAGE, 'interface': 'deploy',
+            'reboot_requested': False, 'abortable': True, 'priority': 20}]})
+        self.assertEqual(20, self._priority_of(
+            self.hardware.get_clean_steps(self.node, self.ports), 'my_step'))
+        self.assertEqual(0, self._priority_of(
+            self.hardware.get_deploy_steps(self.node, self.ports), 'my_step'))
+        self.assertEqual(0, self._priority_of(
+            self.hardware.get_service_steps(self.node, self.ports), 'my_step'))
+
+    def test_missing_priority_reported_in_every_phase(self):
+        self._write_steps({'steps': [{
+            'name': 'my_step', 'image': OTHER_IMAGE, 'interface': 'deploy',
+            'reboot_requested': False, 'abortable': True}]})
+        for getter in (self.hardware.get_clean_steps,
+                       self.hardware.get_deploy_steps,
+                       self.hardware.get_service_steps):
+            self.assertRaises(errors.HardwareManagerConfigurationError,
+                              getter, self.node, self.ports)

@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    A priority set on a step in ``[container]container_steps_file`` now
+    applies to automated cleaning only. ``get_deploy_steps`` and
+    ``get_service_steps`` returned the cleaning step list unchanged. A
+    deploy step with a priority above zero runs automatically, so a
+    container intended for automated cleaning also ran on every deployment
+    and every service operation. The same steps are still offered in those
+    phases, at priority zero, for explicit invocation from a runbook or
+    deploy template.

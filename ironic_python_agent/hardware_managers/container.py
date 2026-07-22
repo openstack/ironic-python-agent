@@ -149,8 +149,13 @@ class ContainerHardwareManager(hardware.HardwareManager):
         LOG.debug("No container runner found, returning NONE")
         return hardware.HardwareSupport.NONE
 
-    def get_clean_steps(self, node, ports):
-        """Dynamically generate cleaning steps."""
+    def _get_steps(self, automatic):
+        """Build the advertised step list.
+
+        :param automatic: whether a step's declared priority is honored. A
+            priority in the steps file describes automated cleaning; other
+            phases expose the same steps for explicit invocation only.
+        """
         self.STEPS = self._load_steps_from_yaml(
             CONF.container['container_steps_file'])
         steps = [self._create_container_step()]
@@ -165,10 +170,13 @@ class ContainerHardwareManager(hardware.HardwareManager):
                     f"in {CONF.container['container_steps_file']}."
                 )
             try:
+                # Read priority even when it is about to be discarded, so a
+                # steps file missing it fails the same way in every phase.
+                priority = step["priority"]
                 steps.append(
                     {
                         "step": step["name"],
-                        "priority": step["priority"],
+                        "priority": priority if automatic else 0,
                         "interface": step['interface'],
                         "reboot_requested": step['reboot_requested'],
                         "abortable": step["abortable"],
@@ -185,11 +193,26 @@ class ContainerHardwareManager(hardware.HardwareManager):
                 )
         return steps
 
+    def get_clean_steps(self, node, ports):
+        """Dynamically generate cleaning steps."""
+        return self._get_steps(automatic=True)
+
     def get_service_steps(self, node, ports):
-        return self.get_clean_steps(node, ports)
+        """Generate service steps, none of which run on their own.
+
+        Priorities in the steps file describe automated cleaning. Honoring
+        them here would run every such container on every service operation.
+        """
+        return self._get_steps(automatic=False)
 
     def get_deploy_steps(self, node, ports):
-        return self.get_clean_steps(node, ports)
+        """Generate deploy steps, none of which run on their own.
+
+        A deploy step with a priority above zero runs automatically, so
+        honoring the steps file priority here would fire a container meant
+        for cleaning on every deployment.
+        """
+        return self._get_steps(automatic=False)
 
     @classmethod
     def _reserved_names(cls):
