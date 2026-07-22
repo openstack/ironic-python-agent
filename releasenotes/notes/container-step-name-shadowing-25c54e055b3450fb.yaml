@@ -1,0 +1,22 @@
+---
+security:
+  - |
+    A container step whose name matched a step the agent already provides
+    silently took its place. Naming a step ``erase_devices_metadata`` in the
+    container steps file ran that container instead of erasing disk metadata,
+    and cleaning then reported success, so a node could be handed to the next
+    tenant with the previous tenant's data still on it. Such a name is now
+    refused, both when the step list is reported and when the step is
+    invoked, and the error names the step and the file it came from instead
+    of the step being scheduled and later failing as "hardware manager method
+    not found". Names belonging to any hardware manager the ramdisk has
+    loaded are protected, not only the ones the agent ships.
+fixes:
+  - |
+    Fixes a ``RecursionError`` when a ``ContainerHardwareManager`` instance is
+    copied, pickled, or otherwise probed before ``__init__`` has run. Private
+    and dunder attribute names are no longer resolved as container steps.
+  - |
+    The ``AttributeError`` raised for an unknown container step now includes
+    the manager and attribute names, instead of an uninterpolated format
+    string and its arguments.

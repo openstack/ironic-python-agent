@@ -29,6 +29,8 @@ class ContainerHardwareManager(hardware.HardwareManager):
     HARDWARE_MANAGER_NAME = "ContainerHardwareManager"
     HARDWARE_MANAGER_VERSION = "1"
 
+    _RESERVED_NAMES = None
+
     def __init__(self):
         self.STEPS = None
 
@@ -153,6 +155,15 @@ class ContainerHardwareManager(hardware.HardwareManager):
             CONF.container['container_steps_file'])
         steps = [self._create_container_step()]
         for step in self.STEPS:
+            # A step advertised here but refused by __getattr__ would be
+            # scheduled and then fail with a confusing "method not found".
+            name = step.get("name")
+            if name in self._reserved_names():
+                raise errors.HardwareManagerConfigurationError(
+                    f"Container step '{name}' collides with an existing "
+                    f"hardware manager method and would shadow it. Rename it "
+                    f"in {CONF.container['container_steps_file']}."
+                )
             try:
                 steps.append(
                     {
@@ -180,22 +191,65 @@ class ContainerHardwareManager(hardware.HardwareManager):
     def get_deploy_steps(self, node, ports):
         return self.get_clean_steps(node, ports)
 
+    @classmethod
+    def _reserved_names(cls):
+        """Names a YAML step is not allowed to claim.
+
+        This manager reports MAINLINE, so it is consulted ahead of every other
+        manager for every dispatch. Without this, a step named
+        erase_devices_metadata would run a container instead of erasing the
+        disk, and the step would be reported as successful. An operator's own
+        hardware manager is as shadowable as the generic one, so every loaded
+        manager contributes the names it answers to.
+        """
+        if cls._RESERVED_NAMES is not None:
+            return cls._RESERVED_NAMES
+
+        names = (frozenset(dir(cls))
+                 | frozenset(dir(hardware.GenericHardwareManager)))
+
+        # NOTE(cid): the loaded managers are read from the cache instead of
+        # being requested with get_managers(). Managers are probed and
+        # initialized inside get_managers_detail(), so asking it for them
+        # from __getattr__ while it is still running re-enters it with the
+        # cache empty and recurses.
+        managers = hardware._global_managers
+        if not managers:
+            # Nothing is loaded yet, so the generic manager is every name
+            # that can be known here. Deliberately left uncached: the full
+            # set is available once loading finishes.
+            return names
+
+        cls._RESERVED_NAMES = names.union(
+            *(frozenset(dir(hwm['manager'])) for hwm in managers))
+        return cls._RESERVED_NAMES
+
     def __getattr__(self, name):
         """Resolve a steps file entry to the callable that runs it.
 
         Container policy is not applied here. Resolving a name is not running
         it, and enforcing at resolution time has let the guard be skipped
-        silently before; policy lives in _check_permitted().
+        silently before; policy lives in _check_permitted(). Private names are
+        never synthesized, because doing so sends copy, pickle and hasattr
+        probing into a YAML read.
         """
-        if self.STEPS is None:
-            self.STEPS = self._load_steps_from_yaml(
+        if name.startswith('_') or name in self._reserved_names():
+            raise AttributeError(
+                '%s object has no attribute %s'
+                % (self.__class__.__name__, name))
+
+        # Not self.STEPS: that recurses here when __init__ has not run.
+        steps = self.__dict__.get('STEPS')
+        if steps is None:
+            steps = self.STEPS = self._load_steps_from_yaml(
                 CONF.container['container_steps_file'])
 
-        for step in self.STEPS:
+        for step in steps:
             if step.get('name') == name:
                 return self._create_cleanup_method(
                     container_url=step.get('image'),
                     pull_options=step.get('pull_options'),
                     run_options=step.get('run_options'))
         raise AttributeError(
-            "%s object has no attribute %s", self.__class__.__name__, name)
+            '%s object has no attribute %s'
+            % (self.__class__.__name__, name))
