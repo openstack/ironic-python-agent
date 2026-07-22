@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    ``[container]allowed_containers`` now ignores the transport prefix when
+    matching, so ``docker://example.com/tool:1`` and ``example.com/tool:1``
+    are recognized as the same image. Previously an allowlist written in one
+    form rejected a runbook that used the other, which read as the allowlist
+    being broken rather than as a spelling mismatch.
+  - |
+    The ``container_url`` step argument is now rejected unless it is a
+    non-empty string. Step arguments are validated by name but not by type,
+    so a runbook passing a list or an object previously reached the container
+    runtime.

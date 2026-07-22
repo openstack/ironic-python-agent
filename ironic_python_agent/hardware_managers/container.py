@@ -22,6 +22,27 @@ import yaml
 CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
+# Transports naming an image in a remote registry, and so the only ones it is
+# safe to look through. oci:// is ironic's own spelling for a registry
+# reference and carries no trademark. Stripping a local transport instead
+# would let containers-storage:example.com/tool:1 match an allowlist entry
+# written for the registry image while running whatever happens to sit in
+# local storage under that name. A transport absent from here fails closed:
+# the reference does not normalize, so it matches nothing and is refused.
+TRANSPORT_PREFIXES = ('docker://', 'oci://')
+
+
+def _normalize_image_ref(value):
+    """Strip the transport prefix from a container image reference.
+
+    ``docker://example.com/tool:1`` and ``example.com/tool:1`` name the same
+    image, so the allowlist must not treat them as different.
+    """
+    for prefix in TRANSPORT_PREFIXES:
+        if value.startswith(prefix):
+            return value[len(prefix):]
+    return value
+
 
 def _as_options(value):
     """Normalize configured container options into argv elements.
@@ -119,15 +140,27 @@ class ContainerHardwareManager(hardware.HardwareManager):
         image in their arguments, such as from a runbook or deploy template,
         are not, and are held to [container]allowed_containers.
 
+        Step arguments are validated by name but not by type, so
+        container_url arrives as whatever JSON the runbook carried and is
+        type checked here.
+
         :param trusted: whether the step came from the ramdisk itself.
         :returns: the pull and run options to execute with.
+        :raises InvalidCommandParamsError: if container_url is not a string.
         :raises ContainerNotPermittedError: if the image is not permitted.
         """
+        if not isinstance(container_url, str) or not container_url:
+            raise errors.InvalidCommandParamsError(
+                "container_url must be a non-empty string, got "
+                f"{type(container_url).__name__}.")
+
         if trusted or CONF.container.allow_arbitrary_containers:
             return (_as_options(pull_options or CONF.container.pull_options),
                     _as_options(run_options or CONF.container.run_options))
 
-        if container_url not in CONF.container.allowed_containers:
+        allowed = {_normalize_image_ref(image)
+                   for image in CONF.container.allowed_containers}
+        if _normalize_image_ref(container_url) not in allowed:
             # Matching is exact and operators are expected to pin by digest,
             # so a refusal is usually two long strings differing in one
             # place. Logging both saves a trip back into the ramdisk to find

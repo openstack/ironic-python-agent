@@ -218,6 +218,64 @@ class TestContainerPolicy(ContainerTestCase):
             ['podman', 'run', '--rm', '--network=host', '-q', OTHER_IMAGE],
             self._run_argv(mock_execute))
 
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_transport_prefix_does_not_defeat_the_allowlist(self,
+                                                            mock_execute):
+        # Same image, any registry spelling, on either side of the comparison.
+        mock_execute.return_value = ('', '')
+        for allowed, requested in (
+                ('registry.example.com/tool:1',
+                 'docker://registry.example.com/tool:1'),
+                ('docker://registry.example.com/tool:1',
+                 'registry.example.com/tool:1'),
+                ('registry.example.com/tool:1',
+                 'oci://registry.example.com/tool:1'),
+                ('oci://registry.example.com/tool:1',
+                 'registry.example.com/tool:1'),
+                ('docker://registry.example.com/tool:1',
+                 'oci://registry.example.com/tool:1')):
+            mock_execute.reset_mock()
+            self.config(allowed_containers=[allowed], group='container')
+            self.hardware.container_clean_step(self.node, self.ports,
+                                               requested)
+            self.assertIn(requested, self._run_argv(mock_execute))
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_local_transports_do_not_reach_the_allowlist(self, mock_execute):
+        # Only docker:// names a registry image. Looking through a local
+        # transport would run whatever sits in local storage or on disk
+        # under a name the operator allowlisted for the registry.
+        self.config(allowed_containers=['registry.example.com/tool:1'],
+                    group='container')
+        for prefix in ('containers-storage:', 'docker-daemon:',
+                       'oci-archive:', 'docker-archive:', 'dir:'):
+            self.assertRaises(
+                errors.ContainerNotPermittedError,
+                self.hardware.container_clean_step,
+                self.node, self.ports, prefix + 'registry.example.com/tool:1')
+        mock_execute.assert_not_called()
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_normalization_does_not_widen_the_allowlist(self, mock_execute):
+        self.config(allowed_containers=['registry.example.com/tool:1'],
+                    group='container')
+        self.assertRaises(
+            errors.ContainerNotPermittedError,
+            self.hardware.container_clean_step,
+            self.node, self.ports, 'registry.example.com/other:1')
+        mock_execute.assert_not_called()
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_non_string_container_url_is_refused(self, mock_execute):
+        # Step arguments are checked by name but not by type.
+        self.config(allow_arbitrary_containers=True, group='container')
+        for bad in ([OTHER_IMAGE], {'image': OTHER_IMAGE}, None, '', 42):
+            self.assertRaises(
+                errors.InvalidCommandParamsError,
+                self.hardware.container_clean_step,
+                self.node, self.ports, bad)
+        mock_execute.assert_not_called()
+
     def test_trusted_is_not_reachable_as_a_step_argument(self):
         # A runbook must not be able to assert its own trust.
         self.assertRaises(
