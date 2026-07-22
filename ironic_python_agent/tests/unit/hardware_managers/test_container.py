@@ -15,6 +15,7 @@ import os
 import tempfile
 from unittest import mock
 
+from oslo_concurrency import processutils
 from oslo_config import cfg
 import yaml
 
@@ -27,6 +28,12 @@ CONF = cfg.CONF
 
 ALLOWED_IMAGE = 'docker://registry.example.com/allowed:latest'
 OTHER_IMAGE = 'docker://registry.example.com/other:latest'
+
+
+def runner_missing(binary):
+    """What utils.execute raises when a runtime cannot be run."""
+    return processutils.ProcessExecutionError(
+        exit_code=1, cmd='%s --version' % binary)
 
 
 class ContainerTestCase(base.IronicAgentTest):
@@ -62,7 +69,7 @@ class ContainerTestCase(base.IronicAgentTest):
 
     @staticmethod
     def _run_argv(mock_execute):
-        """Return the argv of the ``run`` call, ignoring the pull."""
+        """Return the argv of the ``run`` call, ignoring version/pull."""
         for call in mock_execute.call_args_list:
             if len(call.args) > 1 and call.args[1] == 'run':
                 return list(call.args)
@@ -90,57 +97,50 @@ class TestOptionNormalization(ContainerTestCase):
                          container._as_options('--rm --network=host'))
 
 
-class TestContainerHardwareManager(ContainerTestCase):
-    def test_evaluate_hardware_support_docker_available(self):
-        with mock.patch('ironic_python_agent.utils.execute',
-                        autospec=True) as mock_execute:
-            mock_execute.side_effect = [
-                mock.Mock(side_effect=Exception('Podman not found')),
-                ('/usr/bin/docker', '')
-            ]
+class TestEvaluateHardwareSupport(ContainerTestCase):
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_podman_available(self, mock_execute):
+        mock_execute.return_value = ('podman version 5.8.2', '')
+        self.assertEqual(hardware.HardwareSupport.MAINLINE,
+                         self.hardware.evaluate_hardware_support())
+        mock_execute.assert_called_once_with('podman', '--version')
 
-            support_level = self.hardware.evaluate_hardware_support()
-            mock_execute.assert_called_with('which', 'docker')
-            self.assertEqual(support_level, hardware.HardwareSupport.MAINLINE)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_docker_available(self, mock_execute):
+        mock_execute.side_effect = [
+            runner_missing('podman'),
+            ('Docker version 29.1.3', ''),
+        ]
+        self.assertEqual(hardware.HardwareSupport.MAINLINE,
+                         self.hardware.evaluate_hardware_support())
+        mock_execute.assert_has_calls([mock.call('podman', '--version'),
+                                       mock.call('docker', '--version')])
 
-    def test_evaluate_hardware_support_podman_available(self):
-        with mock.patch('ironic_python_agent.utils.execute',
-                        autospec=True) as mock_execute:
-            mock_execute.return_value = ('/usr/bin/podman', '')
-            support_level = self.hardware.evaluate_hardware_support()
-            mock_execute.assert_called_with('which', 'podman')
-            self.assertEqual(support_level, hardware.HardwareSupport.MAINLINE)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_no_runners(self, mock_execute):
+        mock_execute.side_effect = runner_missing('any')
+        self.assertEqual(hardware.HardwareSupport.NONE,
+                         self.hardware.evaluate_hardware_support())
 
-    def test_evaluate_hardware_support_no_runners(self):
-        with mock.patch('ironic_python_agent.utils.execute',
-                        autospec=True) as mock_execute:
-            mock_execute.side_effect = Exception('Runner not found')
-            support_level = self.hardware.evaluate_hardware_support()
-            expected_calls = [
-                mock.call('which', 'podman'),
-                mock.call('which', 'docker')
-            ]
-            mock_execute.assert_has_calls(expected_calls, any_order=True)
-            self.assertEqual(support_level, hardware.HardwareSupport.NONE)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_installed_but_unrunnable_runtime_is_not_support(self,
+                                                             mock_execute):
+        # Locating the binary is not enough: a runtime that cannot execute
+        # would have passed a 'which' check and then failed at step time.
+        mock_execute.side_effect = processutils.ProcessExecutionError(
+            exit_code=127, cmd='podman --version',
+            stderr='error creating libpod runtime')
+        self.assertEqual(hardware.HardwareSupport.NONE,
+                         self.hardware.evaluate_hardware_support())
 
-    def test_container_runners_list(self):
-        expected_runners = ["podman", "docker"]
-        runners = getattr(self.hardware, 'CONTAINERS_RUNNERS',
-                          ["podman", "docker"])
-        self.assertEqual(runners, expected_runners)
-
-    def test_create_container_step(self):
-        step = self.hardware._create_container_step()
-
-        self.assertEqual(step['step'], 'container_clean_step')
-        self.assertEqual(step['priority'], 0)
-        self.assertEqual(step['interface'], 'deploy')
-        self.assertFalse(step['reboot_requested'])
-        self.assertTrue(step['abortable'])
-
-        self.assertIn('container_url', step['argsinfo'])
-        self.assertIn('pull_options', step['argsinfo'])
-        self.assertIn('run_options', step['argsinfo'])
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test_configured_runner_missing_is_reported(self, mock_execute):
+        # Support detection deliberately ignores [container]runner because it
+        # runs before lookup; execution must still refuse a missing runtime.
+        self.config(runner='docker', group='container')
+        mock_execute.side_effect = runner_missing('docker')
+        self.assertRaises(errors.HardwareManagerConfigurationError,
+                          self.hardware._check_runner_available)
 
 
 class TestContainerPolicy(ContainerTestCase):
@@ -164,6 +164,8 @@ class TestContainerPolicy(ContainerTestCase):
         self.assertEqual(
             ['podman', 'run', '--rm', '--network=host', ALLOWED_IMAGE],
             self._run_argv(mock_execute))
+        # The configured runtime is checked before anything is pulled.
+        mock_execute.assert_any_call('podman', '--version')
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test_allow_arbitrary_containers_bypasses_allowlist(self,
@@ -214,6 +216,19 @@ class TestContainerPolicy(ContainerTestCase):
             TypeError,
             self.hardware.container_clean_step,
             self.node, self.ports, OTHER_IMAGE, trusted=True)
+
+
+class TestStepEntryPoints(ContainerTestCase):
+    def test_create_container_step(self):
+        step = self.hardware._create_container_step()
+        self.assertEqual('container_clean_step', step['step'])
+        self.assertEqual(0, step['priority'])
+        self.assertEqual('deploy', step['interface'])
+        self.assertFalse(step['reboot_requested'])
+        self.assertTrue(step['abortable'])
+        self.assertIn('container_url', step['argsinfo'])
+        self.assertIn('pull_options', step['argsinfo'])
+        self.assertIn('run_options', step['argsinfo'])
 
     def test_yaml_step_is_created_trusted(self):
         method = self.hardware._create_cleanup_method(

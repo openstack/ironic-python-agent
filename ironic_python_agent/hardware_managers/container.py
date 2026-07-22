@@ -45,6 +45,9 @@ class ContainerHardwareManager(hardware.HardwareManager):
     HARDWARE_MANAGER_NAME = "ContainerHardwareManager"
     HARDWARE_MANAGER_VERSION = "1"
 
+    # Runtimes support detection scans for; [container]runner picks one.
+    CONTAINER_RUNNERS = ("podman", "docker")
+
     _RESERVED_NAMES = None
 
     def __init__(self):
@@ -102,6 +105,7 @@ class ContainerHardwareManager(hardware.HardwareManager):
         """
         pull_options, run_options = self._check_permitted(
             container_url, pull_options, run_options, trusted)
+        self._check_runner_available()
         utils.execute(CONF.container.runner, "pull",
                       *pull_options, container_url)
         utils.execute(CONF.container.runner, "run",
@@ -153,18 +157,41 @@ class ContainerHardwareManager(hardware.HardwareManager):
         }
 
     def evaluate_hardware_support(self):
-        """Determine if container runner exists and return support level."""
-        containers_runners = ["podman", "docker"]
-        for runner in containers_runners:
+        """Determine if a container runner exists and return support level.
+
+        [container]runner is not consulted here. Managers are evaluated before
+        the lookup response is applied, so it would test a value the conductor
+        is about to replace. _check_runner_available() checks the configured
+        runtime at execution time instead.
+
+        The runtime is asked for its version rather than merely located, so a
+        binary that is present but cannot run does not read as support.
+        """
+        for runner in self.CONTAINER_RUNNERS:
             try:
-                stdout, _ = utils.execute("which", runner)
-                LOG.debug("Found %s, returning MAINLINE",
-                          runner)
+                utils.execute(runner, "--version")
+                LOG.debug("Found %s, returning MAINLINE", runner)
                 return hardware.HardwareSupport.MAINLINE
             except Exception as e:
                 LOG.debug("Error checking container runner: %s", e)
-        LOG.debug("No container runner found, returning NONE")
+        LOG.info("No container runtime (%s) is usable in this ramdisk, "
+                 "container based steps are unavailable",
+                 ", ".join(self.CONTAINER_RUNNERS))
         return hardware.HardwareSupport.NONE
+
+    def _check_runner_available(self):
+        """Verify the configured container runner runs in this ramdisk.
+
+        :raises HardwareManagerConfigurationError: if it is not usable.
+        """
+        runner = CONF.container.runner
+        try:
+            utils.execute(runner, "--version")
+        except Exception as e:
+            raise errors.HardwareManagerConfigurationError(
+                f"Configured container runner '{runner}' "
+                f"([container]runner) is not usable in this ramdisk: {e}"
+            )
 
     def _get_steps(self, automatic):
         """Build the advertised step list.
