@@ -1836,6 +1836,12 @@ class TestStandbyExtension(base.IronicAgentTest):
                        '_write_authorized_keys',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
+                       '_cleanup_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_pull_container_image',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
                        '_write_container_auth',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
@@ -1845,6 +1851,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             self,
             no_pivot_mock,
             write_container_auth_mock,
+            pull_container_image_mock,
+            cleanup_container_auth_mock,
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
@@ -1853,22 +1861,26 @@ class TestStandbyExtension(base.IronicAgentTest):
             (('Enforcing\n'), ()),
             ((), ())])
         write_authorized_keys_mock.return_value = '/tmp/fake/file'
+        write_container_auth_mock.return_value = '/tmp/ipa-container-auth.json'
         self.agent_extension._download_container_and_bootc_install(
             'oci://foo/container', '/dev/fake', 'secret', False, 'keys!')
         no_pivot_mock.assert_called_once()
         write_container_auth_mock.assert_called_once_with(mock.ANY,
                                                           'secret',
                                                           'foo')
+        pull_container_image_mock.assert_called_once_with(
+            mock.ANY, 'foo/container', '/tmp/ipa-container-auth.json')
+        cleanup_container_auth_mock.assert_called_once_with(
+            mock.ANY, '/tmp/ipa-container-auth.json')
         get_size_mock.assert_called_once_with('/dev/fake')
         execute_mock.assert_has_calls([
             mock.call('getenforce', use_standard_locale=True),
             mock.call(
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
-                '--pid=host',
+                '--pid=host', '--pull=never',
                 '-v', '/var/lib/containers:/var/lib/containers',
-                '-v', '/dev:/dev', '--retry-delay=5s',
-                '--authfile=/root/.config/containers/auth.json',
+                '-v', '/dev:/dev',
                 '-v', '/tmp:/tmp', '--security-opt',
                 'label=type:unconfined_t', 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
@@ -1884,6 +1896,12 @@ class TestStandbyExtension(base.IronicAgentTest):
                        '_write_authorized_keys',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
+                       '_cleanup_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_pull_container_image',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
                        '_write_container_auth',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
@@ -1893,6 +1911,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             self,
             no_pivot_mock,
             write_container_auth_mock,
+            pull_container_image_mock,
+            cleanup_container_auth_mock,
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
@@ -1901,22 +1921,26 @@ class TestStandbyExtension(base.IronicAgentTest):
             (('Enforcing\n'), ()),
             ((), ())])
         write_authorized_keys_mock.return_value = '/tmp/fake/file'
+        write_container_auth_mock.return_value = '/tmp/ipa-container-auth.json'
         self.agent_extension._download_container_and_bootc_install(
             'oci://foo/container', '/dev/fake', 'secret', True, 'keys!')
         no_pivot_mock.assert_called_once()
         write_container_auth_mock.assert_called_once_with(mock.ANY,
                                                           'secret',
                                                           'foo')
+        pull_container_image_mock.assert_called_once_with(
+            mock.ANY, 'foo/container', '/tmp/ipa-container-auth.json')
+        cleanup_container_auth_mock.assert_called_once_with(
+            mock.ANY, '/tmp/ipa-container-auth.json')
         get_size_mock.assert_called_once_with('/dev/fake')
         execute_mock.assert_has_calls([
             mock.call('getenforce', use_standard_locale=True),
             mock.call(
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
-                '--pid=host',
+                '--pid=host', '--pull=never',
                 '-v', '/var/lib/containers:/var/lib/containers',
-                '-v', '/dev:/dev', '--retry-delay=5s',
-                '--authfile=/root/.config/containers/auth.json',
+                '-v', '/dev:/dev',
                 '-v', '/tmp:/tmp', '--security-opt',
                 'label=type:unconfined_t', 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
@@ -1933,6 +1957,12 @@ class TestStandbyExtension(base.IronicAgentTest):
                        '_write_authorized_keys',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
+                       '_cleanup_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_pull_container_image',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
                        '_write_container_auth',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
@@ -1942,6 +1972,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             self,
             no_pivot_mock,
             write_container_auth_mock,
+            pull_container_image_mock,
+            cleanup_container_auth_mock,
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
@@ -1956,15 +1988,18 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         no_pivot_mock.assert_called_once()
         write_container_auth_mock.assert_not_called()
+        pull_container_image_mock.assert_called_once_with(
+            mock.ANY, 'foo/container')
+        cleanup_container_auth_mock.assert_not_called()
         get_size_mock.assert_called_once_with('/dev/fake')
         execute_mock.assert_has_calls([
             mock.call('getenforce', use_standard_locale=True),
             mock.call(
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
-                '--pid=host',
+                '--pid=host', '--pull=never',
                 '-v', '/var/lib/containers:/var/lib/containers',
-                '-v', '/dev:/dev', '--retry-delay=5s',
+                '-v', '/dev:/dev',
                 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
                 '--skip-fetch-check', '--root-size=13537M',
@@ -1979,6 +2014,12 @@ class TestStandbyExtension(base.IronicAgentTest):
                        '_write_authorized_keys',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
+                       '_cleanup_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_pull_container_image',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
                        '_write_container_auth',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
@@ -1988,6 +2029,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             self,
             no_pivot_mock,
             write_container_auth_mock,
+            pull_container_image_mock,
+            cleanup_container_auth_mock,
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
@@ -2006,15 +2049,18 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         no_pivot_mock.assert_called_once()
         write_container_auth_mock.assert_not_called()
+        pull_container_image_mock.assert_called_once_with(
+            mock.ANY, 'foo/container')
+        cleanup_container_auth_mock.assert_not_called()
         get_size_mock.assert_called_once_with('/dev/fake')
         execute_mock.assert_has_calls([
             mock.call('getenforce', use_standard_locale=True),
             mock.call(
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
-                '--pid=host',
+                '--pid=host', '--pull=never',
                 '-v', '/var/lib/containers:/var/lib/containers',
-                '-v', '/dev:/dev', '--retry-delay=5s',
+                '-v', '/dev:/dev',
                 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
                 '--skip-fetch-check', '--root-size=13537M',
@@ -2029,6 +2075,12 @@ class TestStandbyExtension(base.IronicAgentTest):
                        '_write_authorized_keys',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
+                       '_cleanup_container_auth',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_pull_container_image',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
                        '_write_container_auth',
                        autospec=True)
     @mock.patch.object(standby.StandbyExtension,
@@ -2038,6 +2090,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             self,
             no_pivot_mock,
             write_container_auth_mock,
+            pull_container_image_mock,
+            cleanup_container_auth_mock,
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
@@ -2054,15 +2108,18 @@ class TestStandbyExtension(base.IronicAgentTest):
             'oci://foo/container', '/dev/fake', None, False, None)
         no_pivot_mock.assert_called_once()
         write_container_auth_mock.assert_not_called()
+        pull_container_image_mock.assert_called_once_with(
+            mock.ANY, 'foo/container')
+        cleanup_container_auth_mock.assert_not_called()
         get_size_mock.assert_called_once_with('/dev/fake')
         execute_mock.assert_has_calls([
             mock.call('getenforce', use_standard_locale=True),
             mock.call(
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
-                '--pid=host',
+                '--pid=host', '--pull=never',
                 '-v', '/var/lib/containers:/var/lib/containers',
-                '-v', '/dev:/dev', '--retry-delay=5s',
+                '-v', '/dev:/dev',
                 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
                 '--skip-fetch-check', '--root-size=13537M',
@@ -2083,21 +2140,24 @@ class TestStandbyExtension(base.IronicAgentTest):
         mock_write.assert_called_once_with(
             '[engine]\nno_pivot_root = true\n')
 
-    @mock.patch.object(os, 'makedirs', autospec=True)
-    @mock.patch('builtins.open', new_callable=mock.mock_open())
-    def test__write_container_auth(self, mock_open, mkdir_mock):
-        self.agent_extension._write_container_auth(
+    @mock.patch.object(tempfile, 'mkstemp', autospec=True)
+    @mock.patch.object(os, 'fdopen', autospec=True)
+    def test__write_container_auth(self, mock_fdopen, mock_mkstemp):
+        mock_mkstemp.return_value = (42, '/tmp/ipa-container-auth-abc.json')
+        mock_file = mock.MagicMock()
+        mock_fdopen.return_value.__enter__ = mock.Mock(
+            return_value=mock_file)
+        mock_fdopen.return_value.__exit__ = mock.Mock(return_value=False)
+        result = self.agent_extension._write_container_auth(
             b'c2VjcmV0', 'foo.tld')
-        mkdir_mock.assert_called_once_with(
-            '/root/.config/containers',
-            mode=0o700,
-            exist_ok=True)
-        mock_open.assert_called_once_with(
-            '/root/.config/containers/auth.json', 'w')
-        mock_write = mock_open.return_value.__enter__.return_value.write
+        mock_mkstemp.assert_called_once_with(suffix='.json',
+                                             prefix='ipa-container-auth-')
+        mock_fdopen.assert_called_once_with(42, 'w')
+        self.assertEqual('/tmp/ipa-container-auth-abc.json', result)
         # NOTE(TheJulia): This is a side effect of using json.dump to make
         # the actual write call, and python internally does buffered io which
         # should concatenate the writes together appropriately as needed.
+        mock_write = mock_file.write
         mock_write.assert_has_calls([
             mock.call('{'),
             mock.call('"auths"'),
@@ -2113,6 +2173,110 @@ class TestStandbyExtension(base.IronicAgentTest):
             mock.call('}'),
             mock.call('}')
         ])
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test__pull_container_image_with_auth(self, execute_mock):
+        execute_mock.return_value = ((), ())
+        self.agent_extension._pull_container_image(
+            'foo/container', '/tmp/auth.json')
+        execute_mock.assert_called_once_with(
+            'podman', 'pull',
+            '--authfile=/tmp/auth.json',
+            '--retry-delay=5s',
+            'foo/container',
+            use_standard_locale=True)
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test__pull_container_image_no_auth(self, execute_mock):
+        execute_mock.return_value = ((), ())
+        self.agent_extension._pull_container_image('foo/container')
+        execute_mock.assert_called_once_with(
+            'podman', 'pull',
+            '--retry-delay=5s',
+            'foo/container',
+            use_standard_locale=True)
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test__pull_container_image_error(self, execute_mock):
+        execute_mock.side_effect = processutils.ProcessExecutionError()
+        self.assertRaisesRegex(
+            errors.ImageDownloadError,
+            'Failed to pull container image',
+            self.agent_extension._pull_container_image,
+            'foo/container', '/tmp/auth.json')
+
+    @mock.patch.object(os, 'rmdir', autospec=True)
+    @mock.patch.object(os, 'remove', autospec=True)
+    def test__cleanup_container_auth(self, mock_remove, mock_rmdir):
+        self.agent_extension._cleanup_container_auth(
+            '/tmp/ipa-container-auth-abc.json')
+        mock_remove.assert_called_once_with(
+            '/tmp/ipa-container-auth-abc.json')
+        mock_rmdir.assert_called_once_with('/tmp')
+
+    @mock.patch.object(os, 'rmdir', autospec=True)
+    @mock.patch.object(os, 'remove', autospec=True)
+    def test__cleanup_container_auth_file_missing(self, mock_remove,
+                                                  mock_rmdir):
+        mock_remove.side_effect = OSError('No such file')
+        # Should not raise even if the file is already gone.
+        self.agent_extension._cleanup_container_auth(
+            '/tmp/ipa-container-auth-abc.json')
+        mock_remove.assert_called_once_with(
+            '/tmp/ipa-container-auth-abc.json')
+
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    @mock.patch.object(disk_utils, 'get_dev_byte_size',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_authorized_keys',
+                       autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_write_no_pivot_root',
+                       autospec=True)
+    def test__download_container_and_bootc_install_pull_fail_cleans_auth(
+            self,
+            no_pivot_mock,
+            write_authorized_keys_mock,
+            get_size_mock,
+            execute_mock):
+        """Verify auth file is cleaned up even when pull fails."""
+        get_size_mock.return_value = 2000000000
+        # The pull is done via _pull_container_image which calls
+        # utils.execute internally; here we test the real
+        # _write_container_auth / _pull / _cleanup path by only
+        # mocking utils.execute and the file-system bits.
+        with mock.patch.object(
+                standby.StandbyExtension,
+                '_write_container_auth',
+                autospec=True,
+                return_value='/tmp/ipa-container-auth-xyz.json') \
+                as write_auth_mock, \
+             mock.patch.object(
+                standby.StandbyExtension,
+                '_pull_container_image',
+                autospec=True,
+                side_effect=errors.ImageDownloadError(
+                    'foo/container',
+                    'pull failed')) \
+                as pull_mock, \
+             mock.patch.object(
+                standby.StandbyExtension,
+                '_cleanup_container_auth',
+                autospec=True) \
+                as cleanup_mock:
+            self.assertRaises(
+                errors.ImageDownloadError,
+                self.agent_extension._download_container_and_bootc_install,
+                'oci://foo/container', '/dev/fake', 'secret', False, None)
+            write_auth_mock.assert_called_once_with(
+                mock.ANY, 'secret', 'foo')
+            pull_mock.assert_called_once_with(
+                mock.ANY, 'foo/container',
+                '/tmp/ipa-container-auth-xyz.json')
+            # Cleanup must be called even though pull raised.
+            cleanup_mock.assert_called_once_with(
+                mock.ANY, '/tmp/ipa-container-auth-xyz.json')
 
     @mock.patch.object(os, 'close', autospec=True)
     @mock.patch.object(os, 'write', autospec=True)
