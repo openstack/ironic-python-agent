@@ -1,0 +1,18 @@
+---
+security:
+  - |
+    During bootc deployment, the container registry pull secret was written to
+    a well-known path on the host and passed to ``podman run`` via
+    ``--authfile``. Because the container runs with ``--privileged --pid=host``,
+    tenant-controlled code in the bootc image could read the credential through
+    ``/proc/1/root/<authfile-path>``. When the pull secret originates from an
+    operator or admin source (``driver_info.image_pull_secret``,
+    ``[deploy] image_server_user/password``, or
+    ``[oci] authentication_config``) rather than the tenant's own
+    ``instance_info.image_pull_secret``, this constitutes a cross-boundary
+    credential disclosure to tenant-controlled bootc image code.
+    The image pull is now performed in a separate ``podman pull`` step and the
+    auth file is deleted before the tenant container executes. The subsequent
+    ``podman run`` uses ``--pull=never`` so that no registry credentials are
+    required or present at container runtime.
+    Addresses CVE-2026-54422.
