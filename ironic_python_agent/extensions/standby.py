@@ -1242,8 +1242,24 @@ class StandbyExtension(base.BaseAgentExtension):
         # This works because the path is maintained.
         container_url = url.netloc + url.path
 
+        # Always pull the image in a separate step so that
+        # ``podman run`` uses the locally cached image and does
+        # not need an ``--authfile`` flag.  When a pull secret is
+        # present the auth file is written to a temporary path,
+        # passed to ``podman pull``, and then deleted before any
+        # tenant-controlled container code can run.  This prevents
+        # the tenant bootc image from reading the credential via
+        # /proc/1/root/<path> when running with --pid=host.
+        # This fixes the security issue tracked by:
+        # https://bugs.launchpad.net/ironic/+bug/2155826
         if pull_secret:
-            self._write_container_auth(pull_secret, url.netloc)
+            auth_path = self._write_container_auth(pull_secret, url.netloc)
+            try:
+                self._pull_container_image(container_url, auth_path)
+            finally:
+                self._cleanup_container_auth(auth_path)
+        else:
+            self._pull_container_image(container_url)
 
         # Get the disk size, and convert it to megabtyes.
         disk_size = disk_utils.get_dev_byte_size(device) // 1024 // 1024
@@ -1279,20 +1295,19 @@ class StandbyExtension(base.BaseAgentExtension):
         # but that is not the best idea.
         # --disable-selinux is alternatively needed if selinux is *not*
         # enabled on the host.
+        #
+        # NOTE: The image has already been pulled above (with auth if
+        # needed), so we intentionally do NOT pass --authfile here.
+        # This prevents tenant-controlled code in the bootc image
+        # from accessing registry credentials via /proc/1/root.
         command = [
             'podman',
             '--log-level=debug',
             'run', '--rm', '--privileged', '--pid=host',
+            '--pull=never',
             '-v', '/var/lib/containers:/var/lib/containers',
             '-v', '/dev:/dev',
-            # By default, podman's retry starts at 3s and extends
-            # expentionally, which can lead to podman appearing
-            # to hang when downloading. This pins it so it just
-            # retires in relatively short order.
-            '--retry-delay=5s',
         ]
-        if pull_secret:
-            command.append('--authfile=/root/.config/containers/auth.json')
         if authorized_keys:
             # NOTE(TheJulia): Bandit flags on this, but we need a folder which
             # should exist in the container *and* locally to the ramdisk.
@@ -1352,6 +1367,58 @@ class StandbyExtension(base.BaseAgentExtension):
         with open(file_path, 'w') as file:
             file.write(file_content)
 
+    def _pull_container_image(self, container_url, auth_path=None):
+        """Pre-pull a container image into the local podman store.
+
+        Pulls the image so that a subsequent ``podman run`` can use
+        the locally cached image without needing an ``--authfile``
+        flag, keeping registry credentials out of the tenant-visible
+        host filesystem during container execution.
+
+        :param container_url: The container image URL to pull.
+        :param auth_path: Optional path to an authentication JSON
+            file.  When provided, ``--authfile`` is passed to podman.
+        :raises: ImageDownloadError if the pull fails.
+        """
+        pull_command = [
+            'podman', 'pull',
+        ]
+        if auth_path:
+            pull_command.append('--authfile=' + auth_path)
+        pull_command.extend([
+            '--retry-delay=5s',
+            container_url,
+        ])
+        try:
+            utils.execute(*pull_command, use_standard_locale=True)
+        except processutils.ProcessExecutionError as e:
+            LOG.debug('Failed to pull container image %s: %s',
+                      container_url, e)
+            raise errors.ImageDownloadError(
+                container_url,
+                "Failed to pull container image: %s" % e)
+
+    def _cleanup_container_auth(self, auth_path):
+        """Remove the container registry authentication file.
+
+        Ensures that the pull secret is not present on the host
+        filesystem when tenant-controlled container code runs.
+
+        :param auth_path: Path to the authentication JSON file to remove.
+        """
+        try:
+            os.remove(auth_path)
+            LOG.debug('Removed container auth file %s', auth_path)
+        except OSError as e:
+            LOG.warning('Failed to remove container auth file %s: %s',
+                        auth_path, e)
+        # Also try to remove the parent directory if it is empty,
+        # to avoid leaving a trace of the credential path.
+        try:
+            os.rmdir(os.path.dirname(auth_path))
+        except OSError:
+            pass
+
     def _write_container_auth(self, pull_secret, netloc):
         """Write authentication configuration for container registry auth.
 
@@ -1359,6 +1426,7 @@ class StandbyExtension(base.BaseAgentExtension):
                             interacting with a remote container registry.
         :param netloc: The FQDN, or network location portion of the URL
                        used to access the container registry.
+        :returns: The path to the written authentication file.
         """
         # extract secret
         decoded_pull_secret = base64.standard_b64decode(
@@ -1370,19 +1438,20 @@ class StandbyExtension(base.BaseAgentExtension):
         auth_dict = {
             "auths": {netloc: {"auth": decoded_pull_secret}}}
 
-        # Make the folders to $HOME/.config/containers/auth.json
-        # which would normally be generated by podman login, but
-        # we don't need to actually do that as we have a secret.
-        # Default to root, as we don't launch IPA with a HOME
-        # folder in most cases.
-        home = '/root'
-        folder = os.path.join(home, '.config/containers')
-        os.makedirs(folder, mode=0o700, exist_ok=True)
-        auth_path = os.path.join(folder, 'auth.json')
+        # Write auth to a temporary file rather than a well-known
+        # path such as $HOME/.config/containers/auth.json.  Using a
+        # temporary path provides defense-in-depth: even if cleanup
+        # fails, the credential is not at a predictable location.
+        fd, auth_path = tempfile.mkstemp(suffix='.json',
+                                         prefix='ipa-container-auth-')
+        try:
+            with os.fdopen(fd, 'w') as file:
+                json.dump(auth_dict, file)
+        except Exception:
+            os.close(fd)
+            raise
 
-        # Save the pull secret
-        with open(auth_path, 'w') as file:
-            json.dump(auth_dict, file)
+        return auth_path
 
     def _write_authorized_keys(self, authorized_keys):
         """Write a temporary authorized keys file for bootc use."""
