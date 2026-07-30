@@ -1,0 +1,20 @@
+---
+upgrade:
+  - |
+    Implicit discovery of the Ironic API URL via multicast DNS (mDNS) -
+    that is, when neither ``ipa-api-url`` nor
+    ``ipa-inspection-callback-url`` is set at all - is now disabled by
+    default. Set ``[mdns]/use_mdns`` to ``True`` (or supply the
+    ``ipa-use-mdns=true`` kernel parameter) to enable mDNS discovery.
+    mDNS responses are not authenticated, so only enable this on a
+    trusted deployment network. Explicitly setting ``ipa-api-url`` or
+    ``ipa-inspection-callback-url`` to ``mdns`` will also set
+    ``[mdns]/use_mdns`` to true and continues to work -- only implicit
+    use of mDNS due to missing ``ipa-api-url`` or
+    ``ipa-inspection-callback-url`` is disabled.
+security:
+  - |
+    Implicit mDNS discovery of the Ironic API URL is now disabled by
+    default, closing a vector where an unauthenticated host on the local
+    network could redirect an agent that never intended to use mDNS to a
+    malicious API endpoint.

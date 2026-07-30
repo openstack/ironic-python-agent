@@ -382,6 +382,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
     def test_url_from_mdns_by_default(self, mock_get_managers,
                                       mock_wait, mock_dispatch, mock_mdns):
         CONF.set_override('inspection_callback_url', '')
+        CONF.set_override('use_mdns', True, group='mdns')
         mock_mdns.return_value = 'https://example.com', {}
 
         self.agent = agent.IronicPythonAgent(None,
@@ -431,6 +432,9 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                                       mock_wait, mock_dispatch, mock_mdns):
         CONF.set_override('inspection_callback_url', '')
         CONF.set_override('disk_wait_attempts', 0)
+        # use_mdns defaults to False, but explicitly requesting the
+        # special "mdns" value should enable it automatically.
+        self.assertFalse(CONF.mdns.use_mdns)
         mock_mdns.return_value = 'https://example.com', {
             # configuration via mdns
             'ipa_disk_wait_attempts': '42',
@@ -472,6 +476,37 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         self.agent.heartbeater.start.assert_called_once_with()
         # changed via mdns
         self.assertEqual(42, CONF.disk_wait_attempts)
+        # explicitly requesting "mdns" auto-enabled the option
+        self.assertTrue(CONF.mdns.use_mdns)
+
+    @mock.patch('ironic_python_agent.mdns.get_endpoint', autospec=True)
+    @mock.patch(
+        'ironic_python_agent.hardware_managers.cna._detect_cna_card',
+        mock.Mock())
+    @mock.patch.object(hardware, 'dispatch_to_managers', autospec=True)
+    @mock.patch.object(agent.IronicPythonAgent,
+                       '_wait_for_interface', autospec=True)
+    @mock.patch.object(hardware, 'get_managers', autospec=True)
+    def test_url_from_mdns_disabled_by_default(
+            self, mock_get_managers, mock_wait, mock_dispatch, mock_mdns):
+        # Implicit fallback (api_url unset) must not use mDNS unless
+        # explicitly enabled - this is the case that motivated disabling
+        # mDNS by default.
+        CONF.set_override('inspection_callback_url', '')
+
+        self.agent = agent.IronicPythonAgent(None,
+                                             agent.Host('203.0.113.1', 9990),
+                                             agent.Host('192.0.2.1', 9999),
+                                             3,
+                                             10,
+                                             'eth0',
+                                             300,
+                                             1,
+                                             False,
+                                             None)
+
+        self.assertFalse(mock_mdns.called)
+        self.assertIsNone(self.agent.api_urls)
 
     @mock.patch(
         'ironic_python_agent.hardware_managers.cna._detect_cna_card',

@@ -120,5 +120,10 @@ class IronicInspection(threading.Thread):
     def run(self):
         """Run Inspection."""
         if not cfg.CONF.inspection_callback_url:
-            cfg.CONF.set_override('inspection_callback_url', 'mdns')
+            if cfg.CONF.mdns.use_mdns:
+                cfg.CONF.set_override('inspection_callback_url', 'mdns')
+            else:
+                LOG.warning('Not using mDNS to find the introspection '
+                            'endpoint: [mdns] use_mdns is False. '
+                            'Inspection may be disabled.')
         self._run()
