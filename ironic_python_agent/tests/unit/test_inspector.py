@@ -121,9 +121,7 @@ class TestInspect(base.IronicAgentTest):
         # use_mdns defaults to False, but explicitly requesting the
         # special "mdns" value should enable it automatically.
         self.assertFalse(CONF.mdns.use_mdns)
-        mock_mdns.return_value = 'http://example', {
-            'ipa_inspection_collectors': 'one,two'
-        }
+        mock_mdns.return_value = 'http://example', {}
         mock_ext_mgr.return_value = [self.mock_ext]
         mock_call.return_value = {'uuid': 'uuid1'}
 
@@ -135,8 +133,6 @@ class TestInspect(base.IronicAgentTest):
 
         self.assertEqual('http://example/v1/continue',
                          CONF.inspection_callback_url)
-        self.assertEqual('one,two', CONF.inspection_collectors)
-        self.assertEqual(['one', 'two'], mock_ext_mgr.call_args[1]['names'])
         self.assertTrue(CONF.mdns.use_mdns)
 
     def test_collectors_option(self, mock_ext_mgr, mock_call):

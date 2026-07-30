@@ -1,0 +1,20 @@
+---
+security:
+  - |
+    The ``[mdns]/allowed_overrides`` option now defaults to
+    ``['inspection_callback_url', 'ntp_server']`` instead of ``None``.
+    Previously, any recognized configuration option could be overridden by an
+    unauthenticated mDNS responder on the local network, including
+    security-sensitive settings such as TLS verification,
+    credentials, and image integrity checks. The API endpoint and
+    inspection callback URL are provided by the mDNS service record
+    itself and do not require TXT record overrides. Deployers who
+    need additional options overridden via mDNS can extend the list
+    explicitly.
+upgrade:
+  - |
+    The ``[mdns]/allowed_overrides`` option now defaults to
+    ``['inspection_callback_url', 'ntp_server']`` rather than ``None``
+    (allow everything). Environments relying on mDNS TXT records to
+    override additional configuration options will need to list those
+    options explicitly in ``[mdns]/allowed_overrides``.

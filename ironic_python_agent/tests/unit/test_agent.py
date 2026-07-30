@@ -435,10 +435,7 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
         # use_mdns defaults to False, but explicitly requesting the
         # special "mdns" value should enable it automatically.
         self.assertFalse(CONF.mdns.use_mdns)
-        mock_mdns.return_value = 'https://example.com', {
-            # configuration via mdns
-            'ipa_disk_wait_attempts': '42',
-        }
+        mock_mdns.return_value = 'https://example.com', {}
 
         self.agent = agent.IronicPythonAgent('mdns',
                                              agent.Host('203.0.113.1', 9990),
@@ -474,8 +471,6 @@ class TestBaseAgent(ironic_agent_base.IronicAgentTest):
                           mock.call('wait_for_disks')],
                          mock_dispatch.call_args_list)
         self.agent.heartbeater.start.assert_called_once_with()
-        # changed via mdns
-        self.assertEqual(42, CONF.disk_wait_attempts)
         # explicitly requesting "mdns" auto-enabled the option
         self.assertTrue(CONF.mdns.use_mdns)
 

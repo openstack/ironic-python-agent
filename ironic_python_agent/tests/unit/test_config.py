@@ -30,9 +30,25 @@ class TestOverride(IronicAgentTest):
         config.override({'not_ipa_prefixed': '42'})
         # No exception, and nothing matching this bogus key exists to check.
 
+    def test_default_allowlist(self):
+        self.assertEqual(['inspection_callback_url', 'ntp_server'],
+                         CONF.mdns.allowed_overrides)
+
+    def test_default_allowlist_allows_ntp_server(self):
+        config.override({'ipa_ntp_server': 'pool.ntp.org'})
+        self.assertEqual('pool.ntp.org', CONF.ntp_server)
+
+    def test_default_allowlist_blocks_unlisted_option(self):
+        CONF.set_override('insecure', False)
+
+        config.override({'ipa_insecure': 'True'})
+
+        self.assertFalse(CONF.insecure)
+
     def test_no_allowlist_allows_anything_recognized(self):
         CONF.set_override('disk_wait_attempts', 0)
-        self.assertIsNone(CONF.mdns.allowed_overrides)
+        CONF.set_override('allowed_overrides', None,
+                          group='mdns')
 
         config.override({'ipa_disk_wait_attempts': '42'})
 
@@ -57,12 +73,12 @@ class TestOverride(IronicAgentTest):
         self.assertFalse(CONF.insecure)
 
     def test_allowlist_cannot_be_changed_via_mdns(self):
-        # Even with no allowlist restriction in effect, options that live
-        # in the [mdns] group (like use_mdns and allowed_overrides itself)
-        # can never be set via mDNS: override() only calls
-        # CONF.set_override() without a group, which only ever touches
-        # DEFAULT-group options.
-        self.assertIsNone(CONF.mdns.allowed_overrides)
+        # Options that live in the [mdns] group (like use_mdns and
+        # allowed_overrides itself) can never be set via mDNS:
+        # override() only calls CONF.set_override() without a
+        # group, which only ever touches DEFAULT-group options.
+        CONF.set_override('allowed_overrides', None,
+                          group='mdns')
 
         config.override({'ipa_allowed_overrides': "['insecure']",
                          'ipa_use_mdns': 'True'})
