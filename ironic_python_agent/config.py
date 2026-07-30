@@ -552,12 +552,18 @@ def override(params):
     if not params:
         return
 
+    allowed = CONF.mdns.allowed_overrides
     LOG.debug('Overriding configuration with %s', params)
     for key, value in params.items():
         if key.startswith('ipa_'):
             key = key[4:]
         else:
             LOG.warning('Skipping unknown configuration option %s', key)
+            continue
+
+        if allowed is not None and key not in allowed:
+            LOG.warning('Skipping configuration option %s: not in the '
+                        '[mdns] allowed_overrides list', key)
             continue
 
         try:
