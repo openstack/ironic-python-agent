@@ -1,0 +1,18 @@
+---
+upgrade:
+  - |
+    ``[container]pull_options`` no longer defaults to ``--tls-verify=false``,
+    and ``--tls-verify=false`` has been dropped from the
+    ``[container]run_options`` default, so the container runtime now verifies
+    the registry certificate as it normally would. A ramdisk which pulls step
+    containers from a registry whose certificate it does not trust must
+    either carry that certificate or set the flag back explicitly. The
+    conductor overrides both options at lookup time, so this is what an agent
+    falls back to before it has looked up, or against a conductor which does
+    not send them.
+security:
+  - |
+    The ``[container]`` defaults no longer disable registry TLS verification.
+    Both ``pull_options`` and ``run_options`` previously shipped
+    ``--tls-verify=false``, which left image pulls for container based steps
+    open to interception on any ramdisk that had not overridden them.

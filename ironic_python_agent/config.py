@@ -511,11 +511,17 @@ container_opts = [
                choices=['podman', 'docker'],
                help='Container runtime to use for cleaning steps.'),
     cfg.ListOpt('pull_options',
-                default=['--tls-verify=false'],
-                help='Options to use when pulling container images.'),
+                default=[],
+                help='Options to use when pulling container images. The '
+                     'container runtime verifies the registry certificate by '
+                     'default; "--tls-verify=false" turns that off and is '
+                     'only appropriate against a local test registry.'),
     cfg.ListOpt('run_options',
-                default=['--rm', '--network=host', '--tls-verify=false'],
-                help='Options to use when running containers.'),
+                default=['--rm', '--network=host'],
+                help='Options to use when running containers. The runtime '
+                     'may pull the image at this point as well, so the note '
+                     'on "--tls-verify=false" in pull_options applies here '
+                     'too.'),
 ]
 
 
