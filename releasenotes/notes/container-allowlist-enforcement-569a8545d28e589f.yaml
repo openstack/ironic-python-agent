@@ -1,0 +1,31 @@
+---
+security:
+  - |
+    Fixes a security issue where ``[container]allow_arbitrary_containers``
+    and ``[container]allowed_containers`` had no effect in
+    ``ContainerHardwareManager``. A missing line continuation split the guard
+    into two statements, so the check evaluated a configuration group proxy
+    that is always true and the allowlist was never consulted. Separately,
+    the ``container_clean_step`` step never consulted the allowlist at all,
+    leaving the runbook and deploy template path completely unguarded. Any
+    container image could therefore be pulled and executed as root on the
+    bare metal node. See `bug 2160143
+    <https://bugs.launchpad.net/ironic-python-agent/+bug/2160143>`_.
+  - |
+    Container options supplied as step arguments are now ignored when
+    ``[container]allow_arbitrary_containers`` is ``False``. Options alone are
+    sufficient to defeat an image allowlist, for example ``--privileged``,
+    ``-v /:/host`` or ``--entrypoint``, so a caller who is not trusted to
+    choose the image is no longer trusted to choose the flags either. The
+    configured ``[container]pull_options`` and ``[container]run_options`` are
+    used instead.
+upgrade:
+  - |
+    Container steps invoked through runbooks, deploy templates, manual
+    cleaning or servicing are now checked against
+    ``[container]allowed_containers``. Deployments that relied on the
+    allowlist being silently inoperative must either add their images to
+    ``[container]allowed_containers`` or set
+    ``[container]allow_arbitrary_containers`` to ``True``. Steps defined in
+    the ramdisk's ``[container]container_steps_file`` are authored at image
+    build time and remain exempt.

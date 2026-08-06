@@ -100,6 +100,18 @@ class AgentIsBusy(CommandExecutionError):
         super().__init__('executing command %s' % command_name)
 
 
+class ContainerNotPermittedError(CommandExecutionError):
+    """Error raised when a container image is not permitted to run."""
+
+    message = 'Container image not permitted'
+
+    def __init__(self, container_url):
+        super().__init__(
+            'Container image %s is not in [container]allowed_containers and '
+            '[container]allow_arbitrary_containers is not enabled.'
+            % container_url)
+
+
 class IronicAPIError(RESTError):
     """Error raised when a call to the agent API fails."""
 
