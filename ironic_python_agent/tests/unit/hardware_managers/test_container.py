@@ -10,9 +10,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+import os
+import tempfile
 from unittest import mock
 
 from oslo_config import cfg
+import yaml
 
 from ironic_python_agent import errors
 from ironic_python_agent import hardware
@@ -31,6 +35,12 @@ class ContainerTestCase(base.IronicAgentTest):
         self.hardware = container.ContainerHardwareManager()
         self.node = mock.MagicMock()
         self.ports = mock.MagicMock()
+        # Reserved names are cached on the class once the managers are
+        # loaded, so a test that loads them would otherwise decide what
+        # every later test sees.
+        container.ContainerHardwareManager._RESERVED_NAMES = None
+        self.addCleanup(setattr, container.ContainerHardwareManager,
+                        '_RESERVED_NAMES', None)
         self.config(
             runner='podman',
             pull_options=['--tls-verify=false'],
@@ -40,6 +50,15 @@ class ContainerTestCase(base.IronicAgentTest):
             allowed_containers=[],
             group='container'
         )
+
+    def _write_steps(self, steps):
+        """Write a steps file and point the config at it."""
+        fd, path = tempfile.mkstemp(suffix='.yaml')
+        with os.fdopen(fd, 'w') as f:
+            yaml.safe_dump(steps, f)
+        self.addCleanup(os.unlink, path)
+        self.config(container_steps_file=path, group='container')
+        return path
 
     @staticmethod
     def _run_argv(mock_execute):
@@ -180,3 +199,93 @@ class TestContainerPolicy(ContainerTestCase):
             container_url=OTHER_IMAGE)
         self.assertTrue(method.keywords['trusted'])
         self.assertEqual(OTHER_IMAGE, method.keywords['container_url'])
+
+
+class TestStepNameResolution(ContainerTestCase):
+    def _step(self, name, **kw):
+        step = {'name': name, 'image': OTHER_IMAGE, 'interface': 'deploy',
+                'reboot_requested': False, 'abortable': True, 'priority': 10}
+        step.update(kw)
+        return step
+
+    def test_resolves_yaml_step(self):
+        self._write_steps({'steps': [self._step('my_container_step')]})
+        method = self.hardware.my_container_step
+        self.assertEqual(OTHER_IMAGE, method.keywords['container_url'])
+
+    def test_refuses_to_shadow_generic_hardware_manager(self):
+        # A step named after a real one would otherwise run a container in
+        # place of wiping the disk, and be reported as successful.
+        self._write_steps({'steps': [self._step('erase_devices_metadata')]})
+        self.assertRaises(AttributeError,
+                          getattr, self.hardware, 'erase_devices_metadata')
+
+    def test_refuses_to_shadow_any_loaded_manager(self):
+        # An operator's own manager is as shadowable as the generic one, and
+        # its methods are not knowable from GenericHardwareManager alone.
+        class VendorHardwareManager(hardware.HardwareManager):
+            def evaluate_hardware_support(self):
+                return hardware.HardwareSupport.SERVICE_PROVIDER
+
+            def flash_vendor_firmware(self, node, ports):
+                pass
+
+        self._write_steps({'steps': [self._step('flash_vendor_firmware')]})
+        hardware._global_managers = [
+            {'name': 'ContainerHardwareManager', 'manager': self.hardware,
+             'support': hardware.HardwareSupport.MAINLINE},
+            {'name': 'VendorHardwareManager',
+             'manager': VendorHardwareManager(),
+             'support': hardware.HardwareSupport.SERVICE_PROVIDER},
+        ]
+        self.assertRaises(AttributeError, getattr, self.hardware,
+                          'flash_vendor_firmware')
+
+    def test_reserved_names_are_not_cached_before_managers_load(self):
+        # Caching the fallback would freeze an incomplete set for the life of
+        # the process, leaving third party manager methods shadowable.
+        hardware._global_managers = None
+        self.hardware._reserved_names()
+        self.assertIsNone(container.ContainerHardwareManager._RESERVED_NAMES)
+
+    def test_shadowing_step_is_not_advertised(self):
+        self._write_steps({'steps': [self._step('erase_devices_metadata')]})
+        self.assertRaises(errors.HardwareManagerConfigurationError,
+                          self.hardware.get_clean_steps, self.node, self.ports)
+
+    def test_dispatch_reaches_the_real_generic_step(self):
+        self._write_steps({'steps': [self._step('erase_devices_metadata')]})
+        generic = hardware.GenericHardwareManager()
+        hardware._global_managers = [
+            {'name': 'ContainerHardwareManager', 'manager': self.hardware,
+             'support': hardware.HardwareSupport.MAINLINE},
+            {'name': 'GenericHardwareManager', 'manager': generic,
+             'support': hardware.HardwareSupport.GENERIC},
+        ]
+        with mock.patch.object(generic, 'erase_devices_metadata',
+                               autospec=True) as mock_erase:
+            hardware.dispatch_to_managers('erase_devices_metadata',
+                                          self.node, self.ports)
+        mock_erase.assert_called_once_with(self.node, self.ports)
+
+    def test_private_names_are_never_synthesized(self):
+        self._write_steps({'steps': [self._step('_sneaky')]})
+        self.assertRaises(AttributeError, getattr, self.hardware, '_sneaky')
+
+    def test_deepcopy_does_not_recurse(self):
+        # __getattr__ used to send copy/pickle protocol lookups back into
+        # itself, and into a YAML read, on every probe.
+        self.assertIsInstance(copy.deepcopy(self.hardware),
+                              container.ContainerHardwareManager)
+
+    def test_unknown_attribute_message_is_interpolated(self):
+        exc = self.assertRaises(AttributeError,
+                                getattr, self.hardware, 'no_such_step')
+        self.assertIn('ContainerHardwareManager', str(exc))
+        self.assertIn('no_such_step', str(exc))
+        self.assertNotIn('%s', str(exc))
+
+    def test_uninitialized_instance_does_not_recurse(self):
+        obj = container.ContainerHardwareManager.__new__(
+            container.ContainerHardwareManager)
+        self.assertRaises(AttributeError, getattr, obj, 'anything')
