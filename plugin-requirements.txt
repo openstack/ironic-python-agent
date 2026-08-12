@@ -1,3 +1,0 @@
-# Required for 'extra-hardware' inspection collector
-hardware>=0.24.0
-
