@@ -390,14 +390,6 @@ class TestNetutils(base.IronicAgentTest):
         sock1.close.assert_called_once_with()
         sock2.close.assert_called_once_with()
 
-    def test_wrap_ipv6(self):
-        res = netutils.wrap_ipv6('1:2::3:4')
-        self.assertEqual('[1:2::3:4]', res)
-
-    def test_wrap_ipv6_with_ipv4(self):
-        res = netutils.wrap_ipv6('1.2.3.4')
-        self.assertEqual('1.2.3.4', res)
-
     @mock.patch('fcntl.ioctl', autospec=True)
     @mock.patch('socket.socket', autospec=socket_socket_sig)
     def test_get_mac_addr_normal(self, mock_socket, mock_ioctl):

@@ -17,12 +17,12 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log
+from oslo_utils import netutils
 import requests
 import tenacity
 
 from ironic_python_agent import encoding
 from ironic_python_agent import errors
-from ironic_python_agent import netutils
 from ironic_python_agent import utils
 from ironic_python_agent import version
 
@@ -319,5 +319,5 @@ class APIClient(object):
 
     def _get_agent_url(self, advertise_address, advertise_protocol='http'):
         return '{}://{}:{}'.format(advertise_protocol,
-                                   netutils.wrap_ipv6(advertise_address[0]),
+                                   netutils.escape_ipv6(advertise_address[0]),
                                    advertise_address[1])

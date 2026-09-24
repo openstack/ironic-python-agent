@@ -356,12 +356,6 @@ def get_interface_driver(interface_name):
                   interface_name)
 
 
-def wrap_ipv6(ip):
-    if netutils.is_valid_ipv6(ip):
-        return "[%s]" % ip
-    return ip
-
-
 def get_wildcard_address():
     if netutils.is_ipv6_enabled():
         return "::"
