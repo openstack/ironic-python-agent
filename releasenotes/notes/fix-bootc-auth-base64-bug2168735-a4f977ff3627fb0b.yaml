@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixes ``bootc`` based container deployments failing to authenticate to a
+    remote registry when the supplied pull secret was not already the base64
+    encoded docker ``config.json`` "auth" value. The value written to podman's
+    authfile ``auth`` field is now base64 encoded when required, so a raw
+    ``username:password`` pair, or a token containing characters outside of the
+    base64 alphabet, no longer causes podman to fail with ``illegal base64
+    data`` or to silently fall back to an anonymous pull. Credentials already
+    supplied in the documented base64 format continue to be used unchanged.
+    See `bug 2168735 <https://bugs.launchpad.net/ironic/+bug/2168735>`_.

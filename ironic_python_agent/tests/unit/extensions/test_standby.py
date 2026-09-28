@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
 import errno
 import os
 import tempfile
@@ -2228,39 +2229,66 @@ class TestStandbyExtension(base.IronicAgentTest):
         mock_write.assert_called_once_with(
             '[engine]\nno_pivot_root = true\n')
 
+    def test__value_is_base64(self):
+        _value_is_base64 = standby.StandbyExtension._value_is_base64
+        # base64 of "user:pass"
+        self.assertTrue(_value_is_base64('dXNlcjpwYXNz'))
+        # A raw username:password pair is not base64 (contains a colon).
+        self.assertFalse(_value_is_base64('user:pass'))
+        # A JWT style token contains characters outside the base64 alphabet.
+        self.assertFalse(_value_is_base64('header.payload.sig'))
+        # A non-canonical encoding does not round-trip.
+        self.assertFalse(_value_is_base64('AB=='))
+
+    @mock.patch.object(standby.json, 'dump', autospec=True)
     @mock.patch.object(tempfile, 'mkstemp', autospec=True)
     @mock.patch.object(os, 'fdopen', autospec=True)
-    def test__write_container_auth(self, mock_fdopen, mock_mkstemp):
+    def test__write_container_auth_base64_value(self, mock_fdopen,
+                                                mock_mkstemp, mock_dump):
+        # A credential which is already the docker config.json "auth" value
+        # (base64 of "username:password") is written verbatim.
         mock_mkstemp.return_value = (42, '/tmp/ipa-container-auth-abc.json')
-        mock_file = mock.MagicMock()
-        mock_fdopen.return_value.__enter__ = mock.Mock(
-            return_value=mock_file)
-        mock_fdopen.return_value.__exit__ = mock.Mock(return_value=False)
+        pull_secret = base64.standard_b64encode(b'dXNlcjpwYXNz')
         result = self.agent_extension._write_container_auth(
-            b'c2VjcmV0', 'foo.tld')
+            pull_secret, 'foo.tld')
         mock_mkstemp.assert_called_once_with(suffix='.json',
                                              prefix='ipa-container-auth-')
         mock_fdopen.assert_called_once_with(42, 'w')
         self.assertEqual('/tmp/ipa-container-auth-abc.json', result)
-        # NOTE(TheJulia): This is a side effect of using json.dump to make
-        # the actual write call, and python internally does buffered io which
-        # should concatenate the writes together appropriately as needed.
-        mock_write = mock_file.write
-        mock_write.assert_has_calls([
-            mock.call('{'),
-            mock.call('"auths"'),
-            mock.call(': '),
-            mock.call('{'),
-            mock.call('"foo.tld"'),
-            mock.call(': '),
-            mock.call('{'),
-            mock.call('"auth"'),
-            mock.call(': '),
-            mock.call('"secret"'),
-            mock.call('}'),
-            mock.call('}'),
-            mock.call('}')
-        ])
+        self.assertEqual(
+            {'auths': {'foo.tld': {'auth': 'dXNlcjpwYXNz'}}},
+            mock_dump.call_args[0][0])
+
+    @mock.patch.object(standby.json, 'dump', autospec=True)
+    @mock.patch.object(tempfile, 'mkstemp', autospec=True)
+    @mock.patch.object(os, 'fdopen', autospec=True)
+    def test__write_container_auth_raw_user_pass(self, mock_fdopen,
+                                                 mock_mkstemp, mock_dump):
+        # A raw "username:password" credential is base64 encoded before it
+        # is written so that podman can consume it from the "auth" field.
+        mock_mkstemp.return_value = (42, '/tmp/ipa-container-auth-abc.json')
+        pull_secret = base64.standard_b64encode(b'user:pass')
+        self.agent_extension._write_container_auth(pull_secret, 'foo.tld')
+        self.assertEqual(
+            {'auths': {'foo.tld': {'auth': 'dXNlcjpwYXNz'}}},
+            mock_dump.call_args[0][0])
+
+    @mock.patch.object(standby.json, 'dump', autospec=True)
+    @mock.patch.object(tempfile, 'mkstemp', autospec=True)
+    @mock.patch.object(os, 'fdopen', autospec=True)
+    def test__write_container_auth_raw_token(self, mock_fdopen,
+                                             mock_mkstemp, mock_dump):
+        # An opaque token containing non-base64 characters is base64 encoded
+        # rather than written directly, which would make podman fail with
+        # "illegal base64 data".
+        mock_mkstemp.return_value = (42, '/tmp/ipa-container-auth-abc.json')
+        token = 'header.payload.sig'
+        pull_secret = base64.standard_b64encode(token.encode())
+        self.agent_extension._write_container_auth(pull_secret, 'foo.tld')
+        expected = base64.standard_b64encode(token.encode()).decode()
+        self.assertEqual(
+            {'auths': {'foo.tld': {'auth': expected}}},
+            mock_dump.call_args[0][0])
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test__pull_container_image_with_auth(self, execute_mock):
