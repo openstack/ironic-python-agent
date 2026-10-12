@@ -300,6 +300,13 @@ cli_opts = [
                help='Address of a single NTP server against which the '
                     'agent should sync the system software clock prior to '
                     'rebooting to an instance.'),
+    cfg.IntOpt('ntp_sync_attempts',
+               min=1,
+               default=int(APARAMS.get('ipa-ntp-sync-attempts', 5)),
+               help='The number of times to try to sync the software '
+                    'clock with the NTP server. '
+                    'Can be supplied as "ipa-ntp-sync-attempts" '
+                    'kernel parameter.'),
     cfg.BoolOpt('fail_if_clock_not_set',
                 default=False,
                 help='If operations should fail if the clock time sync '

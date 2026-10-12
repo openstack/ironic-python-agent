@@ -1428,7 +1428,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         success_result = self.agent_extension.power_off()
         success_result.join()
 
-        calls = [mock.call('ntpdate', '192.168.1.1'),
+        calls = [mock.call('ntpdate', '192.168.1.1', attempts=5),
                  mock.call('hwclock', '-v', '--systohc'),
                  mock.call('poweroff', use_standard_locale=True)]
         execute_mock.assert_has_calls(calls)
@@ -1442,7 +1442,7 @@ class TestStandbyExtension(base.IronicAgentTest):
         failed_result = self.agent_extension.power_off()
         failed_result.join()
 
-        execute_mock.assert_any_call('ntpdate', '192.168.1.1')
+        execute_mock.assert_any_call('ntpdate', '192.168.1.1', attempts=5)
         self.assertEqual('FAILED', failed_result.command_status)
 
     @mock.patch.object(hardware, 'dispatch_to_all_managers', autospec=True)
@@ -1681,7 +1681,8 @@ class TestStandbyExtension(base.IronicAgentTest):
 
         calls = [mock.call('chronyc', 'shutdown', check_exit_code=[0, 1]),
                  mock.call('chronyd', '-q',
-                           'server 192.168.1.1 iburst'),
+                           'server 192.168.1.1 iburst',
+                           attempts=5),
                  mock.call('hwclock', '-v', '--systohc')]
         execute_mock.assert_has_calls(calls)
 

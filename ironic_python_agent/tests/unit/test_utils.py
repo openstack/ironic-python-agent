@@ -886,7 +886,8 @@ class TestClockSyncUtils(base.IronicAgentTest):
         self.config(ntp_server='192.168.1.1')
         mock_time_method.return_value = 'ntpdate'
         utils.sync_clock()
-        mock_execute.assert_has_calls([mock.call('ntpdate', '192.168.1.1')])
+        mock_execute.assert_has_calls([mock.call('ntpdate', '192.168.1.1',
+                                                 attempts=5)])
 
     @mock.patch.object(utils, 'determine_time_method', autospec=True)
     def test_sync_clock_ntp_raises_exception(self, mock_time_method,
@@ -904,7 +905,8 @@ class TestClockSyncUtils(base.IronicAgentTest):
         utils.sync_clock()
         mock_execute.assert_has_calls([
             mock.call('chronyc', 'shutdown', check_exit_code=[0, 1]),
-            mock.call('chronyd', '-q', 'server 192.168.1.1 iburst'),
+            mock.call('chronyd', '-q', 'server 192.168.1.1 iburst',
+                      attempts=5),
         ])
 
     @mock.patch.object(utils, 'determine_time_method', autospec=True)
@@ -996,7 +998,7 @@ class TestClockSyncUtils(base.IronicAgentTest):
         mock_time_method.return_value = 'ntpdate'
         utils.sync_clock()
         mock_execute.assert_has_calls(
-            [mock.call('ntpdate', '2001:db8::1')])
+            [mock.call('ntpdate', '2001:db8::1', attempts=5)])
 
     @mock.patch.object(utils, 'determine_time_method', autospec=True)
     def test_sync_clock_valid_hostname(self, mock_time_method,
@@ -1005,7 +1007,7 @@ class TestClockSyncUtils(base.IronicAgentTest):
         mock_time_method.return_value = 'ntpdate'
         utils.sync_clock()
         mock_execute.assert_has_calls(
-            [mock.call('ntpdate', 'ntp.example.com')])
+            [mock.call('ntpdate', 'ntp.example.com', attempts=5)])
 
     @mock.patch.object(utils, 'determine_time_method', autospec=True)
     def test_sync_clock_valid_hostname_with_hyphens(
@@ -1015,7 +1017,8 @@ class TestClockSyncUtils(base.IronicAgentTest):
         utils.sync_clock()
         mock_execute.assert_has_calls(
             [mock.call('ntpdate',
-                       'my-ntp_server.example.com')])
+                       'my-ntp_server.example.com',
+                       attempts=5)])
 
     def test_validate_ntp_server_valid_ipv4(self, mock_execute):
         utils._validate_ntp_server('192.168.1.1')

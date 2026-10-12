@@ -1166,7 +1166,8 @@ def sync_clock(ignore_errors=False):
 
     if method == 'ntpdate':
         try:
-            execute('ntpdate', CONF.ntp_server)
+            execute('ntpdate', CONF.ntp_server,
+                    attempts=CONF.ntp_sync_attempts)
             LOG.debug('Set software clock using ntpdate')
         except processutils.ProcessExecutionError as e:
             msg = ('Failed to sync with ntp server: '
@@ -1181,7 +1182,7 @@ def sync_clock(ignore_errors=False):
             # force a time sync now
             query = ("server %s iburst"
                      % shlex.quote(CONF.ntp_server))
-            execute('chronyd', '-q', query)
+            execute('chronyd', '-q', query, attempts=CONF.ntp_sync_attempts)
             LOG.debug('Set software clock using chrony')
         except (processutils.ProcessExecutionError,
                 errors.CommandExecutionError) as e:
