@@ -4743,9 +4743,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sda
@@ -4764,9 +4764,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         ])
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,
@@ -4844,9 +4846,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sda
@@ -4897,11 +4899,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sdb
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None,  # mklabel sdc
-            ('42', None),  # sgdisk -F sdc
+            ('42 100 58 29K', None),  # sfdisk --list-free sdc
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sdc
@@ -4920,11 +4922,14 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdc'),
+            mock.call('sfdisk', '--list-free', '/dev/sdc',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,
@@ -4999,13 +5004,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sdb
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None,  # mklabel sdc
-            ('42', None),  # sgdisk -F sdc
+            ('42 100 58 29K', None),  # sfdisk --list-free sdc
             None,  # mklabel sdd
-            ('42', None),  # sgdisk -F sdd
+            ('42 100 58 29K', None),  # sfdisk --list-free sdd
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sdc
@@ -5026,13 +5031,17 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdc'),
+            mock.call('sfdisk', '--list-free', '/dev/sdc',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdd', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdd'),
+            mock.call('sfdisk', '--list-free', '/dev/sdd',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,
@@ -5288,9 +5297,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sda
@@ -5302,9 +5311,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,
@@ -5367,9 +5378,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sda
@@ -5386,9 +5397,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '20GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,
@@ -5460,9 +5473,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sda
@@ -5479,9 +5492,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,
@@ -5558,13 +5573,13 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None,  # mklabel sdc
-            ('42', None),  # sgdisk -F sdc
+            ('42 100 58 29K', None),  # sfdisk --list-free sdc
             None,  # mklabel sdd
-            ('42', None),  # sgdisk -F sdd
+            ('42 100 58 29K', None),  # sfdisk --list-free sdd
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sdc
@@ -5581,13 +5596,17 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdc'),
+            mock.call('sfdisk', '--list-free', '/dev/sdc',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdd', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdd'),
+            mock.call('sfdisk', '--list-free', '/dev/sdd',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,
@@ -5686,9 +5705,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None  # mdadm create md0
@@ -5703,9 +5722,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,
@@ -5918,9 +5939,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         error_regex = "Failed to create partitions on /dev/sda"
         mocked_execute.side_effect = [
             None,  # partition tables on sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # partition tables on sdb
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             processutils.ProcessExecutionError]
         self.assertRaisesRegex(errors.SoftwareRAIDError, error_regex,
                                self.hardware.create_configuration,
@@ -5929,9 +5950,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         error_regex = "Failed to create partitions on /dev/sda"
         mocked_execute.side_effect = [
             None,  # partition tables on sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # partition tables on sdb
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None, None, None,  # RAID-1 partitions on sd{a,b}
             None, None, None,  # RAID-N partitions on sd{a,b}
             processutils.ProcessExecutionError]
@@ -6217,9 +6238,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sda
@@ -6235,9 +6256,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         result = self.hardware.create_configuration(node, [])
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,
@@ -6483,9 +6506,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         }
         mocked_execute.side_effect = [
             None,  # mklabel sdc
-            ('42', None),  # sgdisk -F sdc
+            ('42 100 58 29K', None),  # sfdisk --list-free sdc
             None,  # mklabel sdd
-            ('42', None),  # sgdisk -F sdd
+            ('42 100 58 29K', None),  # sfdisk --list-free sdd
             None, None, None,  # parted + partx + udevadm_settle sdc
             None, None, None,  # parted + partx + udevadm_settle sdd
             None  # mdadm --create /dev/md0
@@ -6498,9 +6521,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sdc', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdc'),
+            mock.call('sfdisk', '--list-free', '/dev/sdc',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdd', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdd'),
+            mock.call('sfdisk', '--list-free', '/dev/sdd',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdc', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '100GiB'),
             mock.call('partx', '-av', '/dev/sdc', attempts=3,
@@ -6615,9 +6640,9 @@ class TestGenericHardwareManager(base.IronicAgentTest):
 
         mocked_execute.side_effect = [
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sda
+            ('42 100 58 29K', None),  # sfdisk --list-free sda
             None,  # mklabel sda
-            ('42', None),  # sgdisk -F sdb
+            ('42 100 58 29K', None),  # sfdisk --list-free sdb
             None, None, None,  # parted + partx + udevadm_settle sda
             None, None, None,  # parted + partx + udevadm_settle sdb
             None, None, None,  # parted + partx + udevadm_settle sda
@@ -6633,9 +6658,11 @@ class TestGenericHardwareManager(base.IronicAgentTest):
         result = self.hardware.create_configuration(node, [])
         mocked_execute.assert_has_calls([
             mock.call('parted', '/dev/sda', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sdb', '-s', '--', 'mklabel', 'msdos'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('parted', '/dev/sda', '-s', '-a', 'optimal', '--',
                       'mkpart', 'primary', '42s', '10GiB'),
             mock.call('partx', '-av', '/dev/sda', attempts=3,

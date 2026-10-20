@@ -14,6 +14,7 @@ import os
 import re
 import sys
 import tempfile
+import uuid
 
 from oslo_concurrency import processutils
 from oslo_log import log
@@ -34,29 +35,21 @@ def get_partition_path_by_number(device, part_num):
 
     Only works for GPT partition table.
     """
-    uuid = None
-    partinfo, _ = utils.execute('sgdisk', '-i', str(part_num), device,
-                                use_standard_locale=True)
-    for line in partinfo.splitlines():
-        if not line.strip():
-            continue
+    partinfo, _ = utils.execute('sfdisk', '--part-uuid', device,
+                                str(part_num), use_standard_locale=True)
+    part_uuid = partinfo.strip().lower()
+    try:
+        uuid.UUID(part_uuid)
+    except ValueError:
+        part_uuid = None
+    if part_uuid:
+        LOG.debug('GPT partition number %s on device %s has UUID %s',
+                  part_num, device, part_uuid)
 
-        try:
-            field, value = line.rsplit(':', 1)
-        except ValueError:
-            LOG.warning('Invalid sgdisk line: %s', line)
-            continue
-
-        if 'partition unique guid' in field.lower():
-            uuid = value.strip().lower()
-            LOG.debug('GPT partition number %s on device %s has UUID %s',
-                      part_num, device, uuid)
-            break
-
-    if uuid is not None:
-        return partition_utils.get_partition(device, uuid)
+    if part_uuid:
+        return partition_utils.get_partition(device, part_uuid)
     else:
-        LOG.warning('No UUID information provided in sgdisk output for '
+        LOG.warning('No UUID information provided in sfdisk output for '
                     'partition %s on device %s', part_num, device)
 
 
@@ -94,7 +87,8 @@ def manage_uefi(device, efi_system_part_uuid=None):
         # FIXME(dtantsur): this procedure will not work for devicemapper
         # devices. To fix that we need a way to convert a UUID to a partition
         # number, which is surprisingly non-trivial and may involve looping
-        # over existing numbers and calling `sgdisk -i` for each of them.
+        # over existing numbers and calling `sfdisk --part-uuid` for each of
+        # them.
         # But I'm not sure we even need this logic: find_efi_partition should
         # be sufficient for both whole disk and partition images.
         try:

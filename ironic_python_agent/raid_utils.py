@@ -37,6 +37,19 @@ ESP_SIZE_MIB = 550
 RAID_PARTITION = 1
 
 
+def _get_first_free_sector(device):
+    """Return the first sector in the first free area on a device."""
+    output, _ = utils.execute('sfdisk', '--list-free', device,
+                              use_standard_locale=True)
+    for line in output.splitlines():
+        match = re.match(r'^\s*(\d+)\s+\d+\s+\d+', line)
+        if match:
+            return match.group(1)
+
+    raise errors.SoftwareRAIDError(
+        'Unable to find free space on device %s' % device)
+
+
 def get_block_devices_for_raid(block_devices, logical_disks):
     """Get block devices that are involved in the RAID configuration.
 
@@ -116,9 +129,7 @@ def calculate_raid_start(target_boot_mode, partition_table_type, dev_name):
             # exist on disk holders with gpt tables)
             raid_start = '8MiB'
         else:
-            # sgdisk works fine for display data on mbr tables too
-            out, _u = utils.execute('sgdisk', '-F', dev_name)
-            raid_start = "{}s".format(out.splitlines()[-1])
+            raid_start = '{}s'.format(_get_first_free_sector(dev_name))
 
     return raid_start
 
@@ -376,12 +387,9 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
             efi_partitions = []
             for number, holder in enumerate(holders):
                 # NOTE: see utils.get_partition_table_type_from_specs
-                # for uefi we know that we have setup a gpt partition table,
-                # sgdisk can be used to edit table, more user friendly
-                # for alignment and relative offsets
+                # for uefi we know that we have setup a gpt partition table.
                 partlabel = '{}{}'.format(partlabel_prefix, number)
-                out, _u = utils.execute('sgdisk', '-F', holder)
-                start_sector = '{}s'.format(out.splitlines()[-1].strip())
+                start_sector = '{}s'.format(_get_first_free_sector(holder))
                 out, _u = utils.execute(
                     'sgdisk', '-n', '0:{}:+{}MiB'.format(start_sector,
                                                          partsize_mib),
@@ -456,8 +464,7 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
             if label == 'gpt':
                 LOG.debug("Creating bios boot partition on disk holder %s",
                           holder)
-                out, _u = utils.execute('sgdisk', '-F', holder)
-                start_sector = '{}s'.format(out.splitlines()[-1].strip())
+                start_sector = '{}s'.format(_get_first_free_sector(holder))
                 partlabel = '{}{}'.format(partlabel_prefix, number)
                 out, _u = utils.execute(
                     'sgdisk', '-n', '0:{}:+2MiB'.format(start_sector),
