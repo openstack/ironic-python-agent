@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    Fixes detection of SELinux when preparing a ``bootc`` deployment. The
+    agent determined the state by running ``getenforce``, which reports
+    what the agent's own userspace believes. When the agent itself runs
+    inside a container, libselinux reports SELinux as disabled even though
+    selinuxfs is mounted and the kernel is enforcing, so the agent omitted
+    ``--security-opt label=type:unconfined_t`` from the ``podman``
+    invocation and passed ``--disable-selinux`` to ``bootc``. The install
+    then failed while writing the SELinux labels carried by the image with
+    ``fsetxattr(security.selinux): Invalid argument``. The kernel state is
+    now read from ``/sys/fs/selinux/enforce``, which is what governs the
+    nested container, and ``getenforce`` is only consulted as a fallback
+    when selinuxfs is unreachable.
