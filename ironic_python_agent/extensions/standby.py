@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import base64
+import binascii
 import errno
 import hashlib
 import json
@@ -1440,6 +1441,31 @@ class StandbyExtension(base.BaseAgentExtension):
         except OSError:
             pass
 
+    @staticmethod
+    def _value_is_base64(value):
+        """Return True if the value is already a canonical base64 string.
+
+        A pre-shared registry credential may reach us either as the
+        documented docker ``config.json`` "auth" value, which is the base64
+        encoding of ``username:password``, or as a raw string such as
+        ``username:password`` or an opaque token. This is used to decide
+        whether a value must still be base64 encoded before it is written
+        to podman's authfile "auth" field, which is always consumed as
+        base64 encoded data.
+
+        Only a canonical encoding round-trips exactly, so a raw string that
+        merely happens to use the base64 alphabet is not mistaken for one
+        which is already encoded.
+
+        :param value: The credential string to inspect.
+        :returns: True if the value is already canonical base64.
+        """
+        try:
+            decoded = base64.b64decode(value, validate=True)
+        except (binascii.Error, ValueError):
+            return False
+        return base64.b64encode(decoded).decode('ascii') == value
+
     def _write_container_auth(self, pull_secret, netloc):
         """Write authentication configuration for container registry auth.
 
@@ -1449,15 +1475,30 @@ class StandbyExtension(base.BaseAgentExtension):
                        used to access the container registry.
         :returns: The path to the written authentication file.
         """
-        # extract secret
-        decoded_pull_secret = base64.standard_b64decode(
-            pull_secret
-        ).decode()
+        # The pull secret is transmitted base64 encoded purely to obfuscate
+        # it while in transit. Decode that transport layer to recover the
+        # credential as it was originally collected.
+        credential = base64.standard_b64decode(pull_secret).decode()
+
+        # podman consumes the credential via the authfile "auth" field,
+        # which it always treats as the base64 encoding of
+        # "username:password" (the docker config.json "auth" value). Most
+        # OCI tooling, including the containers image library, simply ships
+        # whatever value is present in this field. If the value we hold is
+        # already valid base64, it is the documented config.json value and
+        # is used verbatim. Otherwise it is a raw credential string, such as
+        # "username:password" or an opaque token, which must be base64
+        # encoded first; writing a non-base64 value directly causes podman
+        # to fail with "illegal base64 data" or to silently fall back to an
+        # anonymous pull.
+        if not self._value_is_base64(credential):
+            credential = base64.standard_b64encode(
+                credential.encode()).decode()
 
         # Generate a dict which will emulate our container auth
         # configuration.
         auth_dict = {
-            "auths": {netloc: {"auth": decoded_pull_secret}}}
+            "auths": {netloc: {"auth": credential}}}
 
         # Write auth to a temporary file rather than a well-known
         # path such as $HOME/.config/containers/auth.json.  Using a
