@@ -25,7 +25,6 @@ from ironic_python_agent import hardware
 from ironic_python_agent import partition_utils
 from ironic_python_agent import raid_utils
 from ironic_python_agent.tests.unit import base
-from ironic_python_agent.tests.unit.samples import hardware_samples
 from ironic_python_agent import utils
 
 
@@ -715,14 +714,16 @@ Boot0003: VENDMAGIC FvFile(9f3c6294-bf9b-4208-9808-be45dfc34b51)N.....YM....R,Y.
 class TestGetPartitionPathByNumber(base.IronicAgentTest):
 
     def test_ok(self, mock_execute, mock_get_partition):
-        mock_execute.return_value = (hardware_samples.SGDISK_INFO_TEMPLATE, '')
+        mock_execute.return_value = (
+            '12345678-1234-5678-1234-567812345678\n', '')
         mock_get_partition.return_value = '/dev/fake1'
 
         result = efi_utils.get_partition_path_by_number('/dev/fake', 1)
         self.assertEqual('/dev/fake1', result)
 
-        mock_execute.assert_called_once_with('sgdisk', '-i', '1', '/dev/fake',
-                                             use_standard_locale=True)
+        mock_execute.assert_called_once_with(
+            'sfdisk', '--part-uuid', '/dev/fake', '1',
+            use_standard_locale=True)
 
     def test_broken(self, mock_execute, mock_get_partition):
         mock_execute.return_value = ('I am a teaport', '')

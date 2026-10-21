@@ -208,12 +208,12 @@ class TestRaidUtils(base.IronicAgentTest):
         esp_uuid = '0B8C-37B6'
         esp_label = 'MKFS_ESP'
         mock_execute.side_effect = [
-            ('451', None),           # sgdisk -F
+            ('451 1000 550 275K', None),           # sfdisk --list-free
             (None, None),            # sgdisk create part
             (None, None),            # partprobe
             (None, None),            # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
-            ('452', None),           # sgdisk -F
+            ('452 1000 550 275K', None),           # sfdisk --list-free
             (None, None),            # sgdisk create part
             (None, None),            # partprobe
             (None, None),            # blkid
@@ -240,14 +240,16 @@ class TestRaidUtils(base.IronicAgentTest):
 
         mock_efi_part.assert_called_once_with('/dev/md0')
         expected = [
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00',
                       '-c', '0:uefi-holder-0', '/dev/sda'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00',
                       '-c', '0:uefi-holder-1', '/dev/sdb'),
             mock.call('partprobe'),
@@ -295,12 +297,12 @@ class TestRaidUtils(base.IronicAgentTest):
             mock_free_raid_device, mock_rescan, mock_find_esp):
         mock_efi_part.return_value = None
         mock_execute.side_effect = [
-            ('451', None),  # sgdisk -F
+            ('451 1000 550 275K', None),  # sfdisk --list-free
             (None, None),  # sgdisk create part
             (None, None),  # partprobe
             (None, None),  # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
-            ('452', None),  # sgdisk -F
+            ('452 1000 550 275K', None),  # sfdisk --list-free
             (None, None),  # sgdisk create part
             (None, None),  # partprobe
             (None, None),  # blkid
@@ -315,14 +317,16 @@ class TestRaidUtils(base.IronicAgentTest):
 
         mock_efi_part.assert_called_once_with('/dev/md0')
         expected = [
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-0', '/dev/sda'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
                       '0:uefi-holder-1', '/dev/sdb'),
             mock.call('partprobe'),
@@ -351,12 +355,12 @@ class TestRaidUtils(base.IronicAgentTest):
         esp_used = 31457280  # ~30 MiB of EFI content
         esp_uuid = '0B8C-37B6'
         mock_execute.side_effect = [
-            ('451', None),           # sgdisk -F
+            ('451 1000 550 275K', None),           # sfdisk --list-free
             (None, None),            # sgdisk create part
             (None, None),            # partprobe
             (None, None),            # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
-            ('452', None),           # sgdisk -F
+            ('452 1000 550 275K', None),           # sfdisk --list-free
             (None, None),            # sgdisk create part
             (None, None),            # partprobe
             (None, None),            # blkid
@@ -382,14 +386,16 @@ class TestRaidUtils(base.IronicAgentTest):
                 target_boot_mode='uefi')
 
         expected = [
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00',
                       '-c', '0:uefi-holder-0', '/dev/sda'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00',
                       '-c', '0:uefi-holder-1', '/dev/sdb'),
             mock.call('partprobe'),
@@ -439,12 +445,12 @@ class TestRaidUtils(base.IronicAgentTest):
         esp_used = 629145600  # 600 MiB — larger than md_size
         esp_uuid = '0B8C-37B6'
         mock_execute.side_effect = [
-            ('451', None),           # sgdisk -F
+            ('451 1000 550 275K', None),           # sfdisk --list-free
             (None, None),            # sgdisk create part
             (None, None),            # partprobe
             (None, None),            # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
-            ('452', None),           # sgdisk -F
+            ('452 1000 550 275K', None),           # sfdisk --list-free
             (None, None),            # sgdisk create part
             (None, None),            # partprobe
             (None, None),            # blkid
@@ -493,9 +499,9 @@ class TestRaidUtils(base.IronicAgentTest):
             self, mock_label_scan, mock_execute, mock_dispatch):
 
         mock_execute.side_effect = [
-            ('whatever\n314', None),  # sgdisk -F
+            ('whatever\n314 1000 686 343K', None),  # sfdisk --list-free
             (None, None),  # bios boot grub
-            ('warning message\n914', None),  # sgdisk -F
+            ('warning message\n914 1000 86 43K', None),  # sfdisk --list-free
             (None, None),  # bios boot grub
         ]
 
@@ -511,10 +517,12 @@ class TestRaidUtils(base.IronicAgentTest):
         mock_label_scan.assert_has_calls(expected_scan, any_order=False)
 
         expected_exec = [
-            mock.call('sgdisk', '-F', '/dev/sda'),
+            mock.call('sfdisk', '--list-free', '/dev/sda',
+                      use_standard_locale=True),
             mock.call('sgdisk', '-n', '0:314s:+2MiB', '-t', '0:ef02', '-c',
                       '0:bios-boot-part-0', '/dev/sda'),
-            mock.call('sgdisk', '-F', '/dev/sdb'),
+            mock.call('sfdisk', '--list-free', '/dev/sdb',
+                      use_standard_locale=True),
             mock.call('sgdisk', '-n', '0:914s:+2MiB', '-t', '0:ef02', '-c',
                       '0:bios-boot-part-1', '/dev/sdb'),
         ]

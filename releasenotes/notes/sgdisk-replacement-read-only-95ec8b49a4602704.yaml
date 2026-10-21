@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Replace ``sgdisk`` with ``sfdisk`` for GPT partition UUID lookup and free
+    space detection. This improves compatibility with distributions that no
+    longer provide the ``gptfdisk`` package. See
+    `bug 2170355 <https://bugs.launchpad.net/ironic/+bug/2170355>`_.
+
