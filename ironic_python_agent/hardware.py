@@ -3595,10 +3595,6 @@ class GenericHardwareManager(HardwareManager):
             # With the partitioning below, the first partition is not
             # exactly the size_gb provided, but rather the size minus a small
             # amount (often 2048*512B=1MiB, depending on the disk geometry).
-            # Easier to ignore. Another way could be to use sgdisk, which is
-            # really user-friendly to compute part boundaries automatically,
-            # instead of parted, then convert back to mbr table if needed
-            # and possible.
 
             for logical_disk in logical_disks:
                 # Note: from the doc,

@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Replace ``sgdisk`` partition creation with ``parted`` and ``sfdisk``.
+    GPT config-drive partitions now use ``parted`` with PARTUUID assignment
+    through ``sfdisk``, while RAID ESP and BIOS-boot partitions use
+    ``sfdisk --append``. RAID partition sizes, alignment, GPT types, and
+    labels are preserved. GPT config-drive creation now uses ``parted``'s
+    FAT32 filesystem type and GPT naming semantics, which may result in a
+    different GPT type and partition name than the previous ``sgdisk`` path.
+    This improves compatibility with systems that do not provide ``gptfdisk``.
+    See
+    `bug 2170355 <https://bugs.launchpad.net/ironic/+bug/2170355>`_.

@@ -684,15 +684,14 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(disk_utils, 'get_partition_table_type',
                        autospec=True)
-    @mock.patch.object(partition_utils, 'get_partition',
-                       autospec=True)
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
     @mock.patch.object(partition_utils, 'get_labelled_partition',
                        autospec=True)
     @mock.patch.object(partition_utils, 'get_configdrive',
                        autospec=True)
     def test_create_partition_gpt(self, mock_get_configdrive,
                                   mock_get_labelled_partition,
-                                  mock_get_partition_by_uuid,
+                                  mock_list_partitions,
                                   mock_table_type,
                                   mock_fix_gpt_partition,
                                   mock_dd, mock_unlink, mock_execute):
@@ -705,17 +704,19 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
 
         mock_table_type.return_value = 'gpt'
         expected_part = '/dev/fake4'
-        mock_get_partition_by_uuid.return_value = expected_part
+        mock_list_partitions.side_effect = [[], [{'number': 4}]]
         partition_utils.create_config_drive_partition(self.node_uuid, self.dev,
                                                       config_url)
         mock_execute.assert_has_calls([
-            mock.call('sgdisk', '-n', '0:-64MB:0', '-u', '0:fake-uuid',
-                      self.dev),
+            mock.call('parted', '-a', 'optimal', '-s', '--', self.dev,
+                      'mkpart', 'primary', 'fat32', '-64MiB', '-0'),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev),
+            mock.call('sfdisk', '--part-uuid', self.dev, '4', 'fake-uuid',
+                      use_standard_locale=True),
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -740,8 +741,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(disk_utils, 'get_partition_table_type',
                        autospec=True)
-    @mock.patch.object(partition_utils, 'get_partition',
-                       autospec=True)
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
     @mock.patch.object(partition_utils, 'get_labelled_partition',
                        autospec=True)
     @mock.patch.object(partition_utils, 'get_configdrive',
@@ -749,7 +749,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
     def test_create_partition_gpt_with_fallback(
             self, mock_get_configdrive,
             mock_get_labelled_partition,
-            mock_get_partition_by_uuid,
+            mock_list_partitions,
             mock_table_type,
             mock_fix_gpt_partition,
             mock_dd, mock_unlink, mock_execute,
@@ -764,19 +764,21 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
 
         mock_table_type.return_value = 'gpt'
         expected_part = '/dev/fake4'
-        mock_get_partition_by_uuid.return_value = expected_part
+        mock_list_partitions.side_effect = [[], [{'number': 4}]]
         mock_config_drive_work.return_value = False
 
         partition_utils.create_config_drive_partition(self.node_uuid, self.dev,
                                                       config_url)
         mock_execute.assert_has_calls([
-            mock.call('sgdisk', '-n', '0:-64MB:0', '-u', '0:fake-uuid',
-                      self.dev),
+            mock.call('parted', '-a', 'optimal', '-s', '--', self.dev,
+                      'mkpart', 'primary', 'fat32', '-64MiB', '-0'),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev),
+            mock.call('sfdisk', '--part-uuid', self.dev, '4', 'fake-uuid',
+                      use_standard_locale=True),
 
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
@@ -805,8 +807,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
                        autospec=True)
     @mock.patch.object(disk_utils, 'get_partition_table_type',
                        autospec=True)
-    @mock.patch.object(partition_utils, 'get_partition',
-                       autospec=True)
+    @mock.patch.object(disk_utils, 'list_partitions', autospec=True)
     @mock.patch.object(partition_utils, 'get_labelled_partition',
                        autospec=True)
     @mock.patch.object(partition_utils, 'get_configdrive',
@@ -814,7 +815,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
     def test_create_partition_gpt_use_vfat(
             self, mock_get_configdrive,
             mock_get_labelled_partition,
-            mock_get_partition_by_uuid,
+            mock_list_partitions,
             mock_table_type,
             mock_fix_gpt_partition,
             mock_dd, mock_unlink, mock_execute,
@@ -830,19 +831,21 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
 
         mock_table_type.return_value = 'gpt'
         expected_part = '/dev/fake4'
-        mock_get_partition_by_uuid.return_value = expected_part
+        mock_list_partitions.side_effect = [[], [{'number': 4}]]
         mock_config_drive_work.return_value = True
 
         partition_utils.create_config_drive_partition(self.node_uuid, self.dev,
                                                       config_url)
         mock_execute.assert_has_calls([
-            mock.call('sgdisk', '-n', '0:-64MB:0', '-u', '0:fake-uuid',
-                      self.dev),
+            mock.call('parted', '-a', 'optimal', '-s', '--', self.dev,
+                      'mkpart', 'primary', 'fat32', '-64MiB', '-0'),
             mock.call('sync'),
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
             mock.call('sgdisk', '-v', self.dev),
+            mock.call('sfdisk', '--part-uuid', self.dev, '4', 'fake-uuid',
+                      use_standard_locale=True),
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -1236,7 +1239,7 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
 
 
 # NOTE(TheJulia): trigger_device_rescan is systemwide thus pointless
-# to execute in the file test case. Also, CI unit test jobs lack sgdisk.
+# to execute in the file test case.
 @mock.patch.object(disk_utils, 'trigger_device_rescan', autospec=True)
 @mock.patch.object(disk_utils, 'wait_for_disk_to_become_available',
                    autospec=True)

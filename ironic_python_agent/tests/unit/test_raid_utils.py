@@ -26,6 +26,13 @@ from ironic_python_agent import utils
 
 class TestRaidUtils(base.IronicAgentTest):
 
+    def _sfdisk_append_call(self, device, start, size, partition_type,
+                            name):
+        spec = 'start={}, size={}MiB, type={}, name={}\n'.format(
+            start, size, partition_type, name)
+        return mock.call('sfdisk', '--append', device,
+                         process_input=spec, use_standard_locale=True)
+
     @mock.patch.object(utils, 'execute', autospec=True)
     def test__get_actual_component_devices(self, mock_execute):
         mock_execute.side_effect = [(hws.MDADM_DETAIL_OUTPUT, '')]
@@ -209,12 +216,12 @@ class TestRaidUtils(base.IronicAgentTest):
         esp_label = 'MKFS_ESP'
         mock_execute.side_effect = [
             ('451 1000 550 275K', None),           # sfdisk --list-free
-            (None, None),            # sgdisk create part
+            (None, None),            # sfdisk append partition
             (None, None),            # partprobe
             (None, None),            # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
             ('452 1000 550 275K', None),           # sfdisk --list-free
-            (None, None),            # sgdisk create part
+            (None, None),            # sfdisk append partition
             (None, None),            # partprobe
             (None, None),            # blkid
             ('/dev/sdb14: whatever', None),    # blkid
@@ -242,16 +249,18 @@ class TestRaidUtils(base.IronicAgentTest):
         expected = [
             mock.call('sfdisk', '--list-free', '/dev/sda',
                       use_standard_locale=True),
-            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00',
-                      '-c', '0:uefi-holder-0', '/dev/sda'),
+            self._sfdisk_append_call(
+                '/dev/sda', '451', 550, raid_utils.ESP_PARTITION_TYPE,
+                'uefi-holder-0'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
             mock.call('sfdisk', '--list-free', '/dev/sdb',
                       use_standard_locale=True),
-            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00',
-                      '-c', '0:uefi-holder-1', '/dev/sdb'),
+            self._sfdisk_append_call(
+                '/dev/sdb', '452', 550, raid_utils.ESP_PARTITION_TYPE,
+                'uefi-holder-1'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
@@ -298,12 +307,12 @@ class TestRaidUtils(base.IronicAgentTest):
         mock_efi_part.return_value = None
         mock_execute.side_effect = [
             ('451 1000 550 275K', None),  # sfdisk --list-free
-            (None, None),  # sgdisk create part
+            (None, None),  # sfdisk append partition
             (None, None),  # partprobe
             (None, None),  # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
             ('452 1000 550 275K', None),  # sfdisk --list-free
-            (None, None),  # sgdisk create part
+            (None, None),  # sfdisk append partition
             (None, None),  # partprobe
             (None, None),  # blkid
             ('/dev/sdb14: whatever', None),  # blkid
@@ -319,16 +328,18 @@ class TestRaidUtils(base.IronicAgentTest):
         expected = [
             mock.call('sfdisk', '--list-free', '/dev/sda',
                       use_standard_locale=True),
-            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00', '-c',
-                      '0:uefi-holder-0', '/dev/sda'),
+            self._sfdisk_append_call(
+                '/dev/sda', '451', 550, raid_utils.ESP_PARTITION_TYPE,
+                'uefi-holder-0'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
             mock.call('sfdisk', '--list-free', '/dev/sdb',
                       use_standard_locale=True),
-            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00', '-c',
-                      '0:uefi-holder-1', '/dev/sdb'),
+            self._sfdisk_append_call(
+                '/dev/sdb', '452', 550, raid_utils.ESP_PARTITION_TYPE,
+                'uefi-holder-1'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
@@ -356,12 +367,12 @@ class TestRaidUtils(base.IronicAgentTest):
         esp_uuid = '0B8C-37B6'
         mock_execute.side_effect = [
             ('451 1000 550 275K', None),           # sfdisk --list-free
-            (None, None),            # sgdisk create part
+            (None, None),            # sfdisk append partition
             (None, None),            # partprobe
             (None, None),            # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
             ('452 1000 550 275K', None),           # sfdisk --list-free
-            (None, None),            # sgdisk create part
+            (None, None),            # sfdisk append partition
             (None, None),            # partprobe
             (None, None),            # blkid
             ('/dev/sdb14: whatever', None),    # blkid
@@ -388,16 +399,18 @@ class TestRaidUtils(base.IronicAgentTest):
         expected = [
             mock.call('sfdisk', '--list-free', '/dev/sda',
                       use_standard_locale=True),
-            mock.call('sgdisk', '-n', '0:451s:+550MiB', '-t', '0:ef00',
-                      '-c', '0:uefi-holder-0', '/dev/sda'),
+            self._sfdisk_append_call(
+                '/dev/sda', '451', 550, raid_utils.ESP_PARTITION_TYPE,
+                'uefi-holder-0'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
             mock.call('sfdisk', '--list-free', '/dev/sdb',
                       use_standard_locale=True),
-            mock.call('sgdisk', '-n', '0:452s:+550MiB', '-t', '0:ef00',
-                      '-c', '0:uefi-holder-1', '/dev/sdb'),
+            self._sfdisk_append_call(
+                '/dev/sdb', '452', 550, raid_utils.ESP_PARTITION_TYPE,
+                'uefi-holder-1'),
             mock.call('partprobe'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
@@ -446,12 +459,12 @@ class TestRaidUtils(base.IronicAgentTest):
         esp_uuid = '0B8C-37B6'
         mock_execute.side_effect = [
             ('451 1000 550 275K', None),           # sfdisk --list-free
-            (None, None),            # sgdisk create part
+            (None, None),            # sfdisk append partition
             (None, None),            # partprobe
             (None, None),            # blkid
             ('/dev/sda12: dsfkgsdjfg', None),  # blkid
             ('452 1000 550 275K', None),           # sfdisk --list-free
-            (None, None),            # sgdisk create part
+            (None, None),            # sfdisk append partition
             (None, None),            # partprobe
             (None, None),            # blkid
             ('/dev/sdb14: whatever', None),    # blkid
@@ -519,12 +532,14 @@ class TestRaidUtils(base.IronicAgentTest):
         expected_exec = [
             mock.call('sfdisk', '--list-free', '/dev/sda',
                       use_standard_locale=True),
-            mock.call('sgdisk', '-n', '0:314s:+2MiB', '-t', '0:ef02', '-c',
-                      '0:bios-boot-part-0', '/dev/sda'),
+            self._sfdisk_append_call(
+                '/dev/sda', '314', 2, raid_utils.BIOS_PARTITION_TYPE,
+                'bios-boot-part-0'),
             mock.call('sfdisk', '--list-free', '/dev/sdb',
                       use_standard_locale=True),
-            mock.call('sgdisk', '-n', '0:914s:+2MiB', '-t', '0:ef02', '-c',
-                      '0:bios-boot-part-1', '/dev/sdb'),
+            self._sfdisk_append_call(
+                '/dev/sdb', '914', 2, raid_utils.BIOS_PARTITION_TYPE,
+                'bios-boot-part-1'),
         ]
 
         mock_execute.assert_has_calls(expected_exec, any_order=False)

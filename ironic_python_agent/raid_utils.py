@@ -36,6 +36,9 @@ ESP_SIZE_MIB = 550
 # partition 1, md1 on the partition 2, and so on.
 RAID_PARTITION = 1
 
+ESP_PARTITION_TYPE = 'C12A7328-F81F-11D2-BA4B-00A0C93EC93B'
+BIOS_PARTITION_TYPE = '21686148-6449-6E6F-744E-656564454649'
+
 
 def _get_first_free_sector(device):
     """Return the first sector in the first free area on a device."""
@@ -389,11 +392,14 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
                 # NOTE: see utils.get_partition_table_type_from_specs
                 # for uefi we know that we have setup a gpt partition table.
                 partlabel = '{}{}'.format(partlabel_prefix, number)
-                start_sector = '{}s'.format(_get_first_free_sector(holder))
-                out, _u = utils.execute(
-                    'sgdisk', '-n', '0:{}:+{}MiB'.format(start_sector,
-                                                         partsize_mib),
-                    '-t', '0:ef00', '-c', '0:{}'.format(partlabel), holder)
+                start_sector = _get_first_free_sector(holder)
+                partition_spec = (
+                    'start={}, size={}MiB, type={}, name={}\n'.format(
+                        start_sector, partsize_mib, ESP_PARTITION_TYPE,
+                        partlabel))
+                utils.execute('sfdisk', '--append', holder,
+                              process_input=partition_spec,
+                              use_standard_locale=True)
 
                 # Refresh part table
                 utils.execute("partprobe")
@@ -464,11 +470,14 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
             if label == 'gpt':
                 LOG.debug("Creating bios boot partition on disk holder %s",
                           holder)
-                start_sector = '{}s'.format(_get_first_free_sector(holder))
+                start_sector = _get_first_free_sector(holder)
                 partlabel = '{}{}'.format(partlabel_prefix, number)
-                out, _u = utils.execute(
-                    'sgdisk', '-n', '0:{}:+2MiB'.format(start_sector),
-                    '-t', '0:ef02', '-c', '0:{}'.format(partlabel), holder)
+                partition_spec = (
+                    'start={}, size=2MiB, type={}, name={}\n'.format(
+                        start_sector, BIOS_PARTITION_TYPE, partlabel))
+                utils.execute('sfdisk', '--append', holder,
+                              process_input=partition_spec,
+                              use_standard_locale=True)
 
             # Q: MBR case, could we dd the boot code from the softraid
             # (446 first bytes) if we detect a bootloader with

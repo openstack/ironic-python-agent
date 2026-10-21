@@ -387,17 +387,15 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                       "%(part)s",
                       {'node': node_uuid, 'part': config_drive_part})
         else:
+            cur_parts = {part['number']
+                         for part in disk_utils.list_partitions(device)}
+            is_gpt = disk_utils.get_partition_table_type(device) == 'gpt'
             part_uuid = None
-            if disk_utils.get_partition_table_type(device) == 'gpt':
+            startlimit = '-%dMiB' % MAX_CONFIG_DRIVE_SIZE_MB
+            endlimit = '-0'
+            if is_gpt:
                 part_uuid = uuidutils.generate_uuid()
-                create_option = '0:-%dMB:0' % MAX_CONFIG_DRIVE_SIZE_MB
-                uuid_option = '0:%s' % part_uuid
-                utils.execute('sgdisk', '-n', create_option,
-                              '-u', uuid_option, device)
             else:
-                cur_parts = set(part['number']
-                                for part in disk_utils.list_partitions(device))
-
                 # Check if the disk has 4 partitions. The MBR based disk
                 # cannot have more than 4 partitions.
                 # TODO(stendulker): One can use logical partitions to create
@@ -421,8 +419,6 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                            'parts': pp_count})
 
                 # Check if disk size exceeds 2TB msdos limit
-                startlimit = '-%dMiB' % MAX_CONFIG_DRIVE_SIZE_MB
-                endlimit = '-0'
                 if _is_disk_larger_than_max_size(device, node_uuid):
                     # Need to create a small partition at 2TB limit
                     LOG.warning("Disk size is larger than 2TB for "
@@ -433,35 +429,30 @@ def create_config_drive_partition(node_uuid, device, configdrive):
                                   - MAX_CONFIG_DRIVE_SIZE_MB - 1)
                     endlimit = MAX_DISK_SIZE_MB_SUPPORTED_BY_MBR - 1
 
-                utils.execute('parted', '-a', 'optimal', '-s', '--', device,
-                              'mkpart', 'primary', 'fat32', startlimit,
-                              endlimit)
+            # For MBR, "primary" is the partition type. For GPT, parted
+            # treats it as the partition name, while "fat32" selects the
+            # filesystem-specific GPT type instead of sgdisk's old default.
+            utils.execute('parted', '-a', 'optimal', '-s', '--', device,
+                          'mkpart', 'primary', 'fat32', startlimit, endlimit)
             # Trigger device rescan
             disk_utils.trigger_device_rescan(device)
 
-            if part_uuid is None:
-                new_parts = {part['number']: part
-                             for part in disk_utils.list_partitions(device)}
-                new_part = set(new_parts) - set(cur_parts)
-                if len(new_part) != 1:
-                    raise errors.DeploymentError(
-                        'Disk partitioning failed on device %(device)s. '
-                        'Unable to retrieve config drive partition '
-                        'information.' % {'device': device})
+            new_parts = {part['number']: part
+                         for part in disk_utils.list_partitions(device)}
+            new_part = set(new_parts) - set(cur_parts)
+            if len(new_part) != 1:
+                raise errors.DeploymentError(
+                    'Disk partitioning failed on device %(device)s. '
+                    'Unable to retrieve config drive partition '
+                    'information.' % {'device': device})
 
-                config_drive_part = disk_utils.partition_index_to_path(
-                    device, new_part.pop())
-            else:
-                try:
-                    config_drive_part = get_partition(device, part_uuid)
-                except errors.DeviceNotFound:
-                    msg = ('Failed to create config drive on disk %(disk)s '
-                           'for node %(node)s. Partition with UUID %(uuid)s '
-                           'has not been found after creation.') % {
-                               'disk': device, 'node': node_uuid,
-                               'uuid': part_uuid}
-                    LOG.error(msg)
-                    raise errors.DeploymentError(msg)
+            new_part = new_part.pop()
+            config_drive_part = disk_utils.partition_index_to_path(
+                device, new_part)
+            if part_uuid is not None:
+                utils.execute('sfdisk', '--part-uuid', device,
+                              str(new_part), part_uuid,
+                              use_standard_locale=True)
 
             disk_utils.udev_settle()
 
