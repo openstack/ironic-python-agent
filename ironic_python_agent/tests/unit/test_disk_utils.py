@@ -229,7 +229,8 @@ class MakePartitionsTestCase(base.IronicAgentTest):
                       mock.call('udevadm', 'settle'),
                       mock.call('partprobe', self.dev, attempts=10),
                       mock.call('udevadm', 'settle'),
-                      mock.call('sgdisk', '-v', self.dev)]
+                      mock.call('sfdisk', '--verify', self.dev,
+                                use_standard_locale=True)]
 
         mock_exc.assert_has_calls([parted_call, fuser_call] + sync_calls)
 
@@ -630,18 +631,14 @@ class FixGptStructsTestCases(base.IronicAgentTest):
         self.node_uuid = "12345678-1234-1234-1234-1234567890abcxyz"
 
     def test_fix_gpt_structs_fix_required(self, mock_execute):
-        sgdisk_v_output = """
-Problem: The secondary header's self-pointer indicates that it doesn't reside
-at the end of the disk. If you've added a disk to a RAID array, use the 'e'
-option on the experts' menu to adjust the secondary header's and partition
-table's locations.
-
-Identified 1 problems!
-"""
-        mock_execute.return_value = (sgdisk_v_output, '')
+        sfdisk_verify_error = (
+            'The backup GPT table is not on the end of the device.')
+        mock_execute.return_value = ('', sfdisk_verify_error)
         execute_calls = [
-            mock.call('sgdisk', '-v', '/dev/fake'),
-            mock.call('sgdisk', '-e', '/dev/fake')
+            mock.call('sfdisk', '--verify', '/dev/fake',
+                      use_standard_locale=True),
+            mock.call('sfdisk', '--relocate', 'gpt-bak-std', '/dev/fake',
+                      use_standard_locale=True)
         ]
         disk_utils._fix_gpt_structs('/dev/fake', self.node_uuid)
         mock_execute.assert_has_calls(execute_calls)
@@ -650,7 +647,8 @@ Identified 1 problems!
         mock_execute.return_value = ('', '')
 
         disk_utils._fix_gpt_structs('/dev/fake', self.node_uuid)
-        mock_execute.assert_called_once_with('sgdisk', '-v', '/dev/fake')
+        mock_execute.assert_called_once_with(
+            'sfdisk', '--verify', '/dev/fake', use_standard_locale=True)
 
     @mock.patch.object(disk_utils.LOG, 'error', autospec=True)
     def test_fix_gpt_structs_exc(self, mock_log, mock_execute):
@@ -659,7 +657,8 @@ Identified 1 problems!
                                'Failed to fix GPT data structures on disk',
                                disk_utils._fix_gpt_structs,
                                self.dev, self.node_uuid)
-        mock_execute.assert_called_once_with('sgdisk', '-v', '/dev/fake')
+        mock_execute.assert_called_once_with(
+            'sfdisk', '--verify', '/dev/fake', use_standard_locale=True)
         self.assertEqual(1, mock_log.call_count)
 
 
@@ -672,7 +671,8 @@ class TriggerDeviceRescanTestCase(base.IronicAgentTest):
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', '/dev/fake', attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', '/dev/fake'),
+            mock.call('sfdisk', '--verify', '/dev/fake',
+                      use_standard_locale=True),
         ])
 
     def test_custom_attempts(self, mock_execute):
@@ -683,7 +683,8 @@ class TriggerDeviceRescanTestCase(base.IronicAgentTest):
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', '/dev/fake', attempts=1),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', '/dev/fake'),
+            mock.call('sfdisk', '--verify', '/dev/fake',
+                      use_standard_locale=True),
         ])
 
     def test_fails(self, mock_execute):
@@ -696,7 +697,22 @@ class TriggerDeviceRescanTestCase(base.IronicAgentTest):
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', '/dev/fake', attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', '/dev/fake'),
+            mock.call('sfdisk', '--verify', '/dev/fake',
+                      use_standard_locale=True),
+        ])
+
+    def test_verify_reports_error(self, mock_execute):
+        mock_execute.side_effect = [('', '')] * 4 + [
+            ('', '1 error detected.')
+        ]
+        self.assertFalse(disk_utils.trigger_device_rescan('/dev/fake'))
+        mock_execute.assert_has_calls([
+            mock.call('sync'),
+            mock.call('udevadm', 'settle'),
+            mock.call('partprobe', '/dev/fake', attempts=10),
+            mock.call('udevadm', 'settle'),
+            mock.call('sfdisk', '--verify', '/dev/fake',
+                      use_standard_locale=True),
         ])
 
 

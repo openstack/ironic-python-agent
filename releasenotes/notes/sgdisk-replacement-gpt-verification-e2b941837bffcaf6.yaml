@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Replace ``sgdisk`` with ``sfdisk`` for GPT verification and backup-header
+    relocation. IPA now uses ``sfdisk --verify`` and
+    ``sfdisk --relocate gpt-bak-std``, improving compatibility with systems
+    that do not provide ``gptfdisk``. See
+    `bug 2170355 <https://bugs.launchpad.net/ironic/+bug/2170355>`_.
+

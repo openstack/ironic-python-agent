@@ -714,7 +714,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev),
+            mock.call('sfdisk', '--verify', self.dev,
+                      use_standard_locale=True),
             mock.call('sfdisk', '--part-uuid', self.dev, '4', 'fake-uuid',
                       use_standard_locale=True),
             mock.call('udevadm', 'settle'),
@@ -776,7 +777,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev),
+            mock.call('sfdisk', '--verify', self.dev,
+                      use_standard_locale=True),
             mock.call('sfdisk', '--part-uuid', self.dev, '4', 'fake-uuid',
                       use_standard_locale=True),
 
@@ -843,7 +845,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev),
+            mock.call('sfdisk', '--verify', self.dev,
+                      use_standard_locale=True),
             mock.call('sfdisk', '--part-uuid', self.dev, '4', 'fake-uuid',
                       use_standard_locale=True),
             mock.call('udevadm', 'settle'),
@@ -948,7 +951,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev),
+            mock.call('sfdisk', '--verify', self.dev,
+                      use_standard_locale=True),
             mock.call('udevadm', 'settle'),
             mock.call('test', '-e', expected_part, attempts=15,
                       delay_on_retry=True)
@@ -1048,7 +1052,8 @@ class CreateConfigDriveTestCases(base.IronicAgentTest):
             mock.call('udevadm', 'settle'),
             mock.call('partprobe', self.dev, attempts=10),
             mock.call('udevadm', 'settle'),
-            mock.call('sgdisk', '-v', self.dev),
+            mock.call('sfdisk', '--verify', self.dev,
+                      use_standard_locale=True),
         ])
 
         self.assertEqual(2, mock_list_partitions.call_count)

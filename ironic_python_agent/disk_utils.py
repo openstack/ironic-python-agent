@@ -599,11 +599,13 @@ def _fix_gpt_structs(device, node_uuid):
         commands fail.
     """
     try:
-        output, _err = utils.execute('sgdisk', '-v', device)
+        output, err = utils.execute('sfdisk', '--verify', device,
+                                    use_standard_locale=True)
 
-        search_str = "it doesn't reside\nat the end of the disk"
-        if search_str in output:
-            utils.execute('sgdisk', '-e', device)
+        search_str = 'The backup GPT table is not on the end of the device.'
+        if search_str in output or search_str in err:
+            utils.execute('sfdisk', '--relocate', 'gpt-bak-std', device,
+                          use_standard_locale=True)
     except (processutils.UnknownArgumentError,
             processutils.ProcessExecutionError, OSError) as e:
         msg = ('Failed to fix GPT data structures on disk %(disk)s '
@@ -709,7 +711,13 @@ def trigger_device_rescan(device, attempts=None):
     udev_settle()
     try:
         # Also verify that the partitioning is correct now.
-        utils.execute('sgdisk', '-v', device)
+        result = utils.execute('sfdisk', '--verify', device,
+                               use_standard_locale=True)
+        err = result[1] if isinstance(result, tuple) else ''
+        if err:
+            LOG.warning('Failed to verify partition tables on device %(dev)s: '
+                        '%(err)s', {'dev': device, 'err': err})
+            return False
     except processutils.ProcessExecutionError as exc:
         LOG.warning('Failed to verify partition tables on device %(dev)s: '
                     '%(err)s', {'dev': device, 'err': exc})
