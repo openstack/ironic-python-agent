@@ -542,10 +542,10 @@ def destroy_disk_metadata(dev, node_uuid):
                 ctxt.reraise = False
                 utils.execute('wipefs', '--all', dev,
                               use_standard_locale=True)
-    # NOTE(TheJulia): sgdisk attempts to load and make sense of the
-    # partition tables in advance of wiping the partition data.
-    # This means when a CRC error is found, sgdisk fails before
-    # erasing partition data.
+    # NOTE(stevebaker): Zero the partition table areas directly rather than
+    # relying on a partitioning tool. Such tools generally parse the existing
+    # table first and refuse to touch it when a CRC error is found, which is
+    # exactly the situation we need to recover from.
     # This is the same bug as
     # https://bugs.launchpad.net/ironic-python-agent/+bug/1737556
 
@@ -576,9 +576,6 @@ def destroy_disk_metadata(dev, node_uuid):
         dd_count = 'count=%s' % gpt_sectors
         utils.execute('dd', dd_bs, 'if=/dev/zero', dd_device, dd_count,
                       'oflag=direct', dd_seek, use_standard_locale=True)
-
-    # Go ahead and let sgdisk run as well.
-    utils.execute('sgdisk', '-Z', dev, use_standard_locale=True)
 
     try:
         wait_for_disk_to_become_available(dev)

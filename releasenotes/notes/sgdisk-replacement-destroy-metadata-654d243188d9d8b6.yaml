@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    Ironic Python Agent no longer invokes ``sgdisk``, so the ``gptfdisk``
+    package is not required in the deployment ramdisk any more. See
+    `bug 2170355 <https://bugs.launchpad.net/ironic/+bug/2170355>`_.
+fixes:
+  - |
+    Stop calling ``sgdisk -Z`` when destroying disk metadata. The GPT and MBR
+    structures are already removed by ``wipefs --all`` and by zeroing the
+    primary and backup GPT areas, which keeps working on disks with corrupt
+    partition tables. See
+    `bug 2170355 <https://bugs.launchpad.net/ironic/+bug/2170355>`_.
