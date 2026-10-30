@@ -8457,7 +8457,10 @@ FakeAddr = namedtuple('FakeAddr', ('family', 'address'))
                    return_value=[hardware.GenericHardwareManager()])
 @mock.patch('psutil.net_if_addrs', autospec=True)
 @mock.patch('os.listdir', autospec=True)
-@mock.patch('os.path.exists', autospec=True)
+@mock.patch.object(netutils, 'is_network_device', autospec=True,
+                   side_effect=lambda name: name != 'lo')
+@mock.patch.object(netutils, 'is_bond', autospec=True,
+                   return_value=False)
 @mock.patch('builtins.open', autospec=True)
 @mock.patch.object(utils, 'execute', autospec=True)
 @mock.patch.object(netutils, 'interface_has_carrier', autospec=True)
@@ -8471,7 +8474,7 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                      mock_has_carrier,
                                      mocked_execute,
                                      mocked_open,
-                                     mocked_exists,
+                                     mocked_is_bond, mocked_is_netdev,
                                      mocked_listdir,
                                      mocked_net_if_addrs,
                                      mockedget_managers,
@@ -8479,7 +8482,6 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                      mocked_get_mac_addr):
         mocked_lshw.return_value = json.loads(hws.LSHW_JSON_OUTPUT_V2[0])
         mocked_listdir.return_value = ['lo', 'eth0', 'foobar']
-        mocked_exists.side_effect = [False, False, True, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8521,14 +8523,14 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                       mock_has_carrier,
                                                       mocked_execute,
                                                       mocked_open,
-                                                      mocked_exists,
+                                                      mocked_is_bond,
+                                                      mocked_is_netdev,
                                                       mocked_listdir,
                                                       mocked_net_if_addrs,
                                                       mockedget_managers,
                                                       mocked_lshw,
                                                       mocked_get_mac_addr):
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8568,7 +8570,8 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                mock_has_carrier,
                                                mocked_execute,
                                                mocked_open,
-                                               mocked_exists,
+                                               mocked_is_bond,
+                                               mocked_is_netdev,
                                                mocked_listdir,
                                                mocked_net_if_addrs,
                                                mockedget_managers,
@@ -8576,7 +8579,6 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                mocked_get_mac_addr):
         CONF.set_override('collect_lldp', True)
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8627,7 +8629,8 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                      mock_has_carrier,
                                                      mocked_execute,
                                                      mocked_open,
-                                                     mocked_exists,
+                                                     mocked_is_bond,
+                                                     mocked_is_netdev,
                                                      mocked_listdir,
                                                      mocked_net_if_addrs,
                                                      mockedget_managers,
@@ -8635,7 +8638,6 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                      mocked_get_mac_addr):
         CONF.set_override('collect_lldp', True)
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8673,7 +8675,8 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                 mock_has_carrier,
                                                 mocked_execute,
                                                 mocked_open,
-                                                mocked_exists,
+                                                mocked_is_bond,
+                                                mocked_is_netdev,
                                                 mocked_listdir,
                                                 mocked_net_if_addrs,
                                                 mockedget_managers,
@@ -8682,7 +8685,6 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
 
         mockedget_managers.return_value = [hardware.GenericHardwareManager()]
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8719,14 +8721,14 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                       mock_has_carrier,
                                                       mocked_execute,
                                                       mocked_open,
-                                                      mocked_exists,
+                                                      mocked_is_bond,
+                                                      mocked_is_netdev,
                                                       mocked_listdir,
                                                       mocked_net_if_addrs,
                                                       mockedget_managers,
                                                       mocked_lshw,
                                                       mocked_get_mac_addr):
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8765,14 +8767,14 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                mock_has_carrier,
                                                mocked_execute,
                                                mocked_open,
-                                               mocked_exists,
+                                               mocked_is_bond,
+                                               mocked_is_netdev,
                                                mocked_listdir,
                                                mocked_net_if_addrs,
                                                mockedget_managers,
                                                mocked_lshw,
                                                mocked_get_mac_addr):
         mocked_listdir.return_value = ['lo', 'bond0']
-        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8813,14 +8815,14 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                       mock_has_carrier,
                                                       mocked_execute,
                                                       mocked_open,
-                                                      mocked_exists,
+                                                      mocked_is_bond,
+                                                      mocked_is_netdev,
                                                       mocked_listdir,
                                                       mocked_net_if_addrs,
                                                       mockedget_managers,
                                                       mocked_lshw,
                                                       mocked_get_mac_addr):
         mocked_listdir.return_value = ['lo', 'eth0']
-        mocked_exists.side_effect = [False, False, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8862,7 +8864,8 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                           mock_has_carrier,
                                           mocked_execute,
                                           mocked_open,
-                                          mocked_exists,
+                                          mocked_is_bond,
+                                          mocked_is_netdev,
                                           mocked_listdir,
                                           mocked_net_if_addrs,
                                           mockedget_managers,
@@ -8883,9 +8886,14 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
             if '/sys/class/net/eth0/bonding' in path:
                 return False
             # Fail on unexpected paths so we know if the code changes
-            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+            raise AssertionError(f'Unexpected path check: {path}')
 
-        mocked_exists.side_effect = mock_path_exists
+        mocked_is_netdev.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/device'))
+        mocked_is_bond.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/bonding'))
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8929,7 +8937,8 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                               mock_has_carrier,
                                               mocked_execute,
                                               mocked_open,
-                                              mocked_exists,
+                                              mocked_is_bond,
+                                              mocked_is_netdev,
                                               mocked_listdir,
                                               mocked_net_if_addrs,
                                               mockedget_managers,
@@ -8950,9 +8959,14 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
             if '/sys/class/net/eth0/bonding' in path:
                 return False
             # Fail on unexpected paths so we know if the code changes
-            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+            raise AssertionError(f'Unexpected path check: {path}')
 
-        mocked_exists.side_effect = mock_path_exists
+        mocked_is_netdev.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/device'))
+        mocked_is_bond.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/bonding'))
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -8998,7 +9012,8 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                      mock_has_carrier,
                                                      mocked_execute,
                                                      mocked_open,
-                                                     mocked_exists,
+                                                     mocked_is_bond,
+                                                     mocked_is_netdev,
                                                      mocked_listdir,
                                                      mocked_net_if_addrs,
                                                      mockedget_managers,
@@ -9021,9 +9036,14 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
             if '/sys/class/net/eth0/bonding' in path:
                 return False
             # Fail on unexpected paths so we know if the code changes
-            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+            raise AssertionError(f'Unexpected path check: {path}')
 
-        mocked_exists.side_effect = mock_path_exists
+        mocked_is_netdev.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/device'))
+        mocked_is_bond.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/bonding'))
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -9085,7 +9105,8 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                            mock_has_carrier,
                                            mocked_execute,
                                            mocked_open,
-                                           mocked_exists,
+                                           mocked_is_bond,
+                                           mocked_is_netdev,
                                            mocked_listdir,
                                            mocked_net_if_addrs,
                                            mockedget_managers,
@@ -9107,9 +9128,14 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
             if '/sys/class/net/eth0/bonding' in path:
                 return False
             # Fail on unexpected paths so we know if the code changes
-            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+            raise AssertionError(f'Unexpected path check: {path}')
 
-        mocked_exists.side_effect = mock_path_exists
+        mocked_is_netdev.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/device'))
+        mocked_is_bond.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/bonding'))
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -9139,7 +9165,8 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                                                          mock_has_carrier,
                                                          mocked_execute,
                                                          mocked_open,
-                                                         mocked_exists,
+                                                         mocked_is_bond,
+                                                         mocked_is_netdev,
                                                          mocked_listdir,
                                                          mocked_net_if_addrs,
                                                          mockedget_managers,
@@ -9167,9 +9194,14 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
             if '/sys/class/net/eth1/bonding' in path:
                 return False
             # Fail on unexpected paths so we know if the code changes
-            raise AssertionError(f'Unexpected os.path.exists call: {path}')
+            raise AssertionError(f'Unexpected path check: {path}')
 
-        mocked_exists.side_effect = mock_path_exists
+        mocked_is_netdev.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/device'))
+        mocked_is_bond.side_effect = (
+            lambda name: mock_path_exists(
+                f'/sys/class/net/{name}/bonding'))
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -9234,11 +9266,11 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
                        autospec=True)
     def test_list_network_interfaces_with_filter_device(
             self, mock_filter_device, mock_has_carrier, mocked_execute,
-            mocked_open, mocked_exists, mocked_listdir, mocked_net_if_addrs,
+            mocked_open, mocked_is_bond,
+            mocked_is_netdev, mocked_listdir, mocked_net_if_addrs,
             mockedget_managers, mocked_lshw, mocked_get_mac_addr):
         mocked_lshw.return_value = json.loads(hws.LSHW_JSON_OUTPUT_V2[0])
         mocked_listdir.return_value = ['lo', 'eth0', 'eth1']
-        mocked_exists.side_effect = [False, False, True, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
@@ -9286,14 +9318,13 @@ class TestListNetworkInterfaces(base.IronicAgentTest):
 
     def test_list_network_interfaces_ignores_locally_administered(
             self, mock_has_carrier, mocked_execute,
-            mocked_open, mocked_exists, mocked_listdir,
+            mocked_open, mocked_is_bond,
+            mocked_is_netdev, mocked_listdir,
             mocked_net_if_addrs, mockedget_managers,
             mocked_lshw, mocked_get_mac_addr):
         mocked_lshw.return_value = json.loads(
             hws.LSHW_JSON_OUTPUT_V2[0])
         mocked_listdir.return_value = ['lo', 'eth0', 'eth1']
-        mocked_exists.side_effect = [
-            False, False, True, True]
         mocked_open.return_value.__enter__ = lambda s: s
         mocked_open.return_value.__exit__ = mock.Mock()
         read_mock = mocked_open.return_value.read
