@@ -1293,16 +1293,7 @@ class StandbyExtension(base.BaseAgentExtension):
         disk_size = str(disk_size)
 
         # Determine the status of selinux.
-        selinux = False
-        try:
-            stdout, _ = utils.execute("getenforce", use_standard_locale=True)
-            if (stdout.startswith('Enforcing')
-                or stdout.startswith('Permissive')):
-                selinux = True
-        except (processutils.ProcessExecutionError,
-                errors.CommandExecutionError,
-                OSError):
-            pass
+        selinux = self._selinux_is_active()
 
         # Execute Podman to run bootc from the container.
         #
@@ -1375,6 +1366,42 @@ class StandbyExtension(base.BaseAgentExtension):
                     "Container does not contain the required bootc binary "
                     "and thus cannot be deployed."
                 )
+
+    @staticmethod
+    def _selinux_is_active():
+        """Return True if SELinux is active on the running kernel.
+
+        The bootc install runs in a nested podman container, so what
+        matters is whether the kernel will enforce SELinux on it, not
+        what the agent's own userspace believes.
+
+        The agent is frequently executed inside a container itself. In
+        that case libselinux reports SELinux as disabled even when
+        selinuxfs is mounted and the kernel is enforcing, so ``getenforce``
+        returns "Disabled" and the caller would wrongly conclude that
+        SELinux can be ignored. Consulting selinuxfs directly avoids that.
+        A value of "1" means enforcing and "0" means permissive, and both
+        mean SELinux is active.
+
+        ``getenforce`` is still used as a fallback for environments where
+        selinuxfs is not reachable.
+
+        :returns: True if SELinux is active, otherwise False.
+        """
+        try:
+            with open('/sys/fs/selinux/enforce', 'r') as f:
+                return f.read().strip() in ('0', '1')
+        except OSError:
+            pass
+
+        try:
+            stdout, _ = utils.execute("getenforce", use_standard_locale=True)
+            return (stdout.startswith('Enforcing')
+                    or stdout.startswith('Permissive'))
+        except (processutils.ProcessExecutionError,
+                errors.CommandExecutionError,
+                OSError):
+            return False
 
     def _write_no_pivot_root(self):
         """Writes a podman no-pivot configuration."""
