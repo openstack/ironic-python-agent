@@ -7,8 +7,13 @@ libffi-dev [platform:dpkg test]
 libffi-devel [platform:rpm test]
 
 # these are needed for functional tests
+# Debian ships sfdisk in fdisk; wipefs and losetup are in util-linux.
+fdisk [platform:dpkg test]
 mdadm [test]
 parted [test]
+# fuser is required by disk_utils.destroy_disk_metadata().
+psmisc [test]
+util-linux [test]
 
 # this is needed for compiling translations
 gettext [test]

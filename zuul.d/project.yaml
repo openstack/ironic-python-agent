@@ -9,6 +9,12 @@
     check:
       jobs:
         - openstack-tox-functional
+        # The regular job runs the full functional suite. Run only the
+        # loopback test separately with sudo access.
+        - openstack-tox-functional-with-sudo:
+            voting: false
+            vars:
+              tox_extra_args: -- ironic_python_agent.tests.functional.test_loopback
         - ipa-tox-bandit
         # NOTE(iurygregory) Only run this two jobs since we are testing
         # wholedisk + partition on tempest
