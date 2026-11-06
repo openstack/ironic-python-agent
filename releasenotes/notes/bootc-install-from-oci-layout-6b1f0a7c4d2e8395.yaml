@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    A ``bootc`` deployment no longer shares the agent's container store with
+    the image being deployed. Previously the store was bind mounted into the
+    container and ``bootc`` resolved the image through containers-storage,
+    which meant the store had to be openable from inside that image. On a
+    ramdisk the store sits on overlayfs, and containers-storage refuses the
+    overlay driver over overlayfs unless it finds a mount program, so the
+    deployed image had to ship ``fuse-overlayfs`` or the install failed with
+    ``'overlay' is not supported over overlayfs``. The image is now exported
+    to an OCI layout and passed to ``bootc`` with ``--source-imgref``, so
+    ``/var/lib/containers`` is no longer shared at all. Note that the export
+    is a second copy of the image for the duration of the install, and it is
+    removed once ``bootc`` finishes.

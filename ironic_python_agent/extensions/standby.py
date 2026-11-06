@@ -19,6 +19,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import tempfile
 import time
 from urllib import parse as urlparse
@@ -40,6 +41,11 @@ CONF = cfg.CONF
 LOG = log.getLogger(__name__)
 
 IMAGE_CHUNK_SIZE = 1024 * 1024  # 1MB
+
+# Where the exported OCI layout is mounted inside the bootc container. This
+# is deliberately a top level path so that the parent directory always
+# exists in the tenant image, whatever it does with /tmp or /var.
+BOOTC_SOURCE_DIR = '/bootc-source'
 
 
 def _image_location(image_info):
@@ -1295,6 +1301,19 @@ class StandbyExtension(base.BaseAgentExtension):
         # Determine the status of selinux.
         selinux = self._selinux_is_active()
 
+        # Export the image to an OCI layout so that bootc can be pointed at
+        # it directly. Otherwise bootc resolves the image through
+        # containers-storage, which means the agent's store has to be shared
+        # with, and openable from inside, the tenant image. On a ramdisk that
+        # store sits on overlayfs, and containers-storage refuses the overlay
+        # driver over overlayfs unless it finds a mount program, so the
+        # tenant image would have to ship fuse-overlayfs. Exporting also means
+        # /var/lib/containers no longer has to be bind mounted at all.
+        #
+        # This is done as late as possible, and everything after it runs
+        # under the try below, so the export cannot be left behind.
+        export_dir, layout_dir = self._export_container_image(container_url)
+
         # Execute Podman to run bootc from the container.
         #
         # This has to run as a privileged operation, mapping the container
@@ -1313,48 +1332,58 @@ class StandbyExtension(base.BaseAgentExtension):
         # needed), so we intentionally do NOT pass --authfile here.
         # This prevents tenant-controlled code in the bootc image
         # from accessing registry credentials via /proc/1/root.
-        command = [
-            'podman',
-            '--log-level=debug',
-            'run', '--rm', '--privileged', '--pid=host',
-            '--pull=never',
-            '-v', '/var/lib/containers:/var/lib/containers',
-            '-v', '/dev:/dev',
-        ]
-        if authorized_keys:
-            # NOTE(TheJulia): Bandit flags on this, but we need a folder which
-            # should exist in the container *and* locally to the ramdisk.
-            # As such, flagging with nosec.
-            command.extend(['-v', '/tmp:/tmp'])  # nosec B108
-        if selinux:
-            command.extend([
-                '--security-opt', 'label=type:unconfined_t'
-            ])
-        command.extend([
-            container_url,
-            'bootc', 'install', 'to-disk',
-            '--wipe', '--skip-fetch-check',
-            '--root-size=' + disk_size + 'M'
-        ])
-        if tpm2_luks:
-            command.append('--block-setup=tpm2-luks')
-        if authorized_keys:
-            key_file = self._write_authorized_keys(authorized_keys)
-            command.append(f'--root-ssh-authorized-keys={key_file}')
-
-        if not selinux:
-            # For SELinux to be applied, per the bootc docs, you must have
-            # SELinux enabled on the host system.
-            command.append('--disable-selinux')
-
-        command.append(device)
-
         try:
+            command = [
+                'podman',
+                '--log-level=debug',
+                'run', '--rm', '--privileged', '--pid=host',
+                '--pull=never',
+                '-v', '%s:%s:ro' % (layout_dir, BOOTC_SOURCE_DIR),
+                '-v', '/dev:/dev',
+            ]
+            if authorized_keys:
+                # NOTE(TheJulia): Bandit flags on this, but we need a
+                # folder which should exist in the container *and*
+                # locally to the ramdisk.
+                # As such, flagging with nosec.
+                command.extend(['-v', '/tmp:/tmp'])  # nosec B108
+            if selinux:
+                command.extend([
+                    '--security-opt', 'label=type:unconfined_t'
+                ])
+            command.extend([
+                container_url,
+                'bootc', 'install', 'to-disk',
+                '--wipe', '--skip-fetch-check',
+                '--root-size=' + disk_size + 'M',
+                '--source-imgref=oci:' + BOOTC_SOURCE_DIR,
+                # Without this the installed system would record the
+                # temporary layout as its update source, and later
+                # `bootc upgrade` calls would fail.
+                '--target-imgref=' + container_url
+            ])
+            if tpm2_luks:
+                command.append('--block-setup=tpm2-luks')
+            if authorized_keys:
+                key_file = self._write_authorized_keys(authorized_keys)
+                command.append(f'--root-ssh-authorized-keys={key_file}')
+
+            if not selinux:
+                # For SELinux to be applied, per the bootc docs, you must have
+                # SELinux enabled on the host system.
+                command.append('--disable-selinux')
+
+            command.append(device)
+
             stdout, stderr = utils.execute(*command, use_standard_locale=True)
         except processutils.ProcessExecutionError as e:
             LOG.debug('Failed to execute podman: %s', e)
             raise errors.ImageWriteError(device, e.exit_code, e.stdout,
                                          e.stderr)
+        finally:
+            # The export is a second copy of the image, and on a ramdisk that
+            # is held in memory, so release it as soon as bootc is done.
+            shutil.rmtree(export_dir, ignore_errors=True)
         for output in [stdout, stderr]:
             if 'executable file `bootc` not found' in output:
                 # This is the case where the container doesn't actually
@@ -1415,6 +1444,40 @@ class StandbyExtension(base.BaseAgentExtension):
         file_content = '[engine]\nno_pivot_root = true\n'
         with open(file_path, 'w') as file:
             file.write(file_content)
+
+    def _export_container_image(self, container_url):
+        """Export an already pulled image to an OCI layout directory.
+
+        bootc resolves the image it installs through containers-storage,
+        which would require the agent's container store to be shared with
+        the tenant image and openable from inside it. Exporting the image
+        lets us pass ``--source-imgref`` instead, so the tenant image needs
+        nothing beyond ``bootc`` itself.
+
+        :param container_url: The container image to export.
+        :returns: A tuple of the temporary directory to clean up and the
+                  OCI layout directory to hand to bootc.
+        :raises: ImageDownloadError if the image cannot be exported.
+        """
+        export_dir = None
+        try:
+            export_dir = tempfile.mkdtemp(prefix='ipa-bootc-source-')
+            # podman save creates this directory, it must not exist yet.
+            layout_dir = os.path.join(export_dir, 'layout')
+            utils.execute('podman', 'save', '--format', 'oci-dir',
+                          '-o', layout_dir, container_url,
+                          use_standard_locale=True)
+        except (processutils.ProcessExecutionError,
+                errors.CommandExecutionError,
+                OSError) as e:
+            if export_dir:
+                shutil.rmtree(export_dir, ignore_errors=True)
+            LOG.debug('Failed to export container image %(image)s: %(err)s',
+                      {'image': container_url, 'err': e})
+            raise errors.ImageDownloadError(
+                container_url,
+                'Could not export the container image for bootc: %s' % e)
+        return export_dir, layout_dir
 
     def _pull_container_image(self, container_url, auth_path=None):
         """Pre-pull a container image into the local podman store.
