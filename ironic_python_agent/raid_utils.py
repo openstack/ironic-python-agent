@@ -397,12 +397,17 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
                     'start={}, size={}MiB, type={}, name={}\n'.format(
                         start_sector, partsize_mib, ESP_PARTITION_TYPE,
                         partlabel))
-                utils.execute('sfdisk', '--append', holder,
+                # NOTE: the holder disks are in use by the md device of the
+                # root volume, so sfdisk's in-use check (BLKRRPART) always
+                # fails here. Skip it; the kernel cannot re-read the table of
+                # a busy disk either, so partprobe the holder explicitly to
+                # make it aware of the new partition.
+                utils.execute('sfdisk', '--no-reread', '--append', holder,
                               process_input=partition_spec,
                               use_standard_locale=True)
 
                 # Refresh part table
-                utils.execute("partprobe")
+                utils.execute('partprobe', holder)
                 utils.execute("blkid")
 
                 target_part, _u = utils.execute(
@@ -475,7 +480,9 @@ def prepare_boot_partitions_for_softraid(device, holders, efi_part,
                 partition_spec = (
                     'start={}, size=2MiB, type={}, name={}\n'.format(
                         start_sector, BIOS_PARTITION_TYPE, partlabel))
-                utils.execute('sfdisk', '--append', holder,
+                # NOTE: the holder is in use by the md device, see the UEFI
+                # case above.
+                utils.execute('sfdisk', '--no-reread', '--append', holder,
                               process_input=partition_spec,
                               use_standard_locale=True)
 
