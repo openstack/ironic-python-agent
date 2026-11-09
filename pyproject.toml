@@ -8,7 +8,7 @@ description = "Ironic Python Agent Ramdisk"
 authors = [
     {name = "OpenStack", email = "openstack-discuss@lists.openstack.org"},
 ]
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 readme = {file = "README.rst", content-type = "text/x-rst"}
 requires-python = ">=3.11"
 classifiers = [
@@ -70,11 +70,8 @@ usb-devices = "ironic_python_agent.inspector:collect_usb_devices"
 ironic-python-agent = "ironic_python_agent.cmd.agent:run"
 ironic-collect-introspection-data = "ironic_python_agent.cmd.inspect:run"
 
-[tool.pbr]
-autodoc_index_modules = true
-
-[tool.setuptools]
-packages = ["ironic_python_agent"]
+[tool.setuptools.packages.find]
+include = ["ironic_python_agent*"]
 
 [tool.ruff]
 line-length = 79
