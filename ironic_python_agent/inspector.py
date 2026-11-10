@@ -265,7 +265,9 @@ def collect_default(data, failures):
     wait_for_dhcp()
     inventory = hardware.list_hardware_info()
 
-    data['inventory'] = inventory
+    # Merge rather than replace, so data added to the inventory by other
+    # collectors that ran earlier is preserved.
+    data.setdefault('inventory', {}).update(inventory)
     # Replicate the same logic as in deploy. We need to make sure that when
     # root device hints are not set, inspector will use the same root disk as
     # will be used for deploy.

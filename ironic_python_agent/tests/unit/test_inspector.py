@@ -409,6 +409,18 @@ class TestCollectDefault(BaseDiscoverTest):
         mock_dispatch.assert_called_once_with('list_hardware_info')
         mock_wait_for_dhcp.assert_called_once_with()
 
+    def test_preserves_existing_inventory(self, mock_dispatch,
+                                          mock_wait_for_dhcp, mock_get_mgrs):
+        mock_dispatch.return_value = self.inventory
+        mock_get_mgrs.return_value = []
+        self.data['inventory'] = {'pci_devices': [{'vendor_id': '1234'}]}
+
+        inspector.collect_default(self.data, self.failures)
+
+        self.assertEqual([{'vendor_id': '1234'}],
+                         self.data['inventory']['pci_devices'])
+        self.assertTrue(self.data['inventory']['cpu'])
+
     def test_cache_hardware_info(self, mock_dispatch, mock_wait_for_dhcp,
                                  mock_get_mgrs):
         mgrs = [{'name': 'extra', 'version': '1.42'},
