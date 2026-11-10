@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixes deployments on software RAID failing in the
+    ``deploy.prepare_instance_boot`` step with ``This disk is currently in
+    use`` when creating the EFI system partitions (UEFI) or BIOS boot
+    partitions (BIOS on GPT) on the RAID member disks. ``sfdisk`` is now
+    called with ``--no-reread``, since the member disks are always in use by
+    the RAID device at this point, and the new EFI system partition is made
+    visible to the kernel by running ``partprobe`` on the member disk.

@@ -30,7 +30,7 @@ class TestRaidUtils(base.IronicAgentTest):
                             name):
         spec = 'start={}, size={}MiB, type={}, name={}\n'.format(
             start, size, partition_type, name)
-        return mock.call('sfdisk', '--append', device,
+        return mock.call('sfdisk', '--no-reread', '--append', device,
                          process_input=spec, use_standard_locale=True)
 
     @mock.patch.object(utils, 'execute', autospec=True)
@@ -252,7 +252,7 @@ class TestRaidUtils(base.IronicAgentTest):
             self._sfdisk_append_call(
                 '/dev/sda', '451', 550, raid_utils.ESP_PARTITION_TYPE,
                 'uefi-holder-0'),
-            mock.call('partprobe'),
+            mock.call('partprobe', '/dev/sda'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
@@ -261,7 +261,7 @@ class TestRaidUtils(base.IronicAgentTest):
             self._sfdisk_append_call(
                 '/dev/sdb', '452', 550, raid_utils.ESP_PARTITION_TYPE,
                 'uefi-holder-1'),
-            mock.call('partprobe'),
+            mock.call('partprobe', '/dev/sdb'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
                       '/dev/sdb'),
@@ -331,7 +331,7 @@ class TestRaidUtils(base.IronicAgentTest):
             self._sfdisk_append_call(
                 '/dev/sda', '451', 550, raid_utils.ESP_PARTITION_TYPE,
                 'uefi-holder-0'),
-            mock.call('partprobe'),
+            mock.call('partprobe', '/dev/sda'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
@@ -340,7 +340,7 @@ class TestRaidUtils(base.IronicAgentTest):
             self._sfdisk_append_call(
                 '/dev/sdb', '452', 550, raid_utils.ESP_PARTITION_TYPE,
                 'uefi-holder-1'),
-            mock.call('partprobe'),
+            mock.call('partprobe', '/dev/sdb'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
                       '/dev/sdb'),
@@ -402,7 +402,7 @@ class TestRaidUtils(base.IronicAgentTest):
             self._sfdisk_append_call(
                 '/dev/sda', '451', 550, raid_utils.ESP_PARTITION_TYPE,
                 'uefi-holder-0'),
-            mock.call('partprobe'),
+            mock.call('partprobe', '/dev/sda'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-0',
                       '/dev/sda'),
@@ -411,7 +411,7 @@ class TestRaidUtils(base.IronicAgentTest):
             self._sfdisk_append_call(
                 '/dev/sdb', '452', 550, raid_utils.ESP_PARTITION_TYPE,
                 'uefi-holder-1'),
-            mock.call('partprobe'),
+            mock.call('partprobe', '/dev/sdb'),
             mock.call('blkid'),
             mock.call('blkid', '-l', '-t', 'PARTLABEL=uefi-holder-1',
                       '/dev/sdb'),
