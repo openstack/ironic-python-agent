@@ -15,6 +15,7 @@
 import base64
 import errno
 import os
+import shutil
 import tempfile
 import time
 from unittest import mock
@@ -1880,8 +1881,11 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch.object(standby.StandbyExtension,
                        '_selinux_is_active',
                        autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_export_container_image', autospec=True)
     def test__download_container_and_bootc_install_enforcing_selinux(
             self,
+            export_mock,
             selinux_mock,
             no_pivot_mock,
             write_container_auth_mock,
@@ -1890,6 +1894,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
+        export_mock.return_value = ('/tmp/fake-export',
+                                    '/tmp/fake-export/layout')
         selinux_mock.return_value = True
         get_size_mock.return_value = 2000000000
         execute_mock.side_effect = iter([
@@ -1912,12 +1918,14 @@ class TestStandbyExtension(base.IronicAgentTest):
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
                 '--pid=host', '--pull=never',
-                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/tmp/fake-export/layout:/bootc-source:ro',
                 '-v', '/dev:/dev',
                 '-v', '/tmp:/tmp', '--security-opt',
                 'label=type:unconfined_t', 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
                 '--skip-fetch-check', '--root-size=1139M',
+                '--source-imgref=oci:/bootc-source',
+                '--target-imgref=foo/container',
                 '--root-ssh-authorized-keys=/tmp/fake/file',
                 '/dev/fake', use_standard_locale=True)
         ])
@@ -1943,8 +1951,11 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch.object(standby.StandbyExtension,
                        '_selinux_is_active',
                        autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_export_container_image', autospec=True)
     def test__download_container_and_bootc_install_permissive_selinux(
             self,
+            export_mock,
             selinux_mock,
             no_pivot_mock,
             write_container_auth_mock,
@@ -1953,6 +1964,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
+        export_mock.return_value = ('/tmp/fake-export',
+                                    '/tmp/fake-export/layout')
         selinux_mock.return_value = True
         get_size_mock.return_value = 2000000000
         execute_mock.side_effect = iter([
@@ -1975,12 +1988,14 @@ class TestStandbyExtension(base.IronicAgentTest):
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
                 '--pid=host', '--pull=never',
-                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/tmp/fake-export/layout:/bootc-source:ro',
                 '-v', '/dev:/dev',
                 '-v', '/tmp:/tmp', '--security-opt',
                 'label=type:unconfined_t', 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
                 '--skip-fetch-check', '--root-size=1139M',
+                '--source-imgref=oci:/bootc-source',
+                '--target-imgref=foo/container',
                 '--root-ssh-authorized-keys=/tmp/fake/file',
                 '/dev/fake', use_standard_locale=True)
         ])
@@ -2006,8 +2021,11 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch.object(standby.StandbyExtension,
                        '_selinux_is_active',
                        autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_export_container_image', autospec=True)
     def test__download_container_and_bootc_install_luks(
             self,
+            export_mock,
             selinux_mock,
             no_pivot_mock,
             write_container_auth_mock,
@@ -2016,6 +2034,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
+        export_mock.return_value = ('/tmp/fake-export',
+                                    '/tmp/fake-export/layout')
         selinux_mock.return_value = True
         get_size_mock.return_value = 2000000000
         execute_mock.side_effect = iter([
@@ -2038,12 +2058,14 @@ class TestStandbyExtension(base.IronicAgentTest):
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
                 '--pid=host', '--pull=never',
-                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/tmp/fake-export/layout:/bootc-source:ro',
                 '-v', '/dev:/dev',
                 '-v', '/tmp:/tmp', '--security-opt',
                 'label=type:unconfined_t', 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
                 '--skip-fetch-check', '--root-size=1139M',
+                '--source-imgref=oci:/bootc-source',
+                '--target-imgref=foo/container',
                 '--block-setup=tpm2-luks',
                 '--root-ssh-authorized-keys=/tmp/fake/file',
                 '/dev/fake', use_standard_locale=True)
@@ -2070,8 +2092,11 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch.object(standby.StandbyExtension,
                        '_selinux_is_active',
                        autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_export_container_image', autospec=True)
     def test__download_container_and_bootc_install_no_selinux_keys_auth(
             self,
+            export_mock,
             selinux_mock,
             no_pivot_mock,
             write_container_auth_mock,
@@ -2080,6 +2105,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
+        export_mock.return_value = ('/tmp/fake-export',
+                                    '/tmp/fake-export/layout')
         selinux_mock.return_value = False
         get_size_mock.return_value = 15000000000
         execute_mock.side_effect = iter([
@@ -2100,11 +2127,13 @@ class TestStandbyExtension(base.IronicAgentTest):
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
                 '--pid=host', '--pull=never',
-                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/tmp/fake-export/layout:/bootc-source:ro',
                 '-v', '/dev:/dev',
                 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
                 '--skip-fetch-check', '--root-size=13537M',
+                '--source-imgref=oci:/bootc-source',
+                '--target-imgref=foo/container',
                 '--disable-selinux',
                 '/dev/fake', use_standard_locale=True)
         ])
@@ -2130,8 +2159,11 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch.object(standby.StandbyExtension,
                        '_selinux_is_active',
                        autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_export_container_image', autospec=True)
     def test__download_container_and_bootc_install_errors_no_bootc(
             self,
+            export_mock,
             selinux_mock,
             no_pivot_mock,
             write_container_auth_mock,
@@ -2140,6 +2172,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
+        export_mock.return_value = ('/tmp/fake-export',
+                                    '/tmp/fake-export/layout')
         selinux_mock.return_value = False
         get_size_mock.return_value = 15000000000
         execute_mock.side_effect = iter([
@@ -2164,11 +2198,13 @@ class TestStandbyExtension(base.IronicAgentTest):
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
                 '--pid=host', '--pull=never',
-                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/tmp/fake-export/layout:/bootc-source:ro',
                 '-v', '/dev:/dev',
                 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
                 '--skip-fetch-check', '--root-size=13537M',
+                '--source-imgref=oci:/bootc-source',
+                '--target-imgref=foo/container',
                 '--disable-selinux',
                 '/dev/fake', use_standard_locale=True)
         ])
@@ -2194,8 +2230,11 @@ class TestStandbyExtension(base.IronicAgentTest):
     @mock.patch.object(standby.StandbyExtension,
                        '_selinux_is_active',
                        autospec=True)
+    @mock.patch.object(standby.StandbyExtension,
+                       '_export_container_image', autospec=True)
     def test__download_container_and_bootc_install_podman_errors(
             self,
+            export_mock,
             selinux_mock,
             no_pivot_mock,
             write_container_auth_mock,
@@ -2204,6 +2243,8 @@ class TestStandbyExtension(base.IronicAgentTest):
             write_authorized_keys_mock,
             get_size_mock,
             execute_mock):
+        export_mock.return_value = ('/tmp/fake-export',
+                                    '/tmp/fake-export/layout')
         selinux_mock.return_value = False
         get_size_mock.return_value = 15000000000
         execute_mock.side_effect = iter([
@@ -2226,11 +2267,13 @@ class TestStandbyExtension(base.IronicAgentTest):
                 'podman', '--log-level=debug', 'run', '--rm',
                 '--privileged',
                 '--pid=host', '--pull=never',
-                '-v', '/var/lib/containers:/var/lib/containers',
+                '-v', '/tmp/fake-export/layout:/bootc-source:ro',
                 '-v', '/dev:/dev',
                 'foo/container',
                 'bootc', 'install', 'to-disk', '--wipe',
                 '--skip-fetch-check', '--root-size=13537M',
+                '--source-imgref=oci:/bootc-source',
+                '--target-imgref=foo/container',
                 '--disable-selinux',
                 '/dev/fake', use_standard_locale=True)
         ])
@@ -2347,6 +2390,34 @@ class TestStandbyExtension(base.IronicAgentTest):
         self.assertEqual(
             {'auths': {'foo.tld': {'auth': expected}}},
             mock_dump.call_args[0][0])
+
+    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test__export_container_image(self, execute_mock, mkdtemp_mock):
+        mkdtemp_mock.return_value = '/tmp/fake-export'
+        execute_mock.return_value = ((), ())
+        export_dir, layout_dir = (
+            self.agent_extension._export_container_image('foo/container'))
+        self.assertEqual('/tmp/fake-export', export_dir)
+        self.assertEqual('/tmp/fake-export/layout', layout_dir)
+        execute_mock.assert_called_once_with(
+            'podman', 'save', '--format', 'oci-dir',
+            '-o', '/tmp/fake-export/layout',
+            'foo/container',
+            use_standard_locale=True)
+
+    @mock.patch.object(shutil, 'rmtree', autospec=True)
+    @mock.patch.object(tempfile, 'mkdtemp', autospec=True)
+    @mock.patch('ironic_python_agent.utils.execute', autospec=True)
+    def test__export_container_image_error(self, execute_mock, mkdtemp_mock,
+                                           rmtree_mock):
+        mkdtemp_mock.return_value = '/tmp/fake-export'
+        execute_mock.side_effect = processutils.ProcessExecutionError()
+        self.assertRaises(errors.ImageDownloadError,
+                          self.agent_extension._export_container_image,
+                          'foo/container')
+        rmtree_mock.assert_called_once_with('/tmp/fake-export',
+                                            ignore_errors=True)
 
     @mock.patch('ironic_python_agent.utils.execute', autospec=True)
     def test__pull_container_image_with_auth(self, execute_mock):
